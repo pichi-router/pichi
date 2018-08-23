@@ -210,10 +210,10 @@ BOOST_AUTO_TEST_CASE(parse_Inbound_SS_Empty_Fields)
 
 BOOST_AUTO_TEST_CASE(parse_Inbound_Invalid_Port)
 {
-  decltype(auto) negative = "{\"name\":\"p\",\"type\":\"HTTP\",\"bind\":\"p\",\"port\":-1}";
+  decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
   BOOST_CHECK_EXCEPTION(parse<InboundVO>(negative), Exception, verifyException<PichiError::MISC>);
 
-  decltype(auto) huge = "{\"name\":\"p\",\"type\":\"HTTP\",\"bind\":\"p\",\"port\":65536}";
+  decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
   BOOST_CHECK_EXCEPTION(parse<InboundVO>(huge), Exception, verifyException<PichiError::MISC>);
 }
 
@@ -253,7 +253,7 @@ BOOST_AUTO_TEST_CASE(parse_Inbound_Empty_Pack)
 BOOST_AUTO_TEST_CASE(parse_Inbound_Pack)
 {
   auto m = unordered_map<string, InboundVO>{};
-  parse<InboundVO>("{\"placeholder\":{\"type\":\"DIRECT\"}}",
+  parse<InboundVO>("{\"placeholder\":{\"type\":\"direct\"}}",
                    [&](auto&& k, auto&& v) { m[k] = v; });
   BOOST_CHECK(m.size() == 1);
   auto it = m.find(ph);
@@ -356,10 +356,10 @@ BOOST_AUTO_TEST_CASE(parse_Outbound_SS_Empty_Fields)
 
 BOOST_AUTO_TEST_CASE(parse_Outbound_Invalid_Port)
 {
-  decltype(auto) negative = "{\"name\":\"p\",\"type\":\"HTTP\",\"bind\":\"p\",\"port\":-1}";
+  decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
   BOOST_CHECK_EXCEPTION(parse<OutboundVO>(negative), Exception, verifyException<PichiError::MISC>);
 
-  decltype(auto) huge = "{\"name\":\"p\",\"type\":\"HTTP\",\"bind\":\"p\",\"port\":65536}";
+  decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
   BOOST_CHECK_EXCEPTION(parse<OutboundVO>(huge), Exception, verifyException<PichiError::MISC>);
 }
 
@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE(parse_Outbound_Empty_Pack)
 BOOST_AUTO_TEST_CASE(parse_Outbound_Pack)
 {
   auto m = unordered_map<string, OutboundVO>{};
-  parse<OutboundVO>("{\"placeholder\":{\"type\":\"DIRECT\"}}",
+  parse<OutboundVO>("{\"placeholder\":{\"type\":\"direct\"}}",
                     [&](auto&& k, auto&& v) { m[k] = v; });
   BOOST_CHECK(m.size() == 1);
   auto it = m.find(ph);

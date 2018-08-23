@@ -8,11 +8,11 @@ using Allocator = json::Document::AllocatorType;
 namespace pichi {
 namespace api {
 
-static decltype(auto) DIRECT_TYPE = "DIRECT";
-static decltype(auto) REJECT_TYPE = "REJECT";
-static decltype(auto) SOCKS5_TYPE = "SOCKS5";
-static decltype(auto) HTTP_TYPE = "HTTP";
-static decltype(auto) SS_TYPE = "SS";
+static decltype(auto) DIRECT_TYPE = "direct";
+static decltype(auto) REJECT_TYPE = "reject";
+static decltype(auto) SOCKS5_TYPE = "socks5";
+static decltype(auto) HTTP_TYPE = "http";
+static decltype(auto) SS_TYPE = "ss";
 
 static decltype(auto) RC4_MD5_METHOD = "rc4-md5";
 static decltype(auto) BF_CFB_METHOD = "bf-cfb";
