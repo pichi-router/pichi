@@ -1,0 +1,11 @@
+* text=auto
+
+.gitignore text
+.gitattributes text
+*.cpp text
+*.cc text
+*.cxx text
+*.h text
+*.hpp text
+*.hh text
+*.hxx text

@@ -1,0 +1,420 @@
+openapi: 3.0.0
+info:
+  version: '1.0'
+  title: 'Pichi API'
+  description: 'RESTful API for pichi server'
+tags:
+  - name: 'Pichi API'
+    description: 'Pichi API'
+paths:
+  /inbound:
+    get:
+      description: 'Get all available inbound adapters'
+      tags:
+        - 'Pichi API'
+      responses:
+        '200':
+          description: 'All available inbound adapters'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/Inbound'
+        '500':
+          description: 'Pichi server data structure error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /inbound/{name}:
+    put:
+      description: 'Create or modify an inbound'
+      tags:
+        - 'Pichi API'
+      parameters:
+        - name: name
+          description: 'Inbound name'
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Inbound'
+      responses:
+        '204':
+          description: 'Operation succeeded'
+        '400':
+          description: 'Request body is invalid'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '406':
+          description: 'Address in use'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          description: 'Pichi server error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      description: 'Delete a specified inbound'
+      tags:
+        - 'Pichi API'
+      parameters:
+        - name: name
+          description: 'Inbound name'
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'operation succeeded'
+        '500':
+          description: 'Pichi server error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /outbound:
+    get:
+      description: 'Get all available outbound adapters'
+      tags:
+        - 'Pichi API'
+      responses:
+        '200':
+          description: 'All available inbound adapters'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/Outbound'
+        '500':
+          description: 'Pichi server data structure error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /outbound/{name}:
+    put:
+      description: 'Create or modify an outbound'
+      tags:
+        - 'Pichi API'
+      parameters:
+        - name: name
+          description: 'outbound name'
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Outbound'
+      responses:
+        '204':
+          description: 'Operation succeeded'
+        '400':
+          description: 'Request body is invalid'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          description: 'Pichi server error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      description: 'Delete a specified outbound'
+      tags:
+        - 'Pichi API'
+      parameters:
+        - name: name
+          description: 'Outbound name'
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'operation succeeded'
+        '500':
+          description: 'Pichi server error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /rules:
+    get:
+      description: 'Get all available rules'
+      tags:
+        - 'Pichi API'
+      responses:
+        '200':
+          description: 'All available rules'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/Rule'
+        '500':
+          description: 'Pichi server data structure error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /rules/{name}:
+    put:
+      description: 'Create or modify a rule'
+      tags:
+        - 'Pichi API'
+      parameters:
+        - name: name
+          description: 'rule name'
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Outbound'
+      responses:
+        '204':
+          description: 'Operation succeeded'
+        '400':
+          description: 'Request body is invalid'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          description: 'Pichi server error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      description: 'Delete a specified rule'
+      tags:
+        - 'Pichi API'
+      parameters:
+        - name: name
+          description: 'Rule name'
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'operation succeeded'
+        '500':
+          description: 'Pichi server error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /route:
+    get:
+      description: 'Show Pichi routes'
+      tags:
+        - 'Pichi API'
+      responses:
+        '200':
+          description: 'Routes'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+        '500':
+          description: 'Pichi server data structure error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    put:
+      description: 'Change rule order or default outbound'
+      tags:
+        - 'Pichi API'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Route'
+      responses:
+        '204':
+          description: 'Operation succeeded'
+        '400':
+          description: 'Request body is invalid'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          description: 'Pichi server error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+components:
+  schemas:
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'Address in use'
+    AdapterType:
+      type: string
+      enum:
+        - http
+        - socks5
+        - ss
+    CryptoMethod:
+      description: 'SS method'
+      type: string
+      enum:
+        - rc4-md5
+        - bf-cfb
+        - aes-128-ctr
+        - aes-192-ctr
+        - aes-256-ctr
+        - aes-128-cfb
+        - aes-192-cfb
+        - aes-256-cfb
+        - camellia-128-cfb
+        - camellia-192-cfb
+        - camellia-256-cfb
+        - chacha20
+        - salsa20
+        - chacha20-ietf
+        - aes-128-gcm
+        - aes-192-gcm
+        - aes-256-gcm
+        - chacha20-ietf-poly1305
+        - xchacha20-ietf-poly1305
+    Adapter:
+      type: object
+      properties:
+        port:
+          description: 'Inbound binding port'
+          type: integer
+          format: int32
+          example: 8388
+        method:
+          $ref: '#/components/schemas/CryptoMethod'
+        password:
+          description: 'SS psk'
+          type: string
+          example: 'ss password'
+      required:
+        - port
+    Inbound:
+      allOf:
+        - $ref: '#/components/schemas/Adapter'
+        - type: object
+          properties:
+            type:
+              $ref: '#/components/schemas/AdapterType'
+            bind:
+              description: 'Inbound binding address'
+              type: string
+              example: '0.0.0.0'
+          required:
+            - type
+            - bind
+    Outbound:
+      allOf:
+        - $ref: '#/components/schemas/Adapter'
+        - type: object
+          properties:
+            type:
+              allOf:
+                - type: string
+                  enum:
+                    - direct
+                    - reject
+                - $ref: '#/components/schemas/AdapterType'
+            host:
+              type: string
+              description: 'Remote server address'
+              example: 'socks5.example.com'
+          required:
+            - type
+            - host
+    Rule:
+      type: object
+      properties:
+        outbound:
+          description: 'Target outbound name'
+          type: string
+          example: 'direct'
+        range:
+          description: 'IP range array'
+          type: array
+          items:
+            type: string
+            example: 'fc00::/7'
+        inbound:
+          description: 'inbound name array'
+          type: array
+          items:
+            type: string
+            example: 'my_socks5_server'
+        type:
+          description: 'inbound type array'
+          type: array
+          items:
+            $ref: '#/components/schemas/AdapterType'
+        pattern:
+          description: 'Remote server address pattern'
+          type: array
+          items:
+            type: string
+            example: '^.*\.example.com$'
+        domain:
+          description: 'Remote server domain name'
+          type: array
+          items:
+            type: string
+            example: 'example.com'
+        country:
+          description: 'Remote server country'
+          type: array
+          items:
+            type: string
+            example: 'US'
+      required:
+        - outbound
+    Route:
+      type: object
+      properties:
+        default:
+          description: 'Default outbound name'
+          type: string
+          example: 'default_outbound'
+        rules:
+          description: 'Active rules in order'
+          type: array
+          items:
+            type: string
+            example: 'rule_0'

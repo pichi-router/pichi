@@ -1,0 +1,6 @@
+find_package(Boost 1.66.0 REQUIRED)
+file(GLOB_RECURSE SRCS *.cpp)
+set(PICHI_LIBRARY "pichi_lib")
+add_library(${PICHI_LIBRARY} STATIC ${SRCS})
+target_include_directories(${PICHI_LIBRARY} PRIVATE ${Boost_INCLUDE_DIRS})
+set(PICHI_LIBRARY "${PICHI_LIBRARY}" PARENT_SCOPE)
