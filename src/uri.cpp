@@ -42,7 +42,7 @@ Uri::Uri(string_view s)
   all_ = it2sv(r[0].first, r[0].second);
   scheme_ = it2sv(r[1].first, r[1].second);
   host_ = it2sv(r[2].first, r[2].second);
-  port_ = it2sv(r[3].first, r[3].second);
+  port_ = it2sv(r[4].first, r[4].second);
   if (port_.empty()) port_ = scheme2port(scheme_);
   suffix_ = it2sv(r[5].first, r[5].second);
   if (suffix_.empty()) suffix_ = "/"sv;
