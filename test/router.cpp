@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(Router_Iteration)
     while (it != end(router) && it->first != s) ++it;
     BOOST_CHECK(it != end(router));
     BOOST_CHECK(s == it->first);
-    BOOST_CHECK(s == it->second.outbound_);
+    BOOST_CHECK(s == it->second.egress_);
   }
 }
 
@@ -219,7 +219,7 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Range)
                    ph, AdapterType::DIRECT) == "direct");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Matching_Inbound)
+BOOST_AUTO_TEST_CASE(Router_Matching_Ingress)
 {
   auto router = Router{fn};
   router.update(ph, {ph, {}, {ph}});

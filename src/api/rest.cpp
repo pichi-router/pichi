@@ -5,8 +5,7 @@ using namespace std;
 namespace json = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
-namespace pichi {
-namespace api {
+namespace pichi::api {
 
 static decltype(auto) DIRECT_TYPE = "direct";
 static decltype(auto) REJECT_TYPE = "reject";
@@ -34,7 +33,7 @@ static decltype(auto) AES_256_GCM_METHOD = "aes-256-gcm";
 static decltype(auto) CHACHA20_IETF_POLY1305_METHOD = "chacha20-ietf-poly1305";
 static decltype(auto) XCHACHA20_IETF_POLY1305_METHOD = "xchacha20-ietf-poly1305";
 
-namespace InboundVOKey {
+namespace IngressVOKey {
 
 static decltype(auto) type_ = "type";
 static decltype(auto) bind_ = "bind";
@@ -42,9 +41,9 @@ static decltype(auto) port_ = "port";
 static decltype(auto) method_ = "method";
 static decltype(auto) password_ = "password";
 
-} // namespace InboundVOKey
+} // namespace IngressVOKey
 
-namespace OutboundVOKey {
+namespace EgressVOKey {
 
 static decltype(auto) type_ = "type";
 static decltype(auto) host_ = "host";
@@ -52,14 +51,14 @@ static decltype(auto) port_ = "port";
 static decltype(auto) method_ = "method";
 static decltype(auto) password_ = "password";
 
-} // namespace OutboundVOKey
+} // namespace EgressVOKey
 
 namespace RuleVOKey {
 
-static decltype(auto) outbound_ = "outbound";
+static decltype(auto) egress_ = "egress";
 static decltype(auto) range_ = "range";
-static decltype(auto) inbound_ = "inbound_name";
-static decltype(auto) type_ = "inbound_type";
+static decltype(auto) ingress_ = "ingress_name";
+static decltype(auto) type_ = "ingress_type";
 static decltype(auto) pattern_ = "pattern";
 static decltype(auto) domain_ = "domain";
 static decltype(auto) country_ = "country";
@@ -72,6 +71,12 @@ static decltype(auto) default_ = "default";
 static decltype(auto) rules_ = "rules";
 
 } // namespace RouteVOKey
+
+namespace ErrorVOKey {
+
+static decltype(auto) message_ = "message";
+
+} // namespace ErrorVOKey
 
 static AdapterType parseAdapterType(json::Value const& v)
 {
@@ -208,28 +213,28 @@ json::Value toJson(CryptoMethod method, Allocator& alloc)
   }
 }
 
-json::Value toJson(InboundVO const& ivo, Allocator& alloc)
+json::Value toJson(IngressVO const& ingress, Allocator& alloc)
 {
   auto ret = json::Value{};
   ret.SetObject();
-  switch (ivo.type_) {
+  switch (ingress.type_) {
   case AdapterType::SS:
-    assertTrue(ivo.method_.has_value(), PichiError::MISC);
-    assertTrue(ivo.password_.has_value(), PichiError::MISC);
-    assertFalse(ivo.password_->empty(), PichiError::MISC);
-    ret.AddMember(InboundVOKey::method_, toJson(*ivo.method_, alloc), alloc);
-    ret.AddMember(InboundVOKey::password_, toJson(*ivo.password_, alloc), alloc);
+    assertTrue(ingress.method_.has_value(), PichiError::MISC);
+    assertTrue(ingress.password_.has_value(), PichiError::MISC);
+    assertFalse(ingress.password_->empty(), PichiError::MISC);
+    ret.AddMember(IngressVOKey::method_, toJson(*ingress.method_, alloc), alloc);
+    ret.AddMember(IngressVOKey::password_, toJson(*ingress.password_, alloc), alloc);
     // Don't break here
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    assertFalse(ivo.bind_.empty(), PichiError::MISC);
-    assertFalse(ivo.port_ == 0, PichiError::MISC);
-    ret.AddMember(InboundVOKey::bind_, toJson(ivo.bind_, alloc), alloc);
-    ret.AddMember(InboundVOKey::port_, json::Value{ivo.port_}, alloc);
+    assertFalse(ingress.bind_.empty(), PichiError::MISC);
+    assertFalse(ingress.port_ == 0, PichiError::MISC);
+    ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
+    ret.AddMember(IngressVOKey::port_, json::Value{ingress.port_}, alloc);
   // Don't break here
   case AdapterType::DIRECT:
   case AdapterType::REJECT:
-    ret.AddMember(InboundVOKey::type_, toJson(ivo.type_, alloc), alloc);
+    ret.AddMember(IngressVOKey::type_, toJson(ingress.type_, alloc), alloc);
     break;
   default:
     fail(PichiError::MISC);
@@ -237,50 +242,50 @@ json::Value toJson(InboundVO const& ivo, Allocator& alloc)
   return ret;
 }
 
-json::Value toJson(OutboundVO const& ovo, Allocator& alloc)
+json::Value toJson(EgressVO const& evo, Allocator& alloc)
 {
-  auto outbound = json::Value{};
-  outbound.SetObject();
+  auto egress_ = json::Value{};
+  egress_.SetObject();
 
-  switch (ovo.type_) {
+  switch (evo.type_) {
   case AdapterType::SS:
-    assertTrue(ovo.method_.has_value(), PichiError::MISC);
-    assertTrue(ovo.password_.has_value(), PichiError::MISC);
-    assertFalse(ovo.password_->empty(), PichiError::MISC);
-    outbound.AddMember(OutboundVOKey::method_, toJson(*ovo.method_, alloc), alloc);
-    outbound.AddMember(OutboundVOKey::password_, toJson(*ovo.password_, alloc), alloc);
+    assertTrue(evo.method_.has_value(), PichiError::MISC);
+    assertTrue(evo.password_.has_value(), PichiError::MISC);
+    assertFalse(evo.password_->empty(), PichiError::MISC);
+    egress_.AddMember(EgressVOKey::method_, toJson(*evo.method_, alloc), alloc);
+    egress_.AddMember(EgressVOKey::password_, toJson(*evo.password_, alloc), alloc);
     // Don't break here
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    assertTrue(ovo.host_.has_value(), PichiError::MISC);
-    assertFalse(ovo.host_->empty(), PichiError::MISC);
-    assertTrue(ovo.port_.has_value(), PichiError::MISC);
-    assertFalse(*ovo.port_ == 0, PichiError::MISC);
-    outbound.AddMember(OutboundVOKey::host_, toJson(*ovo.host_, alloc), alloc);
-    outbound.AddMember(OutboundVOKey::port_, json::Value{*ovo.port_}, alloc);
+    assertTrue(evo.host_.has_value(), PichiError::MISC);
+    assertFalse(evo.host_->empty(), PichiError::MISC);
+    assertTrue(evo.port_.has_value(), PichiError::MISC);
+    assertFalse(*evo.port_ == 0, PichiError::MISC);
+    egress_.AddMember(EgressVOKey::host_, toJson(*evo.host_, alloc), alloc);
+    egress_.AddMember(EgressVOKey::port_, json::Value{*evo.port_}, alloc);
     // Don't break here
   case AdapterType::DIRECT:
   case AdapterType::REJECT:
-    outbound.AddMember(OutboundVOKey::type_, toJson(ovo.type_, alloc), alloc);
+    egress_.AddMember(EgressVOKey::type_, toJson(evo.type_, alloc), alloc);
     break;
   default:
     fail(PichiError::MISC);
   }
 
-  return outbound;
+  return egress_;
 }
 
 json::Value toJson(RuleVO const& rvo, Allocator& alloc)
 {
-  assertFalse(rvo.outbound_.empty(), PichiError::MISC);
+  assertFalse(rvo.egress_.empty(), PichiError::MISC);
 
   auto rule = json::Value{};
   rule.SetObject();
-  rule.AddMember(RuleVOKey::outbound_, toJson(rvo.outbound_, alloc), alloc);
+  rule.AddMember(RuleVOKey::egress_, toJson(rvo.egress_, alloc), alloc);
   if (!rvo.range_.empty())
     rule.AddMember(RuleVOKey::range_, toJson(begin(rvo.range_), end(rvo.range_), alloc), alloc);
-  if (!rvo.inbound_.empty())
-    rule.AddMember(RuleVOKey::inbound_, toJson(begin(rvo.inbound_), end(rvo.inbound_), alloc),
+  if (!rvo.ingress_.empty())
+    rule.AddMember(RuleVOKey::ingress_, toJson(begin(rvo.ingress_), end(rvo.ingress_), alloc),
                    alloc);
   if (!rvo.type_.empty())
     rule.AddMember(RuleVOKey::type_, toJson(begin(rvo.type_), end(rvo.type_), alloc), alloc);
@@ -308,28 +313,41 @@ json::Value toJson(RouteVO const& rvo, Allocator& alloc)
   return route;
 }
 
-template <> InboundVO parse(json::Value const& v)
+json::Value toJson(ErrorVO const& evo, Allocator& alloc)
+{
+  using StringRef = json::Value::StringRefType;
+  using SizeType = json::SizeType;
+
+  auto error = json::Value{};
+  error.SetObject();
+  error.AddMember(ErrorVOKey::message_,
+                  StringRef{evo.message_.data(), static_cast<SizeType>(evo.message_.size())},
+                  alloc);
+  return error;
+}
+
+template <> IngressVO parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::MISC);
-  assertTrue(v.HasMember(InboundVOKey::type_), PichiError::MISC);
+  assertTrue(v.HasMember(IngressVOKey::type_), PichiError::MISC);
 
-  auto ivo = InboundVO{};
+  auto ivo = IngressVO{};
 
-  ivo.type_ = parseAdapterType(v[InboundVOKey::type_]);
+  ivo.type_ = parseAdapterType(v[IngressVOKey::type_]);
 
   switch (ivo.type_) {
   case AdapterType::SS:
-    assertTrue(v.HasMember(InboundVOKey::method_), PichiError::MISC);
-    assertTrue(v.HasMember(InboundVOKey::password_), PichiError::MISC);
-    ivo.method_ = parseCryptoMethod(v[InboundVOKey::method_]);
-    ivo.password_ = parseString(v[InboundVOKey::password_]);
+    assertTrue(v.HasMember(IngressVOKey::method_), PichiError::MISC);
+    assertTrue(v.HasMember(IngressVOKey::password_), PichiError::MISC);
+    ivo.method_ = parseCryptoMethod(v[IngressVOKey::method_]);
+    ivo.password_ = parseString(v[IngressVOKey::password_]);
     // Don't break here
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    assertTrue(v.HasMember(InboundVOKey::bind_), PichiError::MISC);
-    assertTrue(v.HasMember(InboundVOKey::port_), PichiError::MISC);
-    ivo.bind_ = parseString(v[InboundVOKey::bind_]);
-    ivo.port_ = parsePort(v[InboundVOKey::port_]);
+    assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::MISC);
+    assertTrue(v.HasMember(IngressVOKey::port_), PichiError::MISC);
+    ivo.bind_ = parseString(v[IngressVOKey::bind_]);
+    ivo.port_ = parsePort(v[IngressVOKey::port_]);
     // Don't break here
   case AdapterType::DIRECT:
   case AdapterType::REJECT:
@@ -341,27 +359,27 @@ template <> InboundVO parse(json::Value const& v)
   return ivo;
 }
 
-template <> OutboundVO parse(json::Value const& v)
+template <> EgressVO parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::MISC);
-  assertTrue(v.HasMember(OutboundVOKey::type_), PichiError::MISC);
+  assertTrue(v.HasMember(EgressVOKey::type_), PichiError::MISC);
 
-  auto ovo = OutboundVO{};
-  ovo.type_ = parseAdapterType(v[OutboundVOKey::type_]);
+  auto evo = EgressVO{};
+  evo.type_ = parseAdapterType(v[EgressVOKey::type_]);
 
-  switch (ovo.type_) {
+  switch (evo.type_) {
   case AdapterType::SS:
-    assertTrue(v.HasMember(OutboundVOKey::method_), PichiError::MISC);
-    assertTrue(v.HasMember(OutboundVOKey::password_), PichiError::MISC);
-    ovo.method_ = parseCryptoMethod(v[OutboundVOKey::method_]);
-    ovo.password_ = parseString(v[OutboundVOKey::password_]);
+    assertTrue(v.HasMember(EgressVOKey::method_), PichiError::MISC);
+    assertTrue(v.HasMember(EgressVOKey::password_), PichiError::MISC);
+    evo.method_ = parseCryptoMethod(v[EgressVOKey::method_]);
+    evo.password_ = parseString(v[EgressVOKey::password_]);
     // Don't break here
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    assertTrue(v.HasMember(OutboundVOKey::host_), PichiError::MISC);
-    assertTrue(v.HasMember(OutboundVOKey::port_), PichiError::MISC);
-    ovo.host_ = parseString(v[OutboundVOKey::host_]);
-    ovo.port_ = parsePort(v[OutboundVOKey::port_]);
+    assertTrue(v.HasMember(EgressVOKey::host_), PichiError::MISC);
+    assertTrue(v.HasMember(EgressVOKey::port_), PichiError::MISC);
+    evo.host_ = parseString(v[EgressVOKey::host_]);
+    evo.port_ = parsePort(v[EgressVOKey::port_]);
     // Don't break here
   case AdapterType::DIRECT:
   case AdapterType::REJECT:
@@ -370,20 +388,20 @@ template <> OutboundVO parse(json::Value const& v)
     fail(PichiError::MISC);
   }
 
-  return ovo;
+  return evo;
 }
 
 template <> RuleVO parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::MISC);
-  assertTrue(v.HasMember(RuleVOKey::outbound_), PichiError::MISC);
+  assertTrue(v.HasMember(RuleVOKey::egress_), PichiError::MISC);
 
   auto rvo = RuleVO{};
 
-  rvo.outbound_ = parseString(v[RuleVOKey::outbound_]);
+  rvo.egress_ = parseString(v[RuleVOKey::egress_]);
 
   parseArray(v, RuleVOKey::range_, back_inserter(rvo.range_), &parseString);
-  parseArray(v, RuleVOKey::inbound_, back_inserter(rvo.inbound_), &parseString);
+  parseArray(v, RuleVOKey::ingress_, back_inserter(rvo.ingress_), &parseString);
   parseArray(v, RuleVOKey::type_, back_inserter(rvo.type_), &parseAdapterType);
   parseArray(v, RuleVOKey::pattern_, back_inserter(rvo.pattern_), &parseString);
   parseArray(v, RuleVOKey::domain_, back_inserter(rvo.domain_), &parseString);
@@ -405,5 +423,4 @@ template <> RouteVO parse(json::Value const& v)
   return rvo;
 }
 
-} // namespace api
-} // namespace pichi
+} // namespace pichi::api

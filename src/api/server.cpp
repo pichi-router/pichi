@@ -25,13 +25,16 @@ using tcp = ip::tcp;
 
 namespace pichi::api {
 
-static auto const INBOUND_REGEX = regex{"^/inbound/?([?#].*)?$"};
-static auto const INBOUND_NAME_REGEX = regex{"^/inbound/([^?#/]+)/?([?#].*)?$"};
-static auto const OUTBOUND_REGEX = regex{"^/outbound/?([?#].*)?$"};
-static auto const OUTBOUND_NAME_REGEX = regex{"^/outbound/([^?#]+)/?([?#].*)?$"};
+static auto const INGRESS_REGEX = regex{"^/ingresses/?([?#].*)?$"};
+static auto const INGRESS_NAME_REGEX = regex{"^/ingresses/([^?#/]+)/?([?#].*)?$"};
+static auto const EGRESS_REGEX = regex{"^/egresses/?([?#].*)?$"};
+static auto const EGRESS_NAME_REGEX = regex{"^/egresses/([^?#]+)/?([?#].*)?$"};
 static auto const RULE_REGEX = regex{"^/rules/?([?#].*)?$"};
 static auto const RULE_NAME_REGEX = regex{"^/rules/([^?#]+)/?([?#].*)?$"};
 static auto const ROUTE_REGEX = regex{"^/route/?([?#].*)?$"};
+
+static auto doc = json::Document{};
+static auto& alloc = doc.GetAllocator();
 
 static string serialize(json::Value const& v)
 {
@@ -62,10 +65,10 @@ static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::
   if (ec) cout << "Ignoring HTTP error: " << ec.message() << "\n";
 }
 
-static void replyError(string_view msg, tcp::socket& s, asio::yield_context yield)
+static void replyError(ErrorVO const& error, tcp::socket& s, asio::yield_context yield)
 {
   auto resp = defaultResponse(http::status::internal_server_error);
-  resp.body() = msg;
+  resp.body() = serialize(toJson(error, alloc));
   writeWithoutException(s, resp, yield);
 }
 
@@ -87,9 +90,8 @@ void dispatch(InputIt first, InputIt last, tcp::socket& s, asio::yield_context y
 
 template <typename Manager> auto getVO(Manager const& manager)
 {
-  auto doc = json::Document{};
   auto resp = defaultResponse(http::status::ok);
-  resp.body() = serialize(toJson(begin(manager), end(manager), doc.GetAllocator()));
+  resp.body() = serialize(toJson(begin(manager), end(manager), alloc));
   return resp;
 }
 
@@ -125,37 +127,37 @@ static auto options(initializer_list<http::verb>&& verbs)
 }
 
 Server::Server(asio::io_context& io, char const* fn)
-  : strand_{io}, router_{fn}, egress_{}, ingress_{strand_, router_, egress_},
-    routes_{
-        make_tuple(http::verb::get, INBOUND_REGEX,
-                   [this](auto&&, auto&&) { return getVO(ingress_); }),
-        make_tuple(http::verb::options, INBOUND_REGEX,
+  : strand_{io}, router_{fn}, eManager_{}, iManager_{strand_, router_, eManager_},
+    apis_{
+        make_tuple(http::verb::get, INGRESS_REGEX,
+                   [this](auto&&, auto&&) { return getVO(iManager_); }),
+        make_tuple(http::verb::options, INGRESS_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::get, http::verb::options});
                    }),
-        make_tuple(http::verb::put, INBOUND_NAME_REGEX,
-                   [this](auto&& r, auto&& mr) { return putVO(r, mr, ingress_); }),
-        make_tuple(http::verb::delete_, INBOUND_NAME_REGEX,
-                   [this](auto&&, auto&& mr) { return delVO(mr, ingress_); }),
-        make_tuple(http::verb::options, INBOUND_NAME_REGEX,
+        make_tuple(http::verb::put, INGRESS_NAME_REGEX,
+                   [this](auto&& r, auto&& mr) { return putVO(r, mr, iManager_); }),
+        make_tuple(http::verb::delete_, INGRESS_NAME_REGEX,
+                   [this](auto&&, auto&& mr) { return delVO(mr, iManager_); }),
+        make_tuple(http::verb::options, INGRESS_NAME_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::put, http::verb::delete_, http::verb::options});
                    }),
-        make_tuple(http::verb::get, OUTBOUND_REGEX,
-                   [this](auto&&, auto&&) { return getVO(egress_); }),
-        make_tuple(http::verb::options, OUTBOUND_REGEX,
+        make_tuple(http::verb::get, EGRESS_REGEX,
+                   [this](auto&&, auto&&) { return getVO(eManager_); }),
+        make_tuple(http::verb::options, EGRESS_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::get, http::verb::options});
                    }),
-        make_tuple(http::verb::put, OUTBOUND_NAME_REGEX,
-                   [this](auto&& r, auto&& mr) { return putVO(r, mr, egress_); }),
-        make_tuple(http::verb::delete_, OUTBOUND_NAME_REGEX,
+        make_tuple(http::verb::put, EGRESS_NAME_REGEX,
+                   [this](auto&& r, auto&& mr) { return putVO(r, mr, eManager_); }),
+        make_tuple(http::verb::delete_, EGRESS_NAME_REGEX,
                    [this](auto&&, auto&& mr) {
                      // TODO use the correct exception
                      assertFalse(router_.isUsed(mr[1].str()), PichiError::MISC);
-                     return delVO(mr, egress_);
+                     return delVO(mr, eManager_);
                    }),
-        make_tuple(http::verb::options, OUTBOUND_NAME_REGEX,
+        make_tuple(http::verb::options, EGRESS_NAME_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::put, http::verb::delete_, http::verb::options});
                    }),
@@ -168,7 +170,7 @@ Server::Server(asio::io_context& io, char const* fn)
                    [this](auto&& r, auto&& mr) {
                      // TODO use the correct exception
                      auto vo = parse<RuleVO>(r.body());
-                     assertFalse(egress_.find(vo.outbound_) == end(egress_), PichiError::MISC);
+                     assertFalse(eManager_.find(vo.egress_) == end(eManager_), PichiError::MISC);
                      return putVO(move(vo), mr, router_);
                    }),
         make_tuple(http::verb::delete_, RULE_NAME_REGEX,
@@ -179,16 +181,15 @@ Server::Server(asio::io_context& io, char const* fn)
                    }),
         make_tuple(http::verb::get, ROUTE_REGEX,
                    [this](auto&&, auto&&) {
-                     auto doc = json::Document{};
                      auto resp = defaultResponse(http::status::ok);
-                     resp.body() = serialize(toJson(router_.getRoute(), doc.GetAllocator()));
+                     resp.body() = serialize(toJson(router_.getRoute(), alloc));
                      return resp;
                    }),
         make_tuple(http::verb::put, ROUTE_REGEX,
                    [this](auto&& r, auto&& mr) {
                      auto vo = parse<RouteVO>(r.body());
                      assertFalse(vo.default_.has_value() &&
-                                     egress_.find(*vo.default_) == end(egress_),
+                                     eManager_.find(*vo.default_) == end(eManager_),
                                  // TODO use the correct exception
                                  PichiError::MISC);
                      router_.setRoute(move(vo));
@@ -206,19 +207,19 @@ void Server::listen(string_view address, uint16_t port)
                         this](auto yield) mutable {
     auto ec = sys::error_code{};
     while (!ec) {
-      asio::spawn(strand_, [first = cbegin(routes_), last = cend(routes_),
+      asio::spawn(strand_, [first = cbegin(apis_), last = cend(apis_),
                             s = a.async_accept(yield)](auto yield) mutable {
         try {
           dispatch(first, last, s, yield);
         }
         catch (Exception const& e) {
           cout << "Pichi Error: " << e.what() << "\n";
-          replyError(e.what(), s, yield);
+          replyError({e.what()}, s, yield);
         }
         catch (sys::system_error const& e) {
           if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
           cout << "Socket Error: " << e.what() << "\n";
-          replyError(e.what(), s, yield);
+          replyError({e.what()}, s, yield);
         }
       });
     }
