@@ -1,0 +1,23 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Temporary files for editors
+.#*
+.*.swp
+
+# Editors
+.clang-format
+build/
+.vscode/
+.clang_complete

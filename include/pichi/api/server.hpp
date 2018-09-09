@@ -1,0 +1,55 @@
+#ifndef PICHI_API_SERVER_HPP
+#define PICHI_API_SERVER_HPP
+
+#include <array>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/strand.hpp>
+#include <boost/beast/http/message.hpp>
+#include <boost/beast/http/string_body.hpp>
+#include <boost/beast/http/verb.hpp>
+#include <functional>
+#include <pichi/api/egress.hpp>
+#include <pichi/api/ingress.hpp>
+#include <pichi/api/router.hpp>
+#include <regex>
+#include <string_view>
+#include <tuple>
+
+namespace pichi::api {
+
+class Server {
+public:
+  using MatchResults = std::match_results<std::string_view::const_iterator>;
+  using HttpBody = boost::beast::http::string_body;
+  using Request = boost::beast::http::request<HttpBody>;
+  using Response = boost::beast::http::response<HttpBody>;
+  using HttpHandler = std::function<Response(Request const&, MatchResults const&)>;
+  using RouteItem = std::tuple<boost::beast::http::verb, std::regex, HttpHandler>;
+
+private:
+  template <typename Function> void spawn(Function&&);
+  template <typename Function, typename FaultHandler> void spawn(Function&&, FaultHandler&&);
+  template <typename Socket, typename Yield> void route(Socket&, Yield);
+
+public:
+  Server(Server const&) = delete;
+  Server(Server&&) = delete;
+  Server& operator=(Server const&) = delete;
+  Server& operator=(Server&&) = delete;
+
+  Server(boost::asio::io_context&, char const*);
+  ~Server() = default;
+
+  void listen(std::string_view, uint16_t);
+
+private:
+  boost::asio::io_context::strand strand_;
+  Router router_;
+  Egress egress_;
+  Ingress ingress_;
+  std::array<RouteItem, 18> routes_;
+};
+
+} // namespace pichi::api
+
+#endif // PICHI_API_SERVER_HPP
