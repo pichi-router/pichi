@@ -8,10 +8,7 @@ set(REST_PARSE_TESTS rest_parse)
 set(ROUTER_TESTS router)
 set(NET_HELPERS_TESTS net_helpers)
 
-find_package(Boost REQUIRED COMPONENTS context system unit_test_framework REQUIRED)
 add_definitions(-DBOOST_TEST_DYN_LINK)
-include_directories(${Boost_INCLUDE_DIRS})
-link_libraries(${Boost_LIBRARIES} ${PICHI_LIBRARY})
 
 configure_file(geo.mmdb ${CMAKE_CURRENT_BINARY_DIR}/geo.mmdb COPYONLY)
 
