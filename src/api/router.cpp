@@ -68,21 +68,22 @@ Router::ValueType Router::generatePair(DelegateIterator it)
 
 Router::Router(char const* fn) : geo_{fn} {}
 
-string_view Router::route(ResolvedResult const& r, std::string_view inbound, AdapterType type) const
+string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, std::string_view inbound,
+                          AdapterType type) const
 {
   auto it = find_if(
-      cbegin(order_), cend(order_), [& rules = as_const(rules_), &r, inbound, type](auto name) {
+      cbegin(order_), cend(order_), [& rules = as_const(rules_), &e, &r, inbound, type](auto name) {
         auto it = rules.find(name);
         assertFalse(it == cend(rules), PichiError::MISC);
         auto& matchers = as_const(it->second.second);
-        return any_of(cbegin(matchers), cend(matchers),
-                      [&r, inbound, type](auto&& matcher) { return matcher(r, inbound, type); });
+        return any_of(cbegin(matchers), cend(matchers), [&e, &r, inbound, type](auto&& matcher) {
+          return matcher(e, r, inbound, type);
+        });
       });
   auto rule = it != cend(order_) ? *it : "DEFAUTL rule"sv;
   auto outbound =
       string_view{it != cend(order_) ? rules_.find(*it)->second.first.outbound_ : default_};
-  cout << cbegin(r)->host_name() << ":" << cbegin(r)->service_name() << " -> " << outbound << " ("
-       << rule << ")\n";
+  cout << e.host_ << ":" << e.port_ << " -> " << outbound << " (" << rule << ")\n";
   return outbound;
 }
 
@@ -99,43 +100,40 @@ void Router::update(string const& name, RuleVO rvo)
               auto ec = sys::error_code{};
               auto n4 = ip::make_network_v4(range, ec);
               if (ec)
-                return [n6 = ip::make_network_v6(range)](auto&& r, auto, auto) {
+                return [n6 = ip::make_network_v6(range)](auto&&, auto&& r, auto, auto) {
                   return any_of(cbegin(r), cend(r), [n6](auto&& entry) {
                     auto address = entry.endpoint().address();
                     return address.is_v6() && n6.hosts().find(address.to_v6()) != cend(n6.hosts());
                   });
                 };
               else
-                return [n4](auto&& r, auto, auto) {
+                return [n4](auto&&, auto&& r, auto, auto) {
                   return any_of(cbegin(r), cend(r), [n4](auto&& entry) {
                     auto address = entry.endpoint().address();
                     return address.is_v4() && n4.hosts().find(address.to_v4()) != cend(n4.hosts());
                   });
                 };
             });
-  transform(cbegin(vo.inbound_), cend(vo.inbound_), back_inserter(matchers),
-            [](auto&& i) { return [&i](auto&&, auto inbound, auto) { return i == inbound; }; });
+  transform(cbegin(vo.inbound_), cend(vo.inbound_), back_inserter(matchers), [](auto&& i) {
+    return [&i](auto&&, auto&&, auto inbound, auto) { return i == inbound; };
+  });
   transform(cbegin(vo.type_), cend(vo.type_), back_inserter(matchers), [](auto t) {
     // Inbound type shouldn't be DIRECT or REJECT
     assertFalse(t == AdapterType::DIRECT, PichiError::MISC);
     assertFalse(t == AdapterType::REJECT, PichiError::MISC);
-    return [t](auto&&, auto, auto type) { return t == type; };
+    return [t](auto&&, auto&&, auto, auto type) { return t == type; };
   });
   transform(cbegin(vo.pattern_), cend(vo.pattern_), back_inserter(matchers), [](auto&& pattern) {
-    return [&pattern](auto&& r, auto, auto) {
-      return any_of(cbegin(r), cend(r),
-                    [&pattern](auto&& entry) { return matchPattern(entry.host_name(), pattern); });
-    };
+    return [&pattern](auto&& e, auto&&, auto, auto) { return matchPattern(e.host_, pattern); };
   });
   transform(cbegin(vo.domain_), cend(vo.domain_), back_inserter(matchers), [](auto&& domain) {
-    return [&domain](auto&& r, auto, auto) {
-      return any_of(cbegin(r), cend(r),
-                    [&domain](auto&& entry) { return matchDomain(entry.host_name(), domain); });
+    return [&domain](auto&& e, auto&&, auto, auto) {
+      return e.type_ == net::Endpoint::Type::DOMAIN_NAME && matchDomain(e.host_, domain);
     };
   });
   transform(cbegin(vo.country_), cend(vo.country_), back_inserter(matchers),
             [& geo = as_const(geo_)](auto&& country) {
-              return [&country, &geo](auto&& r, auto, auto) {
+              return [&country, &geo](auto&&, auto&& r, auto, auto) {
                 return any_of(cbegin(r), cend(r), [&geo, &country](auto&& entry) {
                   auto oss = ostringstream{};
                   oss << entry.endpoint().address();

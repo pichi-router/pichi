@@ -182,17 +182,17 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Range)
   router.setRoute({{}, {ph}});
 
   BOOST_CHECK(
-      router.route(ResolvedResults::create(Endpoint{ip::make_address("10.0.0.1"), 443}, ph, ph), ph,
-                   AdapterType::DIRECT) == ph);
+      router.route({}, ResolvedResults::create(Endpoint{ip::make_address("10.0.0.1"), 443}, ph, ph),
+                   ph, AdapterType::DIRECT) == ph);
   BOOST_CHECK(
-      router.route(ResolvedResults::create(Endpoint{ip::make_address("fd00::1"), 443}, ph, ph), ph,
-                   AdapterType::DIRECT) == ph);
+      router.route({}, ResolvedResults::create(Endpoint{ip::make_address("fd00::1"), 443}, ph, ph),
+                   ph, AdapterType::DIRECT) == ph);
+  BOOST_CHECK(router.route(
+                  {}, ResolvedResults::create(Endpoint{ip::make_address("127.0.0.1"), 443}, ph, ph),
+                  ph, AdapterType::DIRECT) == "direct");
   BOOST_CHECK(
-      router.route(ResolvedResults::create(Endpoint{ip::make_address("127.0.0.1"), 443}, ph, ph),
+      router.route({}, ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph),
                    ph, AdapterType::DIRECT) == "direct");
-  BOOST_CHECK(
-      router.route(ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph), ph,
-                   AdapterType::DIRECT) == "direct");
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Inbound)
@@ -202,8 +202,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Inbound)
   router.setRoute({{}, {ph}});
 
   auto r = ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
-  BOOST_CHECK(router.route(r, ph, AdapterType::DIRECT) == ph);
-  BOOST_CHECK(router.route(r, "NotMatched", AdapterType::DIRECT) == "direct");
+  BOOST_CHECK(router.route({}, r, ph, AdapterType::DIRECT) == ph);
+  BOOST_CHECK(router.route({}, r, "NotMatched", AdapterType::DIRECT) == "direct");
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Type)
@@ -213,8 +213,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Type)
   router.setRoute({{}, {ph}});
 
   auto r = ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
-  BOOST_CHECK(router.route(r, ph, AdapterType::HTTP) == ph);
-  BOOST_CHECK(router.route(r, ph, AdapterType::DIRECT) == "direct");
+  BOOST_CHECK(router.route({}, r, ph, AdapterType::HTTP) == ph);
+  BOOST_CHECK(router.route({}, r, ph, AdapterType::DIRECT) == "direct");
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
@@ -223,11 +223,13 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
   router.update(ph, {ph, {}, {}, {}, {"^.*\\.example\\.com$"}});
   router.setRoute({{}, {ph}});
 
-  auto e = Endpoint{ip::make_address("fe00::1"), 443};
-  BOOST_CHECK(router.route(ResolvedResults::create(e, "foo.example.com", ph), ph,
-                           AdapterType::DIRECT) == ph);
-  BOOST_CHECK(router.route(ResolvedResults::create(e, "fooexample.com", ph), ph,
-                           AdapterType::DIRECT) == "direct");
+  auto dummy = ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
+  for (auto type :
+       {net::Endpoint::Type::DOMAIN_NAME, net::Endpoint::Type::IPV4, net::Endpoint::Type::IPV6}) {
+    BOOST_CHECK(router.route({type, "foo.example.com", ph}, dummy, ph, AdapterType::DIRECT) == ph);
+    BOOST_CHECK(router.route({type, "fooexample.com", ph}, dummy, ph, AdapterType::DIRECT) ==
+                "direct");
+  }
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Domain)
@@ -236,10 +238,23 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain)
   router.update(ph, {ph, {}, {}, {}, {}, {"example.com"}});
   router.setRoute({{}, {ph}});
 
-  auto e = Endpoint{ip::make_address("fe00::1"), 443};
-  BOOST_CHECK(router.route(ResolvedResults::create(e, "foo.example.com", ph), ph,
+  auto dummy = ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
+  BOOST_CHECK(router.route({net::Endpoint::Type::DOMAIN_NAME, "foo.example.com", ph}, dummy, ph,
                            AdapterType::DIRECT) == ph);
-  BOOST_CHECK(router.route(ResolvedResults::create(e, "fooexample.com", ph), ph,
+  BOOST_CHECK(router.route({net::Endpoint::Type::DOMAIN_NAME, "fooexample.com", ph}, dummy, ph,
+                           AdapterType::DIRECT) == "direct");
+}
+
+BOOST_AUTO_TEST_CASE(Router_Matching_Domain_With_Invalid_Type)
+{
+  auto router = Router{fn};
+  router.update(ph, {ph, {}, {}, {}, {}, {"example.com"}});
+  router.setRoute({{}, {ph}});
+
+  auto dummy = ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
+  BOOST_CHECK(router.route({net::Endpoint::Type::IPV4, "foo.example.com", ph}, dummy, ph,
+                           AdapterType::DIRECT) == "direct");
+  BOOST_CHECK(router.route({net::Endpoint::Type::IPV6, "foo.example.com", ph}, dummy, ph,
                            AdapterType::DIRECT) == "direct");
 }
 
@@ -250,17 +265,19 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Country)
   router.setRoute({{}, {ph}});
 
   BOOST_CHECK(
-      router.route(ResolvedResults::create(Endpoint{ip::make_address("1.1.1.1"), 443}, ph, ph), ph,
-                   AdapterType::DIRECT) == ph);
-  BOOST_CHECK(router.route(ResolvedResults::create(
-                               Endpoint{ip::make_address("::ffff:1.1.1.1"), 443}, ph, ph),
-                           ph, AdapterType::DIRECT) == ph);
+      router.route({}, ResolvedResults::create(Endpoint{ip::make_address("1.1.1.1"), 443}, ph, ph),
+                   ph, AdapterType::DIRECT) == ph);
   BOOST_CHECK(
-      router.route(ResolvedResults::create(Endpoint{ip::make_address("8.8.8.8"), 443}, ph, ph), ph,
-                   AdapterType::DIRECT) == "direct");
-  BOOST_CHECK(router.route(ResolvedResults::create(
-                               Endpoint{ip::make_address("::ffff:8.8.8.8"), 443}, ph, ph),
-                           ph, AdapterType::DIRECT) == "direct");
+      router.route(
+          {}, ResolvedResults::create(Endpoint{ip::make_address("::ffff:1.1.1.1"), 443}, ph, ph),
+          ph, AdapterType::DIRECT) == ph);
+  BOOST_CHECK(
+      router.route({}, ResolvedResults::create(Endpoint{ip::make_address("8.8.8.8"), 443}, ph, ph),
+                   ph, AdapterType::DIRECT) == "direct");
+  BOOST_CHECK(
+      router.route(
+          {}, ResolvedResults::create(Endpoint{ip::make_address("::ffff:8.8.8.8"), 443}, ph, ph),
+          ph, AdapterType::DIRECT) == "direct");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

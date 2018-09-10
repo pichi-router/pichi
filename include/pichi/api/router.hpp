@@ -14,6 +14,12 @@ template <typename Protocol> class basic_resolver_results;
 
 } // namespace boost::asio::ip
 
+namespace pichi::net {
+
+class Endpoint;
+
+} // namespace pichi::net
+
 namespace pichi::api {
 
 extern bool matchPattern(std::string_view remote, std::string_view pattern);
@@ -43,7 +49,8 @@ public:
 
 private:
   using ResolvedResult = boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp>;
-  using Matcher = std::function<bool(ResolvedResult const&, std::string_view, AdapterType)>;
+  using Matcher = std::function<bool(net::Endpoint const&, ResolvedResult const&, std::string_view,
+                                     AdapterType)>;
   using Container = std::map<std::string, std::pair<RuleVO, std::vector<Matcher>>, std::less<>>;
   using DelegateIterator = typename Container::const_iterator;
   using ValueType = std::pair<std::string_view, RuleVO const&>;
@@ -54,7 +61,8 @@ private:
 public:
   Router(char const* fn);
 
-  std::string_view route(ResolvedResult const&, std::string_view inbound, AdapterType type) const;
+  std::string_view route(net::Endpoint const&, ResolvedResult const&, std::string_view inbound,
+                         AdapterType) const;
 
   void update(std::string const&, RuleVO);
   void erase(std::string_view);
