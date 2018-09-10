@@ -11,6 +11,14 @@ namespace pichi::crypto {
 
 enum class HashAlgorithm { MD5, SHA1, SHA224, SHA256, SHA384, SHA512 };
 
+// TODO Replace with lambda if VC++ supports relaxed constexpr(N3652)
+struct StartFunction {
+  inline static void sha224(mbedtls_sha256_context* ctx) { mbedtls_sha256_starts(ctx, 1); }
+  inline static void sha256(mbedtls_sha256_context* ctx) { mbedtls_sha256_starts(ctx, 0); }
+  inline static void sha384(mbedtls_sha512_context* ctx) { mbedtls_sha512_starts(ctx, 1); }
+  inline static void sha512(mbedtls_sha512_context* ctx) { mbedtls_sha512_starts(ctx, 0); }
+};
+
 template <HashAlgorithm algorithm> struct HashTraits {
 };
 
@@ -41,7 +49,7 @@ template <> struct HashTraits<HashAlgorithm::SHA1> {
 template <> struct HashTraits<HashAlgorithm::SHA224> {
   using Context = mbedtls_sha256_context;
   static constexpr auto initialize = mbedtls_sha256_init;
-  static constexpr auto start = [](auto ctx) { mbedtls_sha256_starts(ctx, 1); };
+  static constexpr auto start = StartFunction::sha224;
   static constexpr auto clone = mbedtls_sha256_clone;
   static constexpr auto release = mbedtls_sha256_free;
   static constexpr auto update = mbedtls_sha256_update;
@@ -53,7 +61,7 @@ template <> struct HashTraits<HashAlgorithm::SHA224> {
 template <> struct HashTraits<HashAlgorithm::SHA256> {
   using Context = mbedtls_sha256_context;
   static constexpr auto initialize = mbedtls_sha256_init;
-  static constexpr auto start = [](auto ctx) { mbedtls_sha256_starts(ctx, 0); };
+  static constexpr auto start = StartFunction::sha256;
   static constexpr auto clone = mbedtls_sha256_clone;
   static constexpr auto release = mbedtls_sha256_free;
   static constexpr auto update = mbedtls_sha256_update;
@@ -65,7 +73,7 @@ template <> struct HashTraits<HashAlgorithm::SHA256> {
 template <> struct HashTraits<HashAlgorithm::SHA384> {
   using Context = mbedtls_sha512_context;
   static constexpr auto initialize = mbedtls_sha512_init;
-  static constexpr auto start = [](auto ctx) { mbedtls_sha512_starts(ctx, 1); };
+  static constexpr auto start = StartFunction::sha384;
   static constexpr auto clone = mbedtls_sha512_clone;
   static constexpr auto release = mbedtls_sha512_free;
   static constexpr auto update = mbedtls_sha512_update;
@@ -77,7 +85,7 @@ template <> struct HashTraits<HashAlgorithm::SHA384> {
 template <> struct HashTraits<HashAlgorithm::SHA512> {
   using Context = mbedtls_sha512_context;
   static constexpr auto initialize = mbedtls_sha512_init;
-  static constexpr auto start = [](auto ctx) { mbedtls_sha512_starts(ctx, 0); };
+  static constexpr auto start = StartFunction::sha512;
   static constexpr auto clone = mbedtls_sha512_clone;
   static constexpr auto release = mbedtls_sha512_free;
   static constexpr auto update = mbedtls_sha512_update;
