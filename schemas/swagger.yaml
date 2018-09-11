@@ -374,13 +374,13 @@ components:
           items:
             type: string
             example: 'fc00::/7'
-        inbound:
+        inbound_name:
           description: 'inbound name array'
           type: array
           items:
             type: string
             example: 'my_socks5_server'
-        type:
+        inbound_type:
           description: 'inbound type array'
           type: array
           items:

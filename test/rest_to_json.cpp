@@ -23,15 +23,15 @@ BOOST_AUTO_TEST_SUITE(REST_TO_JSON)
 
 BOOST_AUTO_TEST_CASE(toJson_AdapterType)
 {
-  auto map = unordered_map<AdapterType, string_view>{{AdapterType::DIRECT, "DIRECT"},
-                                                     {AdapterType::REJECT, "REJECT"},
-                                                     {AdapterType::SOCKS5, "SOCKS5"},
-                                                     {AdapterType::HTTP, "HTTP"},
-                                                     {AdapterType::SS, "SS"}};
+  auto map = unordered_map<AdapterType, string_view>{{AdapterType::DIRECT, "direct"},
+                                                     {AdapterType::REJECT, "reject"},
+                                                     {AdapterType::SOCKS5, "socks5"},
+                                                     {AdapterType::HTTP, "http"},
+                                                     {AdapterType::SS, "ss"}};
   for_each(begin(map), end(map), [](auto&& pair) {
     auto fact = serialize(pair.first);
     BOOST_CHECK(fact.IsString());
-    BOOST_CHECK(pair.second == fact.GetString());
+    BOOST_CHECK_EQUAL(pair.second, fact.GetString());
   });
 }
 
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_Direct)
 {
   auto expect = Document{};
   expect.SetObject();
-  expect.AddMember("type", "DIRECT", expect.GetAllocator());
+  expect.AddMember("type", "direct", expect.GetAllocator());
 
   auto fact = serialize(InboundVO{AdapterType::DIRECT});
   BOOST_CHECK(expect == fact);
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_Direct_Additional_Fields)
 {
   auto expect = Document{};
   expect.SetObject();
-  expect.AddMember("type", "DIRECT", expect.GetAllocator());
+  expect.AddMember("type", "direct", expect.GetAllocator());
 
   auto fact = serialize(InboundVO{AdapterType::DIRECT, ph, 0, CryptoMethod::AES_128_CFB, ph});
   BOOST_CHECK(expect == fact);
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_Reject)
 {
   auto expect = Document{};
   expect.SetObject();
-  expect.AddMember("type", "REJECT", expect.GetAllocator());
+  expect.AddMember("type", "reject", expect.GetAllocator());
 
   auto fact = serialize(InboundVO{AdapterType::REJECT});
   BOOST_CHECK(expect == fact);
@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_Reject_Additional_Fields)
 {
   auto expect = Document{};
   expect.SetObject();
-  expect.AddMember("type", "REJECT", expect.GetAllocator());
+  expect.AddMember("type", "reject", expect.GetAllocator());
 
   auto fact = serialize(InboundVO{AdapterType::REJECT, ph, 0, CryptoMethod::AES_128_CFB, ph});
   BOOST_CHECK(expect == fact);
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "HTTP", alloc);
+  expect.AddMember("type", "http", alloc);
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP_Additional_Fields)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "HTTP", alloc);
+  expect.AddMember("type", "http", alloc);
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
   BOOST_CHECK(expect == fact);
@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "SOCKS5", alloc);
+  expect.AddMember("type", "socks5", alloc);
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5_Additional_Fields)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "SOCKS5", alloc);
+  expect.AddMember("type", "socks5", alloc);
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
   BOOST_CHECK(expect == fact);
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SS)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "SS", alloc);
+  expect.AddMember("type", "ss", alloc);
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
   expect.AddMember("method", "aes-128-cfb", alloc);
@@ -268,7 +268,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_Pack)
   for (auto i = 0; i < 10; ++i) {
     auto v = Value{};
     v.SetObject();
-    v.AddMember("type", "DIRECT", expect.GetAllocator());
+    v.AddMember("type", "direct", expect.GetAllocator());
     expect.AddMember(Value{to_string(i).data(), expect.GetAllocator()}, v, expect.GetAllocator());
     src[to_string(i)] = InboundVO{AdapterType::DIRECT};
   }
@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_DIRECT)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "DIRECT", alloc);
+  expect.AddMember("type", "direct", alloc);
 
   BOOST_CHECK(expect == fact);
 }
@@ -299,7 +299,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_DIRECT_Additional_Fields)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "DIRECT", alloc);
+  expect.AddMember("type", "direct", alloc);
 
   BOOST_CHECK(expect == fact);
 }
@@ -312,7 +312,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_REJECT)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "REJECT", alloc);
+  expect.AddMember("type", "reject", alloc);
 
   BOOST_CHECK(expect == fact);
 }
@@ -325,7 +325,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_REJECT_Additional_Fields)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "REJECT", alloc);
+  expect.AddMember("type", "reject", alloc);
 
   BOOST_CHECK(expect == fact);
 }
@@ -338,7 +338,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_SOCKS5)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "SOCKS5", alloc);
+  expect.AddMember("type", "socks5", alloc);
   expect.AddMember("host", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
@@ -353,7 +353,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_SOCKS5_Additional_Fields)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "SOCKS5", alloc);
+  expect.AddMember("type", "socks5", alloc);
   expect.AddMember("host", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
@@ -390,7 +390,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_HTTP)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "HTTP", alloc);
+  expect.AddMember("type", "http", alloc);
   expect.AddMember("host", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
@@ -405,7 +405,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_HTTP_Additional_Fields)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "HTTP", alloc);
+  expect.AddMember("type", "http", alloc);
   expect.AddMember("host", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
@@ -442,7 +442,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_SS)
   auto expect = Document{};
   auto& alloc = expect.GetAllocator();
   expect.SetObject();
-  expect.AddMember("type", "SS", alloc);
+  expect.AddMember("type", "ss", alloc);
   expect.AddMember("host", ph, alloc);
   expect.AddMember("port", 1, alloc);
   expect.AddMember("method", "aes-128-cfb", alloc);
@@ -511,7 +511,7 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_Pack)
   for (auto i = 0; i < 10; ++i) {
     auto v = Value{};
     v.SetObject();
-    v.AddMember("type", "DIRECT", expect.GetAllocator());
+    v.AddMember("type", "direct", expect.GetAllocator());
     expect.AddMember(Value{to_string(i).data(), expect.GetAllocator()}, v, expect.GetAllocator());
     src[to_string(i)] = OutboundVO{AdapterType::DIRECT};
   }
