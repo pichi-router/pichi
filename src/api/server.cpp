@@ -50,10 +50,9 @@ static auto defaultResponse(http::status status)
   return ret;
 }
 
-static bool matching(boost::string_view s, regex const& re, Server::MatchResults& r)
+static bool matching(boost::string_view s, regex const& re, cmatch& r)
 {
-  auto ss = string_view{s.data(), s.size()};
-  return regex_match(cbegin(ss), cend(ss), r, re);
+  return regex_match(s.data(), s.data() + s.size(), r, re);
 }
 
 static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::yield_context ctx)
@@ -98,13 +97,13 @@ template <typename Manager> auto getVO(Manager const& manager)
 }
 
 template <typename Manager>
-auto putVO(Server::Request const& req, Server::MatchResults const& mr, Manager& manager)
+auto putVO(Server::Request const& req, cmatch const& mr, Manager& manager)
 {
   manager.update(mr[1].str(), parse<typename Manager::VO>(req.body()));
   return defaultResponse(http::status::no_content);
 }
 
-template <typename Manager> auto delVO(Server::MatchResults const& mr, Manager& manager)
+template <typename Manager> auto delVO(cmatch const& mr, Manager& manager)
 {
   manager.erase(mr[1].str());
   return defaultResponse(http::status::no_content);
@@ -163,7 +162,7 @@ template <typename Socket, typename Yield> void Server::route(Socket& s, Yield y
   auto req = Request{};
 
   http::async_read(s, buf, req, yield);
-  auto mr = MatchResults{};
+  auto mr = cmatch{};
   auto it = find_if(cbegin(routes_), cend(routes_),
                     [v = req.method(), t = req.target(), &mr](auto&& item) {
                       return get<0>(item) == v && matching(t, get<1>(item), mr);

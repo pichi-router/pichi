@@ -14,7 +14,7 @@ template <HashAlgorithm algorithm> void verify(string_view hex, ConstBuffer<uint
 {
   auto expt = hex2bin(hex);
   auto fact = array<uint8_t, HashTraits<algorithm>::length>{0};
-  Hash<algorithm>{}.hash(raw, fact);
+  pichi::crypto::Hash<algorithm>{}.hash(raw, fact);
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expt), cend(expt), cbegin(fact), cend(fact));
 }
 
