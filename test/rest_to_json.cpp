@@ -14,10 +14,8 @@ using namespace pichi;
 using namespace pichi::api;
 
 static decltype(auto) ph = "placeholder";
-static auto serialize = [](auto&& vo) {
-  auto doc = Document{};
-  return toJson(vo, doc.GetAllocator());
-};
+static auto doc = Document{};
+static auto& alloc = doc.GetAllocator();
 
 BOOST_AUTO_TEST_SUITE(REST_TO_JSON)
 
@@ -29,7 +27,7 @@ BOOST_AUTO_TEST_CASE(toJson_AdapterType)
                                                      {AdapterType::HTTP, "http"},
                                                      {AdapterType::SS, "ss"}};
   for_each(begin(map), end(map), [](auto&& pair) {
-    auto fact = serialize(pair.first);
+    auto fact = toJson(pair.first, alloc);
     BOOST_CHECK(fact.IsString());
     BOOST_CHECK_EQUAL(pair.second, fact.GetString());
   });
@@ -59,7 +57,7 @@ BOOST_AUTO_TEST_CASE(toJson_CryptoMethod)
       {CryptoMethod::XCHACHA20_IETF_POLY1305, "xchacha20-ietf-poly1305"},
   };
   for_each(begin(map), end(map), [](auto&& pair) {
-    auto fact = serialize(pair.first);
+    auto fact = toJson(pair.first, alloc);
     BOOST_CHECK(fact.IsString());
     BOOST_CHECK(pair.second == fact.GetString());
   });
@@ -67,41 +65,41 @@ BOOST_AUTO_TEST_CASE(toJson_CryptoMethod)
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_Direct)
 {
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
-  expect.AddMember("type", "direct", expect.GetAllocator());
+  expect.AddMember("type", "direct", alloc);
 
-  auto fact = serialize(InboundVO{AdapterType::DIRECT});
+  auto fact = toJson(InboundVO{AdapterType::DIRECT}, alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_Direct_Additional_Fields)
 {
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
-  expect.AddMember("type", "direct", expect.GetAllocator());
+  expect.AddMember("type", "direct", alloc);
 
-  auto fact = serialize(InboundVO{AdapterType::DIRECT, ph, 0, CryptoMethod::AES_128_CFB, ph});
+  auto fact = toJson(InboundVO{AdapterType::DIRECT, ph, 0, CryptoMethod::AES_128_CFB, ph}, alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_Reject)
 {
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
-  expect.AddMember("type", "reject", expect.GetAllocator());
+  expect.AddMember("type", "reject", alloc);
 
-  auto fact = serialize(InboundVO{AdapterType::REJECT});
+  auto fact = toJson(InboundVO{AdapterType::REJECT}, alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_Reject_Additional_Fields)
 {
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
-  expect.AddMember("type", "reject", expect.GetAllocator());
+  expect.AddMember("type", "reject", alloc);
 
-  auto fact = serialize(InboundVO{AdapterType::REJECT, ph, 0, CryptoMethod::AES_128_CFB, ph});
+  auto fact = toJson(InboundVO{AdapterType::REJECT, ph, 0, CryptoMethod::AES_128_CFB, ph}, alloc);
   BOOST_CHECK(expect == fact);
 }
 
@@ -109,38 +107,36 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP)
 {
   auto ivo = InboundVO{AdapterType::HTTP, ph, 1};
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "http", alloc);
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
-  auto fact = serialize(ivo);
+  auto fact = toJson(ivo, alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP_Mandatory_Fields)
 {
   auto normal = InboundVO{AdapterType::HTTP, ph, 1};
-  serialize(normal);
+  toJson(normal, alloc);
 
   auto noBind = normal;
   noBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(serialize(noBind), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noPort = normal;
   noPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(serialize(noPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP_Additional_Fields)
 {
   auto ivo = InboundVO{AdapterType::HTTP, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = serialize(ivo);
+  auto fact = toJson(ivo, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "http", alloc);
   expect.AddMember("bind", ph, alloc);
@@ -156,38 +152,36 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5)
 {
   auto ivo = InboundVO{AdapterType::SOCKS5, ph, 1};
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "socks5", alloc);
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
-  auto fact = serialize(ivo);
+  auto fact = toJson(ivo, alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5_Mandatory_Fields)
 {
   auto normal = InboundVO{AdapterType::SOCKS5, ph, 1};
-  serialize(normal);
+  toJson(normal, alloc);
 
   auto noBind = normal;
   noBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(serialize(noBind), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noPort = normal;
   noPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(serialize(noPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5_Additional_Fields)
 {
   auto ivo = InboundVO{AdapterType::SOCKS5, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = serialize(ivo);
+  auto fact = toJson(ivo, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "socks5", alloc);
   expect.AddMember("bind", ph, alloc);
@@ -203,8 +197,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SS)
 {
   auto ivo = InboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "ss", alloc);
   expect.AddMember("bind", ph, alloc);
@@ -212,68 +205,68 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SS)
   expect.AddMember("method", "aes-128-cfb", alloc);
   expect.AddMember("password", ph, alloc);
 
-  auto fact = serialize(ivo);
+  auto fact = toJson(ivo, alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_SS_Mandatory_Fields)
 {
   auto const origin = InboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  serialize(origin);
+  toJson(origin, alloc);
 
   auto noBind = origin;
   noBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(serialize(noBind), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noPort = origin;
   noPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(serialize(noPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noMethod = origin;
   noMethod.method_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noMethod), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noMethod, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noPassword = origin;
   noPassword.password_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noPassword), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noPassword, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
-  BOOST_CHECK_EXCEPTION(serialize(emptyPassword), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_Empty_Pack)
 {
   auto empty = unordered_map<string, InboundVO>{};
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
 
-  auto fact = toJson(begin(empty), end(empty), expect.GetAllocator());
+  auto fact = toJson(begin(empty), end(empty), alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_Pack_Empty_Name)
 {
   auto src = unordered_map<string, InboundVO>{{"", {AdapterType::DIRECT}}};
-  auto doc = Document{};
-  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), doc.GetAllocator()), Exception,
+  auto doc = Value{};
+  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Inbound_Pack)
 {
   auto src = unordered_map<string, InboundVO>{};
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
     auto v = Value{};
     v.SetObject();
-    v.AddMember("type", "direct", expect.GetAllocator());
-    expect.AddMember(Value{to_string(i).data(), expect.GetAllocator()}, v, expect.GetAllocator());
+    v.AddMember("type", "direct", alloc);
+    expect.AddMember(Value{to_string(i).data(), alloc}, v, alloc);
     src[to_string(i)] = InboundVO{AdapterType::DIRECT};
   }
 
-  auto fact = toJson(begin(src), end(src), expect.GetAllocator());
+  auto fact = toJson(begin(src), end(src), alloc);
 
   BOOST_CHECK(expect == fact);
 }
@@ -281,10 +274,9 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_Pack)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_DIRECT)
 {
   auto const origin = OutboundVO{AdapterType::DIRECT};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "direct", alloc);
 
@@ -294,10 +286,9 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_DIRECT)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_DIRECT_Additional_Fields)
 {
   auto const origin = OutboundVO{AdapterType::DIRECT, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "direct", alloc);
 
@@ -307,10 +298,9 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_DIRECT_Additional_Fields)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_REJECT)
 {
   auto const origin = OutboundVO{AdapterType::REJECT};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "reject", alloc);
 
@@ -320,10 +310,9 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_REJECT)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_REJECT_Additional_Fields)
 {
   auto const origin = OutboundVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "reject", alloc);
 
@@ -333,10 +322,9 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_REJECT_Additional_Fields)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_SOCKS5)
 {
   auto const origin = OutboundVO{AdapterType::SOCKS5, ph, 1};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "socks5", alloc);
   expect.AddMember("host", ph, alloc);
@@ -348,10 +336,9 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_SOCKS5)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_SOCKS5_Additional_Fields)
 {
   auto const origin = OutboundVO{AdapterType::SOCKS5, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "socks5", alloc);
   expect.AddMember("host", ph, alloc);
@@ -363,32 +350,31 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_SOCKS5_Additional_Fields)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_SOCKS5_Missing_Fields)
 {
   auto const origin = OutboundVO{AdapterType::SOCKS5, ph, 1};
-  serialize(origin);
+  toJson(origin, alloc);
 
   auto noHost = origin;
   noHost.host_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noHost), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noHost, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyHost = origin;
   emptyHost.host_->clear();
-  BOOST_CHECK_EXCEPTION(serialize(emptyHost), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyHost, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noPort = origin;
   noPort.port_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyPort = origin;
   emptyPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(serialize(emptyPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyPort, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Outbound_HTTP)
 {
   auto const origin = OutboundVO{AdapterType::HTTP, ph, 1};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "http", alloc);
   expect.AddMember("host", ph, alloc);
@@ -400,10 +386,9 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_HTTP)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_HTTP_Additional_Fields)
 {
   auto const origin = OutboundVO{AdapterType::HTTP, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "http", alloc);
   expect.AddMember("host", ph, alloc);
@@ -415,32 +400,31 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_HTTP_Additional_Fields)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_HTTP_Missing_Fields)
 {
   auto const origin = OutboundVO{AdapterType::HTTP, ph, 1};
-  serialize(origin);
+  toJson(origin, alloc);
 
   auto noHost = origin;
   noHost.host_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noHost), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noHost, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyHost = origin;
   emptyHost.host_->clear();
-  BOOST_CHECK_EXCEPTION(serialize(emptyHost), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyHost, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noPort = origin;
   noPort.port_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyPort = origin;
   emptyPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(serialize(emptyPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyPort, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Outbound_SS)
 {
   auto const origin = OutboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "ss", alloc);
   expect.AddMember("host", ph, alloc);
@@ -454,69 +438,69 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_SS)
 BOOST_AUTO_TEST_CASE(toJson_Outbound_SS_Missing_Fields)
 {
   auto const origin = OutboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  serialize(origin);
+  toJson(origin, alloc);
 
   auto noHost = origin;
   noHost.host_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noHost), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noHost, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyHost = origin;
   emptyHost.host_->clear();
-  BOOST_CHECK_EXCEPTION(serialize(emptyHost), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyHost, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noPort = origin;
   noPort.port_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyPort = origin;
   emptyPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(serialize(emptyPort), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyPort, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noMethod = origin;
   noMethod.method_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noMethod), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noMethod, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noPassword = origin;
   noPassword.password_.reset();
-  BOOST_CHECK_EXCEPTION(serialize(noPassword), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(noPassword, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
-  BOOST_CHECK_EXCEPTION(serialize(emptyPassword), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Outbound_Empty_Pack)
 {
   auto empty = unordered_map<string, OutboundVO>{};
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
 
-  auto fact = toJson(begin(empty), end(empty), expect.GetAllocator());
+  auto fact = toJson(begin(empty), end(empty), alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Outbound_Pack_Empty_Name)
 {
   auto src = unordered_map<string, OutboundVO>{{"", {AdapterType::DIRECT}}};
-  auto doc = Document{};
-  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), doc.GetAllocator()), Exception,
+  auto doc = Value{};
+  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Outbound_Pack)
 {
   auto src = unordered_map<string, OutboundVO>{};
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
     auto v = Value{};
     v.SetObject();
-    v.AddMember("type", "direct", expect.GetAllocator());
-    expect.AddMember(Value{to_string(i).data(), expect.GetAllocator()}, v, expect.GetAllocator());
+    v.AddMember("type", "direct", alloc);
+    expect.AddMember(Value{to_string(i).data(), alloc}, v, alloc);
     src[to_string(i)] = OutboundVO{AdapterType::DIRECT};
   }
 
-  auto fact = toJson(begin(src), end(src), expect.GetAllocator());
+  auto fact = toJson(begin(src), end(src), alloc);
 
   BOOST_CHECK(expect == fact);
 }
@@ -524,20 +508,19 @@ BOOST_AUTO_TEST_CASE(toJson_Outbound_Pack)
 BOOST_AUTO_TEST_CASE(toJson_Rule_Empty)
 {
   auto const origin = RuleVO{ph};
-  serialize(origin);
+  toJson(origin, alloc);
 
   auto emptyOutbound = origin;
   emptyOutbound.outbound_.clear();
-  BOOST_CHECK_EXCEPTION(serialize(emptyOutbound), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyOutbound, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Without_Fields)
 {
   auto const origin = RuleVO{ph};
-  auto fact = serialize(origin);
+  auto fact = toJson(origin, alloc);
 
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   expect.SetObject();
   expect.AddMember("outbound", ph, alloc);
 
@@ -548,8 +531,7 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
 {
   auto const origin = RuleVO{ph};
   auto generate = [](auto&& key, auto&& value) {
-    auto expect = Document{};
-    auto& alloc = expect.GetAllocator();
+    auto expect = Value{};
     auto array = Value{};
     expect.SetObject();
     expect.AddMember("outbound", ph, alloc);
@@ -559,61 +541,61 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
 
   auto range = origin;
   range.range_.emplace_back(ph);
-  BOOST_CHECK(generate("range", ph) == serialize(range));
+  BOOST_CHECK(generate("range", ph) == toJson(range, alloc));
 
   auto inbound = origin;
   inbound.inbound_.emplace_back(ph);
-  BOOST_CHECK(generate("inbound_name", ph) == serialize(inbound));
+  BOOST_CHECK(generate("inbound_name", ph) == toJson(inbound, alloc));
 
   auto type = origin;
   type.type_.emplace_back(AdapterType::DIRECT);
-  BOOST_CHECK(generate("inbound_type", AdapterType::DIRECT) == serialize(type));
+  BOOST_CHECK(generate("inbound_type", AdapterType::DIRECT) == toJson(type, alloc));
 
   auto pattern = origin;
   pattern.pattern_.emplace_back(ph);
-  BOOST_CHECK(generate("pattern", ph) == serialize(pattern));
+  BOOST_CHECK(generate("pattern", ph) == toJson(pattern, alloc));
 
   auto domain = origin;
   domain.domain_.emplace_back(ph);
-  BOOST_CHECK(generate("domain", ph) == serialize(domain));
+  BOOST_CHECK(generate("domain", ph) == toJson(domain, alloc));
 
   auto country = origin;
   country.country_.emplace_back(ph);
-  BOOST_CHECK(generate("country", ph) == serialize(country));
+  BOOST_CHECK(generate("country", ph) == toJson(country, alloc));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Empty_Pack)
 {
   auto empty = unordered_map<string, RuleVO>{};
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
 
-  auto fact = toJson(begin(empty), end(empty), expect.GetAllocator());
+  auto fact = toJson(begin(empty), end(empty), alloc);
   BOOST_CHECK(expect == fact);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack_Empty_Name)
 {
   auto src = unordered_map<string, RuleVO>{{"", {ph}}};
-  auto doc = Document{};
-  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), doc.GetAllocator()), Exception,
+  auto doc = Value{};
+  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack)
 {
   auto src = unordered_map<string, RuleVO>{};
-  auto expect = Document{};
+  auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
     auto v = Value{};
     v.SetObject();
-    v.AddMember("outbound", ph, expect.GetAllocator());
-    expect.AddMember(Value{to_string(i).data(), expect.GetAllocator()}, v, expect.GetAllocator());
+    v.AddMember("outbound", ph, alloc);
+    expect.AddMember(Value{to_string(i).data(), alloc}, v, alloc);
     src[to_string(i)] = RuleVO{ph};
   }
 
-  auto fact = toJson(begin(src), end(src), expect.GetAllocator());
+  auto fact = toJson(begin(src), end(src), alloc);
 
   BOOST_CHECK(expect == fact);
 }
@@ -621,16 +603,15 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_Pack)
 BOOST_AUTO_TEST_CASE(toJson_Route_Empty)
 {
   auto rvo = RouteVO{};
-  BOOST_CHECK_EXCEPTION(serialize(rvo), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), Exception, verifyException<PichiError::MISC>);
 
   rvo.default_ = "";
-  BOOST_CHECK_EXCEPTION(serialize(rvo), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
 {
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   auto array = Value{};
 
   expect.SetObject();
@@ -639,13 +620,12 @@ BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
   expect.AddMember("rules", array, alloc);
 
   auto rvo = RouteVO{ph};
-  BOOST_CHECK(expect == serialize(rvo));
+  BOOST_CHECK(expect == toJson(rvo, alloc));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
 {
-  auto expect = Document{};
-  auto& alloc = expect.GetAllocator();
+  auto expect = Value{};
   auto array = Value{};
 
   expect.SetObject();
@@ -654,7 +634,7 @@ BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
   expect.AddMember("rules", array.PushBack(ph, alloc), alloc);
 
   auto rvo = RouteVO{ph, {ph}};
-  BOOST_CHECK(expect == serialize(rvo));
+  BOOST_CHECK(expect == toJson(rvo, alloc));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
