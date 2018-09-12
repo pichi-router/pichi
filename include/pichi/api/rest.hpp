@@ -1,6 +1,7 @@
 #ifndef PICHI_API_REST_HPP
 #define PICHI_API_REST_HPP
 
+#include <algorithm>
 #include <pichi/api/iterator.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/crypto/method.hpp>

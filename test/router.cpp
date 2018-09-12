@@ -96,7 +96,9 @@ BOOST_AUTO_TEST_CASE(Router_Iteration)
 
   for (auto i = 0; i < MAX; ++i) {
     auto s = to_string(i);
-    auto it = find_if(begin(router), end(router), [&s](auto&& item) { return item.first == s; });
+    // TODO use find_if when VC++ doesn't require Iterator's copy assignment operator
+    auto it = begin(router);
+    while (it != end(router) && it->first != s) ++it;
     BOOST_CHECK(it != end(router));
     BOOST_CHECK(s == it->first);
     BOOST_CHECK(s == it->second.outbound_);
