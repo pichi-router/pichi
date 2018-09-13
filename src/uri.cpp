@@ -11,19 +11,23 @@ namespace pichi {
 // This URI regex isn't intended to follow RFC3986
 static auto const URI_REGEX =
     regex{"^(https?)://([^:/?#]+)(:(\\d+))?(/[^#?]*([#?].*)?)?$", regex::icase};
-static auto const HOST_REGEX = regex{"^([^:/]+)(:(\\d+))?$"};
+static auto const HOST_REGEX = regex{"^([^:/]+):(\\d+)$"};
 
-using MatchResults = match_results<std::string_view::const_iterator>;
-
-template <typename BidirIt> string_view it2sv(BidirIt first, BidirIt last)
+static string_view r2sv(csub_match const& m)
 {
-  return {first, static_cast<string_view::size_type>(distance(first, last))};
+  return {m.first, static_cast<string_view::size_type>(m.length())};
+}
+
+static string_view r2sv(csub_match const& m, size_t size)
+{
+  assert(size <= m.length());
+  return {m.first, size};
 }
 
 static auto matching(string_view s, regex const& re, size_t size)
 {
-  auto r = MatchResults{};
-  assertTrue(regex_match(cbegin(s), cend(s), r, re), PichiError::BAD_PROTO);
+  auto r = cmatch{};
+  assertTrue(regex_match(s.data(), s.data() + s.size(), r, re), PichiError::BAD_PROTO);
   assertTrue(r.size() == size, PichiError::BAD_PROTO);
   return r;
 }
@@ -42,20 +46,20 @@ Uri::Uri(string_view s)
 {
   auto r = matching(s, URI_REGEX, 7);
 
-  all_ = it2sv(r[0].first, r[0].second);
-  scheme_ = it2sv(r[1].first, r[1].second);
-  host_ = it2sv(r[2].first, r[2].second);
-  port_ = r[3].matched ? it2sv(r[4].first, r[4].second) : scheme2port(scheme_);
-  suffix_ = r[5].matched ? it2sv(r[5].first, r[5].second) : "/"sv;
-  path_ = r[5].matched ? it2sv(r[5].first, r[6].first) : "/"sv;
-  query_ = it2sv(r[6].first, r[6].second);
+  all_ = r2sv(r[0]);
+  scheme_ = r2sv(r[1]);
+  host_ = r2sv(r[2]);
+  port_ = r[3].matched ? r2sv(r[4]) : scheme2port(scheme_);
+  suffix_ = r[5].matched ? r2sv(r[5]) : "/"sv;
+  path_ = r[5].matched ? r2sv(r[5], distance(r[5].first, r[6].first)) : "/"sv;
+  query_ = r2sv(r[6]);
 }
 
 HostAndPort::HostAndPort(string_view s)
 {
-  auto r = matching(s, HOST_REGEX, 4);
-  host_ = it2sv(r[1].first, r[1].second);
-  port_ = it2sv(r[3].first, r[3].second);
+  auto r = matching(s, HOST_REGEX, 3);
+  host_ = r2sv(r[1]);
+  port_ = r2sv(r[2]);
 }
 
 } // namespace pichi

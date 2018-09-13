@@ -19,11 +19,10 @@ namespace pichi::api {
 
 class Server {
 public:
-  using MatchResults = std::match_results<std::string_view::const_iterator>;
   using HttpBody = boost::beast::http::string_body;
   using Request = boost::beast::http::request<HttpBody>;
   using Response = boost::beast::http::response<HttpBody>;
-  using HttpHandler = std::function<Response(Request const&, MatchResults const&)>;
+  using HttpHandler = std::function<Response(Request const&, std::cmatch const&)>;
   using RouteItem = std::tuple<boost::beast::http::verb, std::regex, HttpHandler>;
 
 private:
