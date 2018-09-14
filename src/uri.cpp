@@ -1,3 +1,4 @@
+#include <boost/algorithm/string.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/uri.hpp>
 #include <regex>
@@ -8,7 +9,8 @@ using namespace std::string_view_literals;
 namespace pichi {
 
 // This URI regex isn't intended to follow RFC3986
-static auto const URI_REGEX = regex{"^(https?)://([^:/]+)(:(\\d+))?((/[^#?]*)?([#?].*)?)$"};
+static auto const URI_REGEX =
+    regex{"^(https?)://([^:/?#]+)(:(\\d+))?(/[^#?]*([#?].*)?)?$", regex::icase};
 static auto const HOST_REGEX = regex{"^([^:/]+)(:(\\d+))?$"};
 
 using MatchResults = match_results<std::string_view::const_iterator>;
@@ -28,9 +30,9 @@ static auto matching(string_view s, regex const& re, size_t size)
 
 static string_view scheme2port(string_view scheme)
 {
-  if (scheme == "http"sv)
+  if (boost::iequals("http"sv, scheme))
     return "80"sv;
-  else if (scheme == "https"sv)
+  else if (boost::iequals("https"sv, scheme))
     return "443"sv;
   else
     fail(PichiError::BAD_PROTO);
@@ -38,16 +40,15 @@ static string_view scheme2port(string_view scheme)
 
 Uri::Uri(string_view s)
 {
-  auto r = matching(s, URI_REGEX, 8);
+  auto r = matching(s, URI_REGEX, 7);
+
   all_ = it2sv(r[0].first, r[0].second);
   scheme_ = it2sv(r[1].first, r[1].second);
   host_ = it2sv(r[2].first, r[2].second);
-  port_ = it2sv(r[3].first, r[3].second);
-  if (port_.empty()) port_ = scheme2port(scheme_);
-  suffix_ = it2sv(r[5].first, r[5].second);
-  if (suffix_.empty()) suffix_ = "/"sv;
-  path_ = r[6].matched ? it2sv(r[6].first, r[6].second) : "/"sv;
-  query_ = it2sv(r[7].first, r[7].second);
+  port_ = r[3].matched ? it2sv(r[4].first, r[4].second) : scheme2port(scheme_);
+  suffix_ = r[5].matched ? it2sv(r[5].first, r[5].second) : "/"sv;
+  path_ = r[5].matched ? it2sv(r[5].first, r[6].first) : "/"sv;
+  query_ = it2sv(r[6].first, r[6].second);
 }
 
 HostAndPort::HostAndPort(string_view s)
