@@ -27,7 +27,6 @@ include_directories(
 )
 
 link_libraries(
-  ${Boost_LIBRARIES}
   ${MbedTLS_LIBRARIES}
   ${Sodium_LIBRARIES}
   ${MaxmindDB_LIBRARIES} 
