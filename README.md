@@ -96,6 +96,8 @@ $ cmake --build .
 $ ctest -C Debug --output-on-failure
 ```
 
+Dockerfile based on [alpine](https://alpinelinux.org) can be found at the [Gist](https://gist.github.com/pichi-router/b8a6e3d04bf4d97339f1d40c017ce000).
+
 Build and run on Windows with [Vcpkg](https://github.com/Microsoft/vcpkg):
 
 ```
