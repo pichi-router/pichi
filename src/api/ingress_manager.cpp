@@ -6,6 +6,7 @@
 #include <pichi/asserts.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/asio.hpp>
+#include <pichi/net/helpers.hpp>
 #include <pichi/scope_guard.hpp>
 
 using namespace std;
@@ -104,10 +105,10 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
       assertFalse(it == cend(eManager_), PichiError::MISC);
       auto egress =
           shared_ptr<net::Egress>{net::makeEgress(it->second, tcp::socket{strand_.context()})};
-      auto next = remote;
-      if (it->second.host_.has_value()) next.host_ = *it->second.host_;
-      if (it->second.port_.has_value()) next.port_ = to_string(*it->second.port_);
-      egress->connect(remote, next, ctx);
+      egress->connect(
+          remote,
+          {net::detectHostType(*it->second.host_), *it->second.host_, to_string(*it->second.port_)},
+          ctx);
       ingress->confirm(ctx);
 
       auto strand = Strand{strand_.context()};
