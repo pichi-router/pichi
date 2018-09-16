@@ -19,9 +19,58 @@ matrix:
             - autoconf
             - g++-8
       env:
-        - BUILD_TYPE="Debug"
+        - CMAKE="${TRAVIS_HOME}/deps/bin/cmake"
         - CXX_COMPILER=g++-8
-      compiler: gcc
+        - BUILD_TYPE="Debug"
+        - PARALLEL="$(nproc)"
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - curl
+            - make
+            - libtool
+            - autoconf
+            - g++-8
+      env:
+        - CMAKE="${TRAVIS_HOME}/deps/bin/cmake"
+        - CXX_COMPILER=g++-8
+        - BUILD_TYPE="Release"
+        - PARALLEL="$(nproc)"
+    - os: osx
+      addons:
+        homebrew:
+          packages:
+            - cmake
+            - llvm
+            - boost
+            - mbedtls
+            - libsodium
+            - libmaxminddb
+            - rapidjson
+      env:
+        - CMAKE="$(brew --prefix)/bin/cmake"
+        - CXX_COMPILER="$(brew --prefix)/opt/llvm/bin/clang++"
+        - BUILD_TYPE="Debug"
+        - PARALLEL="$(sysctl -n hw.physicalcpu)"
+    - os: osx
+      addons:
+        homebrew:
+          packages:
+            - cmake
+            - llvm
+            - boost
+            - mbedtls
+            - libsodium
+            - libmaxminddb
+            - rapidjson
+      env:
+        - CMAKE="$(brew --prefix)/bin/cmake"
+        - CXX_COMPILER="$(brew --prefix)/opt/llvm/bin/clang++"
+        - BUILD_TYPE="Release"
+        - PARALLEL="$(sysctl -n hw.physicalcpu)"
 
 install:
   - |
@@ -35,20 +84,20 @@ install:
       curl -LSs https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
       cd "${TRAVIS_BUILD_DIR}/boost_1_68_0" &&
       ./bootstrap.sh --with-toolset=gcc --prefix="${TRAVIS_HOME}/deps" --with-libraries=context,program_options,system,test &&
-      ./b2 -j "$(nproc)" variant=release install &&
+      ./b2 -j "${PARALLEL}" variant=release install &&
       curl -LSs https://tls.mbed.org/download/mbedtls-2.13.0-apache.tgz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
       cd "${TRAVIS_BUILD_DIR}/mbedtls-2.13.0" &&
       "${TRAVIS_HOME}/deps/bin/cmake" -DCMAKE_INSTALL_PREFIX="${TRAVIS_HOME}/deps" . &&
-      make -j "$(nproc)" install &&
+      make -j "${PARALLEL}" install &&
       curl -LSs https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
       cd "${TRAVIS_BUILD_DIR}/libsodium-1.0.16" &&
       ./autogen.sh &&
       ./configure --prefix="${TRAVIS_HOME}/deps" &&
-      make -j "$(nproc)" install &&
+      make -j "${PARALLEL}" install &&
       curl -LSs https://github.com/maxmind/libmaxminddb/releases/download/1.3.2/libmaxminddb-1.3.2.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
       cd "${TRAVIS_BUILD_DIR}/libmaxminddb-1.3.2" &&
       ./configure --prefix="${TRAVIS_HOME}/deps" &&
-      make -j "$(nproc)" install &&
+      make -j "${PARALLEL}" install &&
       curl -LSs https://github.com/Tencent/rapidjson/archive/v1.1.0.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
       cd "${TRAVIS_BUILD_DIR}" &&
       cp -r "${TRAVIS_BUILD_DIR}/rapidjson-1.1.0/include/rapidjson" "${TRAVIS_HOME}/deps/include" &&
@@ -58,10 +107,9 @@ install:
 script:
   - |
     mkdir -p build && cd build &&
-    "${TRAVIS_HOME}/deps/bin/cmake" -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
-      -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" -DCMAKE_PREFIX_PATH="${TRAVIS_HOME}/deps" \
-      "${TRAVIS_BUILD_DIR}" &&
-    make -j "$(nproc)" &&
+    "${CMAKE}" -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
+      -DCMAKE_PREFIX_PATH="${TRAVIS_HOME}/deps" "${TRAVIS_BUILD_DIR}" &&
+    make -j "${PARALLEL}" &&
     ctest --output-on-failure -C "${BUILD_TYPE}"
 
 notifications:
