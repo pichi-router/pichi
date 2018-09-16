@@ -135,7 +135,18 @@ void Ingress::update(string const& name, InboundVO ivo)
     it->second =
         make_pair(move(ivo), Acceptor{strand_.context(), {ip::make_address(ivo.bind_), ivo.port_}});
   }
-  spawn([it, this](auto ctx) { listen(it, ctx); }, [it, this](auto) { c_.erase(it); });
+  spawn([it, this](auto ctx) { listen(it, ctx); },
+        [it, this](auto eptr) {
+          try {
+            if (eptr) rethrow_exception(eptr);
+          }
+          catch (sys::system_error const& e) {
+            if (e.code() != asio::error::operation_aborted) {
+              assert(it != std::end(c_));
+              c_.erase(it);
+            }
+          }
+        });
 }
 
 void Ingress::erase(string_view name) { c_.erase(c_.find(name)); }
