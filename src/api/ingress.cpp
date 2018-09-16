@@ -149,6 +149,10 @@ void Ingress::update(string const& name, InboundVO ivo)
         });
 }
 
-void Ingress::erase(string_view name) { c_.erase(c_.find(name)); }
+void Ingress::erase(string_view name)
+{
+  auto it = c_.find(name);
+  if (it != std::end(c_)) c_.erase(it);
+}
 
 } // namespace pichi::api

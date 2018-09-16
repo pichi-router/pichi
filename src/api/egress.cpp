@@ -6,7 +6,11 @@ namespace pichi::api {
 
 void Egress::update(string const& name, OutboundVO vo) { c_[name] = move(vo); }
 
-void Egress::erase(string_view name) { c_.erase(c_.find(name)); }
+void Egress::erase(string_view name)
+{
+  auto it = find(name);
+  if (it != end()) c_.erase(it);
+}
 
 Egress::ConstIterator Egress::begin() const noexcept { return cbegin(c_); }
 
