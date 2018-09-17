@@ -2,6 +2,7 @@
 #define PICHI_EXCEPTION_HPP
 
 #include <exception>
+#include <string_view>
 #include <string>
 
 namespace pichi {
@@ -16,7 +17,7 @@ public:
   Exception& operator=(Exception&&) = delete;
 
 public:
-  explicit Exception(PichiError, std::string const& = "");
+  explicit Exception(PichiError, std::string_view = "");
   ~Exception() override;
 
   char const* what() const noexcept override;

@@ -4,7 +4,7 @@ using namespace std;
 
 namespace pichi {
 
-Exception::Exception(PichiError error, string const& message) : error_{error}, message_{message} {}
+Exception::Exception(PichiError error, string_view message) : error_{error}, message_{message} {}
 
 Exception::Exception(Exception const&) = default;
 Exception::Exception(Exception&&) = default;
