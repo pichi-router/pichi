@@ -25,11 +25,6 @@ public:
   using HttpHandler = std::function<Response(Request const&, std::cmatch const&)>;
   using RouteItem = std::tuple<boost::beast::http::verb, std::regex, HttpHandler>;
 
-private:
-  template <typename Function> void spawn(Function&&);
-  template <typename Function, typename FaultHandler> void spawn(Function&&, FaultHandler&&);
-  template <typename Socket, typename Yield> void route(Socket&, Yield);
-
 public:
   Server(Server const&) = delete;
   Server(Server&&) = delete;

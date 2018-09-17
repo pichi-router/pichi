@@ -1,7 +1,6 @@
 #ifndef PICHI_API_EGRESS_HPP
 #define PICHI_API_EGRESS_HPP
 
-#include <functional>
 #include <map>
 #include <pichi/api/rest.hpp>
 #include <string>
