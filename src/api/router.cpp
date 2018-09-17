@@ -7,7 +7,6 @@
 #include <pichi/asserts.hpp>
 #include <pichi/scope_guard.hpp>
 #include <regex>
-#include <sstream>
 
 using namespace std;
 namespace ip = boost::asio::ip;
@@ -41,7 +40,7 @@ Geo::Geo(char const* fn) : db_{make_unique<MMDB_s>()}
 
 Geo::~Geo() { MMDB_close(db_.get()); }
 
-bool Geo::match(std::string_view address, std::string_view country) const
+bool Geo::match(string_view address, string_view country) const
 {
   auto ec = 0;
   auto status = MMDB_SUCCESS;
@@ -68,7 +67,7 @@ Router::ValueType Router::generatePair(DelegateIterator it)
 
 Router::Router(char const* fn) : geo_{fn} {}
 
-string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, std::string_view inbound,
+string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, string_view inbound,
                           AdapterType type) const
 {
   auto it = find_if(
@@ -135,9 +134,7 @@ void Router::update(string const& name, RuleVO rvo)
             [& geo = as_const(geo_)](auto&& country) {
               return [&country, &geo](auto&&, auto&& r, auto, auto) {
                 return any_of(cbegin(r), cend(r), [&geo, &country](auto&& entry) {
-                  auto oss = ostringstream{};
-                  oss << entry.endpoint().address();
-                  return geo.match(oss.str(), country);
+                  return geo.match(entry.endpoint().address().to_string(), country);
                 });
               };
             });
