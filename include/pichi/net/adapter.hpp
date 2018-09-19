@@ -30,7 +30,7 @@ struct Ingress : public Adapter {
   virtual void confirm(boost::asio::yield_context) = 0;
 };
 
-struct Outbound : public Adapter {
+struct Egress : public Adapter {
   virtual void connect(Endpoint const& remote, Endpoint const& server,
                        boost::asio::yield_context) = 0;
 };

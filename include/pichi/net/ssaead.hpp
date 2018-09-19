@@ -10,7 +10,7 @@
 namespace pichi {
 namespace net {
 
-template <crypto::CryptoMethod method> class SSAeadAdapter : public Ingress, public Outbound {
+template <crypto::CryptoMethod method> class SSAeadAdapter : public Ingress, public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
   using Yield = boost::asio::yield_context;

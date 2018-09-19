@@ -115,13 +115,13 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
 
 template unique_ptr<Ingress> makeIngress<tcp::socket>(api::IngressVO const&, tcp::socket&&);
 
-template <typename Socket> unique_ptr<Outbound> makeOutbound(api::OutboundVO const& vo, Socket&& s)
+template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo, Socket&& s)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
   case AdapterType::HTTP:
-    return make_unique<HttpOutbound>(forward<Socket>(s));
+    return make_unique<HttpEgress>(forward<Socket>(s));
   case AdapterType::SOCKS5:
     return make_unique<Socks5Adapter>(forward<Socket>(s));
   case AdapterType::DIRECT:
@@ -177,6 +177,6 @@ template <typename Socket> unique_ptr<Outbound> makeOutbound(api::OutboundVO con
   }
 }
 
-template unique_ptr<Outbound> makeOutbound<tcp::socket>(api::OutboundVO const&, tcp::socket&&);
+template unique_ptr<Egress> makeEgress<tcp::socket>(api::EgressVO const&, tcp::socket&&);
 
 } // namespace pichi::net

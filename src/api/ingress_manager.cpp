@@ -1,6 +1,6 @@
 #include <array>
 #include <iostream>
-#include <pichi/api/egress.hpp>
+#include <pichi/api/egress_manager.hpp>
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/router.hpp>
 #include <pichi/asserts.hpp>
@@ -36,8 +36,8 @@ static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context ctx
   }
 }
 
-IngressManager::IngressManager(Strand strand, Router const& router, Egress const& egress)
-  : strand_{strand}, router_{router}, egress_{egress}, c_{}
+IngressManager::IngressManager(Strand strand, Router const& router, EgressManager const& eManager)
+  : strand_{strand}, router_{router}, eManager_{eManager}, c_{}
 {
 }
 
@@ -97,24 +97,24 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
       auto ingress = shared_ptr<net::Ingress>{net::makeIngress(vo, move(s))};
       auto remote = ingress->readRemote(ctx);
       auto ec = sys::error_code{};
-      auto it = egress_.find(router_.route(
+      auto it = eManager_.find(router_.route(
           remote,
           tcp::resolver{strand_.context()}.async_resolve(remote.host_, remote.port_, ctx[ec]),
           iname, vo.type_));
-      assertFalse(it == cend(egress_), PichiError::MISC);
-      auto outbound =
-          shared_ptr<net::Outbound>{net::makeOutbound(it->second, tcp::socket{strand_.context()})};
+      assertFalse(it == cend(eManager_), PichiError::MISC);
+      auto egress =
+          shared_ptr<net::Egress>{net::makeEgress(it->second, tcp::socket{strand_.context()})};
       auto next = remote;
       if (it->second.host_.has_value()) next.host_ = *it->second.host_;
       if (it->second.port_.has_value()) next.port_ = to_string(*it->second.port_);
-      outbound->connect(remote, next, ctx);
+      egress->connect(remote, next, ctx);
       ingress->confirm(ctx);
 
       auto strand = Strand{strand_.context()};
       asio::spawn(strand,
-                  [f = ingress, t = outbound](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
+                  [f = ingress, t = egress](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
       asio::spawn(strand,
-                  [t = ingress, f = outbound](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
+                  [t = ingress, f = egress](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
     });
   }
 }

@@ -8,7 +8,7 @@
 #include <boost/beast/http/string_body.hpp>
 #include <boost/beast/http/verb.hpp>
 #include <functional>
-#include <pichi/api/egress.hpp>
+#include <pichi/api/egress_manager.hpp>
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/router.hpp>
 #include <regex>
@@ -39,7 +39,7 @@ public:
 private:
   boost::asio::io_context::strand strand_;
   Router router_;
-  Egress egress_;
+  EgressManager eManager_;
   IngressManager iManager_;
   std::array<RouteItem, 18> apis_;
 };

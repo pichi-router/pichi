@@ -43,14 +43,14 @@ private:
   std::unique_ptr<Ingress> delegate_ = nullptr;
 };
 
-class HttpOutbound : public Outbound {
+class HttpEgress : public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
   using Yield = boost::asio::yield_context;
 
 public:
-  HttpOutbound(Socket&&);
-  ~HttpOutbound() override = default;
+  HttpEgress(Socket&&);
+  ~HttpEgress() override = default;
 
 public:
   size_t recv(MutableBuffer<uint8_t>, Yield) override;

@@ -1,5 +1,5 @@
-#ifndef PICHI_API_EGRESS_HPP
-#define PICHI_API_EGRESS_HPP
+#ifndef PICHI_API_EGRESS_MANAGER_HPP
+#define PICHI_API_EGRESS_MANAGER_HPP
 
 #include <map>
 #include <pichi/api/rest.hpp>
@@ -8,18 +8,18 @@
 
 namespace pichi::api {
 
-class Egress {
+class EgressManager {
 public:
-  using VO = OutboundVO;
+  using VO = EgressVO;
 
 private:
-  using Container = std::map<std::string, OutboundVO, std::less<>>;
+  using Container = std::map<std::string, EgressVO, std::less<>>;
   using ConstIterator = typename Container::const_iterator;
 
 public:
-  Egress() = default;
+  EgressManager() = default;
 
-  void update(std::string const&, OutboundVO);
+  void update(std::string const&, EgressVO);
   void erase(std::string_view);
 
   ConstIterator begin() const noexcept;
@@ -32,4 +32,4 @@ private:
 
 } // namespace pichi::api
 
-#endif // PICHI_API_EGRESS_HPP
+#endif // PICHI_API_EGRESS_MANAGER_HPP
