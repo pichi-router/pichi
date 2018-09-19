@@ -1,0 +1,23 @@
+version: "pr#{build}"
+
+cache:
+  - C:\Tools\vcpkg\installed
+
+image:
+  - Visual Studio 2017
+
+install:
+  - ps: |
+      vcpkg install boost-asio:x64-windows boost-beast:x64-windows boost-coroutine2:x64-windows `
+        boost-mpl:x64-windows boost-program-options:x64-windows boost-test:x64-windows `
+        libmaxminddb:x64-windows libsodium:x64-windows mbedtls:x64-windows rapidjson:x64-windows
+
+build_script:
+  - ps: |
+      cmake -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake `
+        -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Debug `
+        -G "Visual Studio 15 2017 Win64" .
+  - ps: cmake --build .
+
+test_script:
+  - ps: ctest --output-on-failure -C Debug
