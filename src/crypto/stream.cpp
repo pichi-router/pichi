@@ -7,8 +7,7 @@
 
 using namespace std;
 
-namespace pichi {
-namespace crypto {
+namespace pichi::crypto {
 
 struct Initializations {
   static void aesCfb(mbedtls_aes_context& ctx, ConstBuffer<uint8_t> key, vector<uint8_t> const& iv,
@@ -360,10 +359,10 @@ StreamEncryptor<method>::StreamEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<u
   : iv_{iv.begin(), iv.end()}
 {
   if (iv_.empty()) {
-    iv_.resize(CryptoLength<method>::IV);
+    iv_.resize(IV_SIZE<method>);
     randombytes_buf(iv_.data(), iv_.size());
   }
-  assertTrue(iv_.size() == CryptoLength<method>::IV, PichiError::CRYPTO_ERROR);
+  assertTrue(iv_.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
   StreamTrait<method>::initialize(ctx_, key, iv_, block_, StreamTrait<method>::block_size);
 }
 
@@ -413,13 +412,13 @@ template <CryptoMethod method> StreamDecryptor<method>::~StreamDecryptor()
 
 template <CryptoMethod method> size_t StreamDecryptor<method>::getIvSize() const
 {
-  return CryptoLength<method>::IV;
+  return IV_SIZE<method>;
 }
 
 template <CryptoMethod method> void StreamDecryptor<method>::setIv(ConstBuffer<uint8_t> iv)
 {
   assertTrue(iv_.empty(), PichiError::CRYPTO_ERROR);
-  assertTrue(iv.size() == CryptoLength<method>::IV, PichiError::CRYPTO_ERROR);
+  assertTrue(iv.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
   iv_.assign(iv.begin(), iv.end());
   auto key = move(block_);
   StreamTrait<method>::initialize(ctx_, key, iv_, block_, StreamTrait<method>::block_size);
@@ -429,7 +428,7 @@ template <CryptoMethod method> void StreamDecryptor<method>::setIv(ConstBuffer<u
 template <CryptoMethod method>
 size_t StreamDecryptor<method>::decrypt(ConstBuffer<uint8_t> cipher, MutableBuffer<uint8_t> plain)
 {
-  assertTrue(iv_.size() == CryptoLength<method>::IV, PichiError::CRYPTO_ERROR);
+  assertTrue(iv_.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
   offset_ = StreamTrait<method>::decrypt(ctx_, offset_, cipher, iv_, block_,
                                          StreamTrait<method>::block_size, plain);
   return cipher.size();
@@ -450,5 +449,4 @@ template class StreamDecryptor<CryptoMethod::CHACHA20>;
 template class StreamDecryptor<CryptoMethod::SALSA20>;
 template class StreamDecryptor<CryptoMethod::CHACHA20_IETF>;
 
-} // namespace crypto
-} // namespace pichi
+} // namespace pichi::crypto
