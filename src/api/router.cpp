@@ -143,6 +143,8 @@ void Router::update(string const& name, RuleVO rvo)
 
 void Router::erase(string_view name)
 {
+  // TODO use the correct exception
+  assertTrue(find(cbegin(order_), cend(order_), name) == cend(order_), PichiError::MISC);
   auto it = rules_.find(name);
   if (it != std::end(rules_)) rules_.erase(it);
 }
@@ -155,6 +157,11 @@ Router::ConstIterator Router::begin() const noexcept
 Router::ConstIterator Router::end() const noexcept
 {
   return {cend(rules_), cend(rules_), &Router::generatePair};
+}
+
+bool Router::isUsed(string_view outbound) const
+{
+  return default_ == outbound || rules_.find(outbound) != cend(rules_);
 }
 
 RouteVO Router::getRoute() const

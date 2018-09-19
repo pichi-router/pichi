@@ -69,6 +69,7 @@ public:
 
   ConstIterator begin() const noexcept;
   ConstIterator end() const noexcept;
+  bool isUsed(std::string_view) const;
 
   RouteVO getRoute() const;
   void setRoute(RouteVO const&);
