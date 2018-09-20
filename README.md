@@ -2,7 +2,9 @@
 
 Pichi is an application layer proxy, which can be fully controlled via RESTful APIs.
 
-[![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi)
+| Clang6.0.1/macOS 	| GCC8.1.0/Ubuntu14.04 	| VC++2017/Windows  	|
+|:-----------------------------------------------------------------------------------------------------------------------:	|:-----------------------------------------------------------------------------------------------------------------------:	|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:	|
+| [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) 	| [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) 	| [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=master&svg=true)](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=master&svg=true) 	|
 
 # Using Pichi API
 

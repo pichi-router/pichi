@@ -110,7 +110,7 @@ script:
     "${CMAKE}" -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
       -DCMAKE_PREFIX_PATH="${TRAVIS_HOME}/deps" "${TRAVIS_BUILD_DIR}" &&
     make -j "${PARALLEL}" &&
-    ctest --output-on-failure -C "${BUILD_TYPE}"
+    ctest --output-on-failure
 
 notifications:
   email: false
