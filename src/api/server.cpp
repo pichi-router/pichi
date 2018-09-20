@@ -55,37 +55,34 @@ static bool matching(boost::string_view s, regex const& re, cmatch& r)
   return regex_match(s.data(), s.data() + s.size(), r, re);
 }
 
-static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::yield_context ctx)
+static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::yield_context yield)
 {
   auto ec = sys::error_code{};
-  http::async_write(s, resp, ctx[ec]);
+  http::async_write(s, resp, yield[ec]);
   if (ec) cout << "Ignoring HTTP error: " << ec.message() << "\n";
 }
 
-static void replyError(exception_ptr eptr, tcp::socket& s, asio::yield_context ctx)
+static void replyError(string_view msg, tcp::socket& s, asio::yield_context yield)
 {
   auto resp = defaultResponse(http::status::internal_server_error);
-  try {
-    if (eptr) rethrow_exception(eptr);
-  }
-  catch (exception& e) {
-    resp.body() = e.what();
-  }
-  writeWithoutException(s, resp, ctx);
+  resp.body() = msg;
+  writeWithoutException(s, resp, yield);
 }
 
-static void logging(exception_ptr eptr)
+template <typename InputIt>
+void dispatch(InputIt first, InputIt last, tcp::socket& s, asio::yield_context yield)
 {
-  try {
-    if (eptr) rethrow_exception(eptr);
-  }
-  catch (Exception& e) {
-    cout << "Pichi Error: " << e.what() << "\n";
-  }
-  catch (sys::system_error& e) {
-    if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-    cout << "Socket Error: " << e.what() << "\n";
-  }
+  auto buf = beast::flat_static_buffer<net::MAX_FRAME_SIZE>{};
+  auto req = Server::Request{};
+
+  http::async_read(s, buf, req, yield);
+  auto mr = cmatch{};
+  auto it = find_if(first, last, [v = req.method(), t = req.target(), &mr](auto&& item) {
+    return get<0>(item) == v && matching(t, get<1>(item), mr);
+  });
+  assertFalse(it == last, PichiError::MISC);
+  auto resp = invoke(get<2>(*it), req, mr);
+  writeWithoutException(s, resp, yield);
 }
 
 template <typename Manager> auto getVO(Manager const& manager)
@@ -125,43 +122,6 @@ static auto options(initializer_list<http::verb>&& verbs)
   auto resp = defaultResponse(http::status::no_content);
   resp.set("Access-Control-Allow-Methods", oss.str());
   return resp;
-}
-
-template <typename Function> void Server::spawn(Function&& func)
-{
-  spawn(forward<Function>(func), [](auto, auto) {});
-}
-
-template <typename Function, typename FaultHandler>
-void Server::spawn(Function&& func, FaultHandler&& handler)
-{
-  asio::spawn(strand_, [f = forward<Function>(func), h = forward<FaultHandler>(handler),
-                        this](auto ctx) mutable {
-    try {
-      f(ctx);
-    }
-    catch (...) {
-      auto eptr = current_exception();
-      h(eptr, ctx);
-      logging(eptr);
-    }
-  });
-}
-
-template <typename Socket, typename Yield> void Server::route(Socket& s, Yield yield)
-{
-  auto buf = beast::flat_static_buffer<net::MAX_FRAME_SIZE>{};
-  auto req = Request{};
-
-  http::async_read(s, buf, req, yield);
-  auto mr = cmatch{};
-  auto it = find_if(cbegin(routes_), cend(routes_),
-                    [v = req.method(), t = req.target(), &mr](auto&& item) {
-                      return get<0>(item) == v && matching(t, get<1>(item), mr);
-                    });
-  assertFalse(it == cend(routes_), PichiError::MISC);
-  auto resp = invoke(get<2>(*it), req, mr);
-  writeWithoutException(s, resp, yield);
 }
 
 Server::Server(asio::io_context& io, char const* fn)
@@ -242,13 +202,27 @@ Server::Server(asio::io_context& io, char const* fn)
 
 void Server::listen(string_view address, uint16_t port)
 {
-  spawn([port, address, this](auto ctx) {
-    auto acceptor = tcp::acceptor{strand_.context(), {ip::make_address(address), port}};
-    while (true) {
-      auto sp = make_shared<tcp::socket>(acceptor.async_accept(ctx));
-      spawn([sp, this](auto ctx) mutable { route(*sp, ctx); },
-            [sp](auto eptr, auto ctx) mutable { replyError(eptr, *sp, ctx); });
+  asio::spawn(strand_, [a = tcp::acceptor{strand_.context(), {ip::make_address(address), port}},
+                        this](auto yield) mutable {
+    auto ec = sys::error_code{};
+    while (!ec) {
+      asio::spawn(strand_, [first = cbegin(routes_), last = cend(routes_),
+                            s = a.async_accept(yield)](auto yield) mutable {
+        try {
+          dispatch(first, last, s, yield);
+        }
+        catch (Exception const& e) {
+          cout << "Pichi Error: " << e.what() << "\n";
+          replyError(e.what(), s, yield);
+        }
+        catch (sys::system_error const& e) {
+          if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
+          cout << "Socket Error: " << e.what() << "\n";
+          replyError(e.what(), s, yield);
+        }
+      });
     }
+    cout << "Socket Error: " << ec.message() << "\n";
   });
 }
 
