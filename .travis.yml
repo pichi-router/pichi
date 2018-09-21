@@ -1,10 +1,6 @@
 language: cpp
 sudo: false
 
-cache:
-  directories:
-    - ${TRAVIS_HOME}/deps
-
 matrix:
   include:
     - os: linux
@@ -19,10 +15,12 @@ matrix:
             - autoconf
             - g++-8
       env:
-        - CMAKE="${TRAVIS_HOME}/deps/bin/cmake"
-        - CXX_COMPILER=g++-8
+        - PLATFORM=linux
         - BUILD_TYPE="Debug"
         - PARALLEL="$(nproc)"
+      cache:
+        directories:
+          - ${TRAVIS_HOME}/deps
     - os: linux
       addons:
         apt:
@@ -35,8 +33,28 @@ matrix:
             - autoconf
             - g++-8
       env:
-        - CMAKE="${TRAVIS_HOME}/deps/bin/cmake"
-        - CXX_COMPILER=g++-8
+        - PLATFORM=linux
+        - BUILD_TYPE="Release"
+        - PARALLEL="$(nproc)"
+      cache:
+        directories:
+          - ${TRAVIS_HOME}/deps
+    - os: linux
+      services:
+        - docker
+      env:
+        - PLATFORM=docker
+        - BUILD_TYPE="Debug"
+        - PARALLEL="$(nproc)"
+    - os: linux
+      addons:
+        apt:
+          packages:
+            - curl
+      services:
+        - docker
+      env:
+        - PLATFORM=docker
         - BUILD_TYPE="Release"
         - PARALLEL="$(nproc)"
     - os: osx
@@ -51,8 +69,7 @@ matrix:
             - libmaxminddb
             - rapidjson
       env:
-        - CMAKE="$(brew --prefix)/bin/cmake"
-        - CXX_COMPILER="$(brew --prefix)/opt/llvm/bin/clang++"
+        - PLATFORM=osx
         - BUILD_TYPE="Debug"
         - PARALLEL="$(sysctl -n hw.physicalcpu)"
     - os: osx
@@ -67,14 +84,13 @@ matrix:
             - libmaxminddb
             - rapidjson
       env:
-        - CMAKE="$(brew --prefix)/bin/cmake"
-        - CXX_COMPILER="$(brew --prefix)/opt/llvm/bin/clang++"
+        - PLATFORM=osx
         - BUILD_TYPE="Release"
         - PARALLEL="$(sysctl -n hw.physicalcpu)"
 
 install:
   - |
-    if [[ "${TRAVIS_OS_NAME}" = "linux" ]] && [[ ! -f "${TRAVIS_HOME}/deps/.completed" ]]; then
+    if [[ "${PLATFORM}" = "linux" ]] && [[ ! -f "${TRAVIS_HOME}/deps/.completed" ]]; then
       rm -rf "${TRAVIS_HOME}/deps" &&
       curl -LSs https://cmake.org/files/v3.12/cmake-3.12.2-Linux-x86_64.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
       mv "${TRAVIS_BUILD_DIR}/cmake-3.12.2-Linux-x86_64" "${TRAVIS_HOME}/deps" &&
@@ -103,14 +119,38 @@ install:
       cp -r "${TRAVIS_BUILD_DIR}/rapidjson-1.1.0/include/rapidjson" "${TRAVIS_HOME}/deps/include" &&
       touch "${TRAVIS_HOME}/deps/.completed"
     fi
+  - |
+    if [[ "${PLATFORM}" = "docker" ]]; then
+      curl -LSs https://gist.githubusercontent.com/pichi-router/b8a6e3d04bf4d97339f1d40c017ce000/raw/a96c82ecf15e727fe898cf4bdc138c0a254dabd4/builder.dockerfile | \
+        docker build --rm --no-cache -t pichi/builder -
+    fi
 
 script:
+  - mkdir -p build
+  - cd build
   - |
-    mkdir -p build && cd build &&
-    "${CMAKE}" -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
-      -DCMAKE_PREFIX_PATH="${TRAVIS_HOME}/deps" "${TRAVIS_BUILD_DIR}" &&
-    make -j "${PARALLEL}" &&
-    ctest --output-on-failure
+    case "${PLATFORM}" in
+      "linux")
+        ${TRAVIS_HOME}/deps/bin/cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+          -DCMAKE_CXX_COMPILER="g++-8" -DCMAKE_PREFIX_PATH="${TRAVIS_HOME}/deps" \
+          "${TRAVIS_BUILD_DIR}" &&
+        make -j "${PARALLEL}" &&
+        ctest --output-on-failure;;
+      "docker")
+        docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
+          pichi/builder cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" -DCMAKE_CXX_COMPILER="clang++"\
+          /root/pichi &&
+        docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
+          pichi/builder make -j "${PARALLEL}" &&
+        docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
+          pichi/builder ctest --output-on-failure;;
+      "osx")
+        cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+          -DCMAKE_CXX_COMPILER="$(brew --prefix)/opt/llvm/bin/clang++" \
+          "${TRAVIS_BUILD_DIR}" &&
+        make -j "${PARALLEL}" &&
+        ctest --output-on-failure;;
+    esac
 
 notifications:
   email: false
