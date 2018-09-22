@@ -1,10 +1,13 @@
-# Pichi
+# Pichi ![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)
 
 Pichi is an application layer proxy, which can be fully controlled via RESTful APIs.
 
-| Clang6.0.1/macOS 	| GCC8.1.0/Ubuntu14.04 	| VC++2017/Windows  	|
-|:-----------------------------------------------------------------------------------------------------------------------:	|:-----------------------------------------------------------------------------------------------------------------------:	|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:	|
-| [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) 	| [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) 	| [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=master&svg=true)](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=master&svg=true) 	|
+# Build Status
+
+| OS | macOS 10.13.x | Alpine 3.8 | Ubuntu 14.04 | Windows 10 |
+|:-------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| **Toolchain** | Clang 6.0.1 | Clang 6.0.1 | GCC 8.1 | VC++2017 |
+| **Status** | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/project/pichi-router/pichi) |
 
 # Using Pichi API
 
@@ -97,7 +100,7 @@ Build and run on *nix:
 $ mkdir build && cd build
 $ cmake -DCMAKE_BUILD_TYPE=Debug ..
 $ cmake --build .
-$ ctest -C Debug --output-on-failure
+$ ctest --output-on-failure
 ```
 
 Dockerfile based on [alpine](https://alpinelinux.org) can be found at the [Gist](https://gist.github.com/pichi-router/b8a6e3d04bf4d97339f1d40c017ce000).
