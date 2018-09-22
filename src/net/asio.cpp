@@ -64,8 +64,8 @@ template <typename Socket> unique_ptr<Inbound> makeInbound(api::InboundVO const&
     return make_unique<Socks5Adapter>(forward<Socket>(s));
   case AdapterType::SS:
     psk = {container,
-           generateKey(vo.method_.value(), ConstBuffer<uint8_t>{vo.password_.value()}, container)};
-    switch (vo.method_.value()) {
+           generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
+    switch (*vo.method_) {
     case CryptoMethod::RC4_MD5:
       return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5>>(forward<Socket>(s), psk);
     case CryptoMethod::BF_CFB:
@@ -129,8 +129,8 @@ template <typename Socket> unique_ptr<Outbound> makeOutbound(api::OutboundVO con
     return make_unique<DirectAdapter>(forward<Socket>(s));
   case AdapterType::SS:
     psk = {container,
-           generateKey(vo.method_.value(), ConstBuffer<uint8_t>{vo.password_.value()}, container)};
-    switch (vo.method_.value()) {
+           generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
+    switch (*vo.method_) {
     case CryptoMethod::RC4_MD5:
       return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5>>(forward<Socket>(s), psk);
     case CryptoMethod::BF_CFB:

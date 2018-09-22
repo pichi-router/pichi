@@ -35,9 +35,8 @@ static string toString(InboundVO const& ivo)
   doc.AddMember("type", toJson(ivo.type_, alloc), alloc);
   doc.AddMember("bind", toJson(ivo.bind_, alloc), alloc);
   doc.AddMember("port", ivo.port_, alloc);
-  if (ivo.method_.has_value()) doc.AddMember("method", toJson(ivo.method_.value(), alloc), alloc);
-  if (ivo.password_.has_value())
-    doc.AddMember("password", toJson(ivo.password_.value(), alloc), alloc);
+  if (ivo.method_.has_value()) doc.AddMember("method", toJson(*ivo.method_, alloc), alloc);
+  if (ivo.password_.has_value()) doc.AddMember("password", toJson(*ivo.password_, alloc), alloc);
 
   return toString(doc);
 }
@@ -49,10 +48,10 @@ static string toString(OutboundVO const& ovo)
   doc.SetObject();
 
   doc.AddMember("type", toJson(ovo.type_, alloc), alloc);
-  if (ovo.host_) doc.AddMember("host", toJson(ovo.host_.value(), alloc), alloc);
-  if (ovo.port_) doc.AddMember("port", ovo.port_.value(), alloc);
-  if (ovo.method_) doc.AddMember("method", toJson(ovo.method_.value(), alloc), alloc);
-  if (ovo.password_) doc.AddMember("password", toJson(ovo.password_.value(), alloc), alloc);
+  if (ovo.host_) doc.AddMember("host", toJson(*ovo.host_, alloc), alloc);
+  if (ovo.port_) doc.AddMember("port", *ovo.port_, alloc);
+  if (ovo.method_) doc.AddMember("method", toJson(*ovo.method_, alloc), alloc);
+  if (ovo.password_) doc.AddMember("password", toJson(*ovo.password_, alloc), alloc);
 
   return toString(doc);
 }
@@ -86,7 +85,7 @@ static string toString(RouteVO const& rvo)
   auto& alloc = doc.GetAllocator();
   doc.SetObject();
 
-  if (rvo.default_) doc.AddMember("default", toJson(rvo.default_.value(), alloc), alloc);
+  if (rvo.default_) doc.AddMember("default", toJson(*rvo.default_, alloc), alloc);
   doc.AddMember("rules", toJson(begin(rvo.rules_), end(rvo.rules_), alloc), alloc);
 
   return toString(doc);

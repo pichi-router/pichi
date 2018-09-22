@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Route)
 {
   auto verifyDefault = [](auto&& rvo) {
     BOOST_CHECK(rvo.default_.has_value());
-    BOOST_CHECK(rvo.default_.value() == "direct");
+    BOOST_CHECK(*rvo.default_ == "direct");
     BOOST_CHECK(rvo.rules_.empty());
   };
 
@@ -147,13 +147,13 @@ BOOST_AUTO_TEST_CASE(Router_Set_Default_Route)
   auto router = Router{fn};
   auto vo = router.getRoute();
   BOOST_CHECK(vo.default_.has_value());
-  BOOST_CHECK(vo.default_.value() == "direct");
+  BOOST_CHECK(*vo.default_ == "direct");
   BOOST_CHECK(vo.rules_.empty());
 
   router.setRoute({ph});
   vo = router.getRoute();
   BOOST_CHECK(vo.default_.has_value());
-  BOOST_CHECK(vo.default_.value() == ph);
+  BOOST_CHECK(*vo.default_ == ph);
   BOOST_CHECK(vo.rules_.empty());
 }
 

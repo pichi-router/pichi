@@ -188,7 +188,7 @@ Server::Server(asio::io_context& io, char const* fn)
                    [this](auto&& r, auto&& mr) {
                      auto vo = parse<RouteVO>(r.body());
                      assertFalse(vo.default_.has_value() &&
-                                     egress_.find(vo.default_.value()) == end(egress_),
+                                     egress_.find(*vo.default_) == end(egress_),
                                  // TODO use the correct exception
                                  PichiError::MISC);
                      router_.setRoute(move(vo));

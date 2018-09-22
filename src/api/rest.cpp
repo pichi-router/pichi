@@ -217,8 +217,8 @@ json::Value toJson(InboundVO const& ivo, Allocator& alloc)
     assertTrue(ivo.method_.has_value(), PichiError::MISC);
     assertTrue(ivo.password_.has_value(), PichiError::MISC);
     assertFalse(ivo.password_->empty(), PichiError::MISC);
-    ret.AddMember(InboundVOKey::method_, toJson(ivo.method_.value(), alloc), alloc);
-    ret.AddMember(InboundVOKey::password_, toJson(ivo.password_.value(), alloc), alloc);
+    ret.AddMember(InboundVOKey::method_, toJson(*ivo.method_, alloc), alloc);
+    ret.AddMember(InboundVOKey::password_, toJson(*ivo.password_, alloc), alloc);
     // Don't break here
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
@@ -247,17 +247,17 @@ json::Value toJson(OutboundVO const& ovo, Allocator& alloc)
     assertTrue(ovo.method_.has_value(), PichiError::MISC);
     assertTrue(ovo.password_.has_value(), PichiError::MISC);
     assertFalse(ovo.password_->empty(), PichiError::MISC);
-    outbound.AddMember(OutboundVOKey::method_, toJson(ovo.method_.value(), alloc), alloc);
-    outbound.AddMember(OutboundVOKey::password_, toJson(ovo.password_.value(), alloc), alloc);
+    outbound.AddMember(OutboundVOKey::method_, toJson(*ovo.method_, alloc), alloc);
+    outbound.AddMember(OutboundVOKey::password_, toJson(*ovo.password_, alloc), alloc);
     // Don't break here
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
     assertTrue(ovo.host_.has_value(), PichiError::MISC);
     assertFalse(ovo.host_->empty(), PichiError::MISC);
     assertTrue(ovo.port_.has_value(), PichiError::MISC);
-    assertFalse(ovo.port_.value() == 0, PichiError::MISC);
-    outbound.AddMember(OutboundVOKey::host_, toJson(ovo.host_.value(), alloc), alloc);
-    outbound.AddMember(OutboundVOKey::port_, json::Value{ovo.port_.value()}, alloc);
+    assertFalse(*ovo.port_ == 0, PichiError::MISC);
+    outbound.AddMember(OutboundVOKey::host_, toJson(*ovo.host_, alloc), alloc);
+    outbound.AddMember(OutboundVOKey::port_, json::Value{*ovo.port_}, alloc);
     // Don't break here
   case AdapterType::DIRECT:
   case AdapterType::REJECT:
@@ -303,7 +303,7 @@ json::Value toJson(RouteVO const& rvo, Allocator& alloc)
 
   auto route = json::Value{};
   route.SetObject();
-  route.AddMember(RouteVOKey::default_, toJson(rvo.default_.value(), alloc), alloc);
+  route.AddMember(RouteVOKey::default_, toJson(*rvo.default_, alloc), alloc);
   route.AddMember(RouteVOKey::rules_, toJson(begin(rvo.rules_), end(rvo.rules_), alloc), alloc);
   return route;
 }
