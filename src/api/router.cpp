@@ -183,7 +183,7 @@ void Router::setRoute(RouteVO const& rvo)
     assertFalse(it == cend(rules), PichiError::MISC);
     return string_view{it->first};
   });
-  if (rvo.default_) default_ = rvo.default_.value();
+  if (rvo.default_) default_ = *rvo.default_;
   order_ = move(tmp);
 }
 

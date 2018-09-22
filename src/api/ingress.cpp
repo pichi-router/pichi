@@ -105,8 +105,8 @@ void Ingress::listen(typename Container::iterator it, asio::yield_context ctx)
       auto outbound =
           shared_ptr<net::Outbound>{net::makeOutbound(it->second, tcp::socket{strand_.context()})};
       auto next = remote;
-      if (it->second.host_.has_value()) next.host_ = it->second.host_.value();
-      if (it->second.port_.has_value()) next.port_ = to_string(it->second.port_.value());
+      if (it->second.host_.has_value()) next.host_ = *it->second.host_;
+      if (it->second.port_.has_value()) next.port_ = to_string(*it->second.port_);
       outbound->connect(remote, next, ctx);
       inbound->confirm(ctx);
 

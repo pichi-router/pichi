@@ -142,9 +142,9 @@ template <typename R, typename E, typename T> struct async_result<detail::YieldC
     // TODO It's supposed to be noexcept here
     assert(t_.has_value());
     if constexpr (std::is_move_constructible_v<return_type>)
-      return std::move(t_.value());
+      return std::move(*t_);
     else
-      return t_.value();
+      return *t_;
   }
 
   detail::YieldContext yield_;
