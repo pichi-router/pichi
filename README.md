@@ -6,7 +6,7 @@ Pichi is an application layer proxy, which can be fully controlled via RESTful A
 
 | OS | macOS 10.13.x | Alpine 3.8 | Ubuntu 14.04 | Windows 10 |
 |:-------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| **Toolchain** | Clang 6.0.1 | Clang 6.0.1 | GCC 8.1 | VC++2017 |
+| **Toolchain** | **Clang 6.0.1** | **Clang 6.0.1** | **GCC 8.1** | **VC++2017** |
 | **Status** | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/project/pichi-router/pichi) |
 
 # Using Pichi API
@@ -110,7 +110,7 @@ Build and run on Windows with [Vcpkg](https://github.com/Microsoft/vcpkg):
 ```
 PS C:\pichi> mkdir build
 PS C:\pichi> cd build
-PS C:\pichi\build> cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Debug ..
-PS C:\pichi\build> cmake --build .
+PS C:\pichi\build> cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+PS C:\pichi\build> cmake --build . --config Debug
 PS C:\pichi\build> ctest -C Debug --output-on-failure
 ```
