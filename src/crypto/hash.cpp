@@ -10,7 +10,7 @@ namespace pichi::crypto {
 template <HashAlgorithm algorithm> Hash<algorithm>::Hash()
 {
   Traits::initialize(&ctx_);
-  Traits::start(&ctx_);
+  assertTrue(Traits::start(&ctx_) == 0, PichiError::MISC);
 }
 
 template <HashAlgorithm algorithm> Hash<algorithm>::~Hash() { Traits::release(&ctx_); }
@@ -28,18 +28,18 @@ template <HashAlgorithm algorithm> Hash<algorithm>::Hash(Hash&& other)
 template <HashAlgorithm algorithm> void Hash<algorithm>::append(ConstBuffer<uint8_t> src)
 {
   if (src.size() == 0) return;
-  Traits::update(&ctx_, src.data(), src.size());
+  assertTrue(Traits::update(&ctx_, src.data(), src.size()) == 0, PichiError::MISC);
 }
 
 template <HashAlgorithm algorithm> size_t Hash<algorithm>::hash(MutableBuffer<uint8_t> dst)
 {
   if (dst.size() < Traits::length) {
     auto tmp = array<uint8_t, Traits::length>{};
-    Traits::finish(&ctx_, tmp.data());
+    assertTrue(Traits::finish(&ctx_, tmp.data()) == 0, PichiError::MISC);
     copy_n(begin(tmp), dst.size(), begin(dst));
     return dst.size();
   }
-  Traits::finish(&ctx_, dst.data());
+  assertTrue(Traits::finish(&ctx_, dst.data()) == 0, PichiError::MISC);
   return Traits::length;
 }
 
