@@ -33,6 +33,9 @@ static auto const RULE_REGEX = regex{"^/rules/?([?#].*)?$"};
 static auto const RULE_NAME_REGEX = regex{"^/rules/([^?#]+)/?([?#].*)?$"};
 static auto const ROUTE_REGEX = regex{"^/route/?([?#].*)?$"};
 
+static auto doc = json::Document{};
+static auto& alloc = doc.GetAllocator();
+
 static string serialize(json::Value const& v)
 {
   auto buf = json::StringBuffer{};
@@ -62,10 +65,10 @@ static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::
   if (ec) cout << "Ignoring HTTP error: " << ec.message() << "\n";
 }
 
-static void replyError(string_view msg, tcp::socket& s, asio::yield_context yield)
+static void replyError(ErrorVO const& error, tcp::socket& s, asio::yield_context yield)
 {
   auto resp = defaultResponse(http::status::internal_server_error);
-  resp.body() = msg;
+  resp.body() = serialize(toJson(error, alloc));
   writeWithoutException(s, resp, yield);
 }
 
@@ -87,9 +90,8 @@ void dispatch(InputIt first, InputIt last, tcp::socket& s, asio::yield_context y
 
 template <typename Manager> auto getVO(Manager const& manager)
 {
-  auto doc = json::Document{};
   auto resp = defaultResponse(http::status::ok);
-  resp.body() = serialize(toJson(begin(manager), end(manager), doc.GetAllocator()));
+  resp.body() = serialize(toJson(begin(manager), end(manager), alloc));
   return resp;
 }
 
@@ -179,9 +181,8 @@ Server::Server(asio::io_context& io, char const* fn)
                    }),
         make_tuple(http::verb::get, ROUTE_REGEX,
                    [this](auto&&, auto&&) {
-                     auto doc = json::Document{};
                      auto resp = defaultResponse(http::status::ok);
-                     resp.body() = serialize(toJson(router_.getRoute(), doc.GetAllocator()));
+                     resp.body() = serialize(toJson(router_.getRoute(), alloc));
                      return resp;
                    }),
         make_tuple(http::verb::put, ROUTE_REGEX,
@@ -213,12 +214,12 @@ void Server::listen(string_view address, uint16_t port)
         }
         catch (Exception const& e) {
           cout << "Pichi Error: " << e.what() << "\n";
-          replyError(e.what(), s, yield);
+          replyError({e.what()}, s, yield);
         }
         catch (sys::system_error const& e) {
           if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
           cout << "Socket Error: " << e.what() << "\n";
-          replyError(e.what(), s, yield);
+          replyError({e.what()}, s, yield);
         }
       });
     }
