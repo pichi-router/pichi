@@ -61,7 +61,7 @@ private:
 public:
   Router(char const* fn);
 
-  std::string_view route(net::Endpoint const&, ResolvedResult const&, std::string_view inbound,
+  std::string_view route(net::Endpoint const&, ResolvedResult const&, std::string_view ingress,
                          AdapterType) const;
 
   void update(std::string const&, RuleVO);
