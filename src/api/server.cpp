@@ -27,8 +27,8 @@ namespace pichi::api {
 
 static auto const INGRESS_REGEX = regex{"^/ingresses/?([?#].*)?$"};
 static auto const INGRESS_NAME_REGEX = regex{"^/ingresses/([^?#/]+)/?([?#].*)?$"};
-static auto const OUTBOUND_REGEX = regex{"^/outbound/?([?#].*)?$"};
-static auto const OUTBOUND_NAME_REGEX = regex{"^/outbound/([^?#]+)/?([?#].*)?$"};
+static auto const EGRESS_REGEX = regex{"^/egresses/?([?#].*)?$"};
+static auto const EGRESS_NAME_REGEX = regex{"^/egresses/([^?#]+)/?([?#].*)?$"};
 static auto const RULE_REGEX = regex{"^/rules/?([?#].*)?$"};
 static auto const RULE_NAME_REGEX = regex{"^/rules/([^?#]+)/?([?#].*)?$"};
 static auto const ROUTE_REGEX = regex{"^/route/?([?#].*)?$"};
@@ -125,7 +125,7 @@ static auto options(initializer_list<http::verb>&& verbs)
 }
 
 Server::Server(asio::io_context& io, char const* fn)
-  : strand_{io}, router_{fn}, egress_{}, iManager_{strand_, router_, egress_},
+  : strand_{io}, router_{fn}, eManager_{}, iManager_{strand_, router_, eManager_},
     apis_{
         make_tuple(http::verb::get, INGRESS_REGEX,
                    [this](auto&&, auto&&) { return getVO(iManager_); }),
@@ -141,21 +141,21 @@ Server::Server(asio::io_context& io, char const* fn)
                    [](auto&&, auto&&) {
                      return options({http::verb::put, http::verb::delete_, http::verb::options});
                    }),
-        make_tuple(http::verb::get, OUTBOUND_REGEX,
-                   [this](auto&&, auto&&) { return getVO(egress_); }),
-        make_tuple(http::verb::options, OUTBOUND_REGEX,
+        make_tuple(http::verb::get, EGRESS_REGEX,
+                   [this](auto&&, auto&&) { return getVO(eManager_); }),
+        make_tuple(http::verb::options, EGRESS_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::get, http::verb::options});
                    }),
-        make_tuple(http::verb::put, OUTBOUND_NAME_REGEX,
-                   [this](auto&& r, auto&& mr) { return putVO(r, mr, egress_); }),
-        make_tuple(http::verb::delete_, OUTBOUND_NAME_REGEX,
+        make_tuple(http::verb::put, EGRESS_NAME_REGEX,
+                   [this](auto&& r, auto&& mr) { return putVO(r, mr, eManager_); }),
+        make_tuple(http::verb::delete_, EGRESS_NAME_REGEX,
                    [this](auto&&, auto&& mr) {
                      // TODO use the correct exception
                      assertFalse(router_.isUsed(mr[1].str()), PichiError::MISC);
-                     return delVO(mr, egress_);
+                     return delVO(mr, eManager_);
                    }),
-        make_tuple(http::verb::options, OUTBOUND_NAME_REGEX,
+        make_tuple(http::verb::options, EGRESS_NAME_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::put, http::verb::delete_, http::verb::options});
                    }),
@@ -168,7 +168,7 @@ Server::Server(asio::io_context& io, char const* fn)
                    [this](auto&& r, auto&& mr) {
                      // TODO use the correct exception
                      auto vo = parse<RuleVO>(r.body());
-                     assertFalse(egress_.find(vo.outbound_) == end(egress_), PichiError::MISC);
+                     assertFalse(eManager_.find(vo.egress_) == end(eManager_), PichiError::MISC);
                      return putVO(move(vo), mr, router_);
                    }),
         make_tuple(http::verb::delete_, RULE_NAME_REGEX,
@@ -188,7 +188,7 @@ Server::Server(asio::io_context& io, char const* fn)
                    [this](auto&& r, auto&& mr) {
                      auto vo = parse<RouteVO>(r.body());
                      assertFalse(vo.default_.has_value() &&
-                                     egress_.find(*vo.default_) == end(egress_),
+                                     eManager_.find(*vo.default_) == end(eManager_),
                                  // TODO use the correct exception
                                  PichiError::MISC);
                      router_.setRoute(move(vo));

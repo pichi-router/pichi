@@ -207,20 +207,20 @@ Endpoint HttpIngress::readRemote(Yield yield)
   }
 }
 
-HttpOutbound::HttpOutbound(Socket&& socket) : socket_{move(socket)} {}
+HttpEgress::HttpEgress(Socket&& socket) : socket_{move(socket)} {}
 
-void HttpOutbound::close() { return socket_.close(); }
-bool HttpOutbound::readable() const { return socket_.is_open(); }
-bool HttpOutbound::writable() const { return socket_.is_open(); }
+void HttpEgress::close() { return socket_.close(); }
+bool HttpEgress::readable() const { return socket_.is_open(); }
+bool HttpEgress::writable() const { return socket_.is_open(); }
 
-size_t HttpOutbound::recv(MutableBuffer<uint8_t> buf, Yield yield)
+size_t HttpEgress::recv(MutableBuffer<uint8_t> buf, Yield yield)
 {
   return socket_.async_read_some(asio::buffer(buf), yield);
 }
 
-void HttpOutbound::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
+void HttpEgress::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
 
-void HttpOutbound::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
+void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
   pichi::net::connect(next, socket_, yield);
 

@@ -80,10 +80,10 @@ string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, strin
         });
       });
   auto rule = it != cend(order_) ? *it : "DEFAUTL rule"sv;
-  auto outbound =
-      string_view{it != cend(order_) ? rules_.find(*it)->second.first.outbound_ : default_};
-  cout << e.host_ << ":" << e.port_ << " -> " << outbound << " (" << rule << ")\n";
-  return outbound;
+  auto egress =
+      string_view{it != cend(order_) ? rules_.find(*it)->second.first.egress_ : default_};
+  cout << e.host_ << ":" << e.port_ << " -> " << egress << " (" << rule << ")\n";
+  return egress;
 }
 
 void Router::update(string const& name, RuleVO rvo)
@@ -159,9 +159,9 @@ Router::ConstIterator Router::end() const noexcept
   return {cend(rules_), cend(rules_), &Router::generatePair};
 }
 
-bool Router::isUsed(string_view outbound) const
+bool Router::isUsed(string_view egress) const
 {
-  return default_ == outbound || rules_.find(outbound) != cend(rules_);
+  return default_ == egress || rules_.find(egress) != cend(rules_);
 }
 
 RouteVO Router::getRoute() const

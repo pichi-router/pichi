@@ -86,9 +86,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
-  /outbound:
+  /egresses:
     get:
-      description: 'Get all available outbound adapters'
+      description: 'Get all available egresses'
       tags:
         - 'Pichi API'
       responses:
@@ -99,21 +99,21 @@ paths:
               schema:
                 type: object
                 additionalProperties:
-                  $ref: '#/components/schemas/Outbound'
+                  $ref: '#/components/schemas/Egress'
         '500':
           description: 'Pichi server data structure error'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
-  /outbound/{name}:
+  /egresses/{name}:
     put:
-      description: 'Create or modify an outbound'
+      description: 'Create or modify an egress'
       tags:
         - 'Pichi API'
       parameters:
         - name: name
-          description: 'outbound name'
+          description: 'egress name'
           in: path
           required: true
           schema:
@@ -123,7 +123,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Outbound'
+              $ref: '#/components/schemas/Egress'
       responses:
         '204':
           description: 'Operation succeeded'
@@ -140,12 +140,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
     delete:
-      description: 'Delete a specified outbound'
+      description: 'Delete a specified egress'
       tags:
         - 'Pichi API'
       parameters:
         - name: name
-          description: 'Outbound name'
+          description: 'Egress name'
           in: path
           required: true
           schema:
@@ -196,7 +196,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Outbound'
+              $ref: '#/components/schemas/Egress'
       responses:
         '204':
           description: 'Operation succeeded'
@@ -251,7 +251,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
     put:
-      description: 'Change rule order or default outbound'
+      description: 'Change rule order or default egress'
       tags:
         - 'Pichi API'
       requestBody:
@@ -342,7 +342,7 @@ components:
           required:
             - type
             - bind
-    Outbound:
+    Egress:
       allOf:
         - $ref: '#/components/schemas/Adapter'
         - type: object
@@ -364,8 +364,8 @@ components:
     Rule:
       type: object
       properties:
-        outbound:
-          description: 'Target outbound name'
+        egress:
+          description: 'Target egress name'
           type: string
           example: 'direct'
         range:
@@ -404,14 +404,14 @@ components:
             type: string
             example: 'US'
       required:
-        - outbound
+        - egress
     Route:
       type: object
       properties:
         default:
-          description: 'Default outbound name'
+          description: 'Default egress name'
           type: string
-          example: 'default_outbound'
+          example: 'default_egress'
         rules:
           description: 'Active rules in order'
           type: array

@@ -14,7 +14,7 @@
 namespace pichi::api {
 
 class Router;
-class Egress;
+class EgressManager;
 
 class IngressManager {
 public:
@@ -38,7 +38,7 @@ private:
   void listen(typename Container::iterator, boost::asio::yield_context);
 
 public:
-  IngressManager(Strand, Router const&, Egress const&);
+  IngressManager(Strand, Router const&, EgressManager const&);
 
   void update(std::string const&, IngressVO);
   void erase(std::string_view);
@@ -49,7 +49,7 @@ public:
 private:
   Strand strand_;
   Router const& router_;
-  Egress const& egress_;
+  EgressManager const& eManager_;
   Container c_;
 };
 

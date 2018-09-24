@@ -42,17 +42,17 @@ static string toString(IngressVO const& ingress)
   return toString(doc);
 }
 
-static string toString(OutboundVO const& ovo)
+static string toString(EgressVO const& evo)
 {
   auto doc = Document{};
   auto& alloc = doc.GetAllocator();
   doc.SetObject();
 
-  doc.AddMember("type", toJson(ovo.type_, alloc), alloc);
-  if (ovo.host_) doc.AddMember("host", toJson(*ovo.host_, alloc), alloc);
-  if (ovo.port_) doc.AddMember("port", *ovo.port_, alloc);
-  if (ovo.method_) doc.AddMember("method", toJson(*ovo.method_, alloc), alloc);
-  if (ovo.password_) doc.AddMember("password", toJson(*ovo.password_, alloc), alloc);
+  doc.AddMember("type", toJson(evo.type_, alloc), alloc);
+  if (evo.host_) doc.AddMember("host", toJson(*evo.host_, alloc), alloc);
+  if (evo.port_) doc.AddMember("port", *evo.port_, alloc);
+  if (evo.method_) doc.AddMember("method", toJson(*evo.method_, alloc), alloc);
+  if (evo.password_) doc.AddMember("password", toJson(*evo.password_, alloc), alloc);
 
   return toString(doc);
 }
@@ -63,7 +63,7 @@ static string toString(RuleVO const& rvo)
   auto& alloc = doc.GetAllocator();
   doc.SetObject();
 
-  doc.AddMember("outbound", toJson(rvo.outbound_, alloc), alloc);
+  doc.AddMember("egress", toJson(rvo.egress_, alloc), alloc);
   if (!rvo.range_.empty())
     doc.AddMember("range", toJson(begin(rvo.range_), end(rvo.range_), alloc), alloc);
   if (!rvo.ingress_.empty())
@@ -98,7 +98,7 @@ static bool operator==(IngressVO const& lhs, IngressVO const& rhs)
          lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_;
 }
 
-static bool operator==(OutboundVO const& lhs, OutboundVO const& rhs)
+static bool operator==(EgressVO const& lhs, EgressVO const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_ &&
          lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_;
@@ -106,7 +106,7 @@ static bool operator==(OutboundVO const& lhs, OutboundVO const& rhs)
 
 static bool operator==(RuleVO const& lhs, RuleVO const& rhs)
 {
-  return lhs.outbound_ == rhs.outbound_ &&
+  return lhs.egress_ == rhs.egress_ &&
          equal(begin(lhs.range_), end(lhs.range_), begin(rhs.range_), end(rhs.range_)) &&
          equal(begin(lhs.ingress_), end(lhs.ingress_), begin(rhs.ingress_), end(rhs.ingress_)) &&
          equal(begin(lhs.type_), end(lhs.type_), begin(rhs.type_), end(rhs.type_)) &&
@@ -261,150 +261,149 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Pack)
   BOOST_CHECK(it->second == IngressVO{AdapterType::DIRECT});
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_Invalid_Str)
+BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>("not a json"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("not a json"), Exception,
                         verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>("not a json", stub), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("not a json", stub), Exception,
                         verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>("[\"not a json object\"]"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("[\"not a json object\"]"), Exception,
                         verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>("[\"not a json object\"]", stub), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("[\"not a json object\"]", stub), Exception,
                         verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_Direct_Reject_Additional_Fields)
+BOOST_AUTO_TEST_CASE(parse_Egress_Direct_Reject_Additional_Fields)
 {
   for (auto type : {AdapterType::DIRECT, AdapterType::REJECT}) {
-    auto const expect = OutboundVO{type};
-    auto fact = parse<OutboundVO>(toString(expect));
+    auto const expect = EgressVO{type};
+    auto fact = parse<EgressVO>(toString(expect));
     BOOST_CHECK(expect == fact);
 
-    fact = parse<OutboundVO>(toString(OutboundVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
+    fact = parse<EgressVO>(toString(EgressVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
     BOOST_CHECK(expect == fact);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_HTTP_SOCKS5_Empty_Fields)
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Empty_Fields)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const origin = OutboundVO{type, ph, 1};
-    auto holder = parse<OutboundVO>(toString(origin));
+    auto const origin = EgressVO{type, ph, 1};
+    auto holder = parse<EgressVO>(toString(origin));
 
     auto noHost = origin;
     noHost.host_.reset();
-    BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(noHost)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noHost)), Exception,
                           verifyException<PichiError::MISC>);
 
     auto emptyHost = origin;
     emptyHost.host_->clear();
-    BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(emptyHost)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(emptyHost)), Exception,
                           verifyException<PichiError::MISC>);
 
     auto zeroPort = origin;
     zeroPort.port_.reset();
-    BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(zeroPort)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(zeroPort)), Exception,
                           verifyException<PichiError::MISC>);
 
     auto noPort = origin;
     noPort.port_ = 0;
-    BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(noPort)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPort)), Exception,
                           verifyException<PichiError::MISC>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_SS_Empty_Fields)
+BOOST_AUTO_TEST_CASE(parse_Egress_SS_Empty_Fields)
 {
-  auto const origin = OutboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto holder = parse<OutboundVO>(toString(origin));
+  auto const origin = EgressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto holder = parse<EgressVO>(toString(origin));
 
   auto noHost = origin;
   noHost.host_.reset();
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(noHost)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noHost)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto emptyHost = origin;
   emptyHost.host_->clear();
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(emptyHost)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(emptyHost)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto zeroPort = origin;
   zeroPort.port_.reset();
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(zeroPort)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(zeroPort)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto noPort = origin;
   noPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(noPort)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPort)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto noMethod = origin;
   noMethod.method_.reset();
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(noMethod)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noMethod)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto noPassword = origin;
   noPassword.password_.reset();
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(noPassword)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPassword)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(toString(emptyPassword)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(emptyPassword)), Exception,
                         verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_Invalid_Port)
+BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
 {
   decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(negative), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(negative), Exception, verifyException<PichiError::MISC>);
 
   decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
-  BOOST_CHECK_EXCEPTION(parse<OutboundVO>(huge), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(huge), Exception, verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_HTTP_SOCKS5)
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const expect = OutboundVO{type, ph, 1};
-    auto fact = parse<OutboundVO>(toString(expect));
+    auto const expect = EgressVO{type, ph, 1};
+    auto fact = parse<EgressVO>(toString(expect));
     BOOST_CHECK(fact == expect);
 
     auto withMethod = expect;
     withMethod.method_ = CryptoMethod::AES_128_CFB;
-    fact = parse<OutboundVO>(toString(withMethod));
+    fact = parse<EgressVO>(toString(withMethod));
     BOOST_CHECK(fact == expect);
 
     auto withPassword = expect;
     withPassword.password_ = ph;
-    fact = parse<OutboundVO>(toString(withPassword));
+    fact = parse<EgressVO>(toString(withPassword));
     BOOST_CHECK(fact == expect);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_SS)
+BOOST_AUTO_TEST_CASE(parse_Egress_SS)
 {
-  auto const expect = OutboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = parse<OutboundVO>(toString(expect));
+  auto const expect = EgressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto fact = parse<EgressVO>(toString(expect));
   BOOST_CHECK(fact == expect);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_Empty_Pack)
+BOOST_AUTO_TEST_CASE(parse_Egress_Empty_Pack)
 {
-  auto m = unordered_map<string, OutboundVO>{};
-  parse<OutboundVO>("{}", [&](auto&& k, auto&& v) { m[k] = v; });
+  auto m = unordered_map<string, EgressVO>{};
+  parse<EgressVO>("{}", [&](auto&& k, auto&& v) { m[k] = v; });
   BOOST_CHECK(m.empty());
 }
 
-BOOST_AUTO_TEST_CASE(parse_Outbound_Pack)
+BOOST_AUTO_TEST_CASE(parse_Egress_Pack)
 {
-  auto m = unordered_map<string, OutboundVO>{};
-  parse<OutboundVO>("{\"placeholder\":{\"type\":\"direct\"}}",
-                    [&](auto&& k, auto&& v) { m[k] = v; });
+  auto m = unordered_map<string, EgressVO>{};
+  parse<EgressVO>("{\"placeholder\":{\"type\":\"direct\"}}", [&](auto&& k, auto&& v) { m[k] = v; });
   BOOST_CHECK(m.size() == 1);
   auto it = m.find(ph);
   BOOST_CHECK(it != end(m));
-  BOOST_CHECK(it->second == OutboundVO{AdapterType::DIRECT});
+  BOOST_CHECK(it->second == EgressVO{AdapterType::DIRECT});
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)
@@ -423,9 +422,9 @@ BOOST_AUTO_TEST_CASE(parse_Rule_Empty_Fileds)
   auto const origin = RuleVO{ph};
   auto holder = parse<RuleVO>(toString(origin));
 
-  auto emptyOutbound = origin;
-  emptyOutbound.outbound_.clear();
-  BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(emptyOutbound)), Exception,
+  auto emptyEgress = origin;
+  emptyEgress.egress_.clear();
+  BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(emptyEgress)), Exception,
                         verifyException<PichiError::MISC>);
 }
 
@@ -444,7 +443,7 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
     auto& alloc = expect.GetAllocator();
     auto array = Value{};
     expect.SetObject();
-    expect.AddMember("outbound", ph, alloc);
+    expect.AddMember("egress", ph, alloc);
     expect.AddMember(key, array.SetArray().PushBack(toJson(value, alloc), alloc), alloc);
     return toString(expect);
   };
@@ -528,7 +527,7 @@ BOOST_AUTO_TEST_CASE(parse_Rule_Empty_Pack)
 BOOST_AUTO_TEST_CASE(parse_Rule_Pack)
 {
   auto m = unordered_map<string, RuleVO>{};
-  parse<RuleVO>("{\"placeholder\":{\"outbound\":\"placeholder\"}}",
+  parse<RuleVO>("{\"placeholder\":{\"egress\":\"placeholder\"}}",
                 [&](auto&& k, auto&& v) { m[k] = v; });
   BOOST_CHECK(m.size() == 1);
   auto it = m.find(ph);

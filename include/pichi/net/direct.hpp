@@ -7,7 +7,7 @@
 namespace pichi {
 namespace net {
 
-class DirectAdapter : public Outbound {
+class DirectAdapter : public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
   using Yield = boost::asio::yield_context;

@@ -36,7 +36,7 @@ inline const_buffer buffer(pichi::ConstBuffer<PodType> origin, size_t size)
 namespace pichi::api {
 
 class IngressVO;
-class OutboundVO;
+class EgressVO;
 
 } // namespace pichi::api
 
@@ -44,14 +44,14 @@ namespace pichi::net {
 
 class Endpoint;
 class Ingress;
-class Outbound;
+class Egress;
 
 template <typename Socket, typename Yield> void connect(Endpoint const&, Socket&, Yield);
 template <typename Socket, typename Yield> void read(Socket&, MutableBuffer<uint8_t>, Yield);
 template <typename Socket, typename Yield> void write(Socket&, ConstBuffer<uint8_t>, Yield);
 
 template <typename Socket> std::unique_ptr<Ingress> makeIngress(api::IngressVO const&, Socket&&);
-template <typename Socket> std::unique_ptr<Outbound> makeOutbound(api::OutboundVO const&, Socket&&);
+template <typename Socket> std::unique_ptr<Egress> makeEgress(api::EgressVO const&, Socket&&);
 
 } // namespace pichi::net
 
