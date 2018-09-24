@@ -180,7 +180,7 @@ AeadDecryptor<method>::AeadDecryptor(ConstBuffer<uint8_t> key)
 
 template <CryptoMethod method> AeadDecryptor<method>::~AeadDecryptor()
 {
-  AeadTrait<method>::release(ctx_);
+  if (initialized_) AeadTrait<method>::release(ctx_);
 }
 
 template <CryptoMethod method> size_t AeadDecryptor<method>::getIvSize() const
@@ -193,6 +193,7 @@ template <CryptoMethod method> void AeadDecryptor<method>::setIv(ConstBuffer<uin
   assertTrue(iv.size() == CryptoLength<method>::IV, PichiError::CRYPTO_ERROR);
   assertFalse(okm_.empty(), PichiError::CRYPTO_ERROR);
   AeadTrait<method>::initialize(ctx_, okm_, iv, CryptoLength<method>::KEY);
+  initialized_ = true;
   okm_.clear();
 }
 

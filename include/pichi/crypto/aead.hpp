@@ -59,6 +59,7 @@ private:
   std::vector<uint8_t> okm_;
   std::vector<uint8_t> nonce_;
   AeadContext<method> ctx_;
+  bool initialized_ = false;
 };
 
 } // namespace crypto

@@ -68,6 +68,7 @@ private:
   std::vector<uint8_t> iv_;
   std::vector<uint8_t> block_;
   size_t offset_ = 0;
+  bool initialized_ = false;
 };
 
 } // namespace crypto

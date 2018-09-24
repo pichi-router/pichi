@@ -408,7 +408,7 @@ template <CryptoMethod method> StreamDecryptor<method>::StreamDecryptor(ConstBuf
 
 template <CryptoMethod method> StreamDecryptor<method>::~StreamDecryptor()
 {
-  StreamTrait<method>::release(ctx_);
+  if (initialized_) StreamTrait<method>::release(ctx_);
 }
 
 template <CryptoMethod method> size_t StreamDecryptor<method>::getIvSize() const
@@ -423,6 +423,7 @@ template <CryptoMethod method> void StreamDecryptor<method>::setIv(ConstBuffer<u
   iv_.assign(iv.begin(), iv.end());
   auto key = move(block_);
   StreamTrait<method>::initialize(ctx_, key, iv_, block_, StreamTrait<method>::block_size);
+  initialized_ = true;
 }
 
 template <CryptoMethod method>
