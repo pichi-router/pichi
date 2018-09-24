@@ -53,18 +53,17 @@ template void read<tcp::socket, asio::yield_context>(tcp::socket&, MutableBuffer
 template void write<tcp::socket, asio::yield_context>(tcp::socket&, ConstBuffer<uint8_t>,
                                                       asio::yield_context);
 
-template <typename Socket> unique_ptr<Inbound> makeInbound(api::InboundVO const& vo, Socket&& s)
+template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const& vo, Socket&& s)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
   case AdapterType::HTTP:
-    return make_unique<HttpInbound>(forward<Socket>(s));
+    return make_unique<HttpIngress>(forward<Socket>(s));
   case AdapterType::SOCKS5:
     return make_unique<Socks5Adapter>(forward<Socket>(s));
   case AdapterType::SS:
-    psk = {container,
-           generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
+    psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
     switch (*vo.method_) {
     case CryptoMethod::RC4_MD5:
       return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5>>(forward<Socket>(s), psk);
@@ -114,22 +113,21 @@ template <typename Socket> unique_ptr<Inbound> makeInbound(api::InboundVO const&
   }
 }
 
-template unique_ptr<Inbound> makeInbound<tcp::socket>(api::InboundVO const&, tcp::socket&&);
+template unique_ptr<Ingress> makeIngress<tcp::socket>(api::IngressVO const&, tcp::socket&&);
 
-template <typename Socket> unique_ptr<Outbound> makeOutbound(api::OutboundVO const& vo, Socket&& s)
+template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo, Socket&& s)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
   case AdapterType::HTTP:
-    return make_unique<HttpOutbound>(forward<Socket>(s));
+    return make_unique<HttpEgress>(forward<Socket>(s));
   case AdapterType::SOCKS5:
     return make_unique<Socks5Adapter>(forward<Socket>(s));
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(forward<Socket>(s));
   case AdapterType::SS:
-    psk = {container,
-           generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
+    psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
     switch (*vo.method_) {
     case CryptoMethod::RC4_MD5:
       return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5>>(forward<Socket>(s), psk);
@@ -179,6 +177,6 @@ template <typename Socket> unique_ptr<Outbound> makeOutbound(api::OutboundVO con
   }
 }
 
-template unique_ptr<Outbound> makeOutbound<tcp::socket>(api::OutboundVO const&, tcp::socket&&);
+template unique_ptr<Egress> makeEgress<tcp::socket>(api::EgressVO const&, tcp::socket&&);
 
 } // namespace pichi::net

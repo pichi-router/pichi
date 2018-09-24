@@ -7,7 +7,7 @@
 namespace pichi {
 namespace net {
 
-class Socks5Adapter : public Inbound, public Outbound {
+class Socks5Adapter : public Ingress, public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
   using Yield = boost::asio::yield_context;

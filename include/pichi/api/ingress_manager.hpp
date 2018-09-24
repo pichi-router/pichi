@@ -1,5 +1,5 @@
-#ifndef PICHI_API_INGRESS_HPP
-#define PICHI_API_INGRESS_HPP
+#ifndef PICHI_API_INGRESS_MANAGER_HPP
+#define PICHI_API_INGRESS_MANAGER_HPP
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -14,18 +14,18 @@
 namespace pichi::api {
 
 class Router;
-class Egress;
+class EgressManager;
 
-class Ingress {
+class IngressManager {
 public:
-  using VO = InboundVO;
+  using VO = IngressVO;
 
 private:
   using Strand = boost::asio::io_context::strand;
   using Acceptor = boost::asio::ip::tcp::acceptor;
-  using Container = std::map<std::string, std::pair<InboundVO, Acceptor>, std::less<>>;
+  using Container = std::map<std::string, std::pair<IngressVO, Acceptor>, std::less<>>;
   using DelegateIterator = typename Container::const_iterator;
-  using ValueType = std::pair<std::string_view, InboundVO const&>;
+  using ValueType = std::pair<std::string_view, IngressVO const&>;
   using ConstIterator = Iterator<DelegateIterator, ValueType>;
 
 private:
@@ -38,9 +38,9 @@ private:
   void listen(typename Container::iterator, boost::asio::yield_context);
 
 public:
-  Ingress(Strand, Router const&, Egress const&);
+  IngressManager(Strand, Router const&, EgressManager const&);
 
-  void update(std::string const&, InboundVO);
+  void update(std::string const&, IngressVO);
   void erase(std::string_view);
 
   ConstIterator begin() const noexcept;
@@ -49,10 +49,10 @@ public:
 private:
   Strand strand_;
   Router const& router_;
-  Egress const& egress_;
+  EgressManager const& eManager_;
   Container c_;
 };
 
 } // namespace pichi::api
 
-#endif // PICHI_API_INGRESS_HPP
+#endif // PICHI_API_INGRESS_MANAGER_HPP

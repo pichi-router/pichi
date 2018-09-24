@@ -11,14 +11,14 @@
 namespace pichi {
 namespace net {
 
-class HttpInbound : public Inbound {
+class HttpIngress : public Ingress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
   using Yield = boost::asio::yield_context;
 
 public:
-  HttpInbound(Socket&& socket) : socket_{std::move(socket)} {}
-  ~HttpInbound() override = default;
+  HttpIngress(Socket&& socket) : socket_{std::move(socket)} {}
+  ~HttpIngress() override = default;
 
 public:
   size_t recv(MutableBuffer<uint8_t> buf, Yield yield) override
@@ -40,17 +40,17 @@ public:
 
 private:
   Socket socket_;
-  std::unique_ptr<Inbound> delegate_ = nullptr;
+  std::unique_ptr<Ingress> delegate_ = nullptr;
 };
 
-class HttpOutbound : public Outbound {
+class HttpEgress : public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
   using Yield = boost::asio::yield_context;
 
 public:
-  HttpOutbound(Socket&&);
-  ~HttpOutbound() override = default;
+  HttpEgress(Socket&&);
+  ~HttpEgress() override = default;
 
 public:
   size_t recv(MutableBuffer<uint8_t>, Yield) override;

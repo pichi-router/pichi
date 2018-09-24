@@ -15,7 +15,7 @@ namespace pichi::api {
 using AdapterType = net::AdapterType;
 using CryptoMethod = crypto::CryptoMethod;
 
-struct InboundVO {
+struct IngressVO {
   AdapterType type_;
   std::string bind_;
   uint16_t port_;
@@ -23,7 +23,7 @@ struct InboundVO {
   std::optional<std::string> password_;
 };
 
-struct OutboundVO {
+struct EgressVO {
   AdapterType type_;
   std::optional<std::string> host_;
   std::optional<uint16_t> port_;
@@ -32,9 +32,9 @@ struct OutboundVO {
 };
 
 struct RuleVO {
-  std::string outbound_;
+  std::string egress_;
   std::vector<std::string> range_;
-  std::vector<std::string> inbound_;
+  std::vector<std::string> ingress_;
   std::vector<AdapterType> type_;
   std::vector<std::string> pattern_;
   std::vector<std::string> domain_;
@@ -46,13 +46,18 @@ struct RouteVO {
   std::vector<std::string> rules_;
 };
 
+struct ErrorVO {
+  std::string_view message_;
+};
+
 extern rapidjson::Value toJson(AdapterType, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(CryptoMethod, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(std::string_view, rapidjson::Document::AllocatorType&);
-extern rapidjson::Value toJson(InboundVO const&, rapidjson::Document::AllocatorType&);
-extern rapidjson::Value toJson(OutboundVO const&, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(IngressVO const&, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(EgressVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(RuleVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(RouteVO const&, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(ErrorVO const&, rapidjson::Document::AllocatorType&);
 
 template <typename InputIt>
 auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& alloc)

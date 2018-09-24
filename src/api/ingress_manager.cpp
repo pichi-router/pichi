@@ -1,7 +1,7 @@
 #include <array>
 #include <iostream>
-#include <pichi/api/egress.hpp>
-#include <pichi/api/ingress.hpp>
+#include <pichi/api/egress_manager.hpp>
+#include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/router.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/net/adapter.hpp>
@@ -36,17 +36,17 @@ static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context ctx
   }
 }
 
-Ingress::Ingress(Strand strand, Router const& router, Egress const& egress)
-  : strand_{strand}, router_{router}, egress_{egress}, c_{}
+IngressManager::IngressManager(Strand strand, Router const& router, EgressManager const& eManager)
+  : strand_{strand}, router_{router}, eManager_{eManager}, c_{}
 {
 }
 
-Ingress::ValueType Ingress::generatePair(DelegateIterator it)
+IngressManager::ValueType IngressManager::generatePair(DelegateIterator it)
 {
   return make_pair(cref(it->first), cref(it->second.first));
 }
 
-void Ingress::logging(exception_ptr eptr)
+void IngressManager::logging(exception_ptr eptr)
 {
   try {
     if (eptr) rethrow_exception(eptr);
@@ -60,10 +60,10 @@ void Ingress::logging(exception_ptr eptr)
   }
 }
 
-void Ingress::stub(exception_ptr) {}
+void IngressManager::stub(exception_ptr) {}
 
 template <typename Function, typename FaultHandler>
-void Ingress::spawn(Function&& func, FaultHandler&& faultHandler)
+void IngressManager::spawn(Function&& func, FaultHandler&& faultHandler)
 {
   asio::spawn(strand_, [f = forward<Function>(func),
                         fh = forward<FaultHandler>(faultHandler)](auto yield) mutable {
@@ -77,49 +77,49 @@ void Ingress::spawn(Function&& func, FaultHandler&& faultHandler)
   });
 }
 
-Ingress::ConstIterator Ingress::begin() const noexcept
+IngressManager::ConstIterator IngressManager::begin() const noexcept
 {
-  return {cbegin(c_), cend(c_), &Ingress::generatePair};
+  return {cbegin(c_), cend(c_), &IngressManager::generatePair};
 }
 
-Ingress::ConstIterator Ingress::end() const noexcept
+IngressManager::ConstIterator IngressManager::end() const noexcept
 {
-  return {cend(c_), cend(c_), &Ingress::generatePair};
+  return {cend(c_), cend(c_), &IngressManager::generatePair};
 }
 
-void Ingress::listen(typename Container::iterator it, asio::yield_context ctx)
+void IngressManager::listen(typename Container::iterator it, asio::yield_context ctx)
 {
   auto& acceptor = it->second.second;
 
   while (true) {
     spawn([s = acceptor.async_accept(ctx), &vo = as_const(it->second.first),
            &iname = as_const(it->first), this](auto ctx) mutable {
-      auto inbound = shared_ptr<net::Inbound>{net::makeInbound(vo, move(s))};
-      auto remote = inbound->readRemote(ctx);
+      auto ingress = shared_ptr<net::Ingress>{net::makeIngress(vo, move(s))};
+      auto remote = ingress->readRemote(ctx);
       auto ec = sys::error_code{};
-      auto it = egress_.find(router_.route(
+      auto it = eManager_.find(router_.route(
           remote,
           tcp::resolver{strand_.context()}.async_resolve(remote.host_, remote.port_, ctx[ec]),
           iname, vo.type_));
-      assertFalse(it == cend(egress_), PichiError::MISC);
-      auto outbound =
-          shared_ptr<net::Outbound>{net::makeOutbound(it->second, tcp::socket{strand_.context()})};
+      assertFalse(it == cend(eManager_), PichiError::MISC);
+      auto egress =
+          shared_ptr<net::Egress>{net::makeEgress(it->second, tcp::socket{strand_.context()})};
       auto next = remote;
       if (it->second.host_.has_value()) next.host_ = *it->second.host_;
       if (it->second.port_.has_value()) next.port_ = to_string(*it->second.port_);
-      outbound->connect(remote, next, ctx);
-      inbound->confirm(ctx);
+      egress->connect(remote, next, ctx);
+      ingress->confirm(ctx);
 
       auto strand = Strand{strand_.context()};
       asio::spawn(strand,
-                  [f = inbound, t = outbound](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
+                  [f = ingress, t = egress](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
       asio::spawn(strand,
-                  [t = inbound, f = outbound](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
+                  [t = ingress, f = egress](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
     });
   }
 }
 
-void Ingress::update(string const& name, InboundVO ivo)
+void IngressManager::update(string const& name, IngressVO ivo)
 {
   assertFalse(ivo.type_ == AdapterType::DIRECT, PichiError::MISC);
   assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::MISC);
@@ -149,7 +149,7 @@ void Ingress::update(string const& name, InboundVO ivo)
         });
 }
 
-void Ingress::erase(string_view name)
+void IngressManager::erase(string_view name)
 {
   auto it = c_.find(name);
   if (it != std::end(c_)) c_.erase(it);
