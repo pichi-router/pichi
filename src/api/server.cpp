@@ -25,8 +25,8 @@ using tcp = ip::tcp;
 
 namespace pichi::api {
 
-static auto const INBOUND_REGEX = regex{"^/inbound/?([?#].*)?$"};
-static auto const INBOUND_NAME_REGEX = regex{"^/inbound/([^?#/]+)/?([?#].*)?$"};
+static auto const INGRESS_REGEX = regex{"^/ingresses/?([?#].*)?$"};
+static auto const INGRESS_NAME_REGEX = regex{"^/ingresses/([^?#/]+)/?([?#].*)?$"};
 static auto const OUTBOUND_REGEX = regex{"^/outbound/?([?#].*)?$"};
 static auto const OUTBOUND_NAME_REGEX = regex{"^/outbound/([^?#]+)/?([?#].*)?$"};
 static auto const RULE_REGEX = regex{"^/rules/?([?#].*)?$"};
@@ -125,19 +125,19 @@ static auto options(initializer_list<http::verb>&& verbs)
 }
 
 Server::Server(asio::io_context& io, char const* fn)
-  : strand_{io}, router_{fn}, egress_{}, ingress_{strand_, router_, egress_},
-    routes_{
-        make_tuple(http::verb::get, INBOUND_REGEX,
-                   [this](auto&&, auto&&) { return getVO(ingress_); }),
-        make_tuple(http::verb::options, INBOUND_REGEX,
+  : strand_{io}, router_{fn}, egress_{}, iManager_{strand_, router_, egress_},
+    apis_{
+        make_tuple(http::verb::get, INGRESS_REGEX,
+                   [this](auto&&, auto&&) { return getVO(iManager_); }),
+        make_tuple(http::verb::options, INGRESS_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::get, http::verb::options});
                    }),
-        make_tuple(http::verb::put, INBOUND_NAME_REGEX,
-                   [this](auto&& r, auto&& mr) { return putVO(r, mr, ingress_); }),
-        make_tuple(http::verb::delete_, INBOUND_NAME_REGEX,
-                   [this](auto&&, auto&& mr) { return delVO(mr, ingress_); }),
-        make_tuple(http::verb::options, INBOUND_NAME_REGEX,
+        make_tuple(http::verb::put, INGRESS_NAME_REGEX,
+                   [this](auto&& r, auto&& mr) { return putVO(r, mr, iManager_); }),
+        make_tuple(http::verb::delete_, INGRESS_NAME_REGEX,
+                   [this](auto&&, auto&& mr) { return delVO(mr, iManager_); }),
+        make_tuple(http::verb::options, INGRESS_NAME_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::put, http::verb::delete_, http::verb::options});
                    }),
@@ -206,7 +206,7 @@ void Server::listen(string_view address, uint16_t port)
                         this](auto yield) mutable {
     auto ec = sys::error_code{};
     while (!ec) {
-      asio::spawn(strand_, [first = cbegin(routes_), last = cend(routes_),
+      asio::spawn(strand_, [first = cbegin(apis_), last = cend(apis_),
                             s = a.async_accept(yield)](auto yield) mutable {
         try {
           dispatch(first, last, s, yield);

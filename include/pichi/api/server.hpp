@@ -9,7 +9,7 @@
 #include <boost/beast/http/verb.hpp>
 #include <functional>
 #include <pichi/api/egress.hpp>
-#include <pichi/api/ingress.hpp>
+#include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/router.hpp>
 #include <regex>
 #include <string_view>
@@ -40,8 +40,8 @@ private:
   boost::asio::io_context::strand strand_;
   Router router_;
   Egress egress_;
-  Ingress ingress_;
-  std::array<RouteItem, 18> routes_;
+  IngressManager iManager_;
+  std::array<RouteItem, 18> apis_;
 };
 
 } // namespace pichi::api

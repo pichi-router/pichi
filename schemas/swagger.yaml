@@ -7,34 +7,34 @@ tags:
   - name: 'Pichi API'
     description: 'Pichi API'
 paths:
-  /inbound:
+  /ingresses:
     get:
-      description: 'Get all available inbound adapters'
+      description: 'Get all available ingresses'
       tags:
         - 'Pichi API'
       responses:
         '200':
-          description: 'All available inbound adapters'
+          description: 'All available ingresses'
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties:
-                  $ref: '#/components/schemas/Inbound'
+                  $ref: '#/components/schemas/Ingress'
         '500':
           description: 'Pichi server data structure error'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
-  /inbound/{name}:
+  /ingresses/{name}:
     put:
-      description: 'Create or modify an inbound'
+      description: 'Create or modify an ingress'
       tags:
         - 'Pichi API'
       parameters:
         - name: name
-          description: 'Inbound name'
+          description: 'Ingress name'
           in: path
           required: true
           schema:
@@ -44,7 +44,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Inbound'
+              $ref: '#/components/schemas/Ingress'
       responses:
         '204':
           description: 'Operation succeeded'
@@ -67,12 +67,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
     delete:
-      description: 'Delete a specified inbound'
+      description: 'Delete a specified ingress'
       tags:
         - 'Pichi API'
       parameters:
         - name: name
-          description: 'Inbound name'
+          description: 'Ingress name'
           in: path
           required: true
           schema:
@@ -93,7 +93,7 @@ paths:
         - 'Pichi API'
       responses:
         '200':
-          description: 'All available inbound adapters'
+          description: 'All available ingresses'
           content:
             application/json:
               schema:
@@ -316,7 +316,7 @@ components:
       type: object
       properties:
         port:
-          description: 'Inbound binding port'
+          description: 'Ingress binding port'
           type: integer
           format: int32
           example: 8388
@@ -328,7 +328,7 @@ components:
           example: 'ss password'
       required:
         - port
-    Inbound:
+    Ingress:
       allOf:
         - $ref: '#/components/schemas/Adapter'
         - type: object
@@ -336,7 +336,7 @@ components:
             type:
               $ref: '#/components/schemas/AdapterType'
             bind:
-              description: 'Inbound binding address'
+              description: 'Ingress binding address'
               type: string
               example: '0.0.0.0'
           required:
@@ -374,14 +374,14 @@ components:
           items:
             type: string
             example: 'fc00::/7'
-        inbound_name:
-          description: 'inbound name array'
+        ingress_name:
+          description: 'ingress name array'
           type: array
           items:
             type: string
             example: 'my_socks5_server'
-        inbound_type:
-          description: 'inbound type array'
+        ingress_type:
+          description: 'ingress type array'
           type: array
           items:
             $ref: '#/components/schemas/AdapterType'

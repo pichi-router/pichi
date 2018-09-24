@@ -63,49 +63,49 @@ BOOST_AUTO_TEST_CASE(toJson_CryptoMethod)
   });
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_Direct)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_Direct)
 {
   auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "direct", alloc);
 
-  auto fact = toJson(InboundVO{AdapterType::DIRECT}, alloc);
+  auto fact = toJson(IngressVO{AdapterType::DIRECT}, alloc);
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_Direct_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_Direct_Additional_Fields)
 {
   auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "direct", alloc);
 
-  auto fact = toJson(InboundVO{AdapterType::DIRECT, ph, 0, CryptoMethod::AES_128_CFB, ph}, alloc);
+  auto fact = toJson(IngressVO{AdapterType::DIRECT, ph, 0, CryptoMethod::AES_128_CFB, ph}, alloc);
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_Reject)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_Reject)
 {
   auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "reject", alloc);
 
-  auto fact = toJson(InboundVO{AdapterType::REJECT}, alloc);
+  auto fact = toJson(IngressVO{AdapterType::REJECT}, alloc);
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_Reject_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_Reject_Additional_Fields)
 {
   auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "reject", alloc);
 
-  auto fact = toJson(InboundVO{AdapterType::REJECT, ph, 0, CryptoMethod::AES_128_CFB, ph}, alloc);
+  auto fact = toJson(IngressVO{AdapterType::REJECT, ph, 0, CryptoMethod::AES_128_CFB, ph}, alloc);
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP)
 {
-  auto ivo = InboundVO{AdapterType::HTTP, ph, 1};
+  auto ingress = IngressVO{AdapterType::HTTP, ph, 1};
 
   auto expect = Value{};
   expect.SetObject();
@@ -113,13 +113,13 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP)
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
-  auto fact = toJson(ivo, alloc);
+  auto fact = toJson(ingress, alloc);
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP_Mandatory_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_Mandatory_Fields)
 {
-  auto normal = InboundVO{AdapterType::HTTP, ph, 1};
+  auto normal = IngressVO{AdapterType::HTTP, ph, 1};
   toJson(normal, alloc);
 
   auto noBind = normal;
@@ -131,10 +131,10 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP_Mandatory_Fields)
   BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_Additional_Fields)
 {
-  auto ivo = InboundVO{AdapterType::HTTP, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = toJson(ivo, alloc);
+  auto ingress = IngressVO{AdapterType::HTTP, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto fact = toJson(ingress, alloc);
 
   auto expect = Value{};
   expect.SetObject();
@@ -148,9 +148,9 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_HTTP_Additional_Fields)
   BOOST_CHECK(expect != fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_SOCKS5)
 {
-  auto ivo = InboundVO{AdapterType::SOCKS5, ph, 1};
+  auto ingress = IngressVO{AdapterType::SOCKS5, ph, 1};
 
   auto expect = Value{};
   expect.SetObject();
@@ -158,13 +158,13 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5)
   expect.AddMember("bind", ph, alloc);
   expect.AddMember("port", 1, alloc);
 
-  auto fact = toJson(ivo, alloc);
+  auto fact = toJson(ingress, alloc);
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5_Mandatory_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_SOCKS5_Mandatory_Fields)
 {
-  auto normal = InboundVO{AdapterType::SOCKS5, ph, 1};
+  auto normal = IngressVO{AdapterType::SOCKS5, ph, 1};
   toJson(normal, alloc);
 
   auto noBind = normal;
@@ -176,10 +176,10 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5_Mandatory_Fields)
   BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_SOCKS5_Additional_Fields)
 {
-  auto ivo = InboundVO{AdapterType::SOCKS5, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = toJson(ivo, alloc);
+  auto ingress = IngressVO{AdapterType::SOCKS5, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto fact = toJson(ingress, alloc);
 
   auto expect = Value{};
   expect.SetObject();
@@ -193,9 +193,9 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SOCKS5_Additional_Fields)
   BOOST_CHECK(expect != fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_SS)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS)
 {
-  auto ivo = InboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto ingress = IngressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
 
   auto expect = Value{};
   expect.SetObject();
@@ -205,13 +205,13 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SS)
   expect.AddMember("method", "aes-128-cfb", alloc);
   expect.AddMember("password", ph, alloc);
 
-  auto fact = toJson(ivo, alloc);
+  auto fact = toJson(ingress, alloc);
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_SS_Mandatory_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Mandatory_Fields)
 {
-  auto const origin = InboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto const origin = IngressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
   toJson(origin, alloc);
 
   auto noBind = origin;
@@ -235,9 +235,9 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_SS_Mandatory_Fields)
   BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_Empty_Pack)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_Empty_Pack)
 {
-  auto empty = unordered_map<string, InboundVO>{};
+  auto empty = unordered_map<string, IngressVO>{};
   auto expect = Value{};
   expect.SetObject();
 
@@ -245,17 +245,17 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_Empty_Pack)
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_Pack_Empty_Name)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack_Empty_Name)
 {
-  auto src = unordered_map<string, InboundVO>{{"", {AdapterType::DIRECT}}};
+  auto src = unordered_map<string, IngressVO>{{"", {AdapterType::DIRECT}}};
   auto doc = Value{};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Inbound_Pack)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack)
 {
-  auto src = unordered_map<string, InboundVO>{};
+  auto src = unordered_map<string, IngressVO>{};
   auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(toJson_Inbound_Pack)
     v.SetObject();
     v.AddMember("type", "direct", alloc);
     expect.AddMember(Value{to_string(i).data(), alloc}, v, alloc);
-    src[to_string(i)] = InboundVO{AdapterType::DIRECT};
+    src[to_string(i)] = IngressVO{AdapterType::DIRECT};
   }
 
   auto fact = toJson(begin(src), end(src), alloc);
@@ -543,13 +543,13 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
   range.range_.emplace_back(ph);
   BOOST_CHECK(generate("range", ph) == toJson(range, alloc));
 
-  auto inbound = origin;
-  inbound.inbound_.emplace_back(ph);
-  BOOST_CHECK(generate("inbound_name", ph) == toJson(inbound, alloc));
+  auto ingress = origin;
+  ingress.ingress_.emplace_back(ph);
+  BOOST_CHECK(generate("ingress_name", ph) == toJson(ingress, alloc));
 
   auto type = origin;
   type.type_.emplace_back(AdapterType::DIRECT);
-  BOOST_CHECK(generate("inbound_type", AdapterType::DIRECT) == toJson(type, alloc));
+  BOOST_CHECK(generate("ingress_type", AdapterType::DIRECT) == toJson(type, alloc));
 
   auto pattern = origin;
   pattern.pattern_.emplace_back(ph);

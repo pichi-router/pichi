@@ -26,17 +26,18 @@ static string toString(Value const& v)
   return buf.GetString();
 }
 
-static string toString(InboundVO const& ivo)
+static string toString(IngressVO const& ingress)
 {
   auto doc = Document{};
   auto& alloc = doc.GetAllocator();
   doc.SetObject();
 
-  doc.AddMember("type", toJson(ivo.type_, alloc), alloc);
-  doc.AddMember("bind", toJson(ivo.bind_, alloc), alloc);
-  doc.AddMember("port", ivo.port_, alloc);
-  if (ivo.method_.has_value()) doc.AddMember("method", toJson(*ivo.method_, alloc), alloc);
-  if (ivo.password_.has_value()) doc.AddMember("password", toJson(*ivo.password_, alloc), alloc);
+  doc.AddMember("type", toJson(ingress.type_, alloc), alloc);
+  doc.AddMember("bind", toJson(ingress.bind_, alloc), alloc);
+  doc.AddMember("port", ingress.port_, alloc);
+  if (ingress.method_.has_value()) doc.AddMember("method", toJson(*ingress.method_, alloc), alloc);
+  if (ingress.password_.has_value())
+    doc.AddMember("password", toJson(*ingress.password_, alloc), alloc);
 
   return toString(doc);
 }
@@ -65,10 +66,10 @@ static string toString(RuleVO const& rvo)
   doc.AddMember("outbound", toJson(rvo.outbound_, alloc), alloc);
   if (!rvo.range_.empty())
     doc.AddMember("range", toJson(begin(rvo.range_), end(rvo.range_), alloc), alloc);
-  if (!rvo.inbound_.empty())
-    doc.AddMember("inbound_name", toJson(begin(rvo.inbound_), end(rvo.inbound_), alloc), alloc);
+  if (!rvo.ingress_.empty())
+    doc.AddMember("ingress_name", toJson(begin(rvo.ingress_), end(rvo.ingress_), alloc), alloc);
   if (!rvo.type_.empty())
-    doc.AddMember("inbound_type", toJson(begin(rvo.type_), end(rvo.type_), alloc), alloc);
+    doc.AddMember("ingress_type", toJson(begin(rvo.type_), end(rvo.type_), alloc), alloc);
   if (!rvo.pattern_.empty())
     doc.AddMember("pattern", toJson(begin(rvo.pattern_), end(rvo.pattern_), alloc), alloc);
   if (!rvo.domain_.empty())
@@ -91,7 +92,7 @@ static string toString(RouteVO const& rvo)
   return toString(doc);
 }
 
-static bool operator==(InboundVO const& lhs, InboundVO const& rhs)
+static bool operator==(IngressVO const& lhs, IngressVO const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.bind_ == rhs.bind_ && lhs.port_ == rhs.port_ &&
          lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_;
@@ -107,7 +108,7 @@ static bool operator==(RuleVO const& lhs, RuleVO const& rhs)
 {
   return lhs.outbound_ == rhs.outbound_ &&
          equal(begin(lhs.range_), end(lhs.range_), begin(rhs.range_), end(rhs.range_)) &&
-         equal(begin(lhs.inbound_), end(lhs.inbound_), begin(rhs.inbound_), end(rhs.inbound_)) &&
+         equal(begin(lhs.ingress_), end(lhs.ingress_), begin(rhs.ingress_), end(rhs.ingress_)) &&
          equal(begin(lhs.type_), end(lhs.type_), begin(rhs.type_), end(rhs.type_)) &&
          equal(begin(lhs.pattern_), end(lhs.pattern_), begin(rhs.pattern_), end(rhs.pattern_)) &&
          equal(begin(lhs.domain_), end(lhs.domain_), begin(rhs.domain_), end(rhs.domain_)) &&
@@ -122,142 +123,142 @@ static bool operator==(RouteVO const& lhs, RouteVO const& rhs)
 
 BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_Invalid_Str)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>("not a json"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>("not a json"), Exception,
                         verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>("not a json", stub), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>("not a json", stub), Exception,
                         verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>("[\"not a json object\"]"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>("[\"not a json object\"]"), Exception,
                         verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>("[\"not a json object\"]", stub), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>("[\"not a json object\"]", stub), Exception,
                         verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_Direct_Reject_Additional_Fields)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Direct_Reject_Additional_Fields)
 {
   for (auto type : {AdapterType::DIRECT, AdapterType::REJECT}) {
-    auto const expect = InboundVO{type};
-    auto fact = parse<InboundVO>(toString(expect));
+    auto const expect = IngressVO{type};
+    auto fact = parse<IngressVO>(toString(expect));
     BOOST_CHECK(expect == fact);
 
-    fact = parse<InboundVO>(toString(InboundVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
-    BOOST_CHECK(expect == fact);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(parse_Inbound_HTTP_Socks5_Additional_Fields)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const expect = InboundVO{type, ph, 1};
-    auto fact = parse<InboundVO>(toString(expect));
-    BOOST_CHECK(expect == fact);
-
-    fact = parse<InboundVO>(toString(InboundVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
+    fact = parse<IngressVO>(toString(IngressVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
     BOOST_CHECK(expect == fact);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_HTTP_Socks5_Empty_Fields)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Additional_Fields)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const origin = InboundVO{type, ph, 1};
-    parse<InboundVO>(toString(origin));
+    auto const expect = IngressVO{type, ph, 1};
+    auto fact = parse<IngressVO>(toString(expect));
+    BOOST_CHECK(expect == fact);
+
+    fact = parse<IngressVO>(toString(IngressVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
+    BOOST_CHECK(expect == fact);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Empty_Fields)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto const origin = IngressVO{type, ph, 1};
+    parse<IngressVO>(toString(origin));
 
     auto emptyBind = origin;
     emptyBind.bind_.clear();
-    BOOST_CHECK_EXCEPTION(parse<InboundVO>(toString(emptyBind)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyBind)), Exception,
                           verifyException<PichiError::MISC>);
 
     auto zeroPort = origin;
     zeroPort.port_ = 0;
-    BOOST_CHECK_EXCEPTION(parse<InboundVO>(toString(zeroPort)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(zeroPort)), Exception,
                           verifyException<PichiError::MISC>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_SS_Empty_Fields)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
 {
-  auto const origin = InboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto holder = parse<InboundVO>(toString(origin));
+  auto const origin = IngressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto holder = parse<IngressVO>(toString(origin));
 
   auto emptyBind = origin;
   emptyBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>(toString(emptyBind)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyBind)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto zeroPort = origin;
   zeroPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>(toString(zeroPort)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(zeroPort)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto noMethod = origin;
   noMethod.method_.reset();
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>(toString(noMethod)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noMethod)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto noPassword = origin;
   noPassword.password_.reset();
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>(toString(noPassword)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noPassword)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>(toString(emptyPassword)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyPassword)), Exception,
                         verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_Invalid_Port)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Port)
 {
   decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>(negative), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(negative), Exception, verifyException<PichiError::MISC>);
 
   decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
-  BOOST_CHECK_EXCEPTION(parse<InboundVO>(huge), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(huge), Exception, verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_Base)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Base)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const expect = InboundVO{type, ph, 1};
-    auto fact = parse<InboundVO>(toString(expect));
+    auto const expect = IngressVO{type, ph, 1};
+    auto fact = parse<IngressVO>(toString(expect));
     BOOST_CHECK(fact == expect);
 
     auto withMethod = expect;
     withMethod.method_ = CryptoMethod::AES_128_CFB;
-    fact = parse<InboundVO>(toString(withMethod));
+    fact = parse<IngressVO>(toString(withMethod));
     BOOST_CHECK(fact == expect);
 
     auto withPassword = expect;
     withPassword.password_ = ph;
-    fact = parse<InboundVO>(toString(withPassword));
+    fact = parse<IngressVO>(toString(withPassword));
     BOOST_CHECK(fact == expect);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_SS)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_SS)
 {
-  auto const expect = InboundVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = parse<InboundVO>(toString(expect));
+  auto const expect = IngressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto fact = parse<IngressVO>(toString(expect));
   BOOST_CHECK(fact == expect);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_Empty_Pack)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Empty_Pack)
 {
-  auto m = unordered_map<string, InboundVO>{};
-  parse<InboundVO>("{}", [&](auto&& k, auto&& v) { m[k] = v; });
+  auto m = unordered_map<string, IngressVO>{};
+  parse<IngressVO>("{}", [&](auto&& k, auto&& v) { m[k] = v; });
   BOOST_CHECK(m.empty());
 }
 
-BOOST_AUTO_TEST_CASE(parse_Inbound_Pack)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Pack)
 {
-  auto m = unordered_map<string, InboundVO>{};
-  parse<InboundVO>("{\"placeholder\":{\"type\":\"direct\"}}",
+  auto m = unordered_map<string, IngressVO>{};
+  parse<IngressVO>("{\"placeholder\":{\"type\":\"direct\"}}",
                    [&](auto&& k, auto&& v) { m[k] = v; });
   BOOST_CHECK(m.size() == 1);
   auto it = m.find(ph);
   BOOST_CHECK(it != end(m));
-  BOOST_CHECK(it->second == InboundVO{AdapterType::DIRECT});
+  BOOST_CHECK(it->second == IngressVO{AdapterType::DIRECT});
 }
 
 BOOST_AUTO_TEST_CASE(parse_Outbound_Invalid_Str)
@@ -453,14 +454,14 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
   auto fact = parse<RuleVO>(generate("range", ph));
   BOOST_CHECK(range == fact);
 
-  auto inbound = origin;
-  inbound.inbound_.emplace_back(ph);
-  fact = parse<RuleVO>(generate("inbound_name", ph));
-  BOOST_CHECK(inbound == fact);
+  auto ingress = origin;
+  ingress.ingress_.emplace_back(ph);
+  fact = parse<RuleVO>(generate("ingress_name", ph));
+  BOOST_CHECK(ingress == fact);
 
   auto type = origin;
   type.type_.emplace_back(AdapterType::DIRECT);
-  fact = parse<RuleVO>(generate("inbound_type", AdapterType::DIRECT));
+  fact = parse<RuleVO>(generate("ingress_type", AdapterType::DIRECT));
   BOOST_CHECK(type == fact);
 
   auto pattern = origin;
@@ -489,9 +490,9 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Empty_Fields_Content)
   BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(range)), Exception,
                         verifyException<PichiError::MISC>);
 
-  auto inbound = origin;
-  inbound.inbound_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(inbound)), Exception,
+  auto ingress = origin;
+  ingress.ingress_.emplace_back("");
+  BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(ingress)), Exception,
                         verifyException<PichiError::MISC>);
 
   auto pattern = origin;

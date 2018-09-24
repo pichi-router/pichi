@@ -67,16 +67,16 @@ Router::ValueType Router::generatePair(DelegateIterator it)
 
 Router::Router(char const* fn) : geo_{fn} {}
 
-string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, string_view inbound,
+string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, string_view ingress,
                           AdapterType type) const
 {
   auto it = find_if(
-      cbegin(order_), cend(order_), [& rules = as_const(rules_), &e, &r, inbound, type](auto name) {
+      cbegin(order_), cend(order_), [& rules = as_const(rules_), &e, &r, ingress, type](auto name) {
         auto it = rules.find(name);
         assertFalse(it == cend(rules), PichiError::MISC);
         auto& matchers = as_const(it->second.second);
-        return any_of(cbegin(matchers), cend(matchers), [&e, &r, inbound, type](auto&& matcher) {
-          return matcher(e, r, inbound, type);
+        return any_of(cbegin(matchers), cend(matchers), [&e, &r, ingress, type](auto&& matcher) {
+          return matcher(e, r, ingress, type);
         });
       });
   auto rule = it != cend(order_) ? *it : "DEFAUTL rule"sv;
@@ -113,11 +113,11 @@ void Router::update(string const& name, RuleVO rvo)
                   });
                 };
             });
-  transform(cbegin(vo.inbound_), cend(vo.inbound_), back_inserter(matchers), [](auto&& i) {
-    return [&i](auto&&, auto&&, auto inbound, auto) { return i == inbound; };
+  transform(cbegin(vo.ingress_), cend(vo.ingress_), back_inserter(matchers), [](auto&& i) {
+    return [&i](auto&&, auto&&, auto ingress, auto) { return i == ingress; };
   });
   transform(cbegin(vo.type_), cend(vo.type_), back_inserter(matchers), [](auto t) {
-    // Inbound type shouldn't be DIRECT or REJECT
+    // ingress type shouldn't be DIRECT or REJECT
     assertFalse(t == AdapterType::DIRECT, PichiError::MISC);
     assertFalse(t == AdapterType::REJECT, PichiError::MISC);
     return [t](auto&&, auto&&, auto, auto type) { return t == type; };

@@ -15,7 +15,7 @@ namespace pichi::api {
 using AdapterType = net::AdapterType;
 using CryptoMethod = crypto::CryptoMethod;
 
-struct InboundVO {
+struct IngressVO {
   AdapterType type_;
   std::string bind_;
   uint16_t port_;
@@ -34,7 +34,7 @@ struct OutboundVO {
 struct RuleVO {
   std::string outbound_;
   std::vector<std::string> range_;
-  std::vector<std::string> inbound_;
+  std::vector<std::string> ingress_;
   std::vector<AdapterType> type_;
   std::vector<std::string> pattern_;
   std::vector<std::string> domain_;
@@ -49,7 +49,7 @@ struct RouteVO {
 extern rapidjson::Value toJson(AdapterType, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(CryptoMethod, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(std::string_view, rapidjson::Document::AllocatorType&);
-extern rapidjson::Value toJson(InboundVO const&, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(IngressVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(OutboundVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(RuleVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(RouteVO const&, rapidjson::Document::AllocatorType&);
