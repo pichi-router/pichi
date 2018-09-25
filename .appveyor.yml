@@ -1,23 +1,69 @@
 version: "pr#{build}"
 
 cache:
-  - C:\Tools\vcpkg\installed
+  - C:\Tools\vcpkg\installed\
 
 image:
   - Visual Studio 2017
 
+environment:
+  matrix:
+    - PLATFORM: x86-windows
+      CMAKE_GEN: "Visual Studio 15 2017"
+    - PLATFORM: x64-windows
+      CMAKE_GEN: "Visual Studio 15 2017 Win64"
+
 install:
   - ps: |
-      vcpkg install boost-asio:x64-windows boost-beast:x64-windows boost-coroutine2:x64-windows `
-        boost-mpl:x64-windows boost-program-options:x64-windows boost-test:x64-windows `
-        libmaxminddb:x64-windows libsodium:x64-windows mbedtls:x64-windows rapidjson:x64-windows
-
-build_script:
+      IF ((vcpkg list boost-asio | measure -line).Lines -ne 2) {
+        vcpkg install boost-asio:x86-windows boost-asio:x64-windows
+      }
   - ps: |
-      cmake -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake `
-        -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Debug `
-        -G "Visual Studio 15 2017 Win64" .
-  - ps: cmake --build .
+      IF ((vcpkg list boost-beast | measure -line).Lines -ne 2) {
+        vcpkg install boost-beast:x86-windows boost-beast:x64-windows
+      }
+  - ps: |
+      IF ((vcpkg list boost-coroutine2 | measure -line).Lines -ne 2) {
+        vcpkg install boost-coroutine2:x86-windows boost-coroutine2:x64-windows
+      }
+  - ps: |
+      IF ((vcpkg list boost-mpl | measure -line).Lines -ne 2) {
+        vcpkg install boost-mpl:x86-windows boost-mpl:x64-windows
+      }
+  - ps: |
+      IF ((vcpkg list boost-program-options | measure -line).Lines -ne 2) {
+        vcpkg install boost-program-options:x86-windows boost-program-options:x64-windows
+      }
+  - ps: |
+      IF ((vcpkg list boost-test | measure -line).Lines -ne 2) {
+        vcpkg install boost-test:x86-windows boost-test:x64-windows
+      }
+  - ps: |
+      IF ((vcpkg list libmaxminddb | measure -line).Lines -ne 2) {
+        vcpkg install libmaxminddb:x86-windows libmaxminddb:x64-windows
+      }
+  - ps: |
+      IF ((vcpkg list libsodium | measure -line).Lines -ne 2) {
+        vcpkg install libsodium:x86-windows libsodium:x64-windows
+      }
+  - ps: |
+      IF ((vcpkg list mbedtls | measure -line).Lines -ne 2) {
+        vcpkg install mbedtls:x86-windows mbedtls:x64-windows
+      }
+  - ps: |
+      IF ((vcpkg list rapidjson | measure -line).Lines -ne 2) {
+        vcpkg install rapidjson:x86-windows rapidjson:x64-windows
+      }
 
-test_script:
-  - ps: ctest --output-on-failure -C Debug
+for:
+-
+  build_script:
+    - ps: |
+        cmake -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake `
+          -DVCPKG_TARGET_TRIPLET="$env:PLATFORM" -G "$env:CMAKE_GEN" .
+    - ps: cmake --build . --config Debug
+    - ps: cmake --build . --config Release
+
+  test_script:
+    - ps: ctest --output-on-failure -C Debug
+    - ps: ctest --output-on-failure -C Release
