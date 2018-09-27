@@ -103,12 +103,16 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
           tcp::resolver{strand_.context()}.async_resolve(remote.host_, remote.port_, ctx[ec]),
           iname, vo.type_));
       assertFalse(it == cend(eManager_), PichiError::MISC);
+      if (it->second.type_ == AdapterType::REJECT) return;
       auto egress =
           shared_ptr<net::Egress>{net::makeEgress(it->second, tcp::socket{strand_.context()})};
-      egress->connect(
-          remote,
-          {net::detectHostType(*it->second.host_), *it->second.host_, to_string(*it->second.port_)},
-          ctx);
+      if (it->second.type_ != AdapterType::DIRECT)
+        egress->connect(remote, remote, ctx);
+      else
+        egress->connect(remote,
+                        {net::detectHostType(*it->second.host_), *it->second.host_,
+                         to_string(*it->second.port_)},
+                        ctx);
       ingress->confirm(ctx);
 
       auto strand = Strand{strand_.context()};
