@@ -23,7 +23,7 @@ template <CryptoMethod method>
 size_t SSStreamAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
 {
   if (!ivReceived_) {
-    auto iv = array<uint8_t, CryptoLength<method>::IV>{};
+    auto iv = array<uint8_t, IV_SIZE<method>>{};
     read(socket_, iv, yield);
     decryptor_.setIv(iv);
     ivReceived_ = true;

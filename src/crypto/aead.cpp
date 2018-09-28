@@ -5,8 +5,7 @@
 
 using namespace std;
 
-namespace pichi {
-namespace crypto {
+namespace pichi::crypto {
 
 // TODO okmLen might be replaced with template argument.
 struct Initializations {
@@ -136,14 +135,14 @@ template <> struct AeadTrait<CryptoMethod::XCHACHA20_IETF_POLY1305> {
 
 template <CryptoMethod method>
 AeadEncryptor<method>::AeadEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<uint8_t> salt)
-  : nonce_(CryptoLength<method>::NONCE, 0), salt_{salt.begin(), salt.end()}
+  : nonce_(NONCE_SIZE<method>, 0), salt_{salt.begin(), salt.end()}
 {
   if (salt_.empty()) {
-    salt_.resize(CryptoLength<method>::IV);
+    salt_.resize(IV_SIZE<method>);
     randombytes_buf(salt_.data(), salt_.size());
   }
-  assertTrue(salt_.size() == CryptoLength<method>::IV, PichiError::CRYPTO_ERROR);
-  AeadTrait<method>::initialize(ctx_, key, salt_, CryptoLength<method>::KEY);
+  assertTrue(salt_.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
+  AeadTrait<method>::initialize(ctx_, key, salt_, KEY_SIZE<method>);
 }
 
 template <CryptoMethod method> AeadEncryptor<method>::~AeadEncryptor()
@@ -160,10 +159,10 @@ template <CryptoMethod method>
 size_t AeadEncryptor<method>::encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher)
 {
   assertTrue(plain.size() <= 0x3fff, PichiError::CRYPTO_ERROR);
-  assertTrue(cipher.size() >= plain.size() + CryptoLength<method>::TAG, PichiError::CRYPTO_ERROR);
-  AeadTrait<method>::encrypt(ctx_, nonce_, plain, cipher, CryptoLength<method>::TAG);
+  assertTrue(cipher.size() >= plain.size() + TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
+  AeadTrait<method>::encrypt(ctx_, nonce_, plain, cipher, TAG_SIZE<method>);
   sodium_increment(nonce_.data(), nonce_.size());
-  return plain.size() + CryptoLength<method>::TAG;
+  return plain.size() + TAG_SIZE<method>;
 }
 
 template class AeadEncryptor<CryptoMethod::AES_128_GCM>;
@@ -174,7 +173,7 @@ template class AeadEncryptor<CryptoMethod::XCHACHA20_IETF_POLY1305>;
 
 template <CryptoMethod method>
 AeadDecryptor<method>::AeadDecryptor(ConstBuffer<uint8_t> key)
-  : okm_{key.begin(), key.end()}, nonce_(CryptoLength<method>::NONCE, 0)
+  : okm_{key.begin(), key.end()}, nonce_(NONCE_SIZE<method>, 0)
 {
 }
 
@@ -185,14 +184,14 @@ template <CryptoMethod method> AeadDecryptor<method>::~AeadDecryptor()
 
 template <CryptoMethod method> size_t AeadDecryptor<method>::getIvSize() const
 {
-  return CryptoLength<method>::IV;
+  return IV_SIZE<method>;
 }
 
 template <CryptoMethod method> void AeadDecryptor<method>::setIv(ConstBuffer<uint8_t> iv)
 {
-  assertTrue(iv.size() == CryptoLength<method>::IV, PichiError::CRYPTO_ERROR);
+  assertTrue(iv.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertFalse(okm_.empty(), PichiError::CRYPTO_ERROR);
-  AeadTrait<method>::initialize(ctx_, okm_, iv, CryptoLength<method>::KEY);
+  AeadTrait<method>::initialize(ctx_, okm_, iv, KEY_SIZE<method>);
   initialized_ = true;
   okm_.clear();
 }
@@ -201,11 +200,11 @@ template <CryptoMethod method>
 size_t AeadDecryptor<method>::decrypt(ConstBuffer<uint8_t> cipher, MutableBuffer<uint8_t> plain)
 {
   assertTrue(okm_.empty(), PichiError::CRYPTO_ERROR);
-  assertTrue(cipher.size() > CryptoLength<method>::TAG, PichiError::CRYPTO_ERROR);
-  assertTrue(plain.size() >= cipher.size() - CryptoLength<method>::TAG, PichiError::CRYPTO_ERROR);
-  AeadTrait<method>::decrypt(ctx_, nonce_, cipher, plain, CryptoLength<method>::TAG);
+  assertTrue(cipher.size() > TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
+  assertTrue(plain.size() >= cipher.size() - TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
+  AeadTrait<method>::decrypt(ctx_, nonce_, cipher, plain, TAG_SIZE<method>);
   sodium_increment(nonce_.data(), nonce_.size());
-  return cipher.size() - CryptoLength<method>::TAG;
+  return cipher.size() - TAG_SIZE<method>;
 }
 
 template class AeadDecryptor<CryptoMethod::AES_128_GCM>;
@@ -214,5 +213,4 @@ template class AeadDecryptor<CryptoMethod::AES_256_GCM>;
 template class AeadDecryptor<CryptoMethod::CHACHA20_IETF_POLY1305>;
 template class AeadDecryptor<CryptoMethod::XCHACHA20_IETF_POLY1305>;
 
-} // namespace crypto
-} // namespace pichi
+} // namespace pichi::crypto
