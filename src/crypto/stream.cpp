@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <pichi/asserts.hpp>
