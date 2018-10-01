@@ -46,13 +46,13 @@ bool Geo::match(string_view address, string_view country) const
   auto status = MMDB_SUCCESS;
   auto result = MMDB_lookup_string(db_.get(), address.data(), &ec, &status);
   assertTrue(ec == 0, PichiError::MISC, MMDB_strerror(ec));
-  assertTrue(status == MMDB_SUCCESS, PichiError::MISC, MMDB_strerror(ec));
+  assertTrue(status == MMDB_SUCCESS, PichiError::MISC, MMDB_strerror(status));
 
   if (!result.found_entry) return false;
 
   auto entry = MMDB_entry_data_s{};
   status = MMDB_get_value(&result.entry, &entry, "country", "iso_code", nullptr);
-  assertTrue(status == MMDB_SUCCESS, PichiError::MISC, MMDB_strerror(ec));
+  assertTrue(status == MMDB_SUCCESS, PichiError::MISC, MMDB_strerror(status));
 
   if (!entry.has_data) return false;
   assertTrue(entry.type == MMDB_DATA_TYPE_UTF8_STRING, PichiError::MISC);
@@ -80,8 +80,7 @@ string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, strin
         });
       });
   auto rule = it != cend(order_) ? *it : "DEFAUTL rule"sv;
-  auto egress =
-      string_view{it != cend(order_) ? rules_.find(*it)->second.first.egress_ : default_};
+  auto egress = string_view{it != cend(order_) ? rules_.find(*it)->second.first.egress_ : default_};
   cout << e.host_ << ":" << e.port_ << " -> " << egress << " (" << rule << ")\n";
   return egress;
 }
