@@ -5,8 +5,7 @@ using namespace std;
 namespace json = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
-namespace pichi {
-namespace api {
+namespace pichi::api {
 
 static decltype(auto) DIRECT_TYPE = "direct";
 static decltype(auto) REJECT_TYPE = "reject";
@@ -72,6 +71,12 @@ static decltype(auto) default_ = "default";
 static decltype(auto) rules_ = "rules";
 
 } // namespace RouteVOKey
+
+namespace ErrorVOKey {
+
+static decltype(auto) message_ = "message";
+
+} // namespace ErrorVOKey
 
 static AdapterType parseAdapterType(json::Value const& v)
 {
@@ -308,6 +313,19 @@ json::Value toJson(RouteVO const& rvo, Allocator& alloc)
   return route;
 }
 
+json::Value toJson(ErrorVO const& evo, Allocator& alloc)
+{
+  using StringRef = json::Value::StringRefType;
+  using SizeType = json::SizeType;
+
+  auto error = json::Value{};
+  error.SetObject();
+  error.AddMember(ErrorVOKey::message_,
+                  StringRef{evo.message_.data(), static_cast<SizeType>(evo.message_.size())},
+                  alloc);
+  return error;
+}
+
 template <> IngressVO parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::MISC);
@@ -405,5 +423,4 @@ template <> RouteVO parse(json::Value const& v)
   return rvo;
 }
 
-} // namespace api
-} // namespace pichi
+} // namespace pichi::api

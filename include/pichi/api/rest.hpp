@@ -46,6 +46,10 @@ struct RouteVO {
   std::vector<std::string> rules_;
 };
 
+struct ErrorVO {
+  std::string_view message_;
+};
+
 extern rapidjson::Value toJson(AdapterType, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(CryptoMethod, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(std::string_view, rapidjson::Document::AllocatorType&);
@@ -53,6 +57,7 @@ extern rapidjson::Value toJson(IngressVO const&, rapidjson::Document::AllocatorT
 extern rapidjson::Value toJson(EgressVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(RuleVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(RouteVO const&, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(ErrorVO const&, rapidjson::Document::AllocatorType&);
 
 template <typename InputIt>
 auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& alloc)
