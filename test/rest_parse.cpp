@@ -126,6 +126,8 @@ static bool operator==(RouteVO const& lhs, RouteVO const& rhs)
          equal(begin(lhs.rules_), end(lhs.rules_), begin(rhs.rules_), end(rhs.rules_));
 }
 
+static auto nonUpdating = [](auto&&, auto&&) { BOOST_ERROR("unexpected invocation"); };
+
 BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Str)
@@ -393,7 +395,6 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
     auto& alloc = expect.GetAllocator();
     auto array = Value{};
     expect.SetObject();
-    expect.AddMember("egress", ph, alloc);
     expect.AddMember(key, array.SetArray().PushBack(toJson(value, alloc), alloc), alloc);
     return toString(expect);
   };
@@ -462,9 +463,7 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Empty_Fields_Content)
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Superfluous_Field)
 {
-  auto const expect = RuleVO{};
-  auto fact = parse<RuleVO>(toString(expect));
-  BOOST_CHECK(fact == expect);
+  BOOST_CHECK(RuleVO{} == parse<RuleVO>("{\"superfluous_field\":\"none\"}"));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Invalid_Str)
