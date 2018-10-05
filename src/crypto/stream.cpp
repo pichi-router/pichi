@@ -19,14 +19,23 @@ static size_t sodiumHelper(SodiumFunc&& func, ConstBuffer<uint8_t> key, size_t o
                            ConstBuffer<uint8_t> input, MutableBuffer<uint8_t> iv,
                            MutableBuffer<uint8_t> output)
 {
+  assertTrue(output.size() >= input.size(), PichiError::MISC);
   auto padding = offset % 64;
-  auto ib = vector<uint8_t>(input.size() + padding, 0);
-  auto ob = vector<uint8_t>(input.size() + padding, 0);
+  auto converted = min((64 - padding) % 64, input.size());
 
-  copy(input.begin(), input.end(), ib.begin() + padding);
-  auto ret = func(ob.data(), ib.data(), ib.size(), iv.data(), offset / 64, key.data());
-  assertTrue(ret == 0, PichiError::CRYPTO_ERROR);
-  copy(ob.begin() + padding, ob.end(), output.begin());
+  if (padding != 0) {
+    auto ib = array<uint8_t, 64>{};
+    auto ob = array<uint8_t, 64>{};
+    copy_n(cbegin(input), converted, begin(ib) + padding);
+    assertTrue(
+        func(ob.data(), ib.data(), padding + converted, iv.data(), offset / 64, key.data()) == 0,
+        PichiError::CRYPTO_ERROR);
+    copy_n(cbegin(ob) + padding, converted, begin(output));
+  }
+  if (converted < input.size())
+    assertTrue(func(output.data() + converted, input.data() + converted, input.size() - converted,
+                    iv.data(), offset / 64 + (converted == 0 ? 0 : 1), key.data()) == 0,
+               PichiError::CRYPTO_ERROR);
 
   return offset + input.size();
 }
