@@ -97,29 +97,21 @@ template <typename Manager> auto getVO(Manager const& manager)
 }
 
 template <typename Manager>
+auto putVO(typename Manager::VO&& vo, cmatch const& mr, Manager& manager)
+{
+  manager.update(mr[1].str(), move(vo));
+  return defaultResponse(http::status::no_content);
+}
+
+template <typename Manager>
 auto putVO(Server::Request const& req, cmatch const& mr, Manager& manager)
 {
-  manager.update(mr[1].str(), parse<typename Manager::VO>(req.body()));
-  return defaultResponse(http::status::no_content);
+  return putVO(parse<typename Manager::VO>(req.body()), mr, manager);
 }
 
 template <typename Manager> auto delVO(cmatch const& mr, Manager& manager)
 {
   manager.erase(mr[1].str());
-  return defaultResponse(http::status::no_content);
-}
-
-static auto getRoute(Router const& router)
-{
-  auto doc = json::Document{};
-  auto resp = defaultResponse(http::status::ok);
-  resp.body() = serialize(toJson(router.getRoute(), doc.GetAllocator()));
-  return resp;
-}
-
-static auto putRoute(Server::Request const& req, Router& router)
-{
-  router.setRoute(parse<RouteVO>(req.body()));
   return defaultResponse(http::status::no_content);
 }
 
@@ -198,7 +190,11 @@ Server::Server(asio::io_context& io, char const* fn)
         make_tuple(http::verb::put, OUTBOUND_NAME_REGEX,
                    [this](auto&& r, auto&& mr) { return putVO(r, mr, egress_); }),
         make_tuple(http::verb::delete_, OUTBOUND_NAME_REGEX,
-                   [this](auto&&, auto&& mr) { return delVO(mr, egress_); }),
+                   [this](auto&&, auto&& mr) {
+                     // TODO use the correct exception
+                     assertFalse(router_.isUsed(mr[1].str()), PichiError::MISC);
+                     return delVO(mr, egress_);
+                   }),
         make_tuple(http::verb::options, OUTBOUND_NAME_REGEX,
                    [](auto&&, auto&&) {
                      return options({http::verb::put, http::verb::delete_, http::verb::options});
@@ -209,7 +205,12 @@ Server::Server(asio::io_context& io, char const* fn)
                      return options({http::verb::get, http::verb::options});
                    }),
         make_tuple(http::verb::put, RULE_NAME_REGEX,
-                   [this](auto&& r, auto&& mr) { return putVO(r, mr, router_); }),
+                   [this](auto&& r, auto&& mr) {
+                     // TODO use the correct exception
+                     auto vo = parse<RuleVO>(r.body());
+                     assertFalse(egress_.find(vo.outbound_) == end(egress_), PichiError::MISC);
+                     return putVO(move(vo), mr, router_);
+                   }),
         make_tuple(http::verb::delete_, RULE_NAME_REGEX,
                    [this](auto&&, auto&& mr) { return delVO(mr, router_); }),
         make_tuple(http::verb::options, RULE_NAME_REGEX,
@@ -217,9 +218,22 @@ Server::Server(asio::io_context& io, char const* fn)
                      return options({http::verb::put, http::verb::delete_, http::verb::options});
                    }),
         make_tuple(http::verb::get, ROUTE_REGEX,
-                   [this](auto&&, auto&&) { return getRoute(router_); }),
+                   [this](auto&&, auto&&) {
+                     auto doc = json::Document{};
+                     auto resp = defaultResponse(http::status::ok);
+                     resp.body() = serialize(toJson(router_.getRoute(), doc.GetAllocator()));
+                     return resp;
+                   }),
         make_tuple(http::verb::put, ROUTE_REGEX,
-                   [this](auto&& r, auto&& mr) { return putRoute(r, router_); }),
+                   [this](auto&& r, auto&& mr) {
+                     auto vo = parse<RouteVO>(r.body());
+                     assertFalse(vo.default_.has_value() &&
+                                     egress_.find(vo.default_.value()) == end(egress_),
+                                 // TODO use the correct exception
+                                 PichiError::MISC);
+                     router_.setRoute(move(vo));
+                     return defaultResponse(http::status::no_content);
+                   }),
         make_tuple(http::verb::options, ROUTE_REGEX, [](auto&&, auto&&) {
           return options({http::verb::get, http::verb::put, http::verb::options});
         })}

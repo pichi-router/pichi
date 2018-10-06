@@ -83,6 +83,15 @@ BOOST_AUTO_TEST_CASE(Router_Erase_Not_Existing)
   BOOST_CHECK(begin(router) == end(router));
 }
 
+BOOST_AUTO_TEST_CASE(Router_Erase_Rule_Used_By_Order)
+{
+  auto router = Router{fn};
+  router.update(ph, {ph});
+  router.setRoute({{}, {ph}});
+
+  BOOST_CHECK_EXCEPTION(router.erase(ph), Exception, verifyException<PichiError::MISC>);
+}
+
 BOOST_AUTO_TEST_CASE(Router_Iteration)
 {
   static auto const MAX = 10;
@@ -103,6 +112,19 @@ BOOST_AUTO_TEST_CASE(Router_Iteration)
     BOOST_CHECK(s == it->first);
     BOOST_CHECK(s == it->second.outbound_);
   }
+}
+
+BOOST_AUTO_TEST_CASE(Router_isUsed)
+{
+  auto router = Router{fn};
+  BOOST_CHECK(!router.isUsed(ph));
+
+  router.update(ph, {ph});
+  BOOST_CHECK(router.isUsed(ph));
+
+  router.erase(ph);
+  router.setRoute({ph});
+  BOOST_CHECK(router.isUsed(ph));
 }
 
 BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Route)
