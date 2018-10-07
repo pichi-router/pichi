@@ -4,8 +4,7 @@
 #include <stddef.h>
 #include <type_traits>
 
-namespace pichi {
-namespace crypto {
+namespace pichi::crypto {
 
 enum class CryptoMethod {
   // Stream Crypto Method begin
@@ -46,54 +45,30 @@ enum class CryptoMethod {
   // AEAD Crypto Method end
 };
 
-constexpr bool isStream(CryptoMethod method)
+namespace helpers {
+
+template <CryptoMethod method> constexpr bool isArc() { return method == CryptoMethod::RC4_MD5; }
+
+template <CryptoMethod method> constexpr bool isBlowfish()
+{
+  return method == CryptoMethod::BF_CFB;
+}
+
+template <CryptoMethod method> constexpr bool isAesCtr()
 {
   switch (method) {
-  case CryptoMethod::RC4_MD5:
-  case CryptoMethod::BF_CFB:
   case CryptoMethod::AES_128_CTR:
   case CryptoMethod::AES_192_CTR:
   case CryptoMethod::AES_256_CTR:
-  case CryptoMethod::AES_128_CFB:
-  case CryptoMethod::AES_192_CFB:
-  case CryptoMethod::AES_256_CFB:
-  case CryptoMethod::CAMELLIA_128_CFB:
-  case CryptoMethod::CAMELLIA_192_CFB:
-  case CryptoMethod::CAMELLIA_256_CFB:
-  case CryptoMethod::CHACHA20:
-  case CryptoMethod::SALSA20:
-  case CryptoMethod::CHACHA20_IETF:
     return true;
   default:
     return false;
   }
 }
 
-constexpr bool isAead(CryptoMethod method)
+template <CryptoMethod method> constexpr bool isAesCfb()
 {
   switch (method) {
-  case CryptoMethod::AES_128_GCM:
-  case CryptoMethod::AES_192_GCM:
-  case CryptoMethod::AES_256_GCM:
-  case CryptoMethod::CHACHA20_IETF_POLY1305:
-  case CryptoMethod::XCHACHA20_IETF_POLY1305:
-    return true;
-  default:
-
-    return false;
-  }
-}
-
-constexpr bool isArc(CryptoMethod method) { return method == CryptoMethod::RC4_MD5; }
-
-constexpr bool isBlowfish(CryptoMethod method) { return method == CryptoMethod::BF_CFB; }
-
-constexpr bool isAes(CryptoMethod method)
-{
-  switch (method) {
-  case CryptoMethod::AES_128_CTR:
-  case CryptoMethod::AES_192_CTR:
-  case CryptoMethod::AES_256_CTR:
   case CryptoMethod::AES_128_CFB:
   case CryptoMethod::AES_192_CFB:
   case CryptoMethod::AES_256_CFB:
@@ -103,7 +78,7 @@ constexpr bool isAes(CryptoMethod method)
   }
 }
 
-constexpr bool isCamellia(CryptoMethod method)
+template <CryptoMethod method> constexpr bool isCamellia()
 {
   switch (method) {
   case CryptoMethod::CAMELLIA_128_CFB:
@@ -115,7 +90,7 @@ constexpr bool isCamellia(CryptoMethod method)
   }
 }
 
-constexpr bool isGcm(CryptoMethod method)
+template <CryptoMethod method> constexpr bool isGcm()
 {
   switch (method) {
   case CryptoMethod::AES_128_GCM:
@@ -127,7 +102,7 @@ constexpr bool isGcm(CryptoMethod method)
   }
 }
 
-constexpr bool isSodiumStream(CryptoMethod method)
+template <CryptoMethod method> constexpr bool isSodiumStream()
 {
   switch (method) {
   case CryptoMethod::CHACHA20:
@@ -139,135 +114,106 @@ constexpr bool isSodiumStream(CryptoMethod method)
   }
 }
 
-constexpr bool isSodiumAead(CryptoMethod method)
+template <CryptoMethod method> constexpr bool isSodiumAead()
 {
   return method == CryptoMethod::CHACHA20_IETF_POLY1305 ||
          method == CryptoMethod::XCHACHA20_IETF_POLY1305;
 }
 
+template <CryptoMethod method> constexpr bool isStream()
+{
+  return isArc<method>() || isBlowfish<method>() || isAesCtr<method>() || isAesCfb<method>() ||
+         isCamellia<method>() || isSodiumStream<method>();
+}
+
+template <CryptoMethod method> constexpr bool isAead()
+{
+  return isGcm<method>() || isSodiumAead<method>();
+}
+
+template <CryptoMethod method> struct DependentFalse : public std::false_type {
+};
+
+template <CryptoMethod method> constexpr size_t calcKeySize()
+{
+  static_assert(isStream<method>() || isAead<method>());
+  switch (method) {
+  case CryptoMethod::RC4_MD5:
+  case CryptoMethod::BF_CFB:
+  case CryptoMethod::AES_128_CTR:
+  case CryptoMethod::AES_128_CFB:
+  case CryptoMethod::CAMELLIA_128_CFB:
+  case CryptoMethod::AES_128_GCM:
+    return 16;
+  case CryptoMethod::AES_192_CTR:
+  case CryptoMethod::AES_192_CFB:
+  case CryptoMethod::CAMELLIA_192_CFB:
+  case CryptoMethod::AES_192_GCM:
+    return 24;
+  case CryptoMethod::AES_256_CTR:
+  case CryptoMethod::AES_256_CFB:
+  case CryptoMethod::AES_256_GCM:
+  case CryptoMethod::CAMELLIA_256_CFB:
+  case CryptoMethod::CHACHA20:
+  case CryptoMethod::SALSA20:
+  case CryptoMethod::CHACHA20_IETF:
+  case CryptoMethod::CHACHA20_IETF_POLY1305:
+  case CryptoMethod::XCHACHA20_IETF_POLY1305:
+    return 32;
+  default:
+    // Never goes here
+    return 0;
+  }
+}
+
+template <CryptoMethod method> constexpr size_t calcIvSize()
+{
+  if constexpr (method == CryptoMethod::CHACHA20_IETF)
+    return 12;
+  else if constexpr (method == CryptoMethod::BF_CFB || isSodiumStream<method>())
+    return 8;
+  else if constexpr (isStream<method>())
+    return 16;
+  else if constexpr (isAead<method>())
+    return calcKeySize<method>();
+  else
+    static_assert(DependentFalse<method>::value);
+}
+
+template <CryptoMethod method> constexpr size_t calcNonceSize()
+{
+  static_assert(helpers::isAead<method>());
+  return method == CryptoMethod::XCHACHA20_IETF_POLY1305 ? 24 : 12;
+}
+
+template <CryptoMethod method> constexpr size_t calcTagSize()
+{
+  static_assert(helpers::isAead<method>());
+  return 16;
+}
+
+} // namespace helpers
+
 template <CryptoMethod method> class StreamEncryptor;
 template <CryptoMethod method> class AeadEncryptor;
 template <CryptoMethod method>
 using Encryptor =
-    std::conditional_t<isStream(method), StreamEncryptor<method>,
-                       std::conditional_t<isAead(method), AeadEncryptor<method>, void>>;
+    std::conditional_t<helpers::isStream<method>(), StreamEncryptor<method>,
+                       std::conditional_t<helpers::isAead<method>(), AeadEncryptor<method>, void>>;
 
 template <CryptoMethod method> class StreamDecryptor;
 template <CryptoMethod method> class AeadDecryptor;
 template <CryptoMethod method>
 using Decryptor =
-    std::conditional_t<isStream(method), StreamDecryptor<method>,
-                       std::conditional_t<isAead(method), AeadDecryptor<method>, void>>;
+    std::conditional_t<helpers::isStream<method>(), StreamDecryptor<method>,
+                       std::conditional_t<helpers::isAead<method>(), AeadDecryptor<method>, void>>;
 
-template <CryptoMethod method> struct CryptoLength {
-};
+template <CryptoMethod method> inline constexpr size_t KEY_SIZE = helpers::calcKeySize<method>();
+template <CryptoMethod method> inline constexpr size_t IV_SIZE = helpers::calcIvSize<method>();
+template <CryptoMethod method>
+inline constexpr size_t NONCE_SIZE = helpers::calcNonceSize<method>();
+template <CryptoMethod method> inline constexpr size_t TAG_SIZE = helpers::calcTagSize<method>();
 
-template <> struct CryptoLength<CryptoMethod::RC4_MD5> {
-  static size_t const KEY = 16;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::BF_CFB> {
-  static size_t const KEY = 16;
-  static size_t const IV = 8;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_128_CTR> {
-  static size_t const KEY = 16;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_192_CTR> {
-  static size_t const KEY = 24;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_256_CTR> {
-  static size_t const KEY = 32;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_128_CFB> {
-  static size_t const KEY = 16;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_192_CFB> {
-  static size_t const KEY = 24;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_256_CFB> {
-  static size_t const KEY = 32;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::CAMELLIA_128_CFB> {
-  static size_t const KEY = 16;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::CAMELLIA_192_CFB> {
-  static size_t const KEY = 24;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::CAMELLIA_256_CFB> {
-  static size_t const KEY = 32;
-  static size_t const IV = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::CHACHA20> {
-  static size_t const KEY = 32;
-  static size_t const IV = 8;
-};
-
-template <> struct CryptoLength<CryptoMethod::SALSA20> {
-  static size_t const KEY = 32;
-  static size_t const IV = 8;
-};
-
-template <> struct CryptoLength<CryptoMethod::CHACHA20_IETF> {
-  static size_t const KEY = 32;
-  static size_t const IV = 12;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_128_GCM> {
-  static size_t const KEY = 16;
-  static size_t const IV = KEY;
-  static size_t const NONCE = 12;
-  static size_t const TAG = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_192_GCM> {
-  static size_t const KEY = 24;
-  static size_t const IV = KEY;
-  static size_t const NONCE = 12;
-  static size_t const TAG = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::AES_256_GCM> {
-  static size_t const KEY = 32;
-  static size_t const IV = KEY;
-  static size_t const NONCE = 12;
-  static size_t const TAG = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::CHACHA20_IETF_POLY1305> {
-  static size_t const KEY = 32;
-  static size_t const IV = KEY;
-  static size_t const NONCE = 12;
-  static size_t const TAG = 16;
-};
-
-template <> struct CryptoLength<CryptoMethod::XCHACHA20_IETF_POLY1305> {
-  static size_t const KEY = 32;
-  static size_t const IV = KEY;
-  static size_t const NONCE = 24;
-  static size_t const TAG = 16;
-};
-
-} // namespace crypto
-} // namespace pichi
+} // namespace pichi::crypto
 
 #endif

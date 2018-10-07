@@ -33,7 +33,7 @@ template <CryptoMethod method>
 size_t SSAeadAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
 {
   if (!ivReceived_) {
-    auto iv = array<uint8_t, CryptoLength<method>::IV>{};
+    auto iv = array<uint8_t, IV_SIZE<method>>{};
     read(socket_, iv, yield);
     decryptor_.setIv(iv);
     ivReceived_ = true;
@@ -54,7 +54,7 @@ void SSAeadAdapter<method>::send(ConstBuffer<uint8_t> plain, Yield yield)
     ivSent_ = true;
   }
 
-  using CipherBuffer = array<uint8_t, 2 + MAX_FRAME_SIZE + 2 * CryptoLength<method>::TAG>;
+  using CipherBuffer = array<uint8_t, 2 + MAX_FRAME_SIZE + 2 * TAG_SIZE<method>>;
 
   auto cipher = CipherBuffer{};
   auto len = encrypt(plain, cipher);
@@ -95,10 +95,10 @@ MutableBuffer<uint8_t> SSAeadAdapter<method>::prepare(size_t n, MutableBuffer<ui
 template <CryptoMethod method>
 void SSAeadAdapter<method>::recvBlock(MutableBuffer<uint8_t> block, Yield yield)
 {
-  using CipherBuffer = array<uint8_t, MAX_FRAME_SIZE + CryptoLength<method>::TAG>;
+  using CipherBuffer = array<uint8_t, MAX_FRAME_SIZE + TAG_SIZE<method>>;
 
   auto cipher = CipherBuffer{};
-  auto clen = block.size() + CryptoLength<method>::TAG;
+  auto clen = block.size() + TAG_SIZE<method>;
   read(socket_, {cipher, clen}, yield);
   decryptor_.decrypt({cipher, clen}, block);
 }
@@ -129,8 +129,7 @@ template <CryptoMethod method>
 size_t SSAeadAdapter<method>::encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher)
 {
   assertTrue(plain.size() <= MAX_FRAME_SIZE, PichiError::BAD_PROTO);
-  assertTrue(cipher.size() >= plain.size() + 2 + 2 * CryptoLength<method>::TAG,
-             PichiError::BAD_PROTO);
+  assertTrue(cipher.size() >= plain.size() + 2 + 2 * TAG_SIZE<method>, PichiError::BAD_PROTO);
 
   auto lb = array<uint8_t, 2>{};
   hton(static_cast<uint16_t>(plain.size()), lb);
