@@ -66,18 +66,24 @@ Router::ValueType Router::generatePair(DelegateIterator it)
 
 Router::Router(char const* fn) : geo_{fn} {}
 
-string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, string_view ingress,
-                          AdapterType type) const
+string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterType type,
+                          function<ResolvedResult()> const& resolve) const
 {
-  auto it = find_if(
-      cbegin(order_), cend(order_), [& rules = as_const(rules_), &e, &r, ingress, type](auto name) {
-        auto it = rules.find(name);
-        assertFalse(it == cend(rules), PichiError::MISC);
-        auto& matchers = as_const(it->second.second);
-        return any_of(cbegin(matchers), cend(matchers), [&e, &r, ingress, type](auto&& matcher) {
-          return matcher(e, r, ingress, type);
-        });
-      });
+  auto r = ResolvedResult{};
+  auto resolved = false;
+  auto it = find_if(cbegin(order_), cend(order_), [&, this](auto name) {
+    auto it = rules_.find(name);
+    assertFalse(it == cend(rules_), PichiError::MISC);
+    auto& rule = as_const(it->second.first);
+    auto& matchers = as_const(it->second.second);
+    auto needResolving = !rule.range_.empty() || !rule.country_.empty();
+    if (!resolved && needResolving) {
+      r = resolve();
+      resolved = true;
+    }
+    return any_of(cbegin(matchers), cend(matchers),
+                  [&](auto&& matcher) { return matcher(e, r, ingress, type); });
+  });
   auto rule = it != cend(order_) ? *it : "DEFAUTL rule"sv;
   auto egress = string_view{it != cend(order_) ? rules_.find(*it)->second.first.egress_ : default_};
   cout << e.host_ << ":" << e.port_ << " -> " << egress << " (" << rule << ")\n";
