@@ -42,19 +42,18 @@ Geo::~Geo() { MMDB_close(db_.get()); }
 
 bool Geo::match(string_view address, string_view country) const
 {
-  auto ec = 0;
+  auto ec = MMDB_SUCCESS;
   auto status = MMDB_SUCCESS;
   auto result = MMDB_lookup_string(db_.get(), address.data(), &ec, &status);
-  assertTrue(ec == 0, PichiError::MISC, MMDB_strerror(ec));
-  assertTrue(status == MMDB_SUCCESS, PichiError::MISC, MMDB_strerror(status));
 
-  if (!result.found_entry) return false;
+  // TODO log it
+  if (ec != MMDB_SUCCESS || status != MMDB_SUCCESS || !result.found_entry) return false;
 
   auto entry = MMDB_entry_data_s{};
   status = MMDB_get_value(&result.entry, &entry, "country", "iso_code", nullptr);
-  assertTrue(status == MMDB_SUCCESS, PichiError::MISC, MMDB_strerror(status));
 
-  if (!entry.has_data) return false;
+  // TODO log it
+  if (status != MMDB_SUCCESS || !entry.has_data) return false;
   assertTrue(entry.type == MMDB_DATA_TYPE_UTF8_STRING, PichiError::MISC);
 
   return string_view{entry.utf8_string, entry.data_size} == country;
