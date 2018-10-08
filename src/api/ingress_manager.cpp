@@ -96,11 +96,12 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
            &iname = as_const(it->first), this](auto ctx) mutable {
       auto ingress = shared_ptr<net::Ingress>{net::makeIngress(vo, move(s))};
       auto remote = ingress->readRemote(ctx);
-      auto ec = sys::error_code{};
-      auto it = eManager_.find(router_.route(
-          remote,
-          tcp::resolver{strand_.context()}.async_resolve(remote.host_, remote.port_, ctx[ec]),
-          iname, vo.type_));
+      auto resolve = [&ctx, &remote, &io = strand_.context()]() {
+        auto ec = sys::error_code{};
+        auto r = tcp::resolver{io}.async_resolve(remote.host_, remote.port_, ctx[ec]);
+        return ec ? tcp::resolver::results_type{} : r;
+      };
+      auto it = eManager_.find(router_.route(remote, iname, vo.type_, resolve));
       assertFalse(it == cend(eManager_), PichiError::MISC);
       auto egress =
           shared_ptr<net::Egress>{net::makeEgress(it->second, tcp::socket{strand_.context()})};
