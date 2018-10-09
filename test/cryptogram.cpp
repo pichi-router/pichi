@@ -494,15 +494,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Decryption_short, Case, Cases)
 BOOST_AUTO_TEST_CASE_TEMPLATE(Encryption_long, Case, StreamCases)
 {
   auto encryptor = Encryptor<Case::METHOD>{Case::KEY, Case::IV};
-  auto plain = reduce(cbegin(plains), cend(plains), vector<uint8_t>{}, [](auto&& s, auto&& i) {
+  auto plain = accumulate(cbegin(plains), cend(plains), vector<uint8_t>{}, [](auto&& s, auto&& i) {
     s.insert(end(s), cbegin(i), cend(i));
     return move(s);
   });
-  auto expect =
-      reduce(cbegin(Case::CIPHERS), cend(Case::CIPHERS), vector<uint8_t>{}, [](auto&& s, auto&& i) {
-        s.insert(end(s), cbegin(i), cend(i));
-        return move(s);
-      });
+  auto expect = accumulate(cbegin(Case::CIPHERS), cend(Case::CIPHERS), vector<uint8_t>{},
+                           [](auto&& s, auto&& i) {
+                             s.insert(end(s), cbegin(i), cend(i));
+                             return move(s);
+                           });
 
   auto fact = vector<uint8_t>(expect.size(), 0);
   BOOST_CHECK_EQUAL(expect.size(), encryptor.encrypt(plain, fact));
@@ -513,12 +513,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Decryption_long, Case, StreamCases)
 {
   auto decryptor = Decryptor<Case::METHOD>{Case::KEY};
   decryptor.setIv(Case::IV);
-  auto cipher =
-      reduce(cbegin(Case::CIPHERS), cend(Case::CIPHERS), vector<uint8_t>{}, [](auto&& s, auto&& i) {
-        s.insert(end(s), cbegin(i), cend(i));
-        return move(s);
-      });
-  auto expect = reduce(cbegin(plains), cend(plains), vector<uint8_t>{}, [](auto&& s, auto&& i) {
+  auto cipher = accumulate(cbegin(Case::CIPHERS), cend(Case::CIPHERS), vector<uint8_t>{},
+                           [](auto&& s, auto&& i) {
+                             s.insert(end(s), cbegin(i), cend(i));
+                             return move(s);
+                           });
+  auto expect = accumulate(cbegin(plains), cend(plains), vector<uint8_t>{}, [](auto&& s, auto&& i) {
     s.insert(end(s), cbegin(i), cend(i));
     return move(s);
   });

@@ -49,14 +49,14 @@ static void encrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
                PichiError::CRYPTO_ERROR);
   }
   else if constexpr (method == CryptoMethod::CHACHA20_IETF_POLY1305) {
-    auto clen = static_cast<uint64_t>(plain.size() + TAG_SIZE<method>);
+    auto clen = static_cast<unsigned long long>(plain.size() + TAG_SIZE<method>);
     assertTrue(crypto_aead_chacha20poly1305_ietf_encrypt(cipher.data(), &clen, plain.data(),
                                                          plain.size(), nullptr, 0, nullptr,
                                                          nonce.data(), ctx.data()) == 0,
                PichiError::CRYPTO_ERROR);
   }
   else if constexpr (method == CryptoMethod::XCHACHA20_IETF_POLY1305) {
-    auto clen = static_cast<uint64_t>(plain.size() + TAG_SIZE<method>);
+    auto clen = static_cast<unsigned long long>(plain.size() + TAG_SIZE<method>);
     assertTrue(crypto_aead_xchacha20poly1305_ietf_encrypt(cipher.data(), &clen, plain.data(),
                                                           plain.size(), nullptr, 0, nullptr,
                                                           nonce.data(), ctx.data()) == 0,
