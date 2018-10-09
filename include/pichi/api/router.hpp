@@ -10,6 +10,7 @@ class MMDB_s;
 namespace boost::asio::ip {
 
 class tcp;
+template <typename Protocol> class basic_endpoint;
 template <typename Protocol> class basic_resolver_results;
 
 } // namespace boost::asio::ip
@@ -37,7 +38,8 @@ public:
   Geo& operator=(Geo const&) = delete;
 
 public:
-  bool match(std::string_view address, std::string_view country) const;
+  bool match(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> const&,
+             std::string_view country) const;
 
 private:
   std::unique_ptr<MMDB_s> db_;
