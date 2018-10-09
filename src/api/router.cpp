@@ -11,6 +11,7 @@
 using namespace std;
 namespace ip = boost::asio::ip;
 namespace sys = boost::system;
+using ip::tcp;
 
 namespace pichi::api {
 
@@ -40,21 +41,19 @@ Geo::Geo(char const* fn) : db_{make_unique<MMDB_s>()}
 
 Geo::~Geo() { MMDB_close(db_.get()); }
 
-bool Geo::match(string_view address, string_view country) const
+bool Geo::match(tcp::endpoint const& endpoint, string_view country) const
 {
-  auto ec = 0;
   auto status = MMDB_SUCCESS;
-  auto result = MMDB_lookup_string(db_.get(), address.data(), &ec, &status);
-  assertTrue(ec == 0, PichiError::MISC, MMDB_strerror(ec));
-  assertTrue(status == MMDB_SUCCESS, PichiError::MISC, MMDB_strerror(ec));
+  auto result = MMDB_lookup_sockaddr(db_.get(), endpoint.data(), &status);
 
-  if (!result.found_entry) return false;
+  // TODO log it
+  if (status != MMDB_SUCCESS || !result.found_entry) return false;
 
   auto entry = MMDB_entry_data_s{};
   status = MMDB_get_value(&result.entry, &entry, "country", "iso_code", nullptr);
-  assertTrue(status == MMDB_SUCCESS, PichiError::MISC, MMDB_strerror(ec));
 
-  if (!entry.has_data) return false;
+  // TODO log it
+  if (status != MMDB_SUCCESS || !entry.has_data) return false;
   assertTrue(entry.type == MMDB_DATA_TYPE_UTF8_STRING, PichiError::MISC);
 
   return string_view{entry.utf8_string, entry.data_size} == country;
@@ -67,21 +66,26 @@ Router::ValueType Router::generatePair(DelegateIterator it)
 
 Router::Router(char const* fn) : geo_{fn} {}
 
-string_view Router::route(net::Endpoint const& e, ResolvedResult const& r, string_view ingress,
-                          AdapterType type) const
+string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterType type,
+                          function<ResolvedResult()> const& resolve) const
 {
-  auto it = find_if(
-      cbegin(order_), cend(order_), [& rules = as_const(rules_), &e, &r, ingress, type](auto name) {
-        auto it = rules.find(name);
-        assertFalse(it == cend(rules), PichiError::MISC);
-        auto& matchers = as_const(it->second.second);
-        return any_of(cbegin(matchers), cend(matchers), [&e, &r, ingress, type](auto&& matcher) {
-          return matcher(e, r, ingress, type);
-        });
-      });
+  auto r = ResolvedResult{};
+  auto resolved = false;
+  auto it = find_if(cbegin(order_), cend(order_), [&, this](auto name) {
+    auto it = rules_.find(name);
+    assertFalse(it == cend(rules_), PichiError::MISC);
+    auto& rule = as_const(it->second.first);
+    auto& matchers = as_const(it->second.second);
+    auto needResolving = !rule.range_.empty() || !rule.country_.empty();
+    if (!resolved && needResolving) {
+      r = resolve();
+      resolved = true;
+    }
+    return any_of(cbegin(matchers), cend(matchers),
+                  [&](auto&& matcher) { return matcher(e, r, ingress, type); });
+  });
   auto rule = it != cend(order_) ? *it : "DEFAUTL rule"sv;
-  auto egress =
-      string_view{it != cend(order_) ? rules_.find(*it)->second.first.egress_ : default_};
+  auto egress = string_view{it != cend(order_) ? rules_.find(*it)->second.first.egress_ : default_};
   cout << e.host_ << ":" << e.port_ << " -> " << egress << " (" << rule << ")\n";
   return egress;
 }
@@ -134,7 +138,7 @@ void Router::update(string const& name, RuleVO rvo)
             [& geo = as_const(geo_)](auto&& country) {
               return [&country, &geo](auto&&, auto&& r, auto, auto) {
                 return any_of(cbegin(r), cend(r), [&geo, &country](auto&& entry) {
-                  return geo.match(entry.endpoint().address().to_string(), country);
+                  return geo.match(entry.endpoint(), country);
                 });
               };
             });
