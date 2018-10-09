@@ -1,8 +1,11 @@
 #define BOOST_TEST_MODULE pichi stream test
 
 #include "utils.hpp"
+#include <boost/fusion/container/generation/make_vector.hpp>
+#include <boost/fusion/include/make_vector.hpp>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
+#include <numeric>
 #include <pichi/crypto/aead.hpp>
 #include <pichi/crypto/method.hpp>
 #include <pichi/crypto/stream.hpp>
@@ -449,9 +452,18 @@ using Cases =
               Ciphers<CryptoMethod::AES_256_GCM>, Ciphers<CryptoMethod::CHACHA20_IETF_POLY1305>,
               Ciphers<CryptoMethod::XCHACHA20_IETF_POLY1305>>;
 
+using StreamCases =
+    mpl::list<Ciphers<CryptoMethod::RC4_MD5>, Ciphers<CryptoMethod::BF_CFB>,
+              Ciphers<CryptoMethod::AES_128_CTR>, Ciphers<CryptoMethod::AES_192_CTR>,
+              Ciphers<CryptoMethod::AES_256_CTR>, Ciphers<CryptoMethod::AES_128_CFB>,
+              Ciphers<CryptoMethod::AES_192_CFB>, Ciphers<CryptoMethod::AES_256_CFB>,
+              Ciphers<CryptoMethod::CAMELLIA_128_CFB>, Ciphers<CryptoMethod::CAMELLIA_192_CFB>,
+              Ciphers<CryptoMethod::CAMELLIA_256_CFB>, Ciphers<CryptoMethod::CHACHA20>,
+              Ciphers<CryptoMethod::SALSA20>, Ciphers<CryptoMethod::CHACHA20_IETF>>;
+
 BOOST_AUTO_TEST_SUITE(Cryptogram)
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(Encryption, Case, Cases)
+BOOST_AUTO_TEST_CASE_TEMPLATE(Encryption_short, Case, Cases)
 {
   auto encryptor = Encryptor<Case::METHOD>{Case::KEY, Case::IV};
   BOOST_CHECK_EQUAL(plains.size(), Case::CIPHERS.size());
@@ -465,7 +477,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Encryption, Case, Cases)
            });
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(Decryption, Case, Cases)
+BOOST_AUTO_TEST_CASE_TEMPLATE(Decryption_short, Case, Cases)
 {
   auto decryptor = Decryptor<Case::METHOD>{Case::KEY};
   decryptor.setIv(Case::IV);
@@ -477,6 +489,43 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Decryption, Case, Cases)
              BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(plain), cend(plain), cbegin(fact), cend(fact));
              ++cipher;
            });
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(Encryption_long, Case, StreamCases)
+{
+  auto encryptor = Encryptor<Case::METHOD>{Case::KEY, Case::IV};
+  auto plain = reduce(cbegin(plains), cend(plains), vector<uint8_t>{}, [](auto&& s, auto&& i) {
+    s.insert(end(s), cbegin(i), cend(i));
+    return move(s);
+  });
+  auto expect =
+      reduce(cbegin(Case::CIPHERS), cend(Case::CIPHERS), vector<uint8_t>{}, [](auto&& s, auto&& i) {
+        s.insert(end(s), cbegin(i), cend(i));
+        return move(s);
+      });
+
+  auto fact = vector<uint8_t>(expect.size(), 0);
+  BOOST_CHECK_EQUAL(expect.size(), encryptor.encrypt(plain, fact));
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(Decryption_long, Case, StreamCases)
+{
+  auto decryptor = Decryptor<Case::METHOD>{Case::KEY};
+  decryptor.setIv(Case::IV);
+  auto cipher =
+      reduce(cbegin(Case::CIPHERS), cend(Case::CIPHERS), vector<uint8_t>{}, [](auto&& s, auto&& i) {
+        s.insert(end(s), cbegin(i), cend(i));
+        return move(s);
+      });
+  auto expect = reduce(cbegin(plains), cend(plains), vector<uint8_t>{}, [](auto&& s, auto&& i) {
+    s.insert(end(s), cbegin(i), cend(i));
+    return move(s);
+  });
+
+  auto fact = vector<uint8_t>(expect.size(), 0);
+  BOOST_CHECK_EQUAL(expect.size(), decryptor.decrypt(cipher, fact));
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
