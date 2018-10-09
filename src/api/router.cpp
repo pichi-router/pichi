@@ -11,6 +11,7 @@
 using namespace std;
 namespace ip = boost::asio::ip;
 namespace sys = boost::system;
+using ip::tcp;
 
 namespace pichi::api {
 
@@ -40,14 +41,13 @@ Geo::Geo(char const* fn) : db_{make_unique<MMDB_s>()}
 
 Geo::~Geo() { MMDB_close(db_.get()); }
 
-bool Geo::match(string_view address, string_view country) const
+bool Geo::match(tcp::endpoint const& endpoint, string_view country) const
 {
-  auto ec = MMDB_SUCCESS;
   auto status = MMDB_SUCCESS;
-  auto result = MMDB_lookup_string(db_.get(), address.data(), &ec, &status);
+  auto result = MMDB_lookup_sockaddr(db_.get(), endpoint.data(), &status);
 
   // TODO log it
-  if (ec != MMDB_SUCCESS || status != MMDB_SUCCESS || !result.found_entry) return false;
+  if (status != MMDB_SUCCESS || !result.found_entry) return false;
 
   auto entry = MMDB_entry_data_s{};
   status = MMDB_get_value(&result.entry, &entry, "country", "iso_code", nullptr);
@@ -138,7 +138,7 @@ void Router::update(string const& name, RuleVO rvo)
             [& geo = as_const(geo_)](auto&& country) {
               return [&country, &geo](auto&&, auto&& r, auto, auto) {
                 return any_of(cbegin(r), cend(r), [&geo, &country](auto&& entry) {
-                  return geo.match(entry.endpoint().address().to_string(), country);
+                  return geo.match(entry.endpoint(), country);
                 });
               };
             });
