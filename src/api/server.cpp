@@ -62,7 +62,7 @@ static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::
 {
   auto ec = sys::error_code{};
   http::async_write(s, resp, yield[ec]);
-  if (ec) cout << "Ignoring HTTP error: " << ec.message() << "\n";
+  if (ec) cout << "Ignoring HTTP error: " << ec.message() << endl;
 }
 
 static void replyError(ErrorVO const& error, tcp::socket& s, asio::yield_context yield)
@@ -213,17 +213,17 @@ void Server::listen(string_view address, uint16_t port)
           dispatch(first, last, s, yield);
         }
         catch (Exception const& e) {
-          cout << "Pichi Error: " << e.what() << "\n";
+          cout << "Pichi Error: " << e.what() << endl;
           replyError({e.what()}, s, yield);
         }
         catch (sys::system_error const& e) {
           if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-          cout << "Socket Error: " << e.what() << "\n";
+          cout << "Socket Error: " << e.what() << endl;
           replyError({e.what()}, s, yield);
         }
       });
     }
-    cout << "Socket Error: " << ec.message() << "\n";
+    cout << "Socket Error: " << ec.message() << endl;
   });
 }
 

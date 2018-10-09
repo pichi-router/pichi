@@ -29,11 +29,11 @@ static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context yie
     guard.disable();
   }
   catch (Exception& e) {
-    cout << "Pichi Error: " << e.what() << "\n";
+    cout << "Pichi Error: " << e.what() << endl;
   }
   catch (sys::system_error& e) {
     if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-    cout << "Socket Error: " << e.what() << "\n";
+    cout << "Socket Error: " << e.what() << endl;
   }
 }
 
@@ -53,11 +53,11 @@ void IngressManager::logging(exception_ptr eptr)
     if (eptr) rethrow_exception(eptr);
   }
   catch (Exception& e) {
-    cout << "Pichi Error: " << e.what() << "\n";
+    cout << "Pichi Error: " << e.what() << endl;
   }
   catch (sys::system_error& e) {
     if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-    cout << "Socket Error: " << e.what() << "\n";
+    cout << "Socket Error: " << e.what() << endl;
   }
 }
 

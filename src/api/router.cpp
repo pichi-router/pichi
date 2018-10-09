@@ -86,7 +86,7 @@ string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterTy
   });
   auto rule = it != cend(order_) ? *it : "DEFAUTL rule"sv;
   auto egress = string_view{it != cend(order_) ? rules_.find(*it)->second.first.egress_ : default_};
-  cout << e.host_ << ":" << e.port_ << " -> " << egress << " (" << rule << ")\n";
+  cout << e.host_ << ":" << e.port_ << " -> " << egress << " (" << rule << ")" << endl;
   return egress;
 }
 
