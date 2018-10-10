@@ -42,7 +42,7 @@ public:
 private:
   StreamContext<method> ctx_;
   std::vector<uint8_t> iv_;
-  std::vector<uint8_t> block_;
+  std::vector<uint8_t> ctrBlock_;
   size_t offset_ = 0;
 };
 
@@ -66,7 +66,7 @@ public:
 private:
   StreamContext<method> ctx_;
   std::vector<uint8_t> iv_;
-  std::vector<uint8_t> block_;
+  std::vector<uint8_t> ctrBlock_;
   size_t offset_ = 0;
   bool initialized_ = false;
 };
