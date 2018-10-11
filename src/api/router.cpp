@@ -187,10 +187,12 @@ RouteVO Router::getRoute() const { return route_; }
 
 void Router::setRoute(RouteVO rvo)
 {
+  // TODO egress names should also be checked
   assertTrue(all_of(cbegin(rvo.rules_), cend(rvo.rules_),
                     [this](auto&& rule) { return rules_.find(rule.first) != cend(rules_); }),
-             PichiError::BAD_JSON);
-  route_ = move(rvo);
+             PichiError::SEMANTIC_ERROR, "Unknown rule"sv);
+  route_.rules_ = move(rvo.rules_);
+  if (rvo.default_.has_value()) route_.default_ = rvo.default_;
 }
 
 } // namespace pichi::api

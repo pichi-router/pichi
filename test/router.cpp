@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Rule)
   verifyDefault(router.getRoute());
 
   BOOST_CHECK_EXCEPTION(router.setRoute({{}, {make_pair(ph, "")}}), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   verifyDefault(router.getRoute());
 }
 
@@ -188,6 +188,28 @@ BOOST_AUTO_TEST_CASE(Router_setRoute_With_Rules)
   for (auto i = MAX - 1; i >= 0; --i) seq.rules_.push_back(make_pair(to_string(i), to_string(i)));
   router.setRoute(rev);
   verifyRules(rev.rules_, router.getRoute().rules_);
+}
+
+BOOST_AUTO_TEST_CASE(Router_setRoute_Without_Default)
+{
+  auto route = RouteVO{ph, {make_pair(ph, ph)}};
+  auto router = Router{fn};
+  router.update(ph, {});
+  router.setRoute(route);
+
+  router.setRoute({});
+  auto emptyRules = router.getRoute();
+  BOOST_CHECK(emptyRules.default_.has_value());
+  BOOST_CHECK_EQUAL(ph, *emptyRules.default_);
+  BOOST_CHECK(emptyRules.rules_.empty());
+
+  router.setRoute({{}, {make_pair(ph, ph)}});
+  auto withRules = router.getRoute();
+  BOOST_CHECK(withRules.default_.has_value());
+  BOOST_CHECK_EQUAL(ph, *withRules.default_);
+  BOOST_CHECK_EQUAL(1, withRules.rules_.size());
+  BOOST_CHECK_EQUAL(ph, withRules.rules_[0].first);
+  BOOST_CHECK_EQUAL(ph, withRules.rules_[0].second);
 }
 
 BOOST_AUTO_TEST_CASE(Router_update_Invalid_Range)
