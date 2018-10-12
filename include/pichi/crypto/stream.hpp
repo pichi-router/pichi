@@ -1,6 +1,8 @@
 #ifndef PICHI_CRYPTO_STREAM_HPP
 #define PICHI_CRYPTO_STREAM_HPP
 
+#include <algorithm>
+#include <array>
 #include <mbedtls/aes.h>
 #include <mbedtls/arc4.h>
 #include <mbedtls/blowfish.h>
@@ -8,7 +10,6 @@
 #include <pichi/buffer.hpp>
 #include <pichi/crypto/method.hpp>
 #include <stdint.h>
-#include <vector>
 
 namespace pichi::crypto {
 
@@ -21,7 +22,10 @@ using StreamContext = std::conditional_t<
             helpers::isAesCtr<method>() || helpers::isAesCfb<method>(), mbedtls_aes_context,
             std::conditional_t<helpers::isCamellia<method>(), mbedtls_camellia_context,
                                std::conditional_t<helpers::isSodiumStream<method>(),
-                                                  std::vector<uint8_t>, void>>>>>;
+                                                  std::array<uint8_t, KEY_SIZE<method>>, void>>>>>;
+
+template <CryptoMethod method>
+inline constexpr size_t BLK_SIZE = helpers::isAesCtr<method>() ? 16 : 0;
 
 template <CryptoMethod method> class StreamEncryptor {
 public:
@@ -41,8 +45,7 @@ public:
 
 private:
   StreamContext<method> ctx_;
-  std::vector<uint8_t> iv_;
-  std::vector<uint8_t> ctrBlock_;
+  std::array<uint8_t, IV_SIZE<method> + BLK_SIZE<method>> iv_;
   size_t offset_ = 0;
 };
 
@@ -65,8 +68,7 @@ public:
 
 private:
   StreamContext<method> ctx_;
-  std::vector<uint8_t> iv_;
-  std::vector<uint8_t> ctrBlock_;
+  std::array<uint8_t, std::max(IV_SIZE<method> + BLK_SIZE<method>, KEY_SIZE<method>)> iv_;
   size_t offset_ = 0;
   bool initialized_ = false;
 };
