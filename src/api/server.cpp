@@ -49,13 +49,28 @@ static auto defaultResponse(http::status status)
   auto ret = Server::Response{};
   ret.result(status);
   ret.version(11);
-  if (status != http::status::no_content) ret.set(http::field::content_type, "application/json");
+  if (status != http::status::no_content && status != http::status::not_found)
+    ret.set(http::field::content_type, "application/json");
   return ret;
 }
 
 static bool matching(boost::string_view s, regex const& re, cmatch& r)
 {
   return regex_match(s.data(), s.data() + s.size(), r, re);
+}
+
+static http::status mapCode(PichiError e)
+{
+  switch (e) {
+  case PichiError::RES_IN_USE:
+    return http::status::forbidden;
+  case PichiError::BAD_JSON:
+    return http::status::bad_request;
+  case PichiError::SEMANTIC_ERROR:
+    return http::status::unprocessable_entity;
+  default:
+    return http::status::internal_server_error;
+  }
 }
 
 static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::yield_context yield)
@@ -65,9 +80,10 @@ static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::
   if (ec) cout << "Ignoring HTTP error: " << ec.message() << endl;
 }
 
-static void replyError(ErrorVO const& error, tcp::socket& s, asio::yield_context yield)
+static void replyError(tcp::socket& s, asio::yield_context yield, ErrorVO const& error,
+                       http::status code = http::status::internal_server_error)
 {
-  auto resp = defaultResponse(http::status::internal_server_error);
+  auto resp = defaultResponse(code);
   resp.body() = serialize(toJson(error, alloc));
   writeWithoutException(s, resp, yield);
 }
@@ -83,8 +99,7 @@ void dispatch(InputIt first, InputIt last, tcp::socket& s, asio::yield_context y
   auto it = find_if(first, last, [v = req.method(), t = req.target(), &mr](auto&& item) {
     return get<0>(item) == v && matching(t, get<1>(item), mr);
   });
-  assertFalse(it == last, PichiError::MISC);
-  auto resp = invoke(get<2>(*it), req, mr);
+  auto resp = it != last ? invoke(get<2>(*it), req, mr) : defaultResponse(http::status::not_found);
   writeWithoutException(s, resp, yield);
 }
 
@@ -153,8 +168,7 @@ Server::Server(asio::io_context& io, char const* fn)
                    [this](auto&& r, auto&& mr) { return putVO(r, mr, eManager_); }),
         make_tuple(http::verb::delete_, EGRESS_NAME_REGEX,
                    [this](auto&&, auto&& mr) {
-                     // TODO use the correct exception
-                     assertFalse(router_.isUsed(mr[1].str()), PichiError::MISC);
+                     assertFalse(router_.isUsed(mr[1].str()), PichiError::RES_IN_USE);
                      return delVO(mr, eManager_);
                    }),
         make_tuple(http::verb::options, EGRESS_NAME_REGEX,
@@ -168,9 +182,9 @@ Server::Server(asio::io_context& io, char const* fn)
                    }),
         make_tuple(http::verb::put, RULE_NAME_REGEX,
                    [this](auto&& r, auto&& mr) {
-                     // TODO use the correct exception
                      auto vo = parse<RuleVO>(r.body());
-                     assertFalse(eManager_.find(vo.egress_) == end(eManager_), PichiError::MISC);
+                     assertFalse(eManager_.find(vo.egress_) == end(eManager_),
+                                 PichiError::RES_IN_USE);
                      return putVO(move(vo), mr, router_);
                    }),
         make_tuple(http::verb::delete_, RULE_NAME_REGEX,
@@ -190,8 +204,7 @@ Server::Server(asio::io_context& io, char const* fn)
                      auto vo = parse<RouteVO>(r.body());
                      assertFalse(vo.default_.has_value() &&
                                      eManager_.find(*vo.default_) == end(eManager_),
-                                 // TODO use the correct exception
-                                 PichiError::MISC);
+                                 PichiError::RES_IN_USE);
                      router_.setRoute(move(vo));
                      return defaultResponse(http::status::no_content);
                    }),
@@ -214,12 +227,14 @@ void Server::listen(string_view address, uint16_t port)
         }
         catch (Exception const& e) {
           cout << "Pichi Error: " << e.what() << endl;
-          replyError({e.what()}, s, yield);
+          replyError(s, yield, {e.what()}, mapCode(e.error()));
         }
         catch (sys::system_error const& e) {
           if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
           cout << "Socket Error: " << e.what() << endl;
-          replyError({e.what()}, s, yield);
+          replyError(s, yield, {e.what()},
+                     e.code() == asio::error::address_in_use ? http::status::locked :
+                                                               http::status::internal_server_error);
         }
       });
     }

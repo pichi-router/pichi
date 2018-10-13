@@ -27,12 +27,14 @@ BOOST_AUTO_TEST_CASE(matchDomain_Empty_Domains)
 
 BOOST_AUTO_TEST_CASE(matchDomain_Domains_Start_With_Dot)
 {
-  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), Exception, verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(matchDomain(".com", "com"), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), Exception,
+                        verifyException<PichiError::SEMANTIC_ERROR>);
+  BOOST_CHECK_EXCEPTION(matchDomain(".com", "com"), Exception,
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK_EXCEPTION(matchDomain("example.com", "."), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK_EXCEPTION(matchDomain("example.com", ".com"), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
 }
 
 BOOST_AUTO_TEST_CASE(matchDomain_Matched)
@@ -89,7 +91,7 @@ BOOST_AUTO_TEST_CASE(Router_Erase_Rule_Used_By_Order)
   router.update(ph, {ph});
   router.setRoute({{}, {ph}});
 
-  BOOST_CHECK_EXCEPTION(router.erase(ph), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(router.erase(ph), Exception, verifyException<PichiError::RES_IN_USE>);
 }
 
 BOOST_AUTO_TEST_CASE(Router_Iteration)
@@ -138,7 +140,8 @@ BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Route)
   auto router = Router{fn};
   verifyDefault(router.getRoute());
 
-  BOOST_CHECK_EXCEPTION(router.setRoute({ph, {ph}}), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(router.setRoute({ph, {ph}}), Exception,
+                        verifyException<PichiError::BAD_JSON>);
   verifyDefault(router.getRoute());
 }
 
@@ -183,8 +186,8 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Range)
 {
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
-  BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {"Invalid Range"}}), sys::system_error,
-                        verifyException<asio::error::invalid_argument>);
+  BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {"Invalid Range"}}), Exception,
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(begin(router) == end(router));
 }
 
@@ -193,9 +196,9 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Type)
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
   BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {}, {}, {AdapterType::DIRECT}}), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {}, {}, {AdapterType::REJECT}}), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(begin(router) == end(router));
 }
 
