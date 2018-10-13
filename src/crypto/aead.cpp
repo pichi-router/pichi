@@ -14,14 +14,13 @@ static void initialize(AeadContext<method>& ctx, ConstBuffer<uint8_t> ikm,
   assertTrue(ikm.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(salt.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
   if constexpr (helpers::isGcm<method>()) {
-    auto skey = vector<uint8_t>(KEY_SIZE<method>, 0);
+    auto skey = array<uint8_t, KEY_SIZE<method>>{};
     hkdf<HashAlgorithm::SHA1>(skey, ikm, salt);
     mbedtls_gcm_init(&ctx);
     assertTrue(mbedtls_gcm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, skey.data(), skey.size() * 8) == 0,
                PichiError::CRYPTO_ERROR);
   }
   else if constexpr (helpers::isSodiumAead<method>()) {
-    ctx.resize(KEY_SIZE<method>);
     hkdf<HashAlgorithm::SHA1>(ctx, ikm, salt);
   }
   else
@@ -99,13 +98,15 @@ static void decrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
 
 template <CryptoMethod method>
 AeadEncryptor<method>::AeadEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<uint8_t> salt)
-  : nonce_(NONCE_SIZE<method>, 0), salt_{salt.begin(), salt.end()}
 {
-  if (salt_.empty()) {
-    salt_.resize(IV_SIZE<method>);
-    randombytes_buf(salt_.data(), salt_.size());
+  if (salt.size() == 0) {
+    randombytes_buf(salt_.data(), IV_SIZE<method>);
   }
-  assertTrue(salt_.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
+  else {
+    assertTrue(salt.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
+    copy_n(cbegin(salt), IV_SIZE<method>, begin(salt_));
+  }
+  fill_n(begin(nonce_), NONCE_SIZE<method>, 0);
   initialize<method>(ctx_, key, salt_);
 }
 
@@ -122,7 +123,7 @@ size_t AeadEncryptor<method>::encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<
   assertTrue(plain.size() <= 0x3fff, PichiError::CRYPTO_ERROR);
   assertTrue(cipher.size() >= plain.size() + TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
   pichi::crypto::encrypt<method>(ctx_, nonce_, plain, cipher);
-  sodium_increment(nonce_.data(), nonce_.size());
+  sodium_increment(nonce_.data(), NONCE_SIZE<method>);
   return plain.size() + TAG_SIZE<method>;
 }
 
@@ -132,10 +133,11 @@ template class AeadEncryptor<CryptoMethod::AES_256_GCM>;
 template class AeadEncryptor<CryptoMethod::CHACHA20_IETF_POLY1305>;
 template class AeadEncryptor<CryptoMethod::XCHACHA20_IETF_POLY1305>;
 
-template <CryptoMethod method>
-AeadDecryptor<method>::AeadDecryptor(ConstBuffer<uint8_t> key)
-  : okm_{key.begin(), key.end()}, nonce_(NONCE_SIZE<method>, 0)
+template <CryptoMethod method> AeadDecryptor<method>::AeadDecryptor(ConstBuffer<uint8_t> key)
 {
+  assertTrue(key.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
+  copy_n(cbegin(key), KEY_SIZE<method>, begin(ikm_));
+  fill_n(begin(nonce_), NONCE_SIZE<method>, 0);
 }
 
 template <CryptoMethod method> AeadDecryptor<method>::~AeadDecryptor()
@@ -151,20 +153,17 @@ template <CryptoMethod method> size_t AeadDecryptor<method>::getIvSize() const
 template <CryptoMethod method> void AeadDecryptor<method>::setIv(ConstBuffer<uint8_t> iv)
 {
   assertTrue(iv.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
-  assertFalse(okm_.empty(), PichiError::CRYPTO_ERROR);
-  initialize<method>(ctx_, okm_, iv);
+  initialize<method>(ctx_, ikm_, iv);
   initialized_ = true;
-  okm_.clear();
 }
 
 template <CryptoMethod method>
 size_t AeadDecryptor<method>::decrypt(ConstBuffer<uint8_t> cipher, MutableBuffer<uint8_t> plain)
 {
-  assertTrue(okm_.empty(), PichiError::CRYPTO_ERROR);
   assertTrue(cipher.size() > TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(plain.size() >= cipher.size() - TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
   pichi::crypto::decrypt<method>(ctx_, nonce_, cipher, plain);
-  sodium_increment(nonce_.data(), nonce_.size());
+  sodium_increment(nonce_.data(), NONCE_SIZE<method>);
   return cipher.size() - TAG_SIZE<method>;
 }
 
