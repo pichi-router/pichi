@@ -7,7 +7,15 @@
 
 namespace pichi {
 
-enum class PichiError { OK = 0, BAD_PROTO, CRYPTO_ERROR, BUFFER_OVERFLOW, MISC };
+enum class PichiError {
+  OK = 0,
+  BAD_PROTO,
+  CRYPTO_ERROR,
+  BUFFER_OVERFLOW,
+  BAD_JSON,
+  RES_IN_USE,
+  MISC
+};
 
 class Exception : public std::exception {
 public:
