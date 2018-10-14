@@ -105,23 +105,27 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
       auto it = eManager_.find(router_.route(remote, iname, vo.type_, resolve));
       assertFalse(it == cend(eManager_), PichiError::MISC);
       if (it->second.type_ == AdapterType::REJECT) return;
-      auto egress =
-          shared_ptr<net::Egress>{net::makeEgress(it->second, tcp::socket{strand_.context()})};
-      egress->connect(remote,
-                      it->second.type_ == AdapterType::DIRECT ?
-                          remote :
-                          net::Endpoint{net::detectHostType(*it->second.host_), *it->second.host_,
-                                        to_string(*it->second.port_)},
-                      yield);
-      ingress->confirm(yield);
-
+      // TODO session object might be a better choice
       auto strand = Strand{strand_.context()};
-      asio::spawn(strand, [f = ingress, t = egress](auto yield) mutable {
-        bridge(f.get(), t.get(), yield);
-      });
-      asio::spawn(strand, [t = ingress, f = egress](auto yield) mutable {
-        bridge(f.get(), t.get(), yield);
-      });
+      asio::spawn(strand,
+                  [strand, remote,
+                   next = it->second.type_ == AdapterType::DIRECT ?
+                              remote :
+                              net::Endpoint{net::detectHostType(*it->second.host_),
+                                            *it->second.host_, to_string(*it->second.port_)},
+                   ingress = move(ingress),
+                   egress = shared_ptr<net::Egress>{
+                       net::makeEgress(it->second, tcp::socket{strand.context()})}](auto yield) {
+                    egress->connect(remote, next, yield);
+                    ingress->confirm(yield);
+
+                    asio::spawn(strand, [f = ingress, t = egress](auto yield) mutable {
+                      bridge(f.get(), t.get(), yield);
+                    });
+                    asio::spawn(strand, [t = ingress, f = egress](auto yield) mutable {
+                      bridge(f.get(), t.get(), yield);
+                    });
+                  });
     });
   }
 }
