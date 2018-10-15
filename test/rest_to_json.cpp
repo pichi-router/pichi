@@ -248,7 +248,6 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Empty_Pack)
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack_Empty_Name)
 {
   auto src = unordered_map<string, IngressVO>{{"", {AdapterType::DIRECT}}};
-  auto doc = Value{};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
@@ -482,7 +481,6 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_Empty_Pack)
 BOOST_AUTO_TEST_CASE(toJson_Egress_Pack_Empty_Name)
 {
   auto src = unordered_map<string, EgressVO>{{"", {AdapterType::DIRECT}}};
-  auto doc = Value{};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
@@ -518,7 +516,6 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_Without_Fields)
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
 {
-  auto const origin = RuleVO{};
   auto generate = [](auto&& key, auto&& value) {
     auto expect = Value{};
     auto array = Value{};
@@ -527,27 +524,27 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
     return expect;
   };
 
-  auto range = origin;
+  auto range = RuleVO{};
   range.range_.emplace_back(ph);
   BOOST_CHECK(generate("range", ph) == toJson(range, alloc));
 
-  auto ingress = origin;
+  auto ingress = RuleVO{};
   ingress.ingress_.emplace_back(ph);
   BOOST_CHECK(generate("ingress_name", ph) == toJson(ingress, alloc));
 
-  auto type = origin;
+  auto type = RuleVO{};
   type.type_.emplace_back(AdapterType::DIRECT);
   BOOST_CHECK(generate("ingress_type", AdapterType::DIRECT) == toJson(type, alloc));
 
-  auto pattern = origin;
+  auto pattern = RuleVO{};
   pattern.pattern_.emplace_back(ph);
   BOOST_CHECK(generate("pattern", ph) == toJson(pattern, alloc));
 
-  auto domain = origin;
+  auto domain = RuleVO{};
   domain.domain_.emplace_back(ph);
   BOOST_CHECK(generate("domain", ph) == toJson(domain, alloc));
 
-  auto country = origin;
+  auto country = RuleVO{};
   country.country_.emplace_back(ph);
   BOOST_CHECK(generate("country", ph) == toJson(country, alloc));
 }
@@ -555,17 +552,12 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
 BOOST_AUTO_TEST_CASE(toJson_Rule_Empty_Pack)
 {
   auto empty = unordered_map<string, RuleVO>{};
-  auto expect = Value{};
-  expect.SetObject();
-
-  auto fact = toJson(begin(empty), end(empty), alloc);
-  BOOST_CHECK(expect == fact);
+  BOOST_CHECK(Value{}.SetObject() == toJson(begin(empty), end(empty), alloc));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack_Empty_Name)
 {
   auto src = unordered_map<string, RuleVO>{{"", {}}};
-  auto doc = Value{};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
