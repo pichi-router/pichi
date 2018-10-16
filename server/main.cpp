@@ -25,7 +25,7 @@ int main(int argc, char const* argv[])
   po::notify(vm);
 
   if (vm.count("help") || !vm.count("port") || !vm.count("geo")) {
-    cout << desc << "\n";
+    cout << desc << endl;
     return 1;
   }
 
