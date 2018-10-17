@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <pichi/asserts.hpp>
 #include <pichi/crypto/aead.hpp>
 #include <pichi/crypto/hash.hpp>
