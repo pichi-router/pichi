@@ -6,10 +6,6 @@ namespace pichi {
 
 Exception::Exception(PichiError error, string_view message) : error_{error}, message_{message} {}
 
-Exception::Exception(Exception const&) = default;
-Exception::Exception(Exception&&) = default;
-Exception::~Exception() = default;
-
 char const* Exception::what() const noexcept
 {
   if (!message_.empty()) return message_.c_str();
