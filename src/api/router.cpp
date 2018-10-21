@@ -147,8 +147,7 @@ void Router::update(string const& name, RuleVO rvo)
 
 void Router::erase(string_view name)
 {
-  // TODO use the correct exception
-  assertTrue(find(cbegin(order_), cend(order_), name) == cend(order_), PichiError::MISC);
+  assertTrue(find(cbegin(order_), cend(order_), name) == cend(order_), PichiError::RES_IN_USE);
   auto it = rules_.find(name);
   if (it != std::end(rules_)) rules_.erase(it);
 }
