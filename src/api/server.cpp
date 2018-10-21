@@ -232,7 +232,9 @@ void Server::listen(string_view address, uint16_t port)
         catch (sys::system_error const& e) {
           if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
           cout << "Socket Error: " << e.what() << endl;
-          replyError(s, yield, {e.what()});
+          replyError(s, yield, {e.what()},
+                     e.code() == asio::error::address_in_use ? http::status::locked :
+                                                               http::status::internal_server_error);
         }
       });
     }

@@ -15,6 +15,7 @@ enum class PichiError {
   BAD_JSON,
   SEMANTIC_ERROR,
   RES_IN_USE,
+  RES_LOCKED,
   MISC
 };
 
