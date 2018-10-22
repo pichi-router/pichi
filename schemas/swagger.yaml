@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  version: '1.0'
+  version: "1.1"
   title: 'Pichi API'
   description: 'RESTful API for pichi server'
 tags:
@@ -54,7 +54,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
-        '406':
+        '422':
+          description: 'JSON semantic error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '423':
           description: 'Address in use'
           content:
             application/json:
@@ -133,6 +139,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
+        '422':
+          description: 'JSON semantic error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '500':
           description: 'Pichi server error'
           content:
@@ -153,6 +165,12 @@ paths:
       responses:
         '204':
           description: 'operation succeeded'
+        '403':
+          description: 'Egress is used by route'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '500':
           description: 'Pichi server error'
           content:
@@ -206,6 +224,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
+        '422':
+          description: 'JSON semantic error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '500':
           description: 'Pichi server error'
           content:
@@ -226,6 +250,12 @@ paths:
       responses:
         '204':
           description: 'operation succeeded'
+        '403':
+          description: 'Rule is used by route'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '500':
           description: 'Pichi server error'
           content:
@@ -269,6 +299,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
+        '422':
+          description: 'JSON semantic error'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '500':
           description: 'Pichi server error'
           content:
@@ -282,7 +318,7 @@ components:
       properties:
         message:
           type: string
-          example: 'Address in use'
+          example: 'Error message in detail'
     AdapterType:
       type: string
       enum:
@@ -364,10 +400,6 @@ components:
     Rule:
       type: object
       properties:
-        egress:
-          description: 'Target egress name'
-          type: string
-          example: 'direct'
         range:
           description: 'IP range array'
           type: array
@@ -403,8 +435,6 @@ components:
           items:
             type: string
             example: 'US'
-      required:
-        - egress
     Route:
       type: object
       properties:
@@ -416,5 +446,9 @@ components:
           description: 'Active rules in order'
           type: array
           items:
-            type: string
-            example: 'rule_0'
+            type: array
+            minLength: 2
+            maxLength: 2
+            items:
+              type: string
+            example: ['rule_0', 'egress_0']
