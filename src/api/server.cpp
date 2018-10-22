@@ -66,6 +66,8 @@ static http::status mapCode(PichiError e)
     return http::status::forbidden;
   case PichiError::BAD_JSON:
     return http::status::bad_request;
+  case PichiError::SEMANTIC_ERROR:
+    return http::status::unprocessable_entity;
   default:
     return http::status::internal_server_error;
   }

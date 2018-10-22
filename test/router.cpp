@@ -27,13 +27,14 @@ BOOST_AUTO_TEST_CASE(matchDomain_Empty_Domains)
 
 BOOST_AUTO_TEST_CASE(matchDomain_Domains_Start_With_Dot)
 {
-  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), Exception,
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK_EXCEPTION(matchDomain(".com", "com"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK_EXCEPTION(matchDomain("example.com", "."), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK_EXCEPTION(matchDomain("example.com", ".com"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
 }
 
 BOOST_AUTO_TEST_CASE(matchDomain_Matched)
@@ -186,7 +187,7 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Range)
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
   BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {"Invalid Range"}}), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(begin(router) == end(router));
 }
 
@@ -195,9 +196,9 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Type)
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
   BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {}, {}, {AdapterType::DIRECT}}), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {}, {}, {AdapterType::REJECT}}), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+                        verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(begin(router) == end(router));
 }
 

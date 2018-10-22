@@ -20,6 +20,8 @@ char const* Exception::what() const noexcept
     return "Buffer maximum exceeded";
   case PichiError::BAD_JSON:
     return "Invalid JSON";
+  case PichiError::SEMANTIC_ERROR:
+    return "JSON semantic error";
   case PichiError::RES_IN_USE:
     return "Resource in use";
   case PichiError::MISC:
