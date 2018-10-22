@@ -13,6 +13,7 @@ enum class PichiError {
   CRYPTO_ERROR,
   BUFFER_OVERFLOW,
   BAD_JSON,
+  SEMANTIC_ERROR,
   RES_IN_USE,
   MISC
 };
