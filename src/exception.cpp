@@ -24,6 +24,8 @@ char const* Exception::what() const noexcept
     return "JSON semantic error";
   case PichiError::RES_IN_USE:
     return "Resource in use";
+  case PichiError::RES_LOCKED:
+    return "Resource locked";
   case PichiError::MISC:
     return "Misc error";
   default:
