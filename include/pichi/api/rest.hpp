@@ -83,7 +83,7 @@ template <typename VO> VO parse(std::string_view src)
 {
   auto doc = rapidjson::Document{};
   doc.Parse(src.data(), src.size());
-  assertFalse(doc.HasParseError(), PichiError::MISC);
+  assertFalse(doc.HasParseError(), PichiError::BAD_JSON);
   return parse<VO>(doc);
 }
 
@@ -92,8 +92,8 @@ template <typename VO, typename UpdateFunc> void parse(std::string_view src, Upd
   auto doc = rapidjson::Document{};
   doc.Parse(src.data(), src.size());
 
-  assertFalse(doc.HasParseError(), PichiError::MISC);
-  assertTrue(doc.IsObject(), PichiError::MISC);
+  assertFalse(doc.HasParseError(), PichiError::BAD_JSON);
+  assertTrue(doc.IsObject(), PichiError::BAD_JSON);
 
   std::for_each(doc.MemberBegin(), doc.MemberEnd(),
                 [&update](auto&& i) { update(i.name.GetString(), parse<VO>(i.value)); });
