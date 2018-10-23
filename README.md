@@ -20,7 +20,7 @@ Pichi is an application layer proxy, which can be fully controlled via RESTful A
 
 ### API Specification
 
-[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.0)
+[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.1)
 
 ### Examples
 
@@ -47,10 +47,10 @@ HTTP/1.1 204 No Content
 $ curl -i -X PUT -d '{"type":"http","host":"http-proxy","port":8080}' http://pichi-router:port/egresses/http
 HTTP/1.1 204 No Content
 
-$ curl -i -X PUT -d '{"egress":"direct","range":["::1/128","127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"],"domain":["local"],"pattern":["^localhost$"]}' http://pichi-router:port/rules/intranet
+$ curl -i -X PUT -d '{"range":["::1/128","127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"],"domain":["local"],"pattern":["^localhost$"]}' http://pichi-router:port/rules/intranet
 HTTP/1.1 204 No Content
 
-$ curl -i -X PUT -d '{"default":"http","rules":["intranet"]}' http://pichi-router:port/route
+$ curl -i -X PUT -d '{"default":"http","rules":[["intranet","direct"]]}' http://pichi-router:port/route
 HTTP/1.1 204 No Content
 
 ```
