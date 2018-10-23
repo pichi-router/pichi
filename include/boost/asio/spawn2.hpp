@@ -5,6 +5,7 @@
 
 #include <boost/asio/detail/throw_error.hpp>
 #include <boost/asio/dispatch.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/coroutine2/all.hpp>
 #include <cassert>
