@@ -15,22 +15,13 @@ namespace pichi::api {
 
 static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context yield)
 {
-  try {
-    auto guard = makeScopeGuard([from, to]() {
-      from->close();
-      to->close();
-    });
-    auto buf = array<uint8_t, net::MAX_FRAME_SIZE>{};
-    while (from->readable() && to->writable()) to->send({buf, from->recv(buf, yield)}, yield);
-    guard.disable();
-  }
-  catch (Exception& e) {
-    cout << "Pichi Error: " << e.what() << endl;
-  }
-  catch (sys::system_error& e) {
-    if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-    cout << "Socket Error: " << e.what() << endl;
-  }
+  auto guard = makeScopeGuard([=]() {
+    from->close();
+    to->close();
+  });
+  auto buf = array<uint8_t, net::MAX_FRAME_SIZE>{};
+  while (from->readable() && to->writable()) to->send({buf, from->recv(buf, yield)}, yield);
+  guard.disable();
 }
 
 Session::Session(asio::io_context& io, Session::IngressPtr&& ingress, Session::EgressPtr&& egress)
@@ -40,15 +31,30 @@ Session::Session(asio::io_context& io, Session::IngressPtr&& ingress, Session::E
 
 void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
 {
-  asio::spawn(strand_, [=, self = shared_from_this()](auto yield) {
-    egress_->connect(remote, next, yield);
-    ingress_->confirm(yield);
-    asio::spawn(strand_, [this, self = shared_from_this()](auto yield) {
-      bridge(ingress_.get(), egress_.get(), yield);
-    });
-    asio::spawn(strand_, [this, self = shared_from_this()](auto yield) {
-      bridge(egress_.get(), ingress_.get(), yield);
-    });
+  spawn([=, self = shared_from_this()](auto yield) {
+    auto i = ingress_.get();
+    auto e = egress_.get();
+    e->connect(remote, next, yield);
+    i->confirm(yield);
+    spawn([f = i, t = e, self = self](auto yield) { bridge(f, t, yield); });
+    spawn([f = e, t = i, self = self](auto yield) { bridge(f, t, yield); });
+  });
+}
+
+template <typename Function> void Session::spawn(Function&& func)
+{
+  static_assert(is_invocable_v<Function, asio::yield_context>);
+  asio::spawn(strand_, [f = forward<Function>(func)](auto yield) mutable {
+    try {
+      f(yield);
+    }
+    catch (Exception& e) {
+      cout << "Pichi Error: " << e.what() << endl;
+    }
+    catch (sys::system_error& e) {
+      if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
+      cout << "Socket Error: " << e.what() << endl;
+    }
   });
 }
 
