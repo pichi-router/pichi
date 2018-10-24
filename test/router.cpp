@@ -76,6 +76,19 @@ BOOST_AUTO_TEST_CASE(Router_Empty_Rules)
   BOOST_CHECK(begin(router) == end(router));
 }
 
+BOOST_AUTO_TEST_CASE(Router_isUsed)
+{
+  auto router = Router{fn};
+  BOOST_CHECK(!router.isUsed(ph));
+
+  router.update(ph, {});
+  router.setRoute({{}, {make_pair(ph, ph)}});
+  BOOST_CHECK(router.isUsed(ph));
+
+  router.setRoute({ph});
+  BOOST_CHECK(router.isUsed(ph));
+}
+
 BOOST_AUTO_TEST_CASE(Router_Erase_Not_Existing)
 {
   auto router = Router{fn};
@@ -88,8 +101,8 @@ BOOST_AUTO_TEST_CASE(Router_Erase_Not_Existing)
 BOOST_AUTO_TEST_CASE(Router_Erase_Rule_Used_By_Order)
 {
   auto router = Router{fn};
-  router.update(ph, {ph});
-  router.setRoute({{}, {ph}});
+  router.update(ph, {});
+  router.setRoute({{}, {make_pair(ph, ph)}});
 
   BOOST_CHECK_EXCEPTION(router.erase(ph), Exception, verifyException<PichiError::RES_IN_USE>);
 }
@@ -100,7 +113,7 @@ BOOST_AUTO_TEST_CASE(Router_Iteration)
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
 
-  for (auto i = 0; i < MAX; ++i) router.update(to_string(i), {to_string(i)});
+  for (auto i = 0; i < MAX; ++i) router.update(to_string(i), {});
 
   BOOST_CHECK(begin(router) != end(router));
   BOOST_CHECK(distance(begin(router), end(router)) == MAX);
@@ -112,21 +125,7 @@ BOOST_AUTO_TEST_CASE(Router_Iteration)
     while (it != end(router) && it->first != s) ++it;
     BOOST_CHECK(it != end(router));
     BOOST_CHECK(s == it->first);
-    BOOST_CHECK(s == it->second.egress_);
   }
-}
-
-BOOST_AUTO_TEST_CASE(Router_isUsed)
-{
-  auto router = Router{fn};
-  BOOST_CHECK(!router.isUsed(ph));
-
-  router.update(ph, {ph});
-  BOOST_CHECK(router.isUsed(ph));
-
-  router.erase(ph);
-  router.setRoute({ph});
-  BOOST_CHECK(router.isUsed(ph));
 }
 
 BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Route)
@@ -140,7 +139,7 @@ BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Route)
   auto router = Router{fn};
   verifyDefault(router.getRoute());
 
-  BOOST_CHECK_EXCEPTION(router.setRoute({ph, {ph}}), Exception,
+  BOOST_CHECK_EXCEPTION(router.setRoute({{}, {make_pair(ph, ph)}}), Exception,
                         verifyException<PichiError::BAD_JSON>);
   verifyDefault(router.getRoute());
 }
@@ -169,15 +168,15 @@ BOOST_AUTO_TEST_CASE(Router_setRoute_With_Order)
 
   auto router = Router{fn};
 
-  for (auto i = 0; i < MAX; ++i) router.update(to_string(i), {to_string(i)});
+  for (auto i = 0; i < MAX; ++i) router.update(to_string(i), {});
 
   auto seq = RouteVO{};
-  generate_n(back_inserter(seq.rules_), MAX, [i = 0]() mutable { return to_string(i++); });
+  for (auto i = 0; i < MAX; ++i) seq.rules_.push_back(make_pair(to_string(i), to_string(i)));
   router.setRoute(seq);
   verifyRules(seq.rules_, router.getRoute().rules_);
 
   auto rev = RouteVO{};
-  generate_n(back_inserter(rev.rules_), MAX, [i = MAX - 1]() mutable { return to_string(i--); });
+  for (auto i = MAX - 1; i >= 0; --i) seq.rules_.push_back(make_pair(to_string(i), to_string(i)));
   router.setRoute(rev);
   verifyRules(rev.rules_, router.getRoute().rules_);
 }
@@ -186,7 +185,7 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Range)
 {
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
-  BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {"Invalid Range"}}), Exception,
+  BOOST_CHECK_EXCEPTION(router.update(ph, {{"Invalid Range"}}), Exception,
                         verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(begin(router) == end(router));
 }
@@ -195,9 +194,9 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Type)
 {
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
-  BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {}, {}, {AdapterType::DIRECT}}), Exception,
+  BOOST_CHECK_EXCEPTION(router.update(ph, {{}, {}, {AdapterType::DIRECT}}), Exception,
                         verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK_EXCEPTION(router.update(ph, {ph, {}, {}, {AdapterType::REJECT}}), Exception,
+  BOOST_CHECK_EXCEPTION(router.update(ph, {{}, {}, {AdapterType::REJECT}}), Exception,
                         verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(begin(router) == end(router));
 }
@@ -205,8 +204,8 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Type)
 BOOST_AUTO_TEST_CASE(Router_Matching_Range)
 {
   auto router = Router{fn};
-  router.update(ph, {ph, {"10.0.0.0/8", "fd00::/8"}});
-  router.setRoute({{}, {ph}});
+  router.update(ph, {{"10.0.0.0/8", "fd00::/8"}});
+  router.setRoute({{}, {make_pair(ph, ph)}});
 
   BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, []() {
     return ResolvedResults::create(Endpoint{ip::make_address("10.0.0.1"), 443}, ph, ph);
@@ -225,8 +224,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Range)
 BOOST_AUTO_TEST_CASE(Router_Matching_Ingress)
 {
   auto router = Router{fn};
-  router.update(ph, {ph, {}, {ph}});
-  router.setRoute({{}, {ph}});
+  router.update(ph, {{}, {ph}});
+  router.setRoute({{}, {make_pair(ph, ph)}});
 
   auto r = []() {
     return ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
@@ -238,8 +237,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Ingress)
 BOOST_AUTO_TEST_CASE(Router_Matching_Type)
 {
   auto router = Router{fn};
-  router.update(ph, {ph, {}, {}, {AdapterType::HTTP}});
-  router.setRoute({{}, {ph}});
+  router.update(ph, {{}, {}, {AdapterType::HTTP}});
+  router.setRoute({{}, {make_pair(ph, ph)}});
 
   auto r = []() {
     return ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
@@ -251,8 +250,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Type)
 BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
 {
   auto router = Router{fn};
-  router.update(ph, {ph, {}, {}, {}, {"^.*\\.example\\.com$"}});
-  router.setRoute({{}, {ph}});
+  router.update(ph, {{}, {}, {}, {"^.*\\.example\\.com$"}});
+  router.setRoute({{}, {make_pair(ph, ph)}});
 
   // auto dummy = ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
   auto dummy = []() { return ResolvedResults{}; };
@@ -267,8 +266,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
 BOOST_AUTO_TEST_CASE(Router_Matching_Domain)
 {
   auto router = Router{fn};
-  router.update(ph, {ph, {}, {}, {}, {}, {"example.com"}});
-  router.setRoute({{}, {ph}});
+  router.update(ph, {{}, {}, {}, {}, {"example.com"}});
+  router.setRoute({{}, {make_pair(ph, ph)}});
 
   // auto dummy = ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
   auto dummy = []() { return ResolvedResults{}; };
@@ -281,8 +280,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain)
 BOOST_AUTO_TEST_CASE(Router_Matching_Domain_With_Invalid_Type)
 {
   auto router = Router{fn};
-  router.update(ph, {ph, {}, {}, {}, {}, {"example.com"}});
-  router.setRoute({{}, {ph}});
+  router.update(ph, {{}, {}, {}, {}, {"example.com"}});
+  router.setRoute({{}, {make_pair(ph, ph)}});
 
   // auto dummy = ResolvedResults::create(Endpoint{ip::make_address("fe00::1"), 443}, ph, ph);
   auto dummy = []() { return ResolvedResults{}; };
@@ -295,8 +294,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain_With_Invalid_Type)
 BOOST_AUTO_TEST_CASE(Router_Matching_Country)
 {
   auto router = Router{fn};
-  router.update(ph, {ph, {}, {}, {}, {}, {}, {"AU"}});
-  router.setRoute({{}, {ph}});
+  router.update(ph, {{}, {}, {}, {}, {}, {"AU"}});
+  router.setRoute({{}, {make_pair(ph, ph)}});
 
   BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, []() {
     return ResolvedResults::create(Endpoint{ip::make_address("1.1.1.1"), 443}, ph, ph);
@@ -329,8 +328,8 @@ BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Unnecessary_Rules)
     return ResolvedResults{};
   };
   auto router = Router{fn};
-  router.update(ph, {ph, {}, {ph}, {AdapterType::SS}, {ph}, {ph}, {}});
-  router.setRoute({ph, {ph}});
+  router.update(ph, {{}, {ph}, {AdapterType::SS}, {ph}, {ph}, {}});
+  router.setRoute({ph, {make_pair(ph, ph)}});
   router.route({}, ph, AdapterType::DIRECT, resolve);
 }
 
@@ -341,8 +340,8 @@ BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Unnecessary_Route)
     return ResolvedResults{};
   };
   auto router = Router{fn};
-  router.update("range", {ph, {"127.0.0.1/32"}});
-  router.update("country", {ph, {}, {}, {}, {}, {}, {ph}});
+  router.update("range", {{"127.0.0.1/32"}});
+  router.update("country", {{}, {}, {}, {}, {}, {ph}});
   router.route({}, ph, AdapterType::DIRECT, resolve);
 }
 
@@ -354,8 +353,8 @@ BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Necessary_Range)
     return ResolvedResults{};
   };
   auto router = Router{fn};
-  router.update(ph, {ph, {"127.0.0.1/32"}});
-  router.setRoute({ph, {ph}});
+  router.update(ph, {{"127.0.0.1/32"}});
+  router.setRoute({ph, {make_pair(ph, ph)}});
 
   router.route({}, ph, AdapterType::DIRECT, resolve);
   BOOST_CHECK(resolved);
@@ -369,8 +368,8 @@ BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Necessary_Country)
     return ResolvedResults{};
   };
   auto router = Router{fn};
-  router.update(ph, {ph, {}, {}, {}, {}, {}, {ph}});
-  router.setRoute({ph, {ph}});
+  router.update(ph, {{}, {}, {}, {}, {}, {ph}});
+  router.setRoute({ph, {make_pair(ph, ph)}});
 
   router.route({}, ph, AdapterType::DIRECT, resolve);
   BOOST_CHECK(resolved);
