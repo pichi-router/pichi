@@ -15,6 +15,14 @@ using ip::tcp;
 
 namespace pichi::api {
 
+namespace msg {
+
+static auto const DM_INVALID = "Invalid domain string"sv;
+static auto const RG_INVALID = "Invalid IP range string"sv;
+static auto const AT_INVALID = "Invalid adapter type string"sv;
+
+} // namespace msg
+
 bool matchPattern(string_view remote, string_view pattern)
 {
   return regex_search(cbegin(remote), cend(remote), regex{cbegin(pattern), cend(pattern)});
@@ -23,8 +31,9 @@ bool matchPattern(string_view remote, string_view pattern)
 bool matchDomain(string_view subdomain, string_view domain)
 {
   // TODO domain can start with '.'
-  assertFalse(!domain.empty() && domain[0] == '.', PichiError::SEMANTIC_ERROR);
-  assertFalse(!subdomain.empty() && subdomain[0] == '.', PichiError::SEMANTIC_ERROR);
+  assertFalse(!domain.empty() && domain[0] == '.', PichiError::SEMANTIC_ERROR, msg::DM_INVALID);
+  assertFalse(!subdomain.empty() && subdomain[0] == '.', PichiError::SEMANTIC_ERROR,
+              msg::DM_INVALID);
   return !domain.empty() && !subdomain.empty() && // not matching if anyone is empty
          (subdomain == domain ||                  // same
           (subdomain.size() > domain.size() &&    // subdomain can not be shorter than domain
@@ -104,7 +113,7 @@ void Router::update(string const& name, RuleVO rvo)
               auto n4 = ip::make_network_v4(range, ec);
               if (ec) {
                 auto n6 = ip::make_network_v6(range, ec);
-                assertFalse(static_cast<bool>(ec), PichiError::SEMANTIC_ERROR);
+                assertFalse(static_cast<bool>(ec), PichiError::SEMANTIC_ERROR, msg::RG_INVALID);
                 return [n6](auto&&, auto&& r, auto, auto) {
                   return any_of(cbegin(r), cend(r), [n6](auto&& entry) {
                     auto address = entry.endpoint().address();
@@ -125,8 +134,8 @@ void Router::update(string const& name, RuleVO rvo)
   });
   transform(cbegin(vo.type_), cend(vo.type_), back_inserter(matchers), [](auto t) {
     // ingress type shouldn't be DIRECT or REJECT
-    assertFalse(t == AdapterType::DIRECT, PichiError::SEMANTIC_ERROR);
-    assertFalse(t == AdapterType::REJECT, PichiError::SEMANTIC_ERROR);
+    assertFalse(t == AdapterType::DIRECT, PichiError::SEMANTIC_ERROR, msg::AT_INVALID);
+    assertFalse(t == AdapterType::REJECT, PichiError::SEMANTIC_ERROR, msg::AT_INVALID);
     return [t](auto&&, auto&&, auto, auto type) { return t == type; };
   });
   transform(cbegin(vo.pattern_), cend(vo.pattern_), back_inserter(matchers), [](auto&& pattern) {
