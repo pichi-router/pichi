@@ -17,7 +17,7 @@ using ip::tcp;
 
 namespace pichi::api {
 
-static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context ctx)
+static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context yield)
 {
   try {
     auto guard = makeScopeGuard([from, to]() {
@@ -25,7 +25,7 @@ static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context ctx
       to->close();
     });
     auto buf = array<uint8_t, net::MAX_FRAME_SIZE>{};
-    while (from->readable() && to->writable()) to->send({buf, from->recv(buf, ctx)}, ctx);
+    while (from->readable() && to->writable()) to->send({buf, from->recv(buf, yield)}, yield);
     guard.disable();
   }
   catch (Exception& e) {
@@ -88,38 +88,39 @@ IngressManager::ConstIterator IngressManager::end() const noexcept
   return {cend(c_), cend(c_), &IngressManager::generatePair};
 }
 
-void IngressManager::listen(typename Container::iterator it, asio::yield_context ctx)
+void IngressManager::listen(typename Container::iterator it, asio::yield_context yield)
 {
   auto& acceptor = it->second.second;
 
   while (true) {
-    spawn([s = acceptor.async_accept(ctx), &vo = as_const(it->second.first),
-           &iname = as_const(it->first), this](auto ctx) mutable {
+    spawn([s = acceptor.async_accept(yield), &vo = as_const(it->second.first),
+           &iname = as_const(it->first), this](auto yield) mutable {
       auto ingress = shared_ptr<net::Ingress>{net::makeIngress(vo, move(s))};
-      auto remote = ingress->readRemote(ctx);
+      auto remote = ingress->readRemote(yield);
       auto ec = sys::error_code{};
       auto it = eManager_.find(router_.route(
           remote,
-          tcp::resolver{strand_.context()}.async_resolve(remote.host_, remote.port_, ctx[ec]),
+          tcp::resolver{strand_.context()}.async_resolve(remote.host_, remote.port_, yield[ec]),
           iname, vo.type_));
       assertFalse(it == cend(eManager_), PichiError::MISC);
       if (it->second.type_ == AdapterType::REJECT) return;
       auto egress =
           shared_ptr<net::Egress>{net::makeEgress(it->second, tcp::socket{strand_.context()})};
-      if (it->second.type_ != AdapterType::DIRECT)
-        egress->connect(remote, remote, ctx);
-      else
-        egress->connect(remote,
-                        {net::detectHostType(*it->second.host_), *it->second.host_,
-                         to_string(*it->second.port_)},
-                        ctx);
-      ingress->confirm(ctx);
+      egress->connect(remote,
+                      it->second.type_ == AdapterType::DIRECT ?
+                          remote :
+                          net::Endpoint{net::detectHostType(*it->second.host_), *it->second.host_,
+                                        to_string(*it->second.port_)},
+                      yield);
+      ingress->confirm(yield);
 
       auto strand = Strand{strand_.context()};
-      asio::spawn(strand,
-                  [f = ingress, t = egress](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
-      asio::spawn(strand,
-                  [t = ingress, f = egress](auto ctx) mutable { bridge(f.get(), t.get(), ctx); });
+      asio::spawn(strand, [f = ingress, t = egress](auto yield) mutable {
+        bridge(f.get(), t.get(), yield);
+      });
+      asio::spawn(strand, [t = ingress, f = egress](auto yield) mutable {
+        bridge(f.get(), t.get(), yield);
+      });
     });
   }
 }
@@ -140,7 +141,7 @@ void IngressManager::update(string const& name, IngressVO ivo)
     it->second =
         make_pair(move(ivo), Acceptor{strand_.context(), {ip::make_address(ivo.bind_), ivo.port_}});
   }
-  spawn([it, this](auto ctx) { listen(it, ctx); },
+  spawn([it, this](auto yield) { listen(it, yield); },
         [it, this](auto eptr) {
           try {
             if (eptr) rethrow_exception(eptr);
