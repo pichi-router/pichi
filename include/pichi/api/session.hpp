@@ -21,6 +21,8 @@ private:
   using IngressPtr = std::unique_ptr<net::Ingress>;
   using EgressPtr = std::unique_ptr<net::Egress>;
 
+  template <typename Function> void spawn(Function&&);
+
 public:
   explicit Session(boost::asio::io_context& io, IngressPtr&&, EgressPtr&&);
   void start(net::Endpoint const&, net::Endpoint const&);
