@@ -83,20 +83,8 @@ template <typename VO> VO parse(std::string_view src)
 {
   auto doc = rapidjson::Document{};
   doc.Parse(src.data(), src.size());
-  assertFalse(doc.HasParseError(), PichiError::MISC);
+  assertFalse(doc.HasParseError(), PichiError::BAD_JSON, "JSON syntax error");
   return parse<VO>(doc);
-}
-
-template <typename VO, typename UpdateFunc> void parse(std::string_view src, UpdateFunc&& update)
-{
-  auto doc = rapidjson::Document{};
-  doc.Parse(src.data(), src.size());
-
-  assertFalse(doc.HasParseError(), PichiError::MISC);
-  assertTrue(doc.IsObject(), PichiError::MISC);
-
-  std::for_each(doc.MemberBegin(), doc.MemberEnd(),
-                [&update](auto&& i) { update(i.name.GetString(), parse<VO>(i.value)); });
 }
 
 } // namespace pichi::api

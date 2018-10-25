@@ -15,6 +15,14 @@ using ip::tcp;
 
 namespace pichi::api {
 
+namespace msg {
+
+static auto const DM_INVALID = "Invalid domain string"sv;
+static auto const RG_INVALID = "Invalid IP range string"sv;
+static auto const AT_INVALID = "Invalid adapter type string"sv;
+
+} // namespace msg
+
 bool matchPattern(string_view remote, string_view pattern)
 {
   return regex_search(cbegin(remote), cend(remote), regex{cbegin(pattern), cend(pattern)});
@@ -23,8 +31,9 @@ bool matchPattern(string_view remote, string_view pattern)
 bool matchDomain(string_view subdomain, string_view domain)
 {
   // TODO domain can start with '.'
-  assertFalse(!domain.empty() && domain[0] == '.', PichiError::MISC);
-  assertFalse(!subdomain.empty() && subdomain[0] == '.', PichiError::MISC);
+  assertFalse(!domain.empty() && domain[0] == '.', PichiError::SEMANTIC_ERROR, msg::DM_INVALID);
+  assertFalse(!subdomain.empty() && subdomain[0] == '.', PichiError::SEMANTIC_ERROR,
+              msg::DM_INVALID);
   return !domain.empty() && !subdomain.empty() && // not matching if anyone is empty
          (subdomain == domain ||                  // same
           (subdomain.size() > domain.size() &&    // subdomain can not be shorter than domain
@@ -102,13 +111,16 @@ void Router::update(string const& name, RuleVO rvo)
             [](auto&& range) -> Matcher {
               auto ec = sys::error_code{};
               auto n4 = ip::make_network_v4(range, ec);
-              if (ec)
-                return [n6 = ip::make_network_v6(range)](auto&&, auto&& r, auto, auto) {
+              if (ec) {
+                auto n6 = ip::make_network_v6(range, ec);
+                assertFalse(static_cast<bool>(ec), PichiError::SEMANTIC_ERROR, msg::RG_INVALID);
+                return [n6](auto&&, auto&& r, auto, auto) {
                   return any_of(cbegin(r), cend(r), [n6](auto&& entry) {
                     auto address = entry.endpoint().address();
                     return address.is_v6() && n6.hosts().find(address.to_v6()) != cend(n6.hosts());
                   });
                 };
+              }
               else
                 return [n4](auto&&, auto&& r, auto, auto) {
                   return any_of(cbegin(r), cend(r), [n4](auto&& entry) {
@@ -122,8 +134,8 @@ void Router::update(string const& name, RuleVO rvo)
   });
   transform(cbegin(vo.type_), cend(vo.type_), back_inserter(matchers), [](auto t) {
     // ingress type shouldn't be DIRECT or REJECT
-    assertFalse(t == AdapterType::DIRECT, PichiError::MISC);
-    assertFalse(t == AdapterType::REJECT, PichiError::MISC);
+    assertFalse(t == AdapterType::DIRECT, PichiError::SEMANTIC_ERROR, msg::AT_INVALID);
+    assertFalse(t == AdapterType::REJECT, PichiError::SEMANTIC_ERROR, msg::AT_INVALID);
     return [t](auto&&, auto&&, auto, auto type) { return t == type; };
   });
   transform(cbegin(vo.pattern_), cend(vo.pattern_), back_inserter(matchers), [](auto&& pattern) {
@@ -147,8 +159,7 @@ void Router::update(string const& name, RuleVO rvo)
 
 void Router::erase(string_view name)
 {
-  // TODO use the correct exception
-  assertTrue(find(cbegin(order_), cend(order_), name) == cend(order_), PichiError::MISC);
+  assertTrue(find(cbegin(order_), cend(order_), name) == cend(order_), PichiError::RES_IN_USE);
   auto it = rules_.find(name);
   if (it != std::end(rules_)) rules_.erase(it);
 }
@@ -184,7 +195,7 @@ void Router::setRoute(RouteVO const& rvo)
   auto tmp = vector<string_view>{};
   transform(cbegin(rvo.rules_), cend(rvo.rules_), back_inserter(tmp), [&rules](auto&& r) {
     auto it = rules.find(r);
-    assertFalse(it == cend(rules), PichiError::MISC);
+    assertFalse(it == cend(rules), PichiError::BAD_JSON);
     return string_view{it->first};
   });
   if (rvo.default_) default_ = *rvo.default_;

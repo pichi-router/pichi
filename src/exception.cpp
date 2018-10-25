@@ -6,10 +6,6 @@ namespace pichi {
 
 Exception::Exception(PichiError error, string_view message) : error_{error}, message_{message} {}
 
-Exception::Exception(Exception const&) = default;
-Exception::Exception(Exception&&) = default;
-Exception::~Exception() = default;
-
 char const* Exception::what() const noexcept
 {
   if (!message_.empty()) return message_.c_str();
@@ -19,9 +15,17 @@ char const* Exception::what() const noexcept
   case PichiError::BAD_PROTO:
     return "Bad protocol";
   case PichiError::CRYPTO_ERROR:
-    return "Shadowsocks crypto error";
+    return "Crypto error";
   case PichiError::BUFFER_OVERFLOW:
     return "Buffer maximum exceeded";
+  case PichiError::BAD_JSON:
+    return "Invalid JSON";
+  case PichiError::SEMANTIC_ERROR:
+    return "JSON semantic error";
+  case PichiError::RES_IN_USE:
+    return "Resource in use";
+  case PichiError::RES_LOCKED:
+    return "Resource locked";
   case PichiError::MISC:
     return "Misc error";
   default:
