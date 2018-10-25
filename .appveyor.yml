@@ -1,5 +1,3 @@
-version: "pr#{build}"
-
 cache:
   - C:\Tools\vcpkg\installed\
 
@@ -8,52 +6,14 @@ image:
 
 environment:
   matrix:
-    - PLATFORM: x86-windows
-      CMAKE_GEN: "Visual Studio 15 2017"
     - PLATFORM: x64-windows
       CMAKE_GEN: "Visual Studio 15 2017 Win64"
 
 install:
   - ps: |
-      IF ((vcpkg list boost-asio | measure -line).Lines -ne 2) {
-        vcpkg install boost-asio:x86-windows boost-asio:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list boost-beast | measure -line).Lines -ne 2) {
-        vcpkg install boost-beast:x86-windows boost-beast:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list boost-coroutine2 | measure -line).Lines -ne 2) {
-        vcpkg install boost-coroutine2:x86-windows boost-coroutine2:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list boost-mpl | measure -line).Lines -ne 2) {
-        vcpkg install boost-mpl:x86-windows boost-mpl:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list boost-program-options | measure -line).Lines -ne 2) {
-        vcpkg install boost-program-options:x86-windows boost-program-options:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list boost-test | measure -line).Lines -ne 2) {
-        vcpkg install boost-test:x86-windows boost-test:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list libmaxminddb | measure -line).Lines -ne 2) {
-        vcpkg install libmaxminddb:x86-windows libmaxminddb:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list libsodium | measure -line).Lines -ne 2) {
-        vcpkg install libsodium:x86-windows libsodium:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list mbedtls | measure -line).Lines -ne 2) {
-        vcpkg install mbedtls:x86-windows mbedtls:x64-windows
-      }
-  - ps: |
-      IF ((vcpkg list rapidjson | measure -line).Lines -ne 2) {
-        vcpkg install rapidjson:x86-windows rapidjson:x64-windows
-      }
+      vcpkg install boost-asio:x64-windows boost-beast:x64-windows boost-coroutine2:x64-windows `
+        boost-mpl:x64-windows boost-program-options:x64-windows boost-test:x64-windows `
+        libmaxminddb:x64-windows libsodium:x64-windows mbedtls:x64-windows rapidjson:x64-windows
 
 for:
 -
