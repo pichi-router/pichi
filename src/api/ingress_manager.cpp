@@ -1,13 +1,12 @@
-#include <array>
 #include <iostream>
 #include <pichi/api/egress_manager.hpp>
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/router.hpp>
+#include <pichi/api/session.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
-#include <pichi/scope_guard.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
@@ -16,26 +15,6 @@ namespace sys = boost::system;
 using ip::tcp;
 
 namespace pichi::api {
-
-static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context yield)
-{
-  try {
-    auto guard = makeScopeGuard([from, to]() {
-      from->close();
-      to->close();
-    });
-    auto buf = array<uint8_t, net::MAX_FRAME_SIZE>{};
-    while (from->readable() && to->writable()) to->send({buf, from->recv(buf, yield)}, yield);
-    guard.disable();
-  }
-  catch (Exception& e) {
-    cout << "Pichi Error: " << e.what() << endl;
-  }
-  catch (sys::system_error& e) {
-    if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-    cout << "Socket Error: " << e.what() << endl;
-  }
-}
 
 IngressManager::IngressManager(Strand strand, Router const& router, EgressManager const& eManager)
   : strand_{strand}, router_{router}, eManager_{eManager}, c_{}
@@ -95,7 +74,7 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
   while (true) {
     spawn([s = acceptor.async_accept(yield), &vo = as_const(it->second.first),
            &iname = as_const(it->first), this](auto yield) mutable {
-      auto ingress = shared_ptr<net::Ingress>{net::makeIngress(vo, move(s))};
+      auto ingress = net::makeIngress(vo, move(s));
       auto remote = ingress->readRemote(yield);
       auto resolve = [&yield, &remote, &io = strand_.context()]() {
         auto ec = sys::error_code{};
@@ -105,27 +84,13 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
       auto it = eManager_.find(router_.route(remote, iname, vo.type_, resolve));
       assertFalse(it == cend(eManager_), PichiError::MISC);
       if (it->second.type_ == AdapterType::REJECT) return;
-      // TODO session object might be a better choice
-      auto strand = Strand{strand_.context()};
-      asio::spawn(strand,
-                  [strand, remote,
-                   next = it->second.type_ == AdapterType::DIRECT ?
-                              remote :
-                              net::Endpoint{net::detectHostType(*it->second.host_),
-                                            *it->second.host_, to_string(*it->second.port_)},
-                   ingress = move(ingress),
-                   egress = shared_ptr<net::Egress>{
-                       net::makeEgress(it->second, tcp::socket{strand.context()})}](auto yield) {
-                    egress->connect(remote, next, yield);
-                    ingress->confirm(yield);
-
-                    asio::spawn(strand, [f = ingress, t = egress](auto yield) mutable {
-                      bridge(f.get(), t.get(), yield);
-                    });
-                    asio::spawn(strand, [t = ingress, f = egress](auto yield) mutable {
-                      bridge(f.get(), t.get(), yield);
-                    });
-                  });
+      auto session =
+          make_shared<Session>(strand_.context(), move(ingress),
+                               net::makeEgress(it->second, tcp::socket{strand_.context()}));
+      session->start(remote, it->second.type_ == AdapterType::DIRECT ?
+                                 remote :
+                                 net::Endpoint{net::detectHostType(*it->second.host_),
+                                               *it->second.host_, to_string(*it->second.port_)});
     });
   }
 }
