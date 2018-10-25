@@ -24,6 +24,8 @@ static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context yie
   guard.disable();
 }
 
+Session::~Session() = default;
+
 Session::Session(asio::io_context& io, Session::IngressPtr&& ingress, Session::EgressPtr&& egress)
   : strand_{io}, ingress_{move(ingress)}, egress_{move(egress)}
 {
