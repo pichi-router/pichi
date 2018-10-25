@@ -4,10 +4,10 @@ Pichi is an application layer proxy, which can be fully controlled via RESTful A
 
 ## Build Status
 
-| OS | macOS 10.13.x | Alpine 3.8 | Ubuntu 14.04 | Windows 10 |
-|:-------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| **Toolchain** | **Clang 6.0.1** | **Clang 6.0.1** | **GCC 8.1** | **VC++2017** |
-| **Status** | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/project/pichi-router/pichi) |
+| OS | macOS 10.13 | Alpine 3.8 | Windows 10 |
+|:-------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| **Toolchain** | Clang 6.0.x | GCC 8.x | VC++2017 |
+| **Status** | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true) |
 
 ## Using Pichi API
 
@@ -103,8 +103,6 @@ $ cmake --build .
 $ ctest --output-on-failure
 ```
 
-Dockerfile based on [alpine](https://alpinelinux.org) can be found at the [Gist](https://gist.github.com/pichi-router/b8a6e3d04bf4d97339f1d40c017ce000).
-
 Build and run on Windows with [Vcpkg](https://github.com/Microsoft/vcpkg):
 
 ```
@@ -113,4 +111,26 @@ PS C:\pichi> cd build
 PS C:\pichi\build> cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake ..
 PS C:\pichi\build> cmake --build . --config Debug
 PS C:\pichi\build> ctest -C Debug --output-on-failure
+```
+
+### Docker
+
+The pre-built docker image can be found on [Docker Store](https://store.docker.com/community/images/pichi/pichi),
+which is automatically generated via `docker/pichi.dockerfile`. Furthermore, `docker/builder.dockerfile`
+is intended to provide a docker environment for development.
+
+```
+$ docker pull pichi/pichi
+$ docker run --rm pichi/pichi pichi -h
+Allow options:
+  -h [ --help ]              produce help message
+  -l [ --listen ] arg (=::1) API server address
+  -p [ --port ] arg          API server port
+  -g [ --geo ] arg           GEO file
+$ docker run -d --name pichi --net host --restart always pichi/pichi \
+>   pichi -g /usr/share/pichi/geo.mmdb -p 1024 -l 127.0.0.1
+c51b832bd29dd0333b0d32b0b0563ddc72821f7301c36c7635ae47d00a3bb902
+$ docker ps -n 1
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+c51b832bd29d        pichi/pichi         "pichi -g /usr/share…"   1 seconds ago       Up 1 seconds                            pichi
 ```
