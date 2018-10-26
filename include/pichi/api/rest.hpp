@@ -87,18 +87,6 @@ template <typename VO> VO parse(std::string_view src)
   return parse<VO>(doc);
 }
 
-template <typename VO, typename UpdateFunc> void parse(std::string_view src, UpdateFunc&& update)
-{
-  auto doc = rapidjson::Document{};
-  doc.Parse(src.data(), src.size());
-
-  assertFalse(doc.HasParseError(), PichiError::BAD_JSON);
-  assertTrue(doc.IsObject(), PichiError::BAD_JSON);
-
-  std::for_each(doc.MemberBegin(), doc.MemberEnd(),
-                [&update](auto&& i) { update(i.name.GetString(), parse<VO>(i.value)); });
-}
-
 } // namespace pichi::api
 
 #endif // PICHI_API_REST_HPP

@@ -8,7 +8,6 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <string_view>
-#include <unordered_map>
 
 using namespace std;
 using namespace rapidjson;
@@ -16,7 +15,6 @@ using namespace pichi;
 using namespace pichi::api;
 
 static decltype(auto) ph = "placeholder";
-static auto stub = [](auto&&, auto&&) {};
 
 static string toString(Value const& v)
 {
@@ -127,11 +125,7 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Str)
 {
   BOOST_CHECK_EXCEPTION(parse<IngressVO>("not a json"), Exception,
                         verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<IngressVO>("not a json", stub), Exception,
-                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<IngressVO>("[\"not a json object\"]"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<IngressVO>("[\"not a json object\"]", stub), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -244,33 +238,11 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_SS)
   BOOST_CHECK(fact == expect);
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Empty_Pack)
-{
-  auto m = unordered_map<string, IngressVO>{};
-  parse<IngressVO>("{}", [&](auto&& k, auto&& v) { m[k] = v; });
-  BOOST_CHECK(m.empty());
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Pack)
-{
-  auto m = unordered_map<string, IngressVO>{};
-  parse<IngressVO>("{\"placeholder\":{\"type\":\"direct\"}}",
-                   [&](auto&& k, auto&& v) { m[k] = v; });
-  BOOST_CHECK(m.size() == 1);
-  auto it = m.find(ph);
-  BOOST_CHECK(it != end(m));
-  BOOST_CHECK(it->second == IngressVO{AdapterType::DIRECT});
-}
-
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
 {
   BOOST_CHECK_EXCEPTION(parse<EgressVO>("not a json"), Exception,
                         verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<EgressVO>("not a json", stub), Exception,
-                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<EgressVO>("[\"not a json object\"]"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<EgressVO>("[\"not a json object\"]", stub), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -391,32 +363,11 @@ BOOST_AUTO_TEST_CASE(parse_Egress_SS)
   BOOST_CHECK(fact == expect);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Egress_Empty_Pack)
-{
-  auto m = unordered_map<string, EgressVO>{};
-  parse<EgressVO>("{}", [&](auto&& k, auto&& v) { m[k] = v; });
-  BOOST_CHECK(m.empty());
-}
-
-BOOST_AUTO_TEST_CASE(parse_Egress_Pack)
-{
-  auto m = unordered_map<string, EgressVO>{};
-  parse<EgressVO>("{\"placeholder\":{\"type\":\"direct\"}}", [&](auto&& k, auto&& v) { m[k] = v; });
-  BOOST_CHECK(m.size() == 1);
-  auto it = m.find(ph);
-  BOOST_CHECK(it != end(m));
-  BOOST_CHECK(it->second == EgressVO{AdapterType::DIRECT});
-}
-
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)
 {
   BOOST_CHECK_EXCEPTION(parse<RuleVO>("not a json"), Exception,
                         verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<RuleVO>("not a json", stub), Exception,
-                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<RuleVO>("[\"not a json object\"]"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<RuleVO>("[\"not a json object\"]", stub), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -518,24 +469,6 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Superfluous_Field)
   auto const expect = RuleVO{ph};
   auto fact = parse<RuleVO>(toString(expect));
   BOOST_CHECK(fact == expect);
-}
-
-BOOST_AUTO_TEST_CASE(parse_Rule_Empty_Pack)
-{
-  auto m = unordered_map<string, RuleVO>{};
-  parse<RuleVO>("{}", [&](auto&& k, auto&& v) { m[k] = v; });
-  BOOST_CHECK(m.empty());
-}
-
-BOOST_AUTO_TEST_CASE(parse_Rule_Pack)
-{
-  auto m = unordered_map<string, RuleVO>{};
-  parse<RuleVO>("{\"placeholder\":{\"egress\":\"placeholder\"}}",
-                [&](auto&& k, auto&& v) { m[k] = v; });
-  BOOST_CHECK(m.size() == 1);
-  auto it = m.find(ph);
-  BOOST_CHECK(it != end(m));
-  BOOST_CHECK(it->second == RuleVO{ph});
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Invalid_Str)
