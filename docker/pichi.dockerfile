@@ -17,7 +17,7 @@ RUN sed -i 's/v3\.8/edge/g' /etc/apk/repositories && \
   cmake -DCMAKE_BUILD_TYPE=MiniSizeRel ${SRC_DIR} && \
   cmake --build ${BUILD_DIR} -j "$(nproc)" && \
   cd ${BUILD_DIR} && ctest --output-on-failure && \
-  strip ${BUILD_DIR}/server/pichi && \
+  strip -s ${BUILD_DIR}/server/pichi && \
   apk del --no-cache g++ cmake make mbedtls-dev libsodium-dev rapidjson-dev libmaxminddb-dev \
   boost-context boost-dev boost-program_options boost-system boost-unit_test_framework && \
   apk add --no-cache libstdc++ mbedtls libsodium libmaxminddb boost-context boost-program_options\
