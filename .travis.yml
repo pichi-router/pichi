@@ -4,57 +4,17 @@ sudo: false
 matrix:
   include:
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - curl
-            - make
-            - libtool
-            - autoconf
-            - g++-8
+      services:
+        - docker
       env:
-        - PLATFORM=linux
+        - PLATFORM=alpine
         - BUILD_TYPE="Debug"
         - PARALLEL="$(nproc)"
-      cache:
-        directories:
-          - ${TRAVIS_HOME}/deps
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - curl
-            - make
-            - libtool
-            - autoconf
-            - g++-8
-      env:
-        - PLATFORM=linux
-        - BUILD_TYPE="Release"
-        - PARALLEL="$(nproc)"
-      cache:
-        directories:
-          - ${TRAVIS_HOME}/deps
     - os: linux
       services:
         - docker
       env:
-        - PLATFORM=docker
-        - BUILD_TYPE="Debug"
-        - PARALLEL="$(nproc)"
-    - os: linux
-      addons:
-        apt:
-          packages:
-            - curl
-      services:
-        - docker
-      env:
-        - PLATFORM=docker
+        - PLATFORM=alpine
         - BUILD_TYPE="Release"
         - PARALLEL="$(nproc)"
     - os: osx
@@ -90,39 +50,8 @@ matrix:
 
 install:
   - |
-    if [[ "${PLATFORM}" = "linux" ]] && [[ ! -f "${TRAVIS_HOME}/deps/.completed" ]]; then
-      rm -rf "${TRAVIS_HOME}/deps" &&
-      curl -LSs https://cmake.org/files/v3.12/cmake-3.12.2-Linux-x86_64.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
-      mv "${TRAVIS_BUILD_DIR}/cmake-3.12.2-Linux-x86_64" "${TRAVIS_HOME}/deps" &&
-      export PATH="${TRAVIS_HOME}/deps/bin:${PATH}" &&
-      ln -sf /usr/bin/gcc-8 "${TRAVIS_HOME}/deps/bin/gcc" &&
-      ln -sf /usr/bin/g++-8 "${TRAVIS_HOME}/deps/bin/g++" &&
-      curl -LSs https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
-      cd "${TRAVIS_BUILD_DIR}/boost_1_68_0" &&
-      ./bootstrap.sh --with-toolset=gcc --prefix="${TRAVIS_HOME}/deps" --with-libraries=context,program_options,system,test &&
-      ./b2 -j "${PARALLEL}" variant=release install &&
-      curl -LSs https://tls.mbed.org/download/mbedtls-2.13.0-apache.tgz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
-      cd "${TRAVIS_BUILD_DIR}/mbedtls-2.13.0" &&
-      "${TRAVIS_HOME}/deps/bin/cmake" -DCMAKE_INSTALL_PREFIX="${TRAVIS_HOME}/deps" . &&
-      make -j "${PARALLEL}" install &&
-      curl -LSs https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
-      cd "${TRAVIS_BUILD_DIR}/libsodium-1.0.16" &&
-      ./autogen.sh &&
-      ./configure --prefix="${TRAVIS_HOME}/deps" &&
-      make -j "${PARALLEL}" install &&
-      curl -LSs https://github.com/maxmind/libmaxminddb/releases/download/1.3.2/libmaxminddb-1.3.2.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
-      cd "${TRAVIS_BUILD_DIR}/libmaxminddb-1.3.2" &&
-      ./configure --prefix="${TRAVIS_HOME}/deps" &&
-      make -j "${PARALLEL}" install &&
-      curl -LSs https://github.com/Tencent/rapidjson/archive/v1.1.0.tar.gz | tar zxf - -C "${TRAVIS_BUILD_DIR}" &&
-      cd "${TRAVIS_BUILD_DIR}" &&
-      cp -r "${TRAVIS_BUILD_DIR}/rapidjson-1.1.0/include/rapidjson" "${TRAVIS_HOME}/deps/include" &&
-      touch "${TRAVIS_HOME}/deps/.completed"
-    fi
-  - |
-    if [[ "${PLATFORM}" = "docker" ]]; then
-      curl -LSs https://gist.githubusercontent.com/pichi-router/b8a6e3d04bf4d97339f1d40c017ce000/raw/a96c82ecf15e727fe898cf4bdc138c0a254dabd4/builder.dockerfile | \
-        docker build --rm --no-cache -t pichi/builder -
+    if [[ "${PLATFORM}" = "alpine" ]]; then
+      docker build --rm --no-cache -t pichi/builder -f docker/builder.dockerfile .
     fi
 
 script:
@@ -130,16 +59,9 @@ script:
   - cd build
   - |
     case "${PLATFORM}" in
-      "linux")
-        ${TRAVIS_HOME}/deps/bin/cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
-          -DCMAKE_CXX_COMPILER="g++-8" -DCMAKE_PREFIX_PATH="${TRAVIS_HOME}/deps" \
-          "${TRAVIS_BUILD_DIR}" &&
-        make -j "${PARALLEL}" &&
-        ctest --output-on-failure;;
-      "docker")
+      "alpine")
         docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
-          pichi/builder cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" -DCMAKE_CXX_COMPILER="clang++"\
-          /root/pichi &&
+          pichi/builder cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" /root/pichi &&
         docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
           pichi/builder make -j "${PARALLEL}" &&
         docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
