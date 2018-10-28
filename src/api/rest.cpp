@@ -83,6 +83,7 @@ static auto const OBJ_TYPE_ERROR = "JSON object required"sv;
 static auto const ARY_TYPE_ERROR = "JSON array required"sv;
 static auto const INT_TYPE_ERROR = "Integer required"sv;
 static auto const STR_TYPE_ERROR = "String required"sv;
+static auto const PAIR_TYPE_ERROR = "Pair required"sv;
 static auto const AT_INVALID = "Invalid adapter type string"sv;
 static auto const CM_INVALID = "Invalid crypto method string"sv;
 static auto const PT_INVALID = "Port number must be in range (0, 65536)"sv;
@@ -154,9 +155,9 @@ static string parseString(json::Value const& v)
 
 static pair<string, string> parseRule(json::Value const& v)
 {
-  assertTrue(v.IsArray(), PichiError::MISC);
+  assertTrue(v.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
   auto array = v.GetArray();
-  assertTrue(array.Size() == 2, PichiError::MISC);
+  assertTrue(array.Size() == 2, PichiError::BAD_JSON, msg::PAIR_TYPE_ERROR);
   return make_pair(parseString(array[0]), parseString(array[1]));
 }
 
