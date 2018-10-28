@@ -83,7 +83,7 @@ template <typename VO> VO parse(std::string_view src)
 {
   auto doc = rapidjson::Document{};
   doc.Parse(src.data(), src.size());
-  assertFalse(doc.HasParseError(), PichiError::BAD_JSON);
+  assertFalse(doc.HasParseError(), PichiError::BAD_JSON, "JSON syntax error");
   return parse<VO>(doc);
 }
 
