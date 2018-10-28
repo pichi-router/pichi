@@ -180,13 +180,9 @@ Server::Server(asio::io_context& io, char const* fn)
                    [](auto&&, auto&&) {
                      return options({http::verb::get, http::verb::options});
                    }),
-        make_tuple(http::verb::put, RULE_NAME_REGEX,
-                   [this](auto&& r, auto&& mr) {
-                     auto vo = parse<RuleVO>(r.body());
-                     assertFalse(eManager_.find(vo.egress_) == end(eManager_),
-                                 PichiError::RES_IN_USE);
-                     return putVO(move(vo), mr, router_);
-                   }),
+        make_tuple(
+            http::verb::put, RULE_NAME_REGEX,
+            [this](auto&& r, auto&& mr) { return putVO(parse<RuleVO>(r.body()), mr, router_); }),
         make_tuple(http::verb::delete_, RULE_NAME_REGEX,
                    [this](auto&&, auto&& mr) { return delVO(mr, router_); }),
         make_tuple(http::verb::options, RULE_NAME_REGEX,

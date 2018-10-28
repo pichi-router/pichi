@@ -61,7 +61,6 @@ static string toString(RuleVO const& rvo)
   auto& alloc = doc.GetAllocator();
   doc.SetObject();
 
-  doc.AddMember("egress", toJson(rvo.egress_, alloc), alloc);
   if (!rvo.range_.empty())
     doc.AddMember("range", toJson(begin(rvo.range_), end(rvo.range_), alloc), alloc);
   if (!rvo.ingress_.empty())
@@ -85,7 +84,16 @@ static string toString(RouteVO const& rvo)
   doc.SetObject();
 
   if (rvo.default_) doc.AddMember("default", toJson(*rvo.default_, alloc), alloc);
-  doc.AddMember("rules", toJson(begin(rvo.rules_), end(rvo.rules_), alloc), alloc);
+  auto rules = Value{};
+  rules.SetArray();
+  for_each(cbegin(rvo.rules_), cend(rvo.rules_), [&rules, &alloc](auto&& rule) {
+    auto vo = Value{};
+    vo.SetArray();
+    vo.PushBack(toJson(rule.first, alloc), alloc);
+    vo.PushBack(toJson(rule.second, alloc), alloc);
+    rules.PushBack(move(vo), alloc);
+  });
+  doc.AddMember("rules", rules, alloc);
 
   return toString(doc);
 }
@@ -104,8 +112,7 @@ static bool operator==(EgressVO const& lhs, EgressVO const& rhs)
 
 static bool operator==(RuleVO const& lhs, RuleVO const& rhs)
 {
-  return lhs.egress_ == rhs.egress_ &&
-         equal(begin(lhs.range_), end(lhs.range_), begin(rhs.range_), end(rhs.range_)) &&
+  return equal(begin(lhs.range_), end(lhs.range_), begin(rhs.range_), end(rhs.range_)) &&
          equal(begin(lhs.ingress_), end(lhs.ingress_), begin(rhs.ingress_), end(rhs.ingress_)) &&
          equal(begin(lhs.type_), end(lhs.type_), begin(rhs.type_), end(rhs.type_)) &&
          equal(begin(lhs.pattern_), end(lhs.pattern_), begin(rhs.pattern_), end(rhs.pattern_)) &&
@@ -118,6 +125,8 @@ static bool operator==(RouteVO const& lhs, RouteVO const& rhs)
   return lhs.default_ == rhs.default_ &&
          equal(begin(lhs.rules_), end(lhs.rules_), begin(rhs.rules_), end(rhs.rules_));
 }
+
+static auto nonUpdating = [](auto&&, auto&&) { BOOST_ERROR("unexpected invocation"); };
 
 BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
@@ -371,33 +380,21 @@ BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)
                         verifyException<PichiError::BAD_JSON>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Rule_Empty_Fileds)
-{
-  auto const origin = RuleVO{ph};
-  auto holder = parse<RuleVO>(toString(origin));
-
-  auto emptyEgress = origin;
-  emptyEgress.egress_.clear();
-  BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(emptyEgress)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
 BOOST_AUTO_TEST_CASE(parse_Rule)
 {
-  auto const expect = RuleVO{ph};
+  auto const expect = RuleVO{};
   auto fact = parse<RuleVO>(toString(expect));
   BOOST_CHECK(fact == expect);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
 {
-  auto const origin = RuleVO{ph};
+  auto const origin = RuleVO{};
   auto generate = [](auto&& key, auto&& value) {
     auto expect = Document{};
     auto& alloc = expect.GetAllocator();
     auto array = Value{};
     expect.SetObject();
-    expect.AddMember("egress", ph, alloc);
     expect.AddMember(key, array.SetArray().PushBack(toJson(value, alloc), alloc), alloc);
     return toString(expect);
   };
@@ -435,7 +432,7 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Empty_Fields_Content)
 {
-  auto const origin = RuleVO{ph};
+  auto const origin = RuleVO{};
   parse<RuleVO>(toString(origin));
 
   auto range = origin;
@@ -466,9 +463,7 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Empty_Fields_Content)
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Superfluous_Field)
 {
-  auto const expect = RuleVO{ph};
-  auto fact = parse<RuleVO>(toString(expect));
-  BOOST_CHECK(fact == expect);
+  BOOST_CHECK(RuleVO{} == parse<RuleVO>("{\"superfluous_field\":\"none\"}"));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Invalid_Str)
@@ -498,7 +493,7 @@ BOOST_AUTO_TEST_CASE(parse_Route)
   BOOST_CHECK(fact == expect);
 
   expect.default_.reset();
-  expect.rules_.emplace_back(ph);
+  expect.rules_.emplace_back(make_pair(ph, ph));
   fact = parse<RouteVO>(toString(expect));
   BOOST_CHECK(fact == expect);
 

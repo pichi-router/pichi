@@ -32,7 +32,6 @@ struct EgressVO {
 };
 
 struct RuleVO {
-  std::string egress_;
   std::vector<std::string> range_;
   std::vector<std::string> ingress_;
   std::vector<AdapterType> type_;
@@ -43,7 +42,7 @@ struct RuleVO {
 
 struct RouteVO {
   std::optional<std::string> default_;
-  std::vector<std::string> rules_;
+  std::vector<std::pair<std::string, std::string>> rules_;
 };
 
 struct ErrorVO {

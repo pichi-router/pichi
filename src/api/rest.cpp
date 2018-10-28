@@ -55,7 +55,6 @@ static decltype(auto) password_ = "password";
 
 namespace RuleVOKey {
 
-static decltype(auto) egress_ = "egress";
 static decltype(auto) range_ = "range";
 static decltype(auto) ingress_ = "ingress_name";
 static decltype(auto) type_ = "ingress_type";
@@ -151,6 +150,14 @@ static string parseString(json::Value const& v)
   auto ret = string{v.GetString()};
   assertFalse(ret.empty(), PichiError::BAD_JSON, msg::STR_EMPTY);
   return ret;
+}
+
+static pair<string, string> parseRule(json::Value const& v)
+{
+  assertTrue(v.IsArray(), PichiError::MISC);
+  auto array = v.GetArray();
+  assertTrue(array.Size() == 2, PichiError::MISC);
+  return make_pair(parseString(array[0]), parseString(array[1]));
 }
 
 template <typename OutputIt, typename T, typename Convert>
@@ -297,11 +304,8 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
 
 json::Value toJson(RuleVO const& rvo, Allocator& alloc)
 {
-  assertFalse(rvo.egress_.empty(), PichiError::MISC);
-
   auto rule = json::Value{};
   rule.SetObject();
-  rule.AddMember(RuleVOKey::egress_, toJson(rvo.egress_, alloc), alloc);
   if (!rvo.range_.empty())
     rule.AddMember(RuleVOKey::range_, toJson(begin(rvo.range_), end(rvo.range_), alloc), alloc);
   if (!rvo.ingress_.empty())
@@ -329,7 +333,17 @@ json::Value toJson(RouteVO const& rvo, Allocator& alloc)
   auto route = json::Value{};
   route.SetObject();
   route.AddMember(RouteVOKey::default_, toJson(*rvo.default_, alloc), alloc);
-  route.AddMember(RouteVOKey::rules_, toJson(begin(rvo.rules_), end(rvo.rules_), alloc), alloc);
+
+  auto rules = json::Value{};
+  rules.SetArray();
+  for_each(cbegin(rvo.rules_), cend(rvo.rules_), [&](auto&& item) {
+    auto rule = json::Value{};
+    rule.SetArray();
+    rule.PushBack(toJson(item.first, alloc), alloc);
+    rule.PushBack(toJson(item.second, alloc), alloc);
+    rules.PushBack(move(rule), alloc);
+  });
+  route.AddMember(RouteVOKey::rules_, move(rules), alloc);
   return route;
 }
 
@@ -414,11 +428,8 @@ template <> EgressVO parse(json::Value const& v)
 template <> RuleVO parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
-  assertTrue(v.HasMember(RuleVOKey::egress_), PichiError::BAD_JSON, msg::MISSING_EG_FIELD);
 
   auto rvo = RuleVO{};
-
-  rvo.egress_ = parseString(v[RuleVOKey::egress_]);
 
   parseArray(v, RuleVOKey::range_, back_inserter(rvo.range_), &parseString);
   parseArray(v, RuleVOKey::ingress_, back_inserter(rvo.ingress_), &parseString);
@@ -438,7 +449,7 @@ template <> RouteVO parse(json::Value const& v)
 
   if (v.HasMember(RouteVOKey::default_)) rvo.default_.emplace(parseString(v[RouteVOKey::default_]));
 
-  parseArray(v, RouteVOKey::rules_, back_inserter(rvo.rules_), &parseString);
+  parseArray(v, RouteVOKey::rules_, back_inserter(rvo.rules_), &parseRule);
 
   return rvo;
 }

@@ -74,14 +74,13 @@ public:
   bool isUsed(std::string_view) const;
 
   RouteVO getRoute() const;
-  void setRoute(RouteVO const&);
+  void setRoute(RouteVO);
 
 private:
   Geo geo_;
   Container rules_ = {};
-  std::vector<std::string_view> order_ = {};
-  std::string default_ = "direct";
   bool needResolving_ = false;
+  RouteVO route_ = {"direct"};
 };
 
 } // namespace pichi::api
