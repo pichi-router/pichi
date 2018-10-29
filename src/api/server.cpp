@@ -200,7 +200,12 @@ Server::Server(asio::io_context& io, char const* fn)
                      auto vo = parse<RouteVO>(r.body());
                      assertFalse(vo.default_.has_value() &&
                                      eManager_.find(*vo.default_) == end(eManager_),
-                                 PichiError::RES_IN_USE);
+                                 PichiError::SEMANTIC_ERROR, "Unknown egress"sv);
+                     assertTrue(all_of(cbegin(vo.rules_), cend(vo.rules_),
+                                       [this](auto&& pair) {
+                                         return eManager_.find(pair.second) != end(eManager_);
+                                       }),
+                                PichiError::SEMANTIC_ERROR, "Unknown egress"sv);
                      router_.setRoute(move(vo));
                      return defaultResponse(http::status::no_content);
                    }),
