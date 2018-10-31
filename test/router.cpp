@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(Router_Erase_Rule_Used_By_Order)
   router.update(ph, {ph});
   router.setRoute({{}, {ph}});
 
-  BOOST_CHECK_EXCEPTION(router.erase(ph), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(router.erase(ph), Exception, verifyException<PichiError::RES_IN_USE>);
 }
 
 BOOST_AUTO_TEST_CASE(Router_Iteration)
