@@ -186,8 +186,8 @@ RouteVO Router::getRoute() const { return route_; }
 void Router::setRoute(RouteVO rvo)
 {
   // TODO egress names should also be checked
-  needResolving_ =
-      reduce(cbegin(rvo.rules_), cend(rvo.rules_), false, [this](auto needResolving, auto&& pair) {
+  needResolving_ = accumulate(
+      cbegin(rvo.rules_), cend(rvo.rules_), false, [this](auto needResolving, auto&& pair) {
         auto it = rules_.find(pair.first);
         assertFalse(it == cend(rules_), PichiError::SEMANTIC_ERROR, "Unknown rules"sv);
         auto& rule = it->second.first;
