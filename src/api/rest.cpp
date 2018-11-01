@@ -80,19 +80,19 @@ static decltype(auto) message_ = "message";
 
 static AdapterType parseAdapterType(json::Value const& v)
 {
-  assertTrue(v.IsString(), PichiError::MISC);
+  assertTrue(v.IsString(), PichiError::BAD_JSON);
   auto str = string_view{v.GetString()};
   if (str == DIRECT_TYPE) return AdapterType::DIRECT;
   if (str == REJECT_TYPE) return AdapterType::REJECT;
   if (str == SOCKS5_TYPE) return AdapterType::SOCKS5;
   if (str == HTTP_TYPE) return AdapterType::HTTP;
   if (str == SS_TYPE) return AdapterType::SS;
-  fail(PichiError::MISC);
+  fail(PichiError::BAD_JSON);
 }
 
 static CryptoMethod parseCryptoMethod(json::Value const& v)
 {
-  assertTrue(v.IsString(), PichiError::MISC);
+  assertTrue(v.IsString(), PichiError::BAD_JSON);
   auto str = string_view{v.GetString()};
   if (str == RC4_MD5_METHOD) return CryptoMethod::RC4_MD5;
   if (str == BF_CFB_METHOD) return CryptoMethod::BF_CFB;
@@ -113,23 +113,23 @@ static CryptoMethod parseCryptoMethod(json::Value const& v)
   if (str == AES_256_GCM_METHOD) return CryptoMethod::AES_256_GCM;
   if (str == CHACHA20_IETF_POLY1305_METHOD) return CryptoMethod::CHACHA20_IETF_POLY1305;
   if (str == XCHACHA20_IETF_POLY1305_METHOD) return CryptoMethod::XCHACHA20_IETF_POLY1305;
-  fail(PichiError::MISC);
+  fail(PichiError::BAD_JSON);
 }
 
 static uint16_t parsePort(json::Value const& v)
 {
-  assertTrue(v.IsInt(), PichiError::MISC);
+  assertTrue(v.IsInt(), PichiError::BAD_JSON);
   auto port = v.GetInt();
-  assertTrue(port > 0, PichiError::MISC);
-  assertTrue(port <= numeric_limits<uint16_t>::max(), PichiError::MISC);
+  assertTrue(port > 0, PichiError::BAD_JSON);
+  assertTrue(port <= numeric_limits<uint16_t>::max(), PichiError::BAD_JSON);
   return static_cast<uint16_t>(port);
 }
 
 static string parseString(json::Value const& v)
 {
-  assertTrue(v.IsString(), PichiError::MISC);
+  assertTrue(v.IsString(), PichiError::BAD_JSON);
   auto ret = string{v.GetString()};
-  assertFalse(ret.empty(), PichiError::MISC);
+  assertFalse(ret.empty(), PichiError::BAD_JSON);
   return ret;
 }
 
@@ -137,7 +137,7 @@ template <typename OutputIt, typename T, typename Convert>
 void parseArray(json::Value const& root, T const& key, OutputIt out, Convert&& convert)
 {
   if (!root.HasMember(key)) return;
-  assertTrue(root[key].IsArray(), PichiError::MISC);
+  assertTrue(root[key].IsArray(), PichiError::BAD_JSON);
   auto array = root[key].GetArray();
   transform(begin(array), end(array), out, forward<Convert>(convert));
 }
@@ -328,8 +328,8 @@ json::Value toJson(ErrorVO const& evo, Allocator& alloc)
 
 template <> IngressVO parse(json::Value const& v)
 {
-  assertTrue(v.IsObject(), PichiError::MISC);
-  assertTrue(v.HasMember(IngressVOKey::type_), PichiError::MISC);
+  assertTrue(v.IsObject(), PichiError::BAD_JSON);
+  assertTrue(v.HasMember(IngressVOKey::type_), PichiError::BAD_JSON);
 
   auto ivo = IngressVO{};
 
@@ -337,15 +337,15 @@ template <> IngressVO parse(json::Value const& v)
 
   switch (ivo.type_) {
   case AdapterType::SS:
-    assertTrue(v.HasMember(IngressVOKey::method_), PichiError::MISC);
-    assertTrue(v.HasMember(IngressVOKey::password_), PichiError::MISC);
+    assertTrue(v.HasMember(IngressVOKey::method_), PichiError::BAD_JSON);
+    assertTrue(v.HasMember(IngressVOKey::password_), PichiError::BAD_JSON);
     ivo.method_ = parseCryptoMethod(v[IngressVOKey::method_]);
     ivo.password_ = parseString(v[IngressVOKey::password_]);
     // Don't break here
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::MISC);
-    assertTrue(v.HasMember(IngressVOKey::port_), PichiError::MISC);
+    assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::BAD_JSON);
+    assertTrue(v.HasMember(IngressVOKey::port_), PichiError::BAD_JSON);
     ivo.bind_ = parseString(v[IngressVOKey::bind_]);
     ivo.port_ = parsePort(v[IngressVOKey::port_]);
     // Don't break here
@@ -353,7 +353,7 @@ template <> IngressVO parse(json::Value const& v)
   case AdapterType::REJECT:
     break;
   default:
-    fail(PichiError::MISC);
+    fail(PichiError::BAD_JSON);
   }
 
   return ivo;
@@ -361,23 +361,23 @@ template <> IngressVO parse(json::Value const& v)
 
 template <> EgressVO parse(json::Value const& v)
 {
-  assertTrue(v.IsObject(), PichiError::MISC);
-  assertTrue(v.HasMember(EgressVOKey::type_), PichiError::MISC);
+  assertTrue(v.IsObject(), PichiError::BAD_JSON);
+  assertTrue(v.HasMember(EgressVOKey::type_), PichiError::BAD_JSON);
 
   auto evo = EgressVO{};
   evo.type_ = parseAdapterType(v[EgressVOKey::type_]);
 
   switch (evo.type_) {
   case AdapterType::SS:
-    assertTrue(v.HasMember(EgressVOKey::method_), PichiError::MISC);
-    assertTrue(v.HasMember(EgressVOKey::password_), PichiError::MISC);
+    assertTrue(v.HasMember(EgressVOKey::method_), PichiError::BAD_JSON);
+    assertTrue(v.HasMember(EgressVOKey::password_), PichiError::BAD_JSON);
     evo.method_ = parseCryptoMethod(v[EgressVOKey::method_]);
     evo.password_ = parseString(v[EgressVOKey::password_]);
     // Don't break here
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    assertTrue(v.HasMember(EgressVOKey::host_), PichiError::MISC);
-    assertTrue(v.HasMember(EgressVOKey::port_), PichiError::MISC);
+    assertTrue(v.HasMember(EgressVOKey::host_), PichiError::BAD_JSON);
+    assertTrue(v.HasMember(EgressVOKey::port_), PichiError::BAD_JSON);
     evo.host_ = parseString(v[EgressVOKey::host_]);
     evo.port_ = parsePort(v[EgressVOKey::port_]);
     // Don't break here
@@ -385,7 +385,7 @@ template <> EgressVO parse(json::Value const& v)
   case AdapterType::REJECT:
     break;
   default:
-    fail(PichiError::MISC);
+    fail(PichiError::BAD_JSON);
   }
 
   return evo;
@@ -393,8 +393,8 @@ template <> EgressVO parse(json::Value const& v)
 
 template <> RuleVO parse(json::Value const& v)
 {
-  assertTrue(v.IsObject(), PichiError::MISC);
-  assertTrue(v.HasMember(RuleVOKey::egress_), PichiError::MISC);
+  assertTrue(v.IsObject(), PichiError::BAD_JSON);
+  assertTrue(v.HasMember(RuleVOKey::egress_), PichiError::BAD_JSON);
 
   auto rvo = RuleVO{};
 
@@ -412,7 +412,7 @@ template <> RuleVO parse(json::Value const& v)
 
 template <> RouteVO parse(json::Value const& v)
 {
-  assertTrue(v.IsObject(), PichiError::MISC);
+  assertTrue(v.IsObject(), PichiError::BAD_JSON);
 
   auto rvo = RouteVO{};
 

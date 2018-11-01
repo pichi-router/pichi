@@ -23,8 +23,8 @@ bool matchPattern(string_view remote, string_view pattern)
 bool matchDomain(string_view subdomain, string_view domain)
 {
   // TODO domain can start with '.'
-  assertFalse(!domain.empty() && domain[0] == '.', PichiError::MISC);
-  assertFalse(!subdomain.empty() && subdomain[0] == '.', PichiError::MISC);
+  assertFalse(!domain.empty() && domain[0] == '.', PichiError::BAD_JSON);
+  assertFalse(!subdomain.empty() && subdomain[0] == '.', PichiError::BAD_JSON);
   return !domain.empty() && !subdomain.empty() && // not matching if anyone is empty
          (subdomain == domain ||                  // same
           (subdomain.size() > domain.size() &&    // subdomain can not be shorter than domain
@@ -102,13 +102,16 @@ void Router::update(string const& name, RuleVO rvo)
             [](auto&& range) -> Matcher {
               auto ec = sys::error_code{};
               auto n4 = ip::make_network_v4(range, ec);
-              if (ec)
-                return [n6 = ip::make_network_v6(range)](auto&&, auto&& r, auto, auto) {
+              if (ec) {
+                auto n6 = ip::make_network_v6(range, ec);
+                assertFalse(static_cast<bool>(ec), PichiError::BAD_JSON);
+                return [n6](auto&&, auto&& r, auto, auto) {
                   return any_of(cbegin(r), cend(r), [n6](auto&& entry) {
                     auto address = entry.endpoint().address();
                     return address.is_v6() && n6.hosts().find(address.to_v6()) != cend(n6.hosts());
                   });
                 };
+              }
               else
                 return [n4](auto&&, auto&& r, auto, auto) {
                   return any_of(cbegin(r), cend(r), [n4](auto&& entry) {
@@ -122,8 +125,8 @@ void Router::update(string const& name, RuleVO rvo)
   });
   transform(cbegin(vo.type_), cend(vo.type_), back_inserter(matchers), [](auto t) {
     // ingress type shouldn't be DIRECT or REJECT
-    assertFalse(t == AdapterType::DIRECT, PichiError::MISC);
-    assertFalse(t == AdapterType::REJECT, PichiError::MISC);
+    assertFalse(t == AdapterType::DIRECT, PichiError::BAD_JSON);
+    assertFalse(t == AdapterType::REJECT, PichiError::BAD_JSON);
     return [t](auto&&, auto&&, auto, auto type) { return t == type; };
   });
   transform(cbegin(vo.pattern_), cend(vo.pattern_), back_inserter(matchers), [](auto&& pattern) {
@@ -183,7 +186,7 @@ void Router::setRoute(RouteVO const& rvo)
   auto tmp = vector<string_view>{};
   transform(cbegin(rvo.rules_), cend(rvo.rules_), back_inserter(tmp), [&rules](auto&& r) {
     auto it = rules.find(r);
-    assertFalse(it == cend(rules), PichiError::MISC);
+    assertFalse(it == cend(rules), PichiError::BAD_JSON);
     return string_view{it->first};
   });
   if (rvo.default_) default_ = *rvo.default_;

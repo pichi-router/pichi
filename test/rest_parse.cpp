@@ -126,13 +126,13 @@ BOOST_AUTO_TEST_SUITE(REST_PARSE)
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Str)
 {
   BOOST_CHECK_EXCEPTION(parse<IngressVO>("not a json"), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<IngressVO>("not a json", stub), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<IngressVO>("[\"not a json object\"]"), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<IngressVO>("[\"not a json object\"]", stub), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Direct_Reject_Additional_Fields)
@@ -168,12 +168,12 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Empty_Fields)
     auto emptyBind = origin;
     emptyBind.bind_.clear();
     BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyBind)), Exception,
-                          verifyException<PichiError::MISC>);
+                          verifyException<PichiError::BAD_JSON>);
 
     auto zeroPort = origin;
     zeroPort.port_ = 0;
     BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(zeroPort)), Exception,
-                          verifyException<PichiError::MISC>);
+                          verifyException<PichiError::BAD_JSON>);
   }
 }
 
@@ -185,36 +185,37 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
   auto emptyBind = origin;
   emptyBind.bind_.clear();
   BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyBind)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto zeroPort = origin;
   zeroPort.port_ = 0;
   BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(zeroPort)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto noMethod = origin;
   noMethod.method_.reset();
   BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noMethod)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto noPassword = origin;
   noPassword.password_.reset();
   BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noPassword)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
   BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyPassword)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Port)
 {
   decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
-  BOOST_CHECK_EXCEPTION(parse<IngressVO>(negative), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(negative), Exception,
+                        verifyException<PichiError::BAD_JSON>);
 
   decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
-  BOOST_CHECK_EXCEPTION(parse<IngressVO>(huge), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(huge), Exception, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Base)
@@ -264,13 +265,13 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Pack)
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
 {
   BOOST_CHECK_EXCEPTION(parse<EgressVO>("not a json"), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<EgressVO>("not a json", stub), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<EgressVO>("[\"not a json object\"]"), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<EgressVO>("[\"not a json object\"]", stub), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Direct_Reject_Additional_Fields)
@@ -294,22 +295,22 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Empty_Fields)
     auto noHost = origin;
     noHost.host_.reset();
     BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noHost)), Exception,
-                          verifyException<PichiError::MISC>);
+                          verifyException<PichiError::BAD_JSON>);
 
     auto emptyHost = origin;
     emptyHost.host_->clear();
     BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(emptyHost)), Exception,
-                          verifyException<PichiError::MISC>);
+                          verifyException<PichiError::BAD_JSON>);
 
     auto zeroPort = origin;
     zeroPort.port_.reset();
     BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(zeroPort)), Exception,
-                          verifyException<PichiError::MISC>);
+                          verifyException<PichiError::BAD_JSON>);
 
     auto noPort = origin;
     noPort.port_ = 0;
     BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPort)), Exception,
-                          verifyException<PichiError::MISC>);
+                          verifyException<PichiError::BAD_JSON>);
   }
 }
 
@@ -321,46 +322,47 @@ BOOST_AUTO_TEST_CASE(parse_Egress_SS_Empty_Fields)
   auto noHost = origin;
   noHost.host_.reset();
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noHost)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto emptyHost = origin;
   emptyHost.host_->clear();
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(emptyHost)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto zeroPort = origin;
   zeroPort.port_.reset();
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(zeroPort)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto noPort = origin;
   noPort.port_ = 0;
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPort)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto noMethod = origin;
   noMethod.method_.reset();
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noMethod)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto noPassword = origin;
   noPassword.password_.reset();
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPassword)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(emptyPassword)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
 {
   decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
-  BOOST_CHECK_EXCEPTION(parse<EgressVO>(negative), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(negative), Exception,
+                        verifyException<PichiError::BAD_JSON>);
 
   decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
-  BOOST_CHECK_EXCEPTION(parse<EgressVO>(huge), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(huge), Exception, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5)
@@ -408,13 +410,14 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Pack)
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<RuleVO>("not a json"), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<RuleVO>("not a json"), Exception,
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<RuleVO>("not a json", stub), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<RuleVO>("[\"not a json object\"]"), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<RuleVO>("[\"not a json object\"]", stub), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Empty_Fileds)
@@ -425,7 +428,7 @@ BOOST_AUTO_TEST_CASE(parse_Rule_Empty_Fileds)
   auto emptyEgress = origin;
   emptyEgress.egress_.clear();
   BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(emptyEgress)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule)
@@ -487,27 +490,27 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Empty_Fields_Content)
   auto range = origin;
   range.range_.emplace_back("");
   BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(range)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto ingress = origin;
   ingress.ingress_.emplace_back("");
   BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(ingress)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto pattern = origin;
   pattern.pattern_.emplace_back("");
   BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(pattern)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto domain = origin;
   domain.domain_.emplace_back("");
   BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(domain)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 
   auto country = origin;
   country.country_.emplace_back("");
   BOOST_CHECK_EXCEPTION(parse<RuleVO>(toString(country)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Superfluous_Field)
@@ -537,16 +540,17 @@ BOOST_AUTO_TEST_CASE(parse_Rule_Pack)
 
 BOOST_AUTO_TEST_CASE(parse_Route_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<RouteVO>("not a json"), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(parse<RouteVO>("not a json"), Exception,
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<RouteVO>("[\"not a json object\"]"), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Empty_Fields)
 {
   auto const emptyDefault = RouteVO{""};
   BOOST_CHECK_EXCEPTION(parse<RouteVO>(toString(emptyDefault)), Exception,
-                        verifyException<PichiError::MISC>);
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route)
