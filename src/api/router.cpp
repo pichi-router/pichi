@@ -79,17 +79,14 @@ string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterTy
                           function<ResolvedResult()> const& resolve) const
 {
   auto r = ResolvedResult{};
-  auto resolved = false;
+  if (needResolving_) r = resolve();
+
+  // No asynchronous IO operation can run while routing
   auto it = find_if(cbegin(order_), cend(order_), [&, this](auto name) {
     auto it = rules_.find(name);
     assertFalse(it == cend(rules_), PichiError::MISC);
     auto& rule = as_const(it->second.first);
     auto& matchers = as_const(it->second.second);
-    auto needResolving = !rule.range_.empty() || !rule.country_.empty();
-    if (!resolved && needResolving) {
-      r = resolve();
-      resolved = true;
-    }
     return any_of(cbegin(matchers), cend(matchers),
                   [&](auto&& matcher) { return matcher(e, r, ingress, type); });
   });
@@ -193,13 +190,16 @@ void Router::setRoute(RouteVO const& rvo)
 {
   auto& rules = as_const(rules_);
   auto tmp = vector<string_view>{};
-  transform(cbegin(rvo.rules_), cend(rvo.rules_), back_inserter(tmp), [&rules](auto&& r) {
+  auto nr = false;
+  transform(cbegin(rvo.rules_), cend(rvo.rules_), back_inserter(tmp), [&rules, &nr](auto&& r) {
     auto it = rules.find(r);
     assertFalse(it == cend(rules), PichiError::BAD_JSON);
+    if (!nr) nr = !(it->second.first.range_.empty() && it->second.first.country_.empty());
     return string_view{it->first};
   });
   if (rvo.default_) default_ = *rvo.default_;
   order_ = move(tmp);
+  needResolving_ = nr;
 }
 
 } // namespace pichi::api

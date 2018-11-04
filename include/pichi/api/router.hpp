@@ -81,6 +81,7 @@ private:
   Container rules_ = {};
   std::vector<std::string_view> order_ = {};
   std::string default_ = "direct";
+  bool needResolving_ = false;
 };
 
 } // namespace pichi::api
