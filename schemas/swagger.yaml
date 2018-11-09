@@ -214,7 +214,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Egress'
+              $ref: '#/components/schemas/Rule'
       responses:
         '204':
           description: 'Operation succeeded'
