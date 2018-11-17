@@ -8,13 +8,11 @@
 #include <pichi/net/common.hpp>
 #include <utility>
 
-namespace pichi {
-namespace net {
+namespace pichi::net {
 
 class HttpIngress : public Ingress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
-  using Yield = boost::asio::yield_context;
 
 public:
   HttpIngress(Socket&& socket) : socket_{std::move(socket)} {}
@@ -46,7 +44,6 @@ private:
 class HttpEgress : public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
-  using Yield = boost::asio::yield_context;
 
 public:
   HttpEgress(Socket&&);
@@ -64,7 +61,6 @@ private:
   Socket socket_;
 };
 
-} // namespace net
-} // namespace pichi
+} // namespace pichi::net
 
-#endif
+#endif // PICHI_NET_HTTP_HPP
