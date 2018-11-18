@@ -6,13 +6,11 @@
 #include <pichi/crypto/stream.hpp>
 #include <pichi/net/adapter.hpp>
 
-namespace pichi {
-namespace net {
+namespace pichi::net {
 
 template <crypto::CryptoMethod method> class SSStreamAdapter : public Ingress, public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
-  using Yield = boost::asio::yield_context;
 
 public:
   SSStreamAdapter(Socket&&, ConstBuffer<uint8_t> psk);
@@ -35,7 +33,6 @@ private:
   bool ivReceived_ = false;
 };
 
-} // namespace net
-} // namespace pichi
+} // namespace pichi::net
 
-#endif
+#endif // PICHI_NET_SSSTREAM_HPP

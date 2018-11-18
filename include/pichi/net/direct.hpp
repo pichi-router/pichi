@@ -4,13 +4,11 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/net/adapter.hpp>
 
-namespace pichi {
-namespace net {
+namespace pichi::net {
 
 class DirectAdapter : public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
-  using Yield = boost::asio::yield_context;
 
 public:
   DirectAdapter(Socket&& socket);
@@ -28,7 +26,6 @@ private:
   Socket socket_;
 };
 
-} // namespace net
-} // namespace pichi
+} // namespace pichi::net
 
-#endif
+#endif // PICHI_NET_DIRECT_HPP
