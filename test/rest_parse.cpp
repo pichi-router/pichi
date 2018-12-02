@@ -138,16 +138,14 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Str)
                         verifyException<PichiError::BAD_JSON>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Direct_Reject_Additional_Fields)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Type)
 {
-  for (auto type : {AdapterType::DIRECT, AdapterType::REJECT}) {
-    auto const expect = IngressVO{type};
-    auto fact = parse<IngressVO>(toString(expect));
-    BOOST_CHECK(expect == fact);
-
-    fact = parse<IngressVO>(toString(IngressVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
-    BOOST_CHECK(expect == fact);
-  }
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>("{\"type\":\"invalid\"}"), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>("{\"type\":\"direct\"}"), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>("{\"type\":\"reject\"}"), Exception,
+                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Additional_Fields)

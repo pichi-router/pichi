@@ -63,44 +63,11 @@ BOOST_AUTO_TEST_CASE(toJson_CryptoMethod)
   });
 }
 
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Direct)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_Invalid_Type)
 {
-  auto expect = Value{};
-  expect.SetObject();
-  expect.AddMember("type", "direct", alloc);
-
-  auto fact = toJson(IngressVO{AdapterType::DIRECT}, alloc);
-  BOOST_CHECK(expect == fact);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Direct_Additional_Fields)
-{
-  auto expect = Value{};
-  expect.SetObject();
-  expect.AddMember("type", "direct", alloc);
-
-  auto fact = toJson(IngressVO{AdapterType::DIRECT, ph, 0, CryptoMethod::AES_128_CFB, ph}, alloc);
-  BOOST_CHECK(expect == fact);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Reject)
-{
-  auto expect = Value{};
-  expect.SetObject();
-  expect.AddMember("type", "reject", alloc);
-
-  auto fact = toJson(IngressVO{AdapterType::REJECT}, alloc);
-  BOOST_CHECK(expect == fact);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Reject_Additional_Fields)
-{
-  auto expect = Value{};
-  expect.SetObject();
-  expect.AddMember("type", "reject", alloc);
-
-  auto fact = toJson(IngressVO{AdapterType::REJECT, ph, 0, CryptoMethod::AES_128_CFB, ph}, alloc);
-  BOOST_CHECK(expect == fact);
+  for (auto t : {AdapterType::DIRECT, AdapterType::REJECT})
+    BOOST_CHECK_EXCEPTION(toJson(IngressVO{t}, alloc), Exception,
+                          verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP)
@@ -260,9 +227,11 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack)
   for (auto i = 0; i < 10; ++i) {
     auto v = Value{};
     v.SetObject();
-    v.AddMember("type", "direct", alloc);
+    v.AddMember("type", "http", alloc);
+    v.AddMember("bind", ph, alloc);
+    v.AddMember("port", 1, alloc);
     expect.AddMember(Value{to_string(i).data(), alloc}, v, alloc);
-    src[to_string(i)] = IngressVO{AdapterType::DIRECT};
+    src[to_string(i)] = IngressVO{AdapterType::HTTP, ph, 1};
   }
 
   auto fact = toJson(begin(src), end(src), alloc);
