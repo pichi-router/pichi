@@ -13,6 +13,7 @@
 #include <pichi/net/direct.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
+#include <pichi/net/reject.hpp>
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
@@ -126,6 +127,8 @@ template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo
     return make_unique<Socks5Adapter>(forward<Socket>(s));
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(forward<Socket>(s));
+  case AdapterType::REJECT:
+    return make_unique<RejectEgress>(forward<Socket>(s));
   case AdapterType::SS:
     psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
     switch (*vo.method_) {
