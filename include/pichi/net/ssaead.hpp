@@ -7,13 +7,11 @@
 #include <pichi/crypto/method.hpp>
 #include <pichi/net/adapter.hpp>
 
-namespace pichi {
-namespace net {
+namespace pichi::net {
 
 template <crypto::CryptoMethod method> class SSAeadAdapter : public Ingress, public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
-  using Yield = boost::asio::yield_context;
   using Cache = boost::beast::basic_flat_buffer<std::allocator<uint8_t>>;
 
 public:
@@ -46,7 +44,6 @@ private:
   bool ivReceived_ = false;
 };
 
-} // namespace net
-} // namespace pichi
+} // namespace pichi::net
 
-#endif
+#endif // PICHI_NET_SSAEAD_HPP

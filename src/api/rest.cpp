@@ -259,9 +259,6 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
     assertFalse(ingress.port_ == 0, PichiError::MISC);
     ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
     ret.AddMember(IngressVOKey::port_, json::Value{ingress.port_}, alloc);
-  // Don't break here
-  case AdapterType::DIRECT:
-  case AdapterType::REJECT:
     ret.AddMember(IngressVOKey::type_, toJson(ingress.type_, alloc), alloc);
     break;
   default:
@@ -383,9 +380,6 @@ template <> IngressVO parse(json::Value const& v)
     assertTrue(v.HasMember(IngressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
     ivo.bind_ = parseString(v[IngressVOKey::bind_]);
     ivo.port_ = parsePort(v[IngressVOKey::port_]);
-    // Don't break here
-  case AdapterType::DIRECT:
-  case AdapterType::REJECT:
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
