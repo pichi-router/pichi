@@ -83,11 +83,11 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
       };
       auto it = eManager_.find(router_.route(remote, iname, vo.type_, resolve));
       assertFalse(it == cend(eManager_), PichiError::MISC);
-      if (it->second.type_ == AdapterType::REJECT) return;
       auto session =
           make_shared<Session>(strand_.context(), move(ingress),
                                net::makeEgress(it->second, tcp::socket{strand_.context()}));
-      session->start(remote, it->second.type_ == AdapterType::DIRECT ?
+      session->start(remote, it->second.type_ == AdapterType::DIRECT ||
+                                     it->second.type_ == AdapterType::REJECT ?
                                  remote :
                                  net::Endpoint{net::detectHostType(*it->second.host_),
                                                *it->second.host_, to_string(*it->second.port_)});

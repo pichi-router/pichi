@@ -1,31 +1,33 @@
-#ifndef PICHI_NET_DIRECT_HPP
-#define PICHI_NET_DIRECT_HPP
+#ifndef PICHI_NET_REJECT_HPP
+#define PICHI_NET_REJECT_HPP
 
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/system_timer.hpp>
 #include <pichi/net/adapter.hpp>
 
 namespace pichi::net {
 
-class DirectAdapter : public Egress {
+class RejectEgress : public Egress {
 private:
   using Socket = boost::asio::ip::tcp::socket;
+  using Timer = boost::asio::system_timer;
 
 public:
-  DirectAdapter(Socket&& socket);
-  ~DirectAdapter() override = default;
+  explicit RejectEgress(Socket&&);
+  ~RejectEgress() override = default;
 
-public:
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
   void send(ConstBuffer<uint8_t>, Yield) override;
   void close() override;
   bool readable() const override;
   bool writable() const override;
-  void connect(Endpoint const&, Endpoint const&, Yield) override;
+  void connect(Endpoint const& remote, Endpoint const& next, Yield) override;
 
 private:
-  Socket socket_;
+  bool running_ = true;
+  Timer t_;
 };
 
 } // namespace pichi::net
 
-#endif // PICHI_NET_DIRECT_HPP
+#endif // PICHI_NET_REJECT_HPP
