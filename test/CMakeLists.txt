@@ -10,7 +10,9 @@ set(ROUTER_TESTS router)
 set(NET_HELPERS_TESTS net_helpers)
 set(URI_TESTS uri)
 
-add_definitions(-DBOOST_TEST_DYN_LINK)
+if (NOT STATIC_LINK)
+  add_definitions(-DBOOST_TEST_DYN_LINK)
+endif (NOT STATIC_LINK)
 link_libraries(${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
 configure_file(geo.mmdb ${CMAKE_CURRENT_BINARY_DIR}/geo.mmdb COPYONLY)
