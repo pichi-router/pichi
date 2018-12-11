@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 project(pichi LANGUAGES CXX)
 
+option(BUILD_SERVER "Build pichi application" ON)
 option(BUILD_TEST "Build unit test cases" ON)
 option(STATIC_LINK "Static linking" OFF)
+option(INSTALL_HEADERS "Install header files" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,6 +19,9 @@ if (STATIC_LINK)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .lib)
   endif (UNIX)
 endif (STATIC_LINK)
+
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 if (BUILD_TEST)
   find_package(Boost 1.67.0 REQUIRED
@@ -53,7 +58,9 @@ add_subdirectory(src)
 
 link_libraries(${PICHI_LIBRARY})
 
-add_subdirectory(server)
+if (BUILD_SERVER)
+  add_subdirectory(server)
+endif (BUILD_SERVER)
 
 if (BUILD_TEST)
   enable_testing()

@@ -10,3 +10,8 @@ else (STATIC_LINK)
   )
 endif (STATIC_LINK)
 set_target_properties(${PICHI_LIBRARY} PROPERTIES OUTPUT_NAME pichi)
+
+if (INSTALL_HEADERS)
+  install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/pichi DESTINATION include)
+endif (INSTALL_HEADERS)
+install(TARGETS ${PICHI_LIBRARY} DESTINATION lib)
