@@ -4,10 +4,10 @@ Pichi is an application layer proxy, which can be fully controlled via RESTful A
 
 ## Build Status
 
-| OS | macOS 10.13 | Alpine 3.8 | Windows 10 |
-|:-------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| **Toolchain** | Clang 6.0.x | GCC 8.x | VC++2017 |
-| **Status** | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-ci.org/pichi-router/pichi.svg?branch=master)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/project/pichi-router/pichi) |
+| OS | macOS 10.13 | Alpine 3.8 | Windows 10 | iOS 12.1 | Android 9 |
+|:-------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Toolchain** | Xcode 10.1 | GCC 8.x | VC++2017 | Xcode 10.1 | NDK r18b |
+| **Status** | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/5)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/3)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/1)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/2)](https://travis-ci.org/pichi-router/pichi) |
 
 ## Using Pichi API
 
@@ -141,6 +141,56 @@ c51b832bd29dd0333b0d32b0b0563ddc72821f7301c36c7635ae47d00a3bb902
 $ docker ps -n 1
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
 c51b832bd29d        pichi/pichi         "pichi -g /usr/share…"   1 seconds ago       Up 1 seconds                            pichi
+```
+
+### Build library for iOS/Android
+
+Pichi is designed to run or be embeded into some APPs on iOS/Adnroid. `deps-build` directory gives some helping scripts to build Pichi's dependencies for iOS/Android.
+
+#### iOS
+
+It's very simple to build a C/C++ project managed by CMake, if `CMAKE_TOOLCHAIN_FILE` is set to [ios.toolchain.cmake](https://github.com/leetal/ios-cmake/blob/2.1.4/ios.toolchain.cmake).
+
+```
+$ cmake -D CMAKE_TOOLCHAIN_FILE=/path/to/ios.toolchain.cmake \
+>   -D IOS_PLATFORM=OS -D IOS_ARCH=arm64 [other options] /path/to/project
+```
+
+On the other hand, `deps-build/boost.sh` can generate libraries for iOS if below environment variables are set:
+
+* **PLATFORM**: to specify target OS(*iphoneos, iphonesimulator, appletvos, appletvsimulator*),
+* **IOS_ROOT**: to specify root install directory of headers/libraries.
+
+For example:
+
+```
+$ # In macOS with Xcode 10.0 or above
+$ export PLATFORM=iphoneos
+$ export IOS_ROOT=/path/to/ios/root
+$ bash deps-build/boost.sh
+Usage: boost.sh <src path>
+$ bash deps-build/boost.sh /path/to/boost
+...
+```
+
+#### Android
+
+The usage of `deps-build/boost.sh` is very similar to iOS one, except environment varialbes:
+
+* **PLATFORM**: *android-\<API\>s* are available,
+* **ANDROID_ROOT**: to specify root install directory of headers/libraries.
+
+Android NDK kindly provides `build/tools/make_standalone_toolchain.py` script to generate a cross-compiling toolchain for any version of Android.
+
+```
+$ export NDK_ROOT=/path/to/ndk
+$ export TOOLCHAIN_ROOT=/path/to/toolchain
+$ python ${NDK_ROOT}/build/tools/make_standalone_toolchain.py --arch arm64 --api 28 \
+>   --stl libc++ --install-dir ${TOOLCHAIN_ROOT}
+$ cmake -D CMAKE_SYSROOT=${TOOLCHAIN_ROOT}/sysroot \
+>   -D CMAKE_C_COMPILER=${TOOLCHAIN_ROOT}/bin/clang \
+>   -D CMAKE_CXX_COMPILER=${TOOLCHAIN_ROOT}/bin/clang++ \
+>   [other options] /path/to/project
 ```
 
 ## Run pichi server
