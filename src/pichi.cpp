@@ -1,4 +1,5 @@
 #include <boost/asio/io_context.hpp>
+#include <iostream>
 #include <pichi.h>
 #include <pichi/api/server.hpp>
 
@@ -21,7 +22,8 @@ int pichi_run_server(char const* bind, uint16_t port, char const* mmdb)
     io.run();
     return 0;
   }
-  catch (...) {
+  catch (exception const& e) {
+    cout << "ERROR: " << e.what() << endl;
     return -1;
   }
 }
