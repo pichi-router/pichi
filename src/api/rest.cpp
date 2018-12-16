@@ -33,6 +33,9 @@ static decltype(auto) AES_256_GCM_METHOD = "aes-256-gcm";
 static decltype(auto) CHACHA20_IETF_POLY1305_METHOD = "chacha20-ietf-poly1305";
 static decltype(auto) XCHACHA20_IETF_POLY1305_METHOD = "xchacha20-ietf-poly1305";
 
+static decltype(auto) RANDOM_DELAY_MODE = "random";
+static decltype(auto) FIXED_DELAY_MODE = "fixed";
+
 namespace IngressVOKey {
 
 static decltype(auto) type_ = "type";
@@ -50,6 +53,8 @@ static decltype(auto) host_ = "host";
 static decltype(auto) port_ = "port";
 static decltype(auto) method_ = "method";
 static decltype(auto) password_ = "password";
+static decltype(auto) mode_ = "mode";
+static decltype(auto) delay_ = "delay";
 
 } // namespace EgressVOKey
 
@@ -87,6 +92,8 @@ static auto const PAIR_TYPE_ERROR = "Pair required"sv;
 static auto const AT_INVALID = "Invalid adapter type string"sv;
 static auto const CM_INVALID = "Invalid crypto method string"sv;
 static auto const PT_INVALID = "Port number must be in range (0, 65536)"sv;
+static auto const DM_INVALID = "Invalid delay mode type string"sv;
+static auto const DL_INVALID = "Delay time must be in range [0, 300]"sv;
 static auto const STR_EMPTY = "Empty string"sv;
 static auto const MISSING_TYPE_FIELD = "Missing type field"sv;
 static auto const MISSING_HOST_FIELD = "Missing host field"sv;
@@ -95,8 +102,19 @@ static auto const MISSING_PORT_FIELD = "Missing port field"sv;
 static auto const MISSING_METHOD_FIELD = "Missing method field"sv;
 static auto const MISSING_PW_FIELD = "Missing password field"sv;
 static auto const MISSING_EG_FIELD = "Missing egress field"sv;
+static auto const MISSING_MODE_FIELD = "Missing mode field"sv;
+static auto const MISSING_DELAY_FIELD = "Missing delay field"sv;
 
 } // namespace msg
+
+static DelayMode parseDelayMode(json::Value const& v)
+{
+  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
+  auto str = string_view{v.GetString()};
+  if (str == RANDOM_DELAY_MODE) return DelayMode::RANDOM;
+  if (str == FIXED_DELAY_MODE) return DelayMode::FIXED;
+  fail(PichiError::BAD_JSON, msg::DM_INVALID);
+}
 
 static AdapterType parseAdapterType(json::Value const& v)
 {
@@ -175,6 +193,18 @@ json::Value toJson(string_view str, Allocator& alloc)
   auto ret = json::Value{};
   ret.SetString(str.data(), str.size(), alloc);
   return ret;
+}
+
+json::Value toJson(DelayMode mode, Allocator& alloc)
+{
+  switch (mode) {
+  case DelayMode::FIXED:
+    return toJson(FIXED_DELAY_MODE, alloc);
+  case DelayMode::RANDOM:
+    return toJson(RANDOM_DELAY_MODE, alloc);
+  default:
+    fail();
+  }
 }
 
 json::Value toJson(AdapterType type, Allocator& alloc)
@@ -271,6 +301,7 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
 {
   auto egress_ = json::Value{};
   egress_.SetObject();
+  egress_.AddMember(EgressVOKey::type_, toJson(evo.type_, alloc), alloc);
 
   switch (evo.type_) {
   case AdapterType::SS:
@@ -288,10 +319,17 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
     assertFalse(*evo.port_ == 0, PichiError::MISC);
     egress_.AddMember(EgressVOKey::host_, toJson(*evo.host_, alloc), alloc);
     egress_.AddMember(EgressVOKey::port_, json::Value{*evo.port_}, alloc);
-    // Don't break here
-  case AdapterType::DIRECT:
+    break;
   case AdapterType::REJECT:
-    egress_.AddMember(EgressVOKey::type_, toJson(evo.type_, alloc), alloc);
+    assertTrue(evo.mode_.has_value());
+    egress_.AddMember(EgressVOKey::mode_, toJson(*evo.mode_, alloc), alloc);
+    if (*evo.mode_ == DelayMode::FIXED) {
+      assertTrue(evo.delay_.has_value());
+      assertTrue(*evo.delay_ <= 300);
+      egress_.AddMember(EgressVOKey::delay_, json::Value{*evo.delay_}, alloc);
+    }
+    break;
+  case AdapterType::DIRECT:
     break;
   default:
     fail(PichiError::MISC);
@@ -409,9 +447,25 @@ template <> EgressVO parse(json::Value const& v)
     assertTrue(v.HasMember(EgressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
     evo.host_ = parseString(v[EgressVOKey::host_]);
     evo.port_ = parsePort(v[EgressVOKey::port_]);
-    // Don't break here
-  case AdapterType::DIRECT:
+    break;
   case AdapterType::REJECT:
+    if (v.HasMember(EgressVOKey::mode_)) {
+      evo.mode_ = parseDelayMode(v[EgressVOKey::mode_]);
+      if (evo.mode_ == DelayMode::FIXED) {
+        assertTrue(v.HasMember(EgressVOKey::delay_), PichiError::BAD_JSON,
+                   msg::MISSING_DELAY_FIELD);
+        assertTrue(v[EgressVOKey::delay_].IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
+        auto delay = v[EgressVOKey::delay_].GetInt();
+        assertTrue(delay >= 0 && delay <= 300, PichiError::BAD_JSON, msg::DL_INVALID);
+        evo.delay_ = static_cast<uint16_t>(delay);
+      }
+    }
+    else {
+      evo.mode_ = DelayMode::FIXED;
+      evo.delay_ = 0;
+    }
+    break;
+  case AdapterType::DIRECT:
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);

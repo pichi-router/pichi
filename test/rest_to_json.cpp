@@ -263,26 +263,72 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_DIRECT_Additional_Fields)
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT)
+BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Missing_Mode)
 {
-  auto const origin = EgressVO{AdapterType::REJECT};
-  auto fact = toJson(origin, alloc);
+  BOOST_CHECK_EXCEPTION(toJson(EgressVO{AdapterType::REJECT}, alloc), Exception,
+                        verifyException<PichiError::MISC>);
+  // auto const origin = EgressVO{AdapterType::REJECT};
+  // auto fact = toJson(origin, alloc);
 
+  // auto expect = Value{};
+  // expect.SetObject();
+  // expect.AddMember("type", "reject", alloc);
+
+  // BOOST_CHECK(expect == fact);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Missing_Delay)
+{
+  BOOST_CHECK_EXCEPTION(
+      toJson(EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED}, alloc), Exception,
+      verifyException<PichiError::MISC>);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Delay_Out_Of_Range)
+{
+  BOOST_CHECK_EXCEPTION(
+      toJson(EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 301}, alloc),
+      Exception, verifyException<PichiError::MISC>);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Fixed)
+{
+  for (auto i = 0; i <= 300; ++i) {
+    auto expect = Value{};
+    expect.SetObject();
+    expect.AddMember("type", "reject", alloc);
+    expect.AddMember("mode", "fixed", alloc);
+    expect.AddMember("delay", i, alloc);
+    auto fact = toJson(EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, i}, alloc);
+    BOOST_CHECK(expect == fact);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Random_Additional_Fields)
+{
   auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "reject", alloc);
+  expect.AddMember("mode", "random", alloc);
+
+  auto fact = toJson(
+      EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph, DelayMode::RANDOM, 1},
+      alloc);
 
   BOOST_CHECK(expect == fact);
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Fixed_Additional_Fields)
 {
-  auto const origin = EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = toJson(origin, alloc);
-
   auto expect = Value{};
   expect.SetObject();
   expect.AddMember("type", "reject", alloc);
+  expect.AddMember("mode", "fixed", alloc);
+  expect.AddMember("delay", 1, alloc);
+
+  auto fact = toJson(
+      EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph, DelayMode::FIXED, 1},
+      alloc);
 
   BOOST_CHECK(expect == fact);
 }
