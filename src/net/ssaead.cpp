@@ -34,9 +34,7 @@ size_t SSAeadAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
 {
   if (!ivReceived_) {
     auto iv = array<uint8_t, IV_SIZE<method>>{};
-    read(socket_, iv, yield);
-    decryptor_.setIv(iv);
-    ivReceived_ = true;
+    readIV(iv, yield);
   }
 
   if (cache_.size() > 0) return copyTo(plain);
@@ -71,6 +69,17 @@ void SSAeadAdapter<method>::connect(Endpoint const& remote, Endpoint const& serv
   auto plen = serializeEndpoint(remote, plain);
 
   send({plain, plen}, yield);
+}
+
+template <CryptoMethod method>
+size_t SSAeadAdapter<method>::readIV(MutableBuffer<uint8_t> iv, Yield yield)
+{
+  assertFalse(ivReceived_);
+  assertTrue(iv.size() >= IV_SIZE<method>);
+  read(socket_, iv, yield);
+  decryptor_.setIv(iv);
+  ivReceived_ = true;
+  return IV_SIZE<method>;
 }
 
 template <CryptoMethod method> Endpoint SSAeadAdapter<method>::readRemote(Yield yield)

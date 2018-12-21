@@ -1,4 +1,5 @@
 #include <array>
+#include <pichi/asserts.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/ssstream.hpp>
@@ -24,9 +25,7 @@ size_t SSStreamAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
 {
   if (!ivReceived_) {
     auto iv = array<uint8_t, IV_SIZE<method>>{};
-    read(socket_, iv, yield);
-    decryptor_.setIv(iv);
-    ivReceived_ = true;
+    readIV(iv, yield);
   }
 
   auto cipher = FrameBuffer<uint8_t>{};
@@ -64,6 +63,17 @@ template <CryptoMethod method> bool SSStreamAdapter<method>::readable() const
 template <CryptoMethod method> bool SSStreamAdapter<method>::writable() const
 {
   return socket_.is_open();
+}
+
+template <CryptoMethod method>
+size_t SSStreamAdapter<method>::readIV(MutableBuffer<uint8_t> iv, Yield yield)
+{
+  assertFalse(ivReceived_);
+  assertTrue(iv.size() >= IV_SIZE<method>);
+  read(socket_, iv, yield);
+  decryptor_.setIv(iv);
+  ivReceived_ = true;
+  return IV_SIZE<method>;
 }
 
 template <CryptoMethod method> Endpoint SSStreamAdapter<method>::readRemote(Yield yield)
