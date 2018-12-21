@@ -6,3 +6,6 @@ target_link_libraries(${SERVER} PRIVATE
   ${Boost_PROGRAM_OPTIONS_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
 )
+
+install(TARGETS ${SERVER} DESTINATION bin)
+install(FILES ${CMAKE_SOURCE_DIR}/test/geo.mmdb DESTINATION share/pichi)
