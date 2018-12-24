@@ -7,8 +7,14 @@
 extern "C" {
 #endif // __cplusplus
 
-extern char const* PICHI_DEFAULT_BIND;
-extern char const* PICHI_DEFAULT_MMDB;
+#ifdef WIN32
+#define GLOBAL __declspec(dllimport)
+#else // WIN32
+#define GLOBAL
+#endif // WIN32
+
+GLOBAL extern char const* PICHI_DEFAULT_BIND;
+GLOBAL extern char const* PICHI_DEFAULT_MMDB;
 
 /*
  * Start PICHI server according to
