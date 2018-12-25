@@ -70,8 +70,8 @@ size_t SSStreamAdapter<method>::readIV(MutableBuffer<uint8_t> iv, Yield yield)
 {
   assertFalse(ivReceived_);
   assertTrue(iv.size() >= IV_SIZE<method>);
-  read(socket_, iv, yield);
-  decryptor_.setIv(iv);
+  read(socket_, {iv, IV_SIZE<method>}, yield);
+  decryptor_.setIv({iv, IV_SIZE<method>});
   ivReceived_ = true;
   return IV_SIZE<method>;
 }
