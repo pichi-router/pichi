@@ -8,15 +8,15 @@ matrix:
         - docker
       env:
         - PLATFORM=alpine
-        - BUILD_TYPE="Debug"
         - PARALLEL="$(nproc)"
+        - STATIC_LINK=ON
     - os: linux
       services:
         - docker
       env:
         - PLATFORM=alpine
-        - BUILD_TYPE="Release"
         - PARALLEL="$(nproc)"
+        - STATIC_LINK=OFF
     - os: osx
       addons:
         homebrew:
@@ -30,7 +30,7 @@ matrix:
             - rapidjson
       env:
         - PLATFORM=osx
-        - BUILD_TYPE="Debug"
+        - STATIC_LINK=ON
         - PARALLEL="$(sysctl -n hw.physicalcpu)"
     - os: osx
       addons:
@@ -45,7 +45,7 @@ matrix:
             - rapidjson
       env:
         - PLATFORM=osx
-        - BUILD_TYPE="Release"
+        - STATIC_LINK=ON
         - PARALLEL="$(sysctl -n hw.physicalcpu)"
 
 install:
@@ -61,13 +61,14 @@ script:
     case "${PLATFORM}" in
       "alpine")
         docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
-          pichi/builder cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" /root/pichi &&
+          pichi/builder cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DSTATIC_LINK="${STATIC_LINK}" \
+          /root/pichi &&
         docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
           pichi/builder make -j "${PARALLEL}" &&
         docker run --rm -v "${TRAVIS_BUILD_DIR}:/root/pichi" -w /root/pichi/build \
           pichi/builder ctest --output-on-failure;;
       "osx")
-        cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+        cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DSTATIC_LINK="${STATIC_LINK}" \
           -DCMAKE_CXX_COMPILER="$(brew --prefix)/opt/llvm/bin/clang++" \
           "${TRAVIS_BUILD_DIR}" &&
         make -j "${PARALLEL}" &&
