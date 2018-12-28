@@ -21,6 +21,7 @@ public:
   void close() override;
   bool readable() const override;
   bool writable() const override;
+  size_t readIV(MutableBuffer<uint8_t>, Yield) override;
   Endpoint readRemote(Yield) override;
   void confirm(Yield) override;
   void connect(Endpoint const& remote, Endpoint const& server, Yield) override;

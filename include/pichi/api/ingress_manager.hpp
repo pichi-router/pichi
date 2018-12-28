@@ -9,6 +9,8 @@
 #include <map>
 #include <pichi/api/iterator.hpp>
 #include <pichi/api/rest.hpp>
+#include <pichi/buffer.hpp>
+#include <unordered_set>
 #include <utility>
 
 namespace pichi::api {
@@ -33,6 +35,9 @@ private:
   static void stub(std::exception_ptr);
   static void logging(std::exception_ptr);
 
+  std::pair<EgressVO const&, net::Endpoint> route(net::Endpoint const&, std::string_view ingress,
+                                                  AdapterType, boost::asio::yield_context);
+  bool isDuplicated(ConstBuffer<uint8_t>, boost::asio::yield_context);
   template <typename Function, typename FaultHandler = decltype(stub)>
   void spawn(Function&&, FaultHandler&& = stub);
   void listen(typename Container::iterator, boost::asio::yield_context);
@@ -51,6 +56,7 @@ private:
   Router const& router_;
   EgressManager const& eManager_;
   Container c_;
+  std::unordered_set<std::string> ivs_;
 };
 
 } // namespace pichi::api
