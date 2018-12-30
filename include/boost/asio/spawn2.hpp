@@ -50,10 +50,14 @@ private:
   ErrorCode* ec_ = nullptr;
 };
 
-template <typename Executor, typename Function>
-class SpawnContext : public std::enable_shared_from_this<SpawnContext<Executor, Function>> {
+template <typename Executor, typename Function, typename StackAllocator>
+class SpawnContext
+  : public std::enable_shared_from_this<SpawnContext<Executor, Function, StackAllocator>> {
 public:
-  SpawnContext(strand<Executor> const& s, Function&& f) : s_{s}, f_{std::forward<Function>(f)} {}
+  SpawnContext(strand<Executor> const& s, Function&& f, StackAllocator&& alloc)
+    : s_{s}, f_{std::forward<Function>(f)}, alloc_{std::forward<StackAllocator>(alloc)}
+  {
+  }
   // Copy/Move constructors and assignments are implicitly deleted
   ~SpawnContext()
   {
@@ -63,19 +67,19 @@ public:
     post(s_, [push = std::move(*push_)]() {});
   }
 
-  template <typename StackAllocator> void start(StackAllocator&& alloc)
+  void start()
   {
     assert(!push_.has_value());
-    push_ = std::make_optional<Push>(std::forward<StackAllocator>(alloc),
-                                     [self = this->shared_from_this(), this](auto&& pull) {
-                                       f_(YieldContext{*push_, pull});
-                                     });
+    push_ = std::make_optional<Push>(alloc_, [self = this->shared_from_this(), this](auto&& pull) {
+      f_(YieldContext{*push_, pull});
+    });
     (*push_)({});
   }
 
 private:
   strand<Executor> s_;
   std::decay_t<Function> f_;
+  std::decay_t<StackAllocator> alloc_;
   std::optional<Push> push_;
 };
 
@@ -162,10 +166,10 @@ void spawn(strand<Executor> const& s, Function&& function,
            StackAllocator&& alloc = StackAllocator{})
 {
   static_assert(std::is_invocable_v<std::decay_t<Function>, detail::YieldContext>);
-  using Context = detail::SpawnContext<Executor, Function>;
-  dispatch(s, [pCtx = std::make_shared<Context>(s, std::forward<Function>(function)),
-               alloc = std::forward<StackAllocator>(alloc)]() mutable {
-    pCtx->start(std::forward<StackAllocator>(alloc));
+  using Context = detail::SpawnContext<Executor, Function, StackAllocator>;
+  dispatch(s, [pCtx = std::make_shared<Context>(s, std::forward<Function>(function),
+                                                std::forward<StackAllocator>(alloc))]() {
+    pCtx->start();
   });
 }
 
