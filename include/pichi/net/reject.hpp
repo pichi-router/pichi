@@ -14,6 +14,7 @@ private:
 
 public:
   explicit RejectEgress(Socket&&);
+  explicit RejectEgress(Socket&&, uint16_t);
   ~RejectEgress() override = default;
 
   size_t recv(MutableBuffer<uint8_t>, Yield) override;

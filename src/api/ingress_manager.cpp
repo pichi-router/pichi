@@ -1,3 +1,5 @@
+#include <boost/asio/system_timer.hpp>
+#include <chrono>
 #include <iostream>
 #include <pichi/api/egress_manager.hpp>
 #include <pichi/api/ingress_manager.hpp>
@@ -15,6 +17,9 @@ namespace sys = boost::system;
 using ip::tcp;
 
 namespace pichi::api {
+
+static auto const RANDOM_EJECTOR = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
+static auto const IV_EXPIRE_TIME = 1h;
 
 IngressManager::IngressManager(Strand strand, Router const& router, EgressManager const& eManager)
   : strand_{strand}, router_{router}, eManager_{eManager}, c_{}
@@ -57,6 +62,38 @@ void IngressManager::spawn(Function&& func, FaultHandler&& faultHandler)
   });
 }
 
+bool IngressManager::isDuplicated(ConstBuffer<uint8_t> raw, asio::yield_context yield)
+{
+  if (raw.size() == 0) return false;
+
+  auto [it, inserted] = ivs_.insert({raw.cbegin(), raw.cend()});
+  if (!inserted) {
+    cout << "Pichi Error: Duplicated IV" << endl;
+    return true;
+  }
+  spawn([it = it, this](auto yield) {
+    // Exceptions prohibited
+    auto ec = sys::error_code{};
+    asio::system_timer{strand_.context(), IV_EXPIRE_TIME}.async_wait(yield[ec]);
+    ivs_.erase(it);
+  });
+  return false;
+}
+
+pair<EgressVO const&, net::Endpoint> IngressManager::route(net::Endpoint const& remote,
+                                                           string_view iname, AdapterType type,
+                                                           asio::yield_context yield)
+{
+  auto resolve = [&yield, &remote, &io = strand_.context()]() {
+    auto ec = sys::error_code{};
+    auto r = tcp::resolver{io}.async_resolve(remote.host_, remote.port_, yield[ec]);
+    return ec ? tcp::resolver::results_type{} : r;
+  };
+  auto it = eManager_.find(router_.route(remote, iname, type, resolve));
+  assertFalse(it == cend(eManager_));
+  return make_pair(cref(it->second), remote);
+}
+
 IngressManager::ConstIterator IngressManager::begin() const noexcept
 {
   return {cbegin(c_), cend(c_), &IngressManager::generatePair};
@@ -74,23 +111,18 @@ void IngressManager::listen(typename Container::iterator it, asio::yield_context
   while (true) {
     spawn([s = acceptor.async_accept(yield), &vo = as_const(it->second.first),
            &iname = as_const(it->first), this](auto yield) mutable {
+      auto& io = strand_.context();
       auto ingress = net::makeIngress(vo, move(s));
-      auto remote = ingress->readRemote(yield);
-      auto resolve = [&yield, &remote, &io = strand_.context()]() {
-        auto ec = sys::error_code{};
-        auto r = tcp::resolver{io}.async_resolve(remote.host_, remote.port_, yield[ec]);
-        return ec ? tcp::resolver::results_type{} : r;
-      };
-      auto it = eManager_.find(router_.route(remote, iname, vo.type_, resolve));
-      assertFalse(it == cend(eManager_), PichiError::MISC);
-      auto session =
-          make_shared<Session>(strand_.context(), move(ingress),
-                               net::makeEgress(it->second, tcp::socket{strand_.context()}));
-      session->start(remote, it->second.type_ == AdapterType::DIRECT ||
-                                     it->second.type_ == AdapterType::REJECT ?
-                                 remote :
-                                 net::Endpoint{net::detectHostType(*it->second.host_),
-                                               *it->second.host_, to_string(*it->second.port_)});
+      auto iv = array<uint8_t, 32>{};
+      auto&& [evo, remote] = isDuplicated({iv, ingress->readIV(iv, yield)}, yield) ?
+                                 make_pair(cref(RANDOM_EJECTOR), net::Endpoint{}) :
+                                 route(ingress->readRemote(yield), iname, vo.type_, yield);
+      auto next =
+          evo.type_ == AdapterType::REJECT || evo.type_ == AdapterType::DIRECT ?
+              remote :
+              net::Endpoint{net::detectHostType(*evo.host_), *evo.host_, to_string(*evo.port_)};
+      make_shared<Session>(io, move(ingress), net::makeEgress(evo, tcp::socket{io}))
+          ->start(remote, next);
     });
   }
 }

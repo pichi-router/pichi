@@ -356,14 +356,14 @@ components:
           type: integer
           format: int32
           example: 8388
+          minimum: 1
+          maximum: 65535
         method:
           $ref: '#/components/schemas/CryptoMethod'
         password:
           description: 'SS psk'
           type: string
           example: 'ss password'
-      required:
-        - port
     Ingress:
       allOf:
         - $ref: '#/components/schemas/Adapter'
@@ -377,7 +377,6 @@ components:
               example: '0.0.0.0'
           required:
             - type
-            - bind
     Egress:
       allOf:
         - $ref: '#/components/schemas/Adapter'
@@ -394,9 +393,20 @@ components:
               type: string
               description: 'Remote server address'
               example: 'socks5.example.com'
+            mode:
+              type: string
+              description: 'Delay mode for reject egress'
+              enum:
+                - random
+                - fixed
+              example: 'random'
+            delay:
+              type: integer
+              description: 'Seconds delayed before rejecting connection'
+              minimum: 0
+              maximum: 300
           required:
             - type
-            - host
     Rule:
       type: object
       properties:

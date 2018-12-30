@@ -128,7 +128,14 @@ template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(forward<Socket>(s));
   case AdapterType::REJECT:
-    return make_unique<RejectEgress>(forward<Socket>(s));
+    switch (*vo.mode_) {
+    case api::DelayMode::RANDOM:
+      return make_unique<RejectEgress>(forward<Socket>(s));
+    case api::DelayMode::FIXED:
+      return make_unique<RejectEgress>(forward<Socket>(s), *vo.delay_);
+    default:
+      fail(PichiError::BAD_PROTO);
+    }
   case AdapterType::SS:
     psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
     switch (*vo.method_) {

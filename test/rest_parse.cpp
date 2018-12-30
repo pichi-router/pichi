@@ -51,6 +51,8 @@ static string toString(EgressVO const& evo)
   if (evo.port_) doc.AddMember("port", *evo.port_, alloc);
   if (evo.method_) doc.AddMember("method", toJson(*evo.method_, alloc), alloc);
   if (evo.password_) doc.AddMember("password", toJson(*evo.password_, alloc), alloc);
+  if (evo.mode_) doc.AddMember("mode", toJson(*evo.mode_, alloc), alloc);
+  if (evo.delay_) doc.AddMember("delay", *evo.delay_, alloc);
 
   return toString(doc);
 }
@@ -107,7 +109,8 @@ static bool operator==(IngressVO const& lhs, IngressVO const& rhs)
 static bool operator==(EgressVO const& lhs, EgressVO const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_ &&
-         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_;
+         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.mode_ == rhs.mode_ &&
+         lhs.delay_ == rhs.delay_;
 }
 
 static bool operator==(RuleVO const& lhs, RuleVO const& rhs)
@@ -253,14 +256,70 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
                         verifyException<PichiError::BAD_JSON>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Egress_Direct_Reject_Additional_Fields)
+BOOST_AUTO_TEST_CASE(parse_Egress_Direct_Additional_Fields)
 {
-  for (auto type : {AdapterType::DIRECT, AdapterType::REJECT}) {
-    auto const expect = EgressVO{type};
-    auto fact = parse<EgressVO>(toString(expect));
-    BOOST_CHECK(expect == fact);
+  auto const expect = EgressVO{AdapterType::DIRECT};
+  auto fact = parse<EgressVO>(toString(expect));
+  BOOST_CHECK(expect == fact);
 
-    fact = parse<EgressVO>(toString(EgressVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
+  fact = parse<EgressVO>(
+      toString(EgressVO{AdapterType::DIRECT, ph, 1, CryptoMethod::AES_128_CFB, ph}));
+  BOOST_CHECK(expect == fact);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Default_Mode)
+{
+  auto const expect = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0};
+  auto fact = parse<EgressVO>(toString(expect));
+  BOOST_CHECK(expect == fact);
+
+  fact = parse<EgressVO>(
+      toString(EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph}));
+  BOOST_CHECK(expect == fact);
+
+  fact = parse<EgressVO>(
+      toString(EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph, {}, 1}));
+  BOOST_CHECK(expect == fact);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Invalid_Mode)
+{
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("{\"type\":\"reject\",\"mode\":\"invalid mode\"}"),
+                        Exception, verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Random_Additional_Fields)
+{
+  auto const expect = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
+  auto fact = parse<EgressVO>(toString(expect));
+  BOOST_CHECK(expect == fact);
+
+  fact = parse<EgressVO>(toString(
+      EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph, DelayMode::RANDOM, 1}));
+  BOOST_CHECK(expect == fact);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Missing_Delay)
+{
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("{\"type\":\"reject\",\"mode\":\"fixed\"}"), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":\"1\"}"),
+                        Exception, verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Delay_Out_Of_Range)
+{
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":-1}"),
+                        Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":301}"),
+                        Exception, verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Fixed)
+{
+  for (auto i = 0; i <= 300; ++i) {
+    auto const expect = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, i};
+    auto fact = parse<EgressVO>(toString(expect));
     BOOST_CHECK(expect == fact);
   }
 }

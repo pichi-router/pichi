@@ -15,6 +15,8 @@ namespace pichi::api {
 using AdapterType = net::AdapterType;
 using CryptoMethod = crypto::CryptoMethod;
 
+enum class DelayMode { RANDOM, FIXED };
+
 struct IngressVO {
   AdapterType type_;
   std::string bind_;
@@ -29,6 +31,8 @@ struct EgressVO {
   std::optional<uint16_t> port_;
   std::optional<CryptoMethod> method_;
   std::optional<std::string> password_;
+  std::optional<DelayMode> mode_;
+  std::optional<uint16_t> delay_;
 };
 
 struct RuleVO {
@@ -51,6 +55,7 @@ struct ErrorVO {
 
 extern rapidjson::Value toJson(AdapterType, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(CryptoMethod, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(DelayMode, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(std::string_view, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(IngressVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(EgressVO const&, rapidjson::Document::AllocatorType&);

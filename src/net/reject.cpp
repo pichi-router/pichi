@@ -15,6 +15,11 @@ RejectEgress::RejectEgress(Socket&& s) : t_{s.get_executor().context()}
   t_.expires_after(r(g) * 1s);
 }
 
+RejectEgress::RejectEgress(Socket&& s, uint16_t delay) : t_{s.get_executor().context()}
+{
+  t_.expires_after(delay * 1s);
+}
+
 size_t RejectEgress::recv(MutableBuffer<uint8_t>, Yield yield)
 {
   assertTrue(running_);
