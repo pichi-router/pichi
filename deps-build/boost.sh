@@ -53,7 +53,7 @@ using darwin :
 
 EOF
 
-  ./b2 -j "${PARALLEL}" --prefix="${IOS_ROOT}" --with-context --with-system \
+  ./b2 -d0 -j "${PARALLEL}" --prefix="${IOS_ROOT}" --with-context --with-system \
     variant=release macosx-version="${host_version}" link=static install
 }
 
@@ -69,7 +69,7 @@ using clang :
 
 EOF
 
-  ./b2 -j "${PARALLEL}" --prefix="${ANDROID_ROOT}/sysroot" --with-context --with-system \
+  ./b2 -d0 -j "${PARALLEL}" --prefix="${ANDROID_ROOT}/sysroot" --with-context --with-system \
     variant=release link=static install
 }
 
