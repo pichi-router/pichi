@@ -17,12 +17,13 @@ matrix:
         - PLATFORM=alpine
         - PARALLEL="$(nproc)"
         - STATIC_LINK=OFF
-    - os: osx
+    - name: macOS with static linking
+      os: osx
+      osx_image: xcode10.1
       addons:
         homebrew:
           packages:
             - cmake
-            - llvm
             - boost
             - mbedtls
             - libsodium
@@ -32,12 +33,13 @@ matrix:
         - PLATFORM=osx
         - STATIC_LINK=ON
         - PARALLEL="$(sysctl -n hw.physicalcpu)"
-    - os: osx
+    - name: macOS with shared linking
+      os: osx
+      osx_image: xcode10.1
       addons:
         homebrew:
           packages:
             - cmake
-            - llvm
             - boost
             - mbedtls
             - libsodium
@@ -69,8 +71,7 @@ script:
           pichi/builder ctest --output-on-failure;;
       "osx")
         cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DSTATIC_LINK="${STATIC_LINK}" \
-          -DCMAKE_CXX_COMPILER="$(brew --prefix)/opt/llvm/bin/clang++" \
-          "${TRAVIS_BUILD_DIR}" &&
+          -DCMAKE_CXX_COMPILER="clang++" "${TRAVIS_BUILD_DIR}" &&
         make -j "${PARALLEL}" &&
         ctest --output-on-failure;;
     esac
