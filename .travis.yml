@@ -1,23 +1,55 @@
 language: cpp
 sudo: false
 
+env:
+  global:
+    - TMP=/tmp
+    - IOS_ROOT=${TMP}/iphoneos
+    - IOS_TOOLCHAIN_URL=https://raw.githubusercontent.com/leetal/ios-cmake/2.1.4/ios.toolchain.cmake
+    - IOS_TOOLCHAIN_FILE=${IOS_ROOT}/ios.cmake
+    - BOOST_URL=https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.gz
+    - BOOST_ROOT=${TMP}/boost_1_67_0
+    - MBEDTLS_URL=https://tls.mbed.org/download/mbedtls-2.7.0-apache.tgz
+    - MBEDTLS_SRC=${TMP}/mbedtls-2.7.0
+    - SODIUM_URL=https://github.com/jedisct1/libsodium/releases/download/1.0.12/libsodium-1.0.12.tar.gz
+    - SODIUM_SRC=${TMP}/libsodium-1.0.12
+    - MMDB_URL=https://github.com/maxmind/libmaxminddb/releases/download/1.3.0/libmaxminddb-1.3.0.tar.gz
+    - MMDB_SRC=${TMP}/libmaxminddb-1.3.0
+
+cache:
+  directories:
+  - ${IOS_ROOT}
+
 matrix:
   include:
-    - os: linux
+    - name: iPhone OS / Xcode-10.1
+      os: osx
+      osx_image: xcode10.1
+      addons:
+        homebrew:
+          packages:
+            - cmake
+            - rapidjson
+      env:
+        - PLATFORM=iphoneos
+        - PARALLEL="$(sysctl -n hw.physicalcpu)"
+    - name: Alpine / G++-8 (static)
+      os: linux
       services:
         - docker
       env:
         - PLATFORM=alpine
         - PARALLEL="$(nproc)"
         - STATIC_LINK=ON
-    - os: linux
+    - name: Alpine / G++-8 (shared)
+      os: linux
       services:
         - docker
       env:
         - PLATFORM=alpine
         - PARALLEL="$(nproc)"
         - STATIC_LINK=OFF
-    - name: macOS with static linking
+    - name: macOS / Xcode-10.1 (static)
       os: osx
       osx_image: xcode10.1
       addons:
@@ -33,7 +65,7 @@ matrix:
         - PLATFORM=osx
         - STATIC_LINK=ON
         - PARALLEL="$(sysctl -n hw.physicalcpu)"
-    - name: macOS with shared linking
+    - name: macOS / Xcode-10.1 (shared)
       os: osx
       osx_image: xcode10.1
       addons:
@@ -52,11 +84,41 @@ matrix:
 
 install:
   - |
-    if [[ "${PLATFORM}" = "alpine" ]]; then
+    if [ "${PLATFORM}" = "alpine" ]; then
       docker build --rm --no-cache -t pichi/builder -f docker/builder.dockerfile .
+    fi
+  - |
+    if [ "${PLATFORM}" = "iphoneos" ] && [ ! -f "${IOS_ROOT}/.cached" ]; then
+      curl -LSs "${BOOST_URL}" | tar zxf - -C "${TMP}" &&
+      curl -LSs "${MBEDTLS_URL}" | tar zxf - -C "${TMP}" &&
+      curl -LSs "${SODIUM_URL}" | tar zxf - -C "${TMP}" &&
+      curl -LSs "${MMDB_URL}" | tar zxf - -C "${TMP}" &&
+      bash "${TRAVIS_BUILD_DIR}/deps-build/boost.sh" "${BOOST_ROOT}" &&
+      curl -LSso "${IOS_TOOLCHAIN_FILE}" "${IOS_TOOLCHAIN_URL}" &&
+      mkdir -p "${MBEDTLS_SRC}/build" && cd "${MBEDTLS_SRC}/build" &&
+      cmake -D CMAKE_INSTALL_PREFIX="${IOS_ROOT}" -D CMAKE_BUILD_TYPE=MinSizeRel \
+        -D CMAKE_TOOLCHAIN_FILE="${IOS_TOOLCHAIN_FILE}" -D IOS_PLATFORM=OS \
+        -D ENABLE_PROGRAMS=OFF -D ENABLE_TESTING=OFF "${MBEDTLS_SRC}" &&
+      make -j "${PARALLEL}" install &&
+      mkdir -p "${SODIUM_SRC}/build" && cd "${SODIUM_SRC}/build" &&
+      cp "${TRAVIS_BUILD_DIR}/deps-build/libsodium.cmake" "${SODIUM_SRC}/CMakeLists.txt" &&
+      cmake -D CMAKE_INSTALL_PREFIX="${IOS_ROOT}" -D CMAKE_BUILD_TYPE=MinSizeRel \
+        -D CMAKE_TOOLCHAIN_FILE="${IOS_TOOLCHAIN_FILE}" -D IOS_PLATFORM=OS \
+        "${SODIUM_SRC}" &&
+      make -j "${PARALLEL}" install &&
+      mkdir -p "${MMDB_SRC}/build" && cd "${MMDB_SRC}/build" &&
+      cp "${TRAVIS_BUILD_DIR}/deps-build/libmaxminddb.cmake" "${MMDB_SRC}/CMakeLists".txt &&
+      cmake -D CMAKE_INSTALL_PREFIX="${IOS_ROOT}" -D CMAKE_BUILD_TYPE=MinSizeRel \
+        -D CMAKE_TOOLCHAIN_FILE="${IOS_TOOLCHAIN_FILE}" -D IOS_PLATFORM=OS \
+        "${MMDB_SRC}" &&
+      make -j "${PARALLEL}" install &&
+      cp -r "$(brew --prefix)/opt/rapidjson/include/rapidjson" "${IOS_ROOT}/include" &&
+      cd "${TRAVIS_BUILD_DIR}" &&
+      touch "${IOS_ROOT}/.cached"
     fi
 
 script:
+  - rm -rf build
   - mkdir -p build
   - cd build
   - |
@@ -74,6 +136,14 @@ script:
           -DCMAKE_CXX_COMPILER="clang++" "${TRAVIS_BUILD_DIR}" &&
         make -j "${PARALLEL}" &&
         ctest --output-on-failure;;
+      "iphoneos")
+        cmake -D CMAKE_INSTALL_PREFIX="${IOS_ROOT}" -D CMAKE_SYSROOT="${IOS_ROOT}" \
+          -D CMAKE_TOOLCHAIN_FILE="${IOS_TOOLCHAIN_FILE}" -D IOS_PLATFORM=OS \
+          -D CMAKE_BUILD_TYPE=MinSizeRel -D BUILD_SERVER=OFF -D BUILD_TEST=OFF \
+          "${TRAVIS_BUILD_DIR}" &&
+        make -j "${PARALLEL}";;
+      "*")
+        ;;
     esac
 
 notifications:
