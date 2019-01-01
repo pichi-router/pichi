@@ -89,7 +89,7 @@ $ for((i=20000;i<20100;++i)); do \
 * [Boost](https://www.boost.org) 1.67.0
 * [MbedTLS](https://tls.mbed.org) 2.7.0
 * [libsodium](https://libsodium.org) 1.0.12
-* [RapidJSON](http://rapidjson.org/) 1.0.0
+* [RapidJSON](http://rapidjson.org/) 1.1.0
 * [libmaxminddb](http://maxmind.github.io/libmaxminddb/) 1.3.0
 
 ### CMake options
