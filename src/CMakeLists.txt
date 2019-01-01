@@ -21,4 +21,5 @@ set_target_properties(${PICHI_LIBRARY} PROPERTIES OUTPUT_NAME pichi)
 
 if (INSTALL_HEADERS)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/pichi DESTINATION include)
+  install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/boost DESTINATION include)
 endif (INSTALL_HEADERS)
