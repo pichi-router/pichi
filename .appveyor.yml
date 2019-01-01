@@ -5,9 +5,14 @@ image:
   - Visual Studio 2017
 
 environment:
+  PLATFORM: x64-windows
+  CMAKE_GEN: "Visual Studio 15 2017 Win64"
+  CMAKE_CONFIG: MinSizeRel
+  VCPKG_ROOT: C:\Tools\vcpkg
+
   matrix:
-    - PLATFORM: x64-windows
-      CMAKE_GEN: "Visual Studio 15 2017 Win64"
+    - STATIC_LINK: ON
+    - STATIC_LINK: OFF
 
 install:
   - ps: |
@@ -17,13 +22,18 @@ install:
 
 for:
 -
-  build_script:
+  before_build:
     - ps: |
-        cmake -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake `
-          -DVCPKG_TARGET_TRIPLET="$env:PLATFORM" -G "$env:CMAKE_GEN" .
-    - ps: cmake --build . --config Debug
-    - ps: cmake --build . --config Release
+        cmake -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_TARGET_TRIPLET="$env:PLATFORM" -DSTATIC_LINK="$env:STATIC_LINK" `
+          -G "$env:CMAKE_GEN" .
+
+  build_script:
+    - ps: $cs = Get-WmiObject -class Win32_ComputerSystem
+    - ps: $Cores = $cs.numberoflogicalprocessors
+    - ps: cmake --build . --config "$env:CMAKE_CONFIG" -j "$Cores"
 
   test_script:
-    - ps: ctest --output-on-failure -C Debug
-    - ps: ctest --output-on-failure -C Release
+    - ps: $env:PATH = "$env:PATH;$env:VCPKG_ROOT\installed\$env:PLATFORM\bin"
+    - ps: $env:PATH = "$env:PATH;$(pwd)\src\$env:CMAKE_CONFIG"
+    - ps: ctest --output-on-failure -C "$env:CMAKE_CONFIG"
