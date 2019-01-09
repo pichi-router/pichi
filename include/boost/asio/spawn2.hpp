@@ -62,23 +62,23 @@ public:
     // The stack memory corresponding to pPush_ will not be really deallocated,
     //   even if (*pPush_) is destructed, unless (*pPush_) is moved out of
     //   its own stack and destructed outside.
-    post(s_, [pPush = pPush_]() { auto push = std::move(*pPush); });
+    post(s_, [push = std::move(*push_)]() {});
   }
 
   template <typename StackAllocator> void start(StackAllocator&& alloc)
   {
-    assert(pPush_ == nullptr);
-    pPush_ = std::make_shared<Push>(std::forward<StackAllocator>(alloc),
-                                    [self = this->shared_from_this(), this](auto&& pull) {
-                                      f_(YieldContext{*pPush_, pull});
-                                    });
-    (*pPush_)({});
+    assert(!push_.has_value());
+    push_ = std::make_optional<Push>(std::forward<StackAllocator>(alloc),
+                                     [self = this->shared_from_this(), this](auto&& pull) {
+                                       f_(YieldContext{*push_, pull});
+                                     });
+    (*push_)({});
   }
 
 private:
   strand<Executor> s_;
   std::decay_t<Function> f_;
-  std::shared_ptr<Push> pPush_ = nullptr;
+  std::optional<Push> push_;
 };
 
 template <typename T> struct SpawnHandler {
