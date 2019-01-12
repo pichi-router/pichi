@@ -17,6 +17,7 @@ function build_for_ios()
   local archs=("armv7" "armv7s" "arm64" "arm64e")
   local host="iphone"
 
+  : ${IOS_ROOT:=/tmp/iphoneos}
   case "${PLATFORM}" in
     "iphoneos")
       host="iphone"
@@ -52,24 +53,24 @@ using darwin :
 
 EOF
 
-  ./b2 -j "${PARALLEL}" --prefix="${PREFIX}" --with-context --with-system \
-    variant=release macosx-version="${host_version}" link=static stage
+  ./b2 -j "${PARALLEL}" --prefix="${IOS_ROOT}" --with-context --with-system \
+    variant=release macosx-version="${host_version}" link=static install
 }
 
 function build_for_android()
 {
-  # NDK_TOOLCHAIN is generated via ${NDK_ROOT}/build/tools/make_standalone_toolchain.py
-  [ -d "${NDK_TOOLCHAIN}" ] || (echo "NDK_TOOLCHAIN is unavailable" && exit 1)
+  # ANDROID_ROOT is generated via ${NDK_ROOT}/build/tools/make_standalone_toolchain.py
+  [ -d "${ANDROID_ROOT}" ] || (echo "ANDROID_ROOT is unavailable" && exit 1)
 
   cat > project-config.jam <<EOF
 using clang :
-: ${NDK_TOOLCHAIN}/bin/clang++ -std=c++17
+: ${ANDROID_ROOT}/bin/clang++ -std=c++17
 ;
 
 EOF
 
-  ./b2 -j "${PARALLEL}" --prefix="${NDK_TOOLCHAIN}/sysroot" --with-context --with-system \
-    variant=release link=static stage
+  ./b2 -j "${PARALLEL}" --prefix="${ANDROID_ROOT}/sysroot" --with-context --with-system \
+    variant=release link=static install
 }
 
 # Main
@@ -80,7 +81,6 @@ cd "$1"
 ./bootstrap.sh
 
 : ${PARALLEL:=4}
-: ${PREFIX:=/tmp/ios}
 case "${PLATFORM}" in
   "iphoneos") build_for_ios;;
   "iphonesimulator") build_for_ios;;
