@@ -50,7 +50,7 @@ find_package(MaxmindDB 1.3.0 REQUIRED)
 find_package(Rapidjson 1.1.0 REQUIRED)
 find_package(Threads REQUIRED)
 
-add_definitions("-DBOOST_COROUTINES_V2 -DBOOST_ASIO_NO_DEPRECATED")
+add_definitions(-DBOOST_ASIO_NO_DEPRECATED)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/include

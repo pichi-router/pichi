@@ -1,8 +1,6 @@
 #ifndef BOOST_ASIO_SPAWN2_HPP
 #define BOOST_ASIO_SPAWN2_HPP
 
-#ifdef BOOST_COROUTINES_V2
-
 #include <boost/asio/detail/throw_error.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/post.hpp>
@@ -190,7 +188,5 @@ void spawn(ExecutorContext& ctx, Function&& function, StackAllocator&& alloc = S
 using yield_context = detail::YieldContext;
 
 } // namespace boost::asio
-
-#endif // BOOST_COROUTINES_V2
 
 #endif // BOOST_ASIO_SPAWN2_HPP
