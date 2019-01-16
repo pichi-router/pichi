@@ -88,7 +88,7 @@ using darwin :
 
 EOF
 
-  ./b2 -j "${PARALLEL}" --prefix="${IOS_ROOT}" --with-context --with-system \
+  ./b2 -d0 -j "${PARALLEL}" --prefix="${IOS_ROOT}" --with-context --with-system \
     architecture="${arch}" macosx-version="${mac}" address-model="${ADDRESS_MODEL}" \
     target-os="${os}" abi="${abi}" variant=release link=static install
 }
