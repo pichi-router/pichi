@@ -16,8 +16,8 @@ Pichi is an application layer proxy, which can be fully controlled via RESTful A
 
 * **Ingress**: defines an incoming network adapter, containing protocol, listening address/port and protocol specific configurations.
 * **Egress**: defines an outgoing network adapter, containing protocol, next hop address/port and protocol specific configurations.
-* **Rule**: contains one egress name and a group of conditions, such as IP range, domain regular expression, the country of the destination IP, and so on, that the incoming connection matching ANY conditions would be forwarded to the specified egress.
-* **Route**: indicates a priority ordered rules, and a default egress which would be forwarded to if none of the rules matched.
+* **Rule**: contains a group of conditions, such as IP ranges, domain regular expressions, the countries of the destination IP, and so on, that the incoming connection matching ANY conditions means the one matching this rule.
+* **Route**: indicates a priority ordered sequence of \[rule, egress\] pairs, and a default egress which would be forwarded to if none of the rules matched.
 
 ### API Specification
 
@@ -105,27 +105,26 @@ $ for((i=20000;i<20100;++i)); do \
 Build and run on Unix-like:
 
 ```
-$ cmake -DCMAKE_BUILD_TYPE=MinSizeRel -B build .
+$ cmake -B build .
 $ cmake --build build
 $ cmake --build build --target test
-$ cmake --build build --target install/strip
 ```
 
 Build and run on Windows with [Vcpkg](https://github.com/Microsoft/vcpkg):
 
 ```
-PS C:\pichi> mkdir build
-PS C:\pichi> cd build
-PS C:\pichi\build> cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake ..
-PS C:\pichi\build> cmake --build . --config Debug
-PS C:\pichi\build> ctest -C Debug --output-on-failure
+PS C:\pichi> cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+>> -DVCPKG_TARGET_TRIPLET="x64-windows-static" -DCMAKE_BUILD_TYPE=MinSizeRel -B build .
+PS C:\pichi> cmake --build build --config MinSizeRel
+PS C:\pichi> cmake --build build --config MinSizeRel --target test
 ```
 
 ### Docker
 
-The pre-built docker image can be found on [Docker Store](https://store.docker.com/community/images/pichi/pichi),
-which is automatically generated via `docker/pichi.dockerfile`. Furthermore, `docker/builder.dockerfile`
-is intended to provide a docker environment for development.
+The pre-built docker image can be found on [Docker Hub](https://hub.docker.com/r/pichi/pichi),
+which is automatically generated according to `docker/pichi.dockerfile`.
+Furthermore, `docker/builder.dockerfile` is intended to provide a docker environment
+for development.
 
 ```
 $ docker pull pichi/pichi
@@ -217,9 +216,9 @@ Allow options:
                                         GEO file
 ```
 
-### In process
+### In-Process
 
-InProcess mode is suitable for the scenarios that the standalone process is prohibited or unnecessary, such as iOS/Android, or the supervisor prefers to run pichi in its own process. There are 2 types of interface to run pichi.
+In-Process mode is suitable for the scenarios that the standalone process is prohibited or unnecessary, such as iOS/Android, or the supervisor prefers to run pichi in its own process. There are 2 types of interface to run pichi.
 
 #### C function
 
