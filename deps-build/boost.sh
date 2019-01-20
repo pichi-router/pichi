@@ -78,7 +78,7 @@ set -o errexit
 
 [ $# -ge 1 ] || (echo "Usage: boost.sh <src path>" && exit 1)
 cd "$1"
-./bootstrap.sh
+[ -x "b2" ] || ./bootstrap.sh
 
 : ${PARALLEL:=4}
 case "${PLATFORM}" in
