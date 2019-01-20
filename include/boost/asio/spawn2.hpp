@@ -1,8 +1,6 @@
 #ifndef BOOST_ASIO_SPAWN2_HPP
 #define BOOST_ASIO_SPAWN2_HPP
 
-#ifdef BOOST_COROUTINES_V2
-
 #include <boost/asio/detail/throw_error.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/post.hpp>
@@ -52,33 +50,37 @@ private:
   ErrorCode* ec_ = nullptr;
 };
 
-template <typename Executor, typename Function>
-class SpawnContext : public std::enable_shared_from_this<SpawnContext<Executor, Function>> {
+template <typename Executor, typename Function, typename StackAllocator>
+class SpawnContext
+  : public std::enable_shared_from_this<SpawnContext<Executor, Function, StackAllocator>> {
 public:
-  SpawnContext(strand<Executor> const& s, Function&& f) : s_{s}, f_{std::forward<Function>(f)} {}
+  SpawnContext(strand<Executor> const& s, Function&& f, StackAllocator&& alloc)
+    : s_{s}, f_{std::forward<Function>(f)}, alloc_{std::forward<StackAllocator>(alloc)}
+  {
+  }
   // Copy/Move constructors and assignments are implicitly deleted
   ~SpawnContext()
   {
     // The stack memory corresponding to pPush_ will not be really deallocated,
     //   even if (*pPush_) is destructed, unless (*pPush_) is moved out of
     //   its own stack and destructed outside.
-    post(s_, [pPush = pPush_]() { auto push = std::move(*pPush); });
+    post(s_, [push = std::move(*push_)]() {});
   }
 
-  template <typename StackAllocator> void start(StackAllocator&& alloc)
+  void start()
   {
-    assert(pPush_ == nullptr);
-    pPush_ = std::make_shared<Push>(std::forward<StackAllocator>(alloc),
-                                    [self = this->shared_from_this(), this](auto&& pull) {
-                                      f_(YieldContext{*pPush_, pull});
-                                    });
-    (*pPush_)({});
+    assert(!push_.has_value());
+    push_ = std::make_optional<Push>(alloc_, [self = this->shared_from_this(), this](auto&& pull) {
+      f_(YieldContext{*push_, pull});
+    });
+    (*push_)({});
   }
 
 private:
   strand<Executor> s_;
   std::decay_t<Function> f_;
-  std::shared_ptr<Push> pPush_ = nullptr;
+  std::decay_t<StackAllocator> alloc_;
+  std::optional<Push> push_;
 };
 
 template <typename T> struct SpawnHandler {
@@ -164,10 +166,10 @@ void spawn(strand<Executor> const& s, Function&& function,
            StackAllocator&& alloc = StackAllocator{})
 {
   static_assert(std::is_invocable_v<std::decay_t<Function>, detail::YieldContext>);
-  using Context = detail::SpawnContext<Executor, Function>;
-  dispatch(s, [pCtx = std::make_shared<Context>(s, std::forward<Function>(function)),
-               alloc = std::forward<StackAllocator>(alloc)]() mutable {
-    pCtx->start(std::forward<StackAllocator>(alloc));
+  using Context = detail::SpawnContext<Executor, Function, StackAllocator>;
+  dispatch(s, [pCtx = std::make_shared<Context>(s, std::forward<Function>(function),
+                                                std::forward<StackAllocator>(alloc))]() {
+    pCtx->start();
   });
 }
 
@@ -190,7 +192,5 @@ void spawn(ExecutorContext& ctx, Function&& function, StackAllocator&& alloc = S
 using yield_context = detail::YieldContext;
 
 } // namespace boost::asio
-
-#endif // BOOST_COROUTINES_V2
 
 #endif // BOOST_ASIO_SPAWN2_HPP

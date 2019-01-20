@@ -53,7 +53,16 @@ find_package(MaxmindDB 1.3.0 REQUIRED)
 find_package(Rapidjson 1.1.0 REQUIRED)
 find_package(Threads REQUIRED)
 
-add_definitions("-DBOOST_COROUTINES_V2 -DBOOST_ASIO_NO_DEPRECATED")
+add_definitions(-DBOOST_ASIO_NO_DEPRECATED)
+
+if (MSVC)
+  # In MSVC, the default Exception Handling option is /EHsc, Which wouldn't catch exceptions
+  #   thrown by boost::context. '/EHs' would make it correctly at least.
+  # Further information:
+  # - https://docs.microsoft.com/en-us/cpp/build/reference/eh-exception-handling-model?view=vs-2017
+  # - https://www.boost.org/doc/libs/release/libs/context/doc/html/context/requirements.html
+  add_compile_options(/EHs)
+endif (MSVC)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
