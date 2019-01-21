@@ -158,8 +158,9 @@ $ cmake -D CMAKE_TOOLCHAIN_FILE=/path/to/ios.toolchain.cmake \
 
 On the other hand, `deps-build/boost.sh` can generate libraries for iOS if below environment variables are set:
 
-* **PLATFORM**: to specify target OS(*iphoneos, iphonesimulator, appletvos, appletvsimulator*),
-* **IOS_ROOT**: to specify root install directory of headers/libraries.
+* **PLATFORM**: to specify target OS(*iphoneos, iphonesimulator, appletvos, appletvsimulator*);
+* **IOS_ROOT**: to specify root install directory of headers/libraries;
+* **ADDRESS_MODEL**: to specify address bits of target CPU(64 or 32).
 
 For example:
 
@@ -167,6 +168,7 @@ For example:
 $ # In macOS with Xcode 10.0 or above
 $ export PLATFORM=iphoneos
 $ export IOS_ROOT=/path/to/ios/root
+$ export ADDRESS_MODEL=64
 $ bash deps-build/boost.sh
 Usage: boost.sh <src path>
 $ bash deps-build/boost.sh /path/to/boost
@@ -177,20 +179,78 @@ $ bash deps-build/boost.sh /path/to/boost
 
 The usage of `deps-build/boost.sh` is very similar to iOS one, except environment varialbes:
 
-* **PLATFORM**: *android-\<API\>s* are available,
-* **ANDROID_ROOT**: to specify root install directory of headers/libraries.
+* **PLATFORM**: *android-\<API\>s* are available;
+* **ANDROID_ROOT**: to specify root install directory of headers/libraries;
+* **ADDRESS_MODEL**: to specify address bits of target CPU(64 or 32).
 
 Android NDK kindly provides `build/tools/make_standalone_toolchain.py` script to generate a cross-compiling toolchain for any version of Android.
 
 ```
 $ export NDK_ROOT=/path/to/ndk
 $ export TOOLCHAIN_ROOT=/path/to/toolchain
+$ export ADDRESS_MODEL=64
+$
+$ # Create cross toolchain
 $ python ${NDK_ROOT}/build/tools/make_standalone_toolchain.py --arch arm64 --api 28 \
 >   --stl libc++ --install-dir ${TOOLCHAIN_ROOT}
+$
+$ # Build boost
+$ bash deps-build/boost.sh /path/to/boost
+$
+$ # Build other dependent libraries
 $ cmake -D CMAKE_SYSROOT=${TOOLCHAIN_ROOT}/sysroot \
+>   -D CMAKE_INSTALL_PREFIX=${TOOLCHAIN_ROOT}/sysroot \
 >   -D CMAKE_C_COMPILER=${TOOLCHAIN_ROOT}/bin/clang \
+>   [other options] -B build /path/to/other/libraries
+$ cmake --build build --target install
+$
+$ # Build pichi
+$ cmake -D CMAKE_SYSROOT=${TOOLCHAIN_ROOT}/sysroot \
+>   -D CMAKE_INSTALL_PREFIX=${TOOLCHAIN_ROOT}/sysroot \
 >   -D CMAKE_CXX_COMPILER=${TOOLCHAIN_ROOT}/bin/clang++ \
->   [other options] /path/to/project
+>   [other options] -B build .
+$ cmake --build build --target install
+```
+
+#### Cross-Compiling for other architecture
+
+`deps-build/boost.sh` doesn't provide any cross-compiling steps except iOS/Android,
+but it's not very complicated to cross-compile Boost libraries.
+There's only one thing important. Boost.Context requires that `target-os`, `abi`, `binary-format`, `architecture` and `address-model` [must be explicitly specified correctly while cross-compiling](https://www.boost.org/doc/libs/release/libs/context/doc/html/context/requirements.html).
+
+On the contrary, other libraries can be cross-complied very easily by using CMake.
+For example:
+
+```
+$ # Cross-Compiling for aarch64-freebsd12.0
+$ export AARCH64_SYSROOT=/path/to/aarch64/base/system
+$ export CROSS_FLAGS="-target aarch64-unknown-freebsd12.0 --sysroot=${AARCH64_SYSROOT}"
+$
+$ # Build Boost
+$ cd /path/to/boost
+$ ./bootstrap.sh
+$ cat > project-config.jam <<EOF
+> using clang :
+> : /usr/bin/clang++ -std=c++17 ${CROSS_FLAGS}
+> ;
+> EOF
+$ ./b2 --with-context --with-program_options --with-system --prefix=${AARCH64_SYSROOT} \
+    target-os=freebsd abi=aapcs binary-format=elf architecture=arm address-model=64 \
+    variant=release link=static install
+$
+$ # Build other libraries
+$ cmake -D CMAKE_C_COMPILER=clang -D CMAKE_C_FLAGS="${CROSS_FLAGS}" \
+    -D CMAKE_INSTALL_PREFIX=${AARCH64_SYSROOT} -B build /path/to/library
+$ cmake --build build --target install
+$
+$ # Build pichi
+$ cmake -D CMAKE_CXX_COMPILER=clang++ -D CMAKE_CXX_FLAGS="${CROSS_FLAGS}" \
+    -D CMAKE_INSTALL_PREFIX=${AARCH64_SYSROOT} -B build .
+$ cmake --build build
+$ file build/server/pichi
+build/server/pichi: ELF 64-bit LSB executable, ARM aarch64, version 1 (FreeBSD),
+dynamically linked, interpreter /libexec/ld-elf.so.1, for FreeBSD 12.0 (1200086),
+FreeBSD-style, with debug_info, not stripped
 ```
 
 ## Run pichi server
@@ -198,7 +258,7 @@ $ cmake -D CMAKE_SYSROOT=${TOOLCHAIN_ROOT}/sysroot \
 There are 2 ways to start pichi server:
 
 * **Standalone**: pichi server runs in its own process,
-* **In process**: pichi server runs in its supervisor process.
+* **In-Process**: pichi server runs in its supervisor process.
 
 ### Standalone
 
