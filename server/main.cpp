@@ -79,20 +79,12 @@ int main(int argc, char const* argv[])
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
-    if (vm.count("help") || !vm.count("port") || !vm.count("geo")) {
+    if (vm.count("help") || !vm.count("port")) {
       cout << desc << endl;
       return 1;
     }
 
     errno = 0;
-
-#if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
-    if (!user.empty()) {
-      auto pw = getpwnam(user.c_str());
-      assertFalse(pw == nullptr);
-      assertFalse(setuid(pw->pw_uid) == -1);
-    }
-#endif // HAS_SETUID && HAS_GETPWNAM
 
 #if defined(HAS_SETGID) && defined(HAS_GETGRNAM)
     if (!group.empty()) {
@@ -102,9 +94,17 @@ int main(int argc, char const* argv[])
     }
 #endif // HAS_SETGID && HAS_GETGRNAM
 
+#if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
+    if (!user.empty()) {
+      auto pw = getpwnam(user.c_str());
+      assertFalse(pw == nullptr);
+      assertFalse(setuid(pw->pw_uid) == -1);
+    }
+#endif // HAS_SETUID && HAS_GETPWNAM
+
 #if defined(HAS_FORK) && defined(HAS_SETSID)
     if (vm.count("daemon")) {
-      assertTrue(chdir("/") == 0);
+      assertTrue(chdir(fs::path{PICHI_PREFIX}.root_directory().c_str()) == 0);
       auto pid = fork();
       assertFalse(pid < 0);
       if (pid > 0) {
