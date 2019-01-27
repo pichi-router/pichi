@@ -10,8 +10,11 @@ namespace pichi {
 
 // This URI regex isn't intended to follow RFC3986
 static auto const URI_REGEX =
-    regex{"^(https?)://([^:/?#]+)(:(\\d+))?(/[^#?]*([#?].*)?)?$", regex::icase};
+    regex{"^(https?)://(([^:/?#\\[\\]]+)|\\[([a-f0-9:.]+)\\])(:(\\d+))?(/[^#?]*([#?].*)?)?$",
+          regex::icase};
+static auto const URI_REGEX_SIZE = 9;
 static auto const HOST_REGEX = regex{"^([^:/]+):(\\d+)$"};
+static auto const HOST_REGEX_SIZE = 3;
 
 static string_view r2sv(csub_match const& m)
 {
@@ -44,20 +47,21 @@ static string_view scheme2port(string_view scheme)
 
 Uri::Uri(string_view s)
 {
-  auto r = matching(s, URI_REGEX, 7);
+  auto r = matching(s, URI_REGEX, URI_REGEX_SIZE);
 
   all_ = r2sv(r[0]);
   scheme_ = r2sv(r[1]);
   host_ = r2sv(r[2]);
-  port_ = r[3].matched ? r2sv(r[4]) : scheme2port(scheme_);
-  suffix_ = r[5].matched ? r2sv(r[5]) : "/"sv;
-  path_ = r[5].matched ? r2sv(r[5], distance(r[5].first, r[6].first)) : "/"sv;
-  query_ = r2sv(r[6]);
+  host_ = r[3].matched ? r2sv(r[3]) : r2sv(r[4]);
+  port_ = r[5].matched ? r2sv(r[6]) : scheme2port(scheme_);
+  suffix_ = r[7].matched ? r2sv(r[7]) : "/"sv;
+  path_ = r[7].matched ? r2sv(r[7], distance(r[7].first, r[8].first)) : "/"sv;
+  query_ = r2sv(r[8]);
 }
 
 HostAndPort::HostAndPort(string_view s)
 {
-  auto r = matching(s, HOST_REGEX, 3);
+  auto r = matching(s, HOST_REGEX, HOST_REGEX_SIZE);
   host_ = r2sv(r[1]);
   port_ = r2sv(r[2]);
 }
