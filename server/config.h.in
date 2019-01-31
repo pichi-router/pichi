@@ -5,3 +5,6 @@
 #cmakedefine HAS_SETUID
 #cmakedefine HAS_GETGRNAM
 #cmakedefine HAS_SETGID
+#cmakedefine HAS_FORK
+#cmakedefine HAS_SETSID
+#cmakedefine HAS_CLOSE

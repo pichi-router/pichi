@@ -1,5 +1,6 @@
 #include "config.h"
 #include <boost/program_options.hpp>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <pichi.h>
@@ -56,11 +57,14 @@ int main(int argc, char const* argv[])
       "listen,l", po::value<string>(&listen)->default_value(PICHI_DEFAULT_BIND),
       "API server address")("port,p", po::value<uint16_t>(&port), "API server port")(
       "geo,g", po::value<string>(&geo)->default_value(PICHI_DEFAULT_MMDB), "GEO file")
+#if defined(HAS_FORK) && defined(HAS_SETSID)
+      ("daemon,d", "daemonize")
+#endif // HAS_SETUID && HAS_GETPWNAM
 #if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
-      ("user,u", po::value<string>(&user), "run as user")
+          ("user,u", po::value<string>(&user), "run as user")
 #endif // HAS_SETUID && HAS_GETPWNAM
 #if defined(HAS_SETGID) && defined(HAS_GETGRNAM)
-          ("group", po::value<string>(&group), "run as group")
+              ("group", po::value<string>(&group), "run as group")
 #endif // HAS_SETGID && HAS_GETGRNAM
       ;
   auto vm = po::variables_map{};
@@ -91,6 +95,25 @@ int main(int argc, char const* argv[])
       assertFalse(setgid(grp->gr_gid) == -1);
     }
 #endif // HAS_SETGID && HAS_GETGRNAM
+
+#if defined(HAS_FORK) && defined(HAS_SETSID)
+    if (vm.count("daemon")) {
+      assertTrue(chdir("/") == 0);
+      auto pid = fork();
+      assertFalse(pid < 0);
+      if (pid > 0) {
+        ofstream{"var/run/pichi.pid"} << pid << endl;
+        exit(0);
+      }
+      setsid();
+#ifdef HAS_CLOSE
+      close(STDIN_FILENO);
+      close(STDOUT_FILENO);
+      close(STDERR_FILENO);
+#endif // HAS_CLOSE
+      assertTrue(freopen("var/log/pichi.log", "w", stdout) != nullptr);
+    }
+#endif // HAS_FORK && HAS_SETSID
 
     return pichi_run_server(listen.c_str(), port, geo.c_str());
   }
