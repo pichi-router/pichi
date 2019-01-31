@@ -81,6 +81,8 @@ $ for((i=20000;i<20100;++i)); do \
 * HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
 * SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
 * Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
+* Direct: connecting to destination directly
+* Reject: rejecting request immediately or after a fixed/random delay
 
 ## Build
 
