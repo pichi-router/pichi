@@ -79,7 +79,7 @@ int main(int argc, char const* argv[])
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
-    if (vm.count("help") || !vm.count("port") || !vm.count("geo")) {
+    if (vm.count("help") || !vm.count("port")) {
       cout << desc << endl;
       return 1;
     }
