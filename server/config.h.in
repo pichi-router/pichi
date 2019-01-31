@@ -1,0 +1,7 @@
+#cmakedefine HAS_UNISTD_H
+#cmakedefine HAS_PWD_H
+#cmakedefine HAS_GRP_H
+#cmakedefine HAS_GETPWNAM
+#cmakedefine HAS_SETUID
+#cmakedefine HAS_GETGRNAM
+#cmakedefine HAS_SETGID
