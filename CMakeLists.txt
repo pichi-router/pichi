@@ -37,7 +37,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(BOOST_COMPONENTS context system)
 if (BUILD_SERVER)
-  set(BOOST_COMPONENTS ${BOOST_COMPONENTS} program_options)
+  set(BOOST_COMPONENTS ${BOOST_COMPONENTS} program_options filesystem)
 endif (BUILD_SERVER)
 if (BUILD_TEST)
   set(BOOST_COMPONENTS ${BOOST_COMPONENTS} unit_test_framework)
