@@ -1,4 +1,5 @@
 #include "config.h"
+#include <boost/filesystem/path.hpp>
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
@@ -17,7 +18,12 @@
 #endif // HAS_GRP_H
 
 using namespace std;
+namespace fs = boost::filesystem;
 namespace po = boost::program_options;
+
+static auto const GEO_FILE = (fs::path{PICHI_PREFIX} / "share" / "pichi" / "geo.mmdb").string();
+static auto const PID_FILE = (fs::path{PICHI_PREFIX} / "var" / "run" / "pichi.pid").string();
+static auto const LOG_FILE = (fs::path{PICHI_PREFIX} / "var" / "log" / "pichi.log").string();
 
 #ifdef HAS_UNISTD_H
 
@@ -56,7 +62,7 @@ int main(int argc, char const* argv[])
   desc.add_options()("help,h", "produce help message")(
       "listen,l", po::value<string>(&listen)->default_value(PICHI_DEFAULT_BIND),
       "API server address")("port,p", po::value<uint16_t>(&port), "API server port")(
-      "geo,g", po::value<string>(&geo)->default_value(PICHI_DEFAULT_MMDB), "GEO file")
+      "geo,g", po::value<string>(&geo)->default_value(GEO_FILE), "GEO file")
 #if defined(HAS_FORK) && defined(HAS_SETSID)
       ("daemon,d", "daemonize")
 #endif // HAS_SETUID && HAS_GETPWNAM
@@ -102,7 +108,7 @@ int main(int argc, char const* argv[])
       auto pid = fork();
       assertFalse(pid < 0);
       if (pid > 0) {
-        ofstream{"var/run/pichi.pid"} << pid << endl;
+        ofstream{PID_FILE} << pid << endl;
         exit(0);
       }
       setsid();
@@ -111,7 +117,7 @@ int main(int argc, char const* argv[])
       close(STDOUT_FILENO);
       close(STDERR_FILENO);
 #endif // HAS_CLOSE
-      assertTrue(freopen("var/log/pichi.log", "w", stdout) != nullptr);
+      assertTrue(freopen(LOG_FILE.c_str(), "w", stdout) != nullptr);
     }
 #endif // HAS_FORK && HAS_SETSID
 
