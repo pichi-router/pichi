@@ -9,6 +9,9 @@ check_function_exists("getpwnam" HAS_GETPWNAM)
 check_function_exists("setuid" HAS_SETUID)
 check_function_exists("getgrnam" HAS_GETGRNAM)
 check_function_exists("setgid" HAS_SETGID)
+check_function_exists("fork" HAS_FORK)
+check_function_exists("setsid" HAS_SETSID)
+check_function_exists("close" HAS_CLOSE)
 
 configure_file(config.h.in ${CMAKE_BINARY_DIR}/server/config.h)
 
