@@ -17,8 +17,9 @@ environment:
 install:
   - ps: |
       vcpkg install boost-asio:x64-windows boost-beast:x64-windows boost-coroutine2:x64-windows `
-        boost-mpl:x64-windows boost-program-options:x64-windows boost-test:x64-windows `
-        libmaxminddb:x64-windows libsodium:x64-windows mbedtls:x64-windows rapidjson:x64-windows
+        boost-filesystem:x64-windows boost-mpl:x64-windows boost-program-options:x64-windows `
+        boost-test:x64-windows libmaxminddb:x64-windows libsodium:x64-windows mbedtls:x64-windows `
+        rapidjson:x64-windows
 
 for:
 -
