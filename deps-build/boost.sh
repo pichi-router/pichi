@@ -10,40 +10,75 @@ function unknown_platform()
   exit 1
 }
 
+function unknown_address_model()
+{
+  echo "Unknown address model: ${ADDRESS_MODEL}"
+  echo "Available ones are: 32, 64."
+  exit 1
+}
+
 function build_for_ios()
 {
   local xcode_ver="$(xcodebuild -version | sed -En 's/^Xcode ([0-9.]+)$/\1/p')"
   local arm64e=$(echo "${xcode_ver}>10.0" | bc -l)
   local archs=("armv7" "armv7s" "arm64" "arm64e")
-  local host="iphone"
+  local arch="arm"
+  local mac=""
+  local os=""
+  local abi=""
+  local define=""
 
   : ${IOS_ROOT:=/tmp/iphoneos}
   case "${PLATFORM}" in
     "iphoneos")
-      host="iphone"
-      if (( "${arm64e}" )); then
-        archs=("armv7" "armv7s" "arm64" "arm64e")
-      else
-       archs=("armv7" "armv7s" "arm64")
-      fi
+      arch="arm"
+      mac="iphone-$(xcrun --sdk ${PLATFORM} --show-sdk-version 2>/dev/null)"
+      os="iphone"
+      abi="aapcs"
+      define="-D_LITTLE_ENDIAN"
+      case "${ADDRESS_MODEL}" in
+        64)
+          if (( "${arm64e}" )); then
+            archs=("arm64" "arm64e")
+          else
+            archs=("arm64")
+          fi
+          ;;
+        32)
+          archs=("armv7" "armv7s")
+          ;;
+        *) unknown_address_model;;
+      esac
       ;;
     "iphonesimulator")
-      host="iphonesim"
+      arch="x86"
+      mac="iphonesim-$(xcrun --sdk ${PLATFORM} --show-sdk-version 2>/dev/null)"
+      os="darwin"
+      abi="sysv"
       archs=("x86_64")
+      ADDRESS_MODEL=64
       ;;
     "appletvos")
-      host="appletv"
+      arch="arm"
+      mac="appletv-$(xcrun --sdk ${PLATFORM} --show-sdk-version 2>/dev/null)"
+      os="appletv"
+      abi="aapcs"
+      define="-D_LITTLE_ENDIAN"
       archs=("arm64")
+      ADDRESS_MODEL=64
       ;;
     "appletvsimulator")
-      host="appletvsim"
+      arch="x86"
+      mac="appletvsim-$(xcrun --sdk ${PLATFORM} --show-sdk-version 2>/dev/null)"
+      os="darwin"
+      abi="sysv"
       archs=("x86_64")
+      ADDRESS_MODEL=64
       ;;
   esac
   local sysroot="$(xcrun --sdk ${PLATFORM} --show-sdk-platform-path 2>/dev/null)/Developer"
-  local host_version="${host}-$(xcrun --sdk ${PLATFORM} --show-sdk-version 2>/dev/null)"
   local compiler="$(xcrun -sdk ${PLATFORM} -f clang++ 2>/dev/null)"
-  local cxxflags="-std=c++17 -D_LITTLE_ENDIAN $(printf -- ' -arch %s' ${archs[@]})"
+  local cxxflags="-std=c++17 ${define} $(printf -- ' -arch %s' ${archs[@]})"
 
   cat > project-config.jam <<EOF
 using darwin :
@@ -53,8 +88,9 @@ using darwin :
 
 EOF
 
-  ./b2 -d0 -j "${PARALLEL}" --prefix="${IOS_ROOT}" --with-context --with-system \
-    variant=release macosx-version="${host_version}" link=static install
+  ./b2 -j "${PARALLEL}" --prefix="${IOS_ROOT}" --with-context --with-system \
+    architecture="${arch}" macosx-version="${mac}" address-model="${ADDRESS_MODEL}" \
+    target-os="${os}" abi="${abi}" variant=release link=static install
 }
 
 function build_for_android()
@@ -70,17 +106,21 @@ using clang :
 EOF
 
   ./b2 -d0 -j "${PARALLEL}" --prefix="${ANDROID_ROOT}/sysroot" --with-context --with-system \
-    variant=release link=static install
+    architecture=arm address-model="${ADDRESS_MODEL}" \
+    target-os=android abi=aapcs variant=release link=static install
 }
 
 # Main
 set -o errexit
 
 [ $# -ge 1 ] || (echo "Usage: boost.sh <src path>" && exit 1)
+: ${PARALLEL:=4}
+: ${ADDRESS_MODEL:=64}
+[ "${ADDRESS_MODEL}" -eq 64 ] || [ "${ADDRESS_MODEL}" -eq 32 ] || unknown_address_model
+
 cd "$1"
 [ -x "b2" ] || ./bootstrap.sh
 
-: ${PARALLEL:=4}
 case "${PLATFORM}" in
   "iphoneos") build_for_ios;;
   "iphonesimulator") build_for_ios;;

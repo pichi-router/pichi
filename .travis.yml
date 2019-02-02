@@ -36,6 +36,7 @@ matrix:
           packages:
             - rapidjson
       env:
+        - ADDRESS_MODEL=64
         - PLATFORM=iphoneos
         - PARALLEL="$(sysctl -n hw.physicalcpu)"
     - name: Android 9 / NDK r18b
@@ -46,6 +47,7 @@ matrix:
           packages:
             - g++
       env:
+        - ADDRESS_MODEL=64
         - PLATFORM=android-28
         - PARALLEL="$(nproc)"
     - name: Alpine 3.8 / G++ 8 (static)
