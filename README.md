@@ -236,9 +236,9 @@ $ cat > project-config.jam <<EOF
 > : /usr/bin/clang++ -std=c++17 ${CROSS_FLAGS}
 > ;
 > EOF
-$ ./b2 --with-context --with-program_options --with-system --prefix=${AARCH64_SYSROOT} \
-    target-os=freebsd abi=aapcs binary-format=elf architecture=arm address-model=64 \
-    variant=release link=static install
+$ ./b2 --with-context --with-filesystem --with-program_options --with-system \
+    --prefix=${AARCH64_SYSROOT} target-os=freebsd abi=aapcs binary-format=elf \
+    architecture=arm address-model=64 variant=release link=static install
 $
 $ # Build other libraries
 $ cmake -D CMAKE_C_COMPILER=clang -D CMAKE_C_FLAGS="${CROSS_FLAGS}" \
@@ -276,6 +276,9 @@ Allow options:
   -p [ --port ] arg                     API server port
   -g [ --geo ] arg (=/usr/share/pichi/geo.mmdb)
                                         GEO file
+  -d [ --daemon ]                       daemonize
+  -u [ --user ] arg                     run as user
+  --group arg                           run as group
 ```
 
 ### In-Process
