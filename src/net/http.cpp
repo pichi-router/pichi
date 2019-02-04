@@ -192,7 +192,6 @@ Endpoint HttpIngress::readRemote(Yield yield)
 
   auto& header = parser.get();
   if (header.method() == http::verb::connect) {
-    assertTrue(header.find(http::field::host) != header.end(), PichiError::BAD_PROTO);
     auto hp = HostAndPort{{header.target().data(), header.target().size()}};
     delegate_ = make_unique<HttpConnectIngress>(move(socket_));
     return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
