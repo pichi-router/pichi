@@ -30,6 +30,8 @@ BOOST_AUTO_TEST_CASE(Uri_Empty_Host)
 {
   BOOST_CHECK_EXCEPTION(Uri{"http:///"}, Exception, verifyException<PichiError::BAD_PROTO>);
   BOOST_CHECK_EXCEPTION(Uri{"http://:80/"}, Exception, verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(Uri{"http://[]/"}, Exception, verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(Uri{"http://[]:80/"}, Exception, verifyException<PichiError::BAD_PROTO>);
 }
 
 BOOST_AUTO_TEST_CASE(Uri_Host)
@@ -39,6 +41,20 @@ BOOST_AUTO_TEST_CASE(Uri_Host)
 
   auto domain = Uri{"http://example.com/"};
   BOOST_CHECK_EQUAL("example.com", domain.host_);
+}
+
+BOOST_AUTO_TEST_CASE(Uri_Host_IPv6)
+{
+  BOOST_CHECK_EQUAL("::", Uri{"http://[::]"}.host_);
+  BOOST_CHECK_EQUAL("fe80::1", Uri{"http://[fe80::1]"}.host_);
+  BOOST_CHECK_EQUAL("::1", Uri{"http://[::1]"}.host_);
+  BOOST_CHECK_EQUAL("::1", Uri{"http://[::1]/"}.host_);
+  BOOST_CHECK_EQUAL("::1", Uri{"http://[::1]:80"}.host_);
+  BOOST_CHECK_EQUAL("::1", Uri{"http://[::1]:80/"}.host_);
+  BOOST_CHECK_EQUAL("::1", Uri{"http://[::1]/path"}.host_);
+  BOOST_CHECK_EQUAL("::1", Uri{"http://[::1]:80/path"}.host_);
+  BOOST_CHECK_EQUAL("::1", Uri{"http://[::1]/?query"}.host_);
+  BOOST_CHECK_EQUAL("::1", Uri{"http://[::1]/path?query"}.host_);
 }
 
 BOOST_AUTO_TEST_CASE(Uri_Bad_Port_Field)
