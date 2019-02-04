@@ -20,10 +20,10 @@ install:
   - ps: bootstrap-vcpkg.bat
   - ps: |
       vcpkg install boost-asio:"$env:PLATFORM" boost-beast:"$env:PLATFORM" `
-        boost-coroutine2:"$env:PLATFORM" boost-mpl:"$env:PLATFORM" `
-        boost-program-options:"$env:PLATFORM" boost-test:"$env:PLATFORM" `
-        libmaxminddb:"$env:PLATFORM" libsodium:"$env:PLATFORM" `
-        mbedtls:"$env:PLATFORM" rapidjson:"$env:PLATFORM"
+        boost-coroutine2:"$env:PLATFORM" boost-filesystem:"$env:PLATFORM" `
+        boost-mpl:"$env:PLATFORM" boost-program-options:"$env:PLATFORM" `
+        boost-test:"$env:PLATFORM" libmaxminddb:"$env:PLATFORM" `
+        libsodium:"$env:PLATFORM" mbedtls:"$env:PLATFORM" rapidjson:"$env:PLATFORM"
 
 for:
 -
