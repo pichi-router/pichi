@@ -6,45 +6,10 @@ option(BUILD_TEST "Build unit test cases" ON)
 option(STATIC_LINK "Static linking" ON)
 option(INSTALL_HEADERS "Install header files" OFF)
 
-if (IOS)
-  if (NOT STATIC_LINK)
-    message(WARNING "Force to use static linking on iOS")
-    set(STATIC_LINK ON)
-  endif (NOT STATIC_LINK)
-  if (BUILD_SERVER OR BUILD_TEST)
-    message(WARNING "Executable file is prohibited on iOS")
-    set(BUILD_SERVER OFF)
-    set(BUILD_TEST OFF)
-  endif (BUILD_SERVER OR BUILD_TEST)
-endif (IOS)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(PICHI_LIBRARY pichi_lib)
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-if (STATIC_LINK)
-  if (UNIX)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-  else (UNIX)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .lib)
-  endif (UNIX)
-  if (MSVC)
-    add_compile_options(/MT)
-  endif (MSVC)
-endif (STATIC_LINK)
-
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-set(BOOST_COMPONENTS context system)
-if (BUILD_SERVER)
-  set(BOOST_COMPONENTS ${BOOST_COMPONENTS} program_options filesystem)
-endif (BUILD_SERVER)
-if (BUILD_TEST)
-  set(BOOST_COMPONENTS ${BOOST_COMPONENTS} unit_test_framework)
-endif (BUILD_TEST)
+include(ProcessOptions)
 
 find_package(Boost 1.67.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
 find_package(MbedTLS 2.7.0 REQUIRED)
@@ -52,17 +17,6 @@ find_package(Sodium 1.0.12 REQUIRED)
 find_package(MaxmindDB 1.3.0 REQUIRED)
 find_package(Rapidjson 1.1.0 REQUIRED)
 find_package(Threads REQUIRED)
-
-add_definitions(-DBOOST_ASIO_NO_DEPRECATED)
-
-if (MSVC)
-  # In MSVC, the default Exception Handling option is /EHsc, Which wouldn't catch exceptions
-  #   thrown by boost::context. '/EHs' would make it correctly at least.
-  # Further information:
-  # - https://docs.microsoft.com/en-us/cpp/build/reference/eh-exception-handling-model?view=vs-2017
-  # - https://www.boost.org/doc/libs/release/libs/context/doc/html/context/requirements.html
-  add_compile_options(/EHs)
-endif (MSVC)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
