@@ -79,8 +79,7 @@ Router::Router(char const* fn) : geo_{fn} {}
 string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterType type,
                           function<ResolvedResult()> const& resolve) const
 {
-  auto r = ResolvedResult{};
-  if (needResolving_) r = resolve();
+  auto r = needResolving_ ? resolve() : ResolvedResult{};
 
   // No asynchronous IO operation can run while routing
   auto it = find_if(cbegin(route_.rules_), cend(route_.rules_), [&, this](auto&& pair) {
