@@ -170,6 +170,7 @@ BOOST_AUTO_TEST_CASE(Uri_Capital_Scheme)
 BOOST_AUTO_TEST_CASE(HostAndPort_Empty_Host)
 {
   BOOST_CHECK_EXCEPTION(HostAndPort{":80"}, Exception, verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(HostAndPort{"[]:80"}, Exception, verifyException<PichiError::BAD_PROTO>);
 }
 
 BOOST_AUTO_TEST_CASE(HostAndPort_Missing_Port)
@@ -189,6 +190,13 @@ BOOST_AUTO_TEST_CASE(HostAndPort_Normal)
   auto hp = HostAndPort{"example.com:443"};
   BOOST_CHECK_EQUAL("example.com", hp.host_);
   BOOST_CHECK_EQUAL("443", hp.port_);
+}
+
+BOOST_AUTO_TEST_CASE(HostAndPort_IPv6)
+{
+  BOOST_CHECK_EQUAL("::", HostAndPort{"[::]:80"}.host_);
+  BOOST_CHECK_EQUAL("fe80::1", HostAndPort{"[fe80::1]:80"}.host_);
+  BOOST_CHECK_EQUAL("::1", HostAndPort{"[::1]:80"}.host_);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

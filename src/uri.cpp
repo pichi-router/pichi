@@ -13,8 +13,8 @@ static auto const URI_REGEX =
     regex{"^(https?)://(([^:/?#\\[\\]]+)|\\[([a-f0-9:.]+)\\])(:(\\d+))?(/[^#?]*([#?].*)?)?$",
           regex::icase};
 static auto const URI_REGEX_SIZE = 9;
-static auto const HOST_REGEX = regex{"^([^:/]+):(\\d+)$"};
-static auto const HOST_REGEX_SIZE = 3;
+static auto const HOST_REGEX = regex{"^(([^:/\\[\\]]+)|\\[([a-f0-9:.]+)\\]):(\\d+)$"};
+static auto const HOST_REGEX_SIZE = 5;
 
 static string_view r2sv(csub_match const& m)
 {
@@ -62,8 +62,8 @@ Uri::Uri(string_view s)
 HostAndPort::HostAndPort(string_view s)
 {
   auto r = matching(s, HOST_REGEX, HOST_REGEX_SIZE);
-  host_ = r2sv(r[1]);
-  port_ = r2sv(r[2]);
+  host_ = r[2].matched ? r2sv(r[2]) : r2sv(r[3]);
+  port_ = r2sv(r[4]);
 }
 
 } // namespace pichi
