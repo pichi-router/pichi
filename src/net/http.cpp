@@ -192,17 +192,42 @@ Endpoint HttpIngress::readRemote(Yield yield)
 
   auto& header = parser.get();
   if (header.method() == http::verb::connect) {
+    /*
+     * HTTP CONNECT @RFC2616
+     *   Don't validate whether the HOST field exists or not here.
+     *   Some clients are not standard and send the CONNECT request without HOST field.
+     */
     auto hp = HostAndPort{{header.target().data(), header.target().size()}};
     delegate_ = make_unique<HttpConnectIngress>(move(socket_));
     return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
   }
   else {
-    // Cutting http://example.com/suffix?query to /suffix?query
+    /*
+     * HTTP Proxy @RFC2068
+     *   The HOST field and absolute_path are both mandatory and same according to the standard.
+     *   But some non-standard clients might send request:
+     *     - with different destinations discribed in HOST field and absolute_path;
+     *     - without absolute_path but relative_path specified.
+     *   The rules, which are not very strict but still standard, listed below are followed
+     *   to handle these non-standard clients:
+     *     - HOST field is mandatory and taken as the destination;
+     *     - the destination described in absolute_path is ignored;
+     *     - relative_path will be forwarded without any change.
+     */
     auto target = header.target().to_string();
-    auto uri = Uri{target};
-    header.target(boost::string_view{uri.suffix_.data(), uri.suffix_.size()});
+    assertFalse(target.empty(), PichiError::BAD_PROTO, "Empty path");
+    if (target[0] != '/') {
+      // absolute_path specified, so convert it to relative one.
+      auto uri = Uri{target};
+      header.target(boost::string_view{uri.suffix_.data(), uri.suffix_.size()});
+    }
+
+    auto it = header.find(http::field::host);
+    assertTrue(it != cend(header), PichiError::BAD_PROTO, "Missing HOST field in HTTP header");
+    auto hp = HostAndPort{{it->value().data(), it->value().size()}};
+
     delegate_ = make_unique<HttpRelay>(move(socket_), move(buf), move(parser));
-    return {detectHostType(uri.host_), to_string(uri.host_), to_string(uri.port_)};
+    return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
   }
 }
 

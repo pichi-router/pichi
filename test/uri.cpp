@@ -169,14 +169,25 @@ BOOST_AUTO_TEST_CASE(Uri_Capital_Scheme)
 
 BOOST_AUTO_TEST_CASE(HostAndPort_Empty_Host)
 {
+  BOOST_CHECK_EXCEPTION(HostAndPort{""}, Exception, verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(HostAndPort{"[]"}, Exception, verifyException<PichiError::BAD_PROTO>);
   BOOST_CHECK_EXCEPTION(HostAndPort{":80"}, Exception, verifyException<PichiError::BAD_PROTO>);
   BOOST_CHECK_EXCEPTION(HostAndPort{"[]:80"}, Exception, verifyException<PichiError::BAD_PROTO>);
 }
 
 BOOST_AUTO_TEST_CASE(HostAndPort_Missing_Port)
 {
-  BOOST_CHECK_EXCEPTION(HostAndPort{"localhost"}, Exception,
-                        verifyException<PichiError::BAD_PROTO>);
+  auto domain = HostAndPort{"localhost"sv};
+  BOOST_CHECK_EQUAL("localhost"sv, domain.host_);
+  BOOST_CHECK_EQUAL("80"sv, domain.port_);
+
+  auto ipv4 = HostAndPort{"127.0.0.1"sv};
+  BOOST_CHECK_EQUAL("127.0.0.1"sv, ipv4.host_);
+  BOOST_CHECK_EQUAL("80"sv, ipv4.port_);
+
+  auto ipv6 = HostAndPort{"[fe80::1]"sv};
+  BOOST_CHECK_EQUAL("fe80::1"sv, ipv6.host_);
+  BOOST_CHECK_EQUAL("80"sv, ipv6.port_);
 }
 
 BOOST_AUTO_TEST_CASE(HostAndPort_Alpha_Port)
