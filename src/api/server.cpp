@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/spawn2.hpp>
 #include <boost/beast/core/flat_static_buffer.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/status.hpp>
@@ -10,6 +9,7 @@
 #include <pichi/api/rest.hpp>
 #include <pichi/api/server.hpp>
 #include <pichi/asserts.hpp>
+#include <pichi/net/spawn.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <sstream>
@@ -59,20 +59,6 @@ static bool matching(boost::string_view s, regex const& re, cmatch& r)
   return regex_match(s.data(), s.data() + s.size(), r, re);
 }
 
-static http::status mapCode(PichiError e)
-{
-  switch (e) {
-  case PichiError::RES_IN_USE:
-    return http::status::forbidden;
-  case PichiError::BAD_JSON:
-    return http::status::bad_request;
-  case PichiError::SEMANTIC_ERROR:
-    return http::status::unprocessable_entity;
-  default:
-    return http::status::internal_server_error;
-  }
-}
-
 static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::yield_context yield)
 {
   auto ec = sys::error_code{};
@@ -80,12 +66,38 @@ static void writeWithoutException(tcp::socket& s, Server::Response& resp, asio::
   if (ec) cout << "Ignoring HTTP error: " << ec.message() << endl;
 }
 
-static void replyError(tcp::socket& s, asio::yield_context yield, ErrorVO const& error,
-                       http::status code = http::status::internal_server_error)
+static void replyError(exception_ptr eptr, tcp::socket& s, asio::yield_context yield)
 {
-  auto resp = defaultResponse(code);
-  resp.body() = serialize(toJson(error, alloc));
-  writeWithoutException(s, resp, yield);
+  auto reply = [&s, yield](auto&& vo, auto code) {
+    auto resp = defaultResponse(code);
+    resp.body() = serialize(toJson(vo, alloc));
+    writeWithoutException(s, resp, yield);
+  };
+  try {
+    if (eptr) rethrow_exception(eptr);
+  }
+  catch (Exception const& e) {
+    auto vo = ErrorVO{e.what()};
+    switch (e.error()) {
+    case PichiError::RES_IN_USE:
+      reply(vo, http::status::forbidden);
+      break;
+    case PichiError::BAD_JSON:
+      reply(vo, http::status::bad_request);
+      break;
+    case PichiError::SEMANTIC_ERROR:
+      reply(vo, http::status::unprocessable_entity);
+      break;
+    default:
+      reply(vo, http::status::internal_server_error);
+      break;
+    }
+  }
+  catch (sys::system_error const& e) {
+    reply(ErrorVO{e.what()}, e.code() == asio::error::address_in_use ?
+                                 http::status::locked :
+                                 http::status::internal_server_error);
+  }
 }
 
 template <typename InputIt>
@@ -217,29 +229,17 @@ Server::Server(asio::io_context& io, char const* fn)
 
 void Server::listen(string_view address, uint16_t port)
 {
-  asio::spawn(strand_, [a = tcp::acceptor{strand_.context(), {ip::make_address(address), port}},
-                        this](auto yield) mutable {
-    auto ec = sys::error_code{};
-    while (!ec) {
-      asio::spawn(strand_, [first = cbegin(apis_), last = cend(apis_),
-                            s = a.async_accept(yield)](auto yield) mutable {
-        try {
-          dispatch(first, last, s, yield);
-        }
-        catch (Exception const& e) {
-          cout << "Pichi Error: " << e.what() << endl;
-          replyError(s, yield, {e.what()}, mapCode(e.error()));
-        }
-        catch (sys::system_error const& e) {
-          if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-          cout << "Socket Error: " << e.what() << endl;
-          replyError(s, yield, {e.what()},
-                     e.code() == asio::error::address_in_use ? http::status::locked :
-                                                               http::status::internal_server_error);
-        }
-      });
+  net::spawn(strand_, [a = tcp::acceptor{strand_.context(), {ip::make_address(address), port}},
+                       this](auto yield) mutable {
+    while (true) {
+      auto s = make_shared<tcp::socket>(a.async_accept(yield));
+      net::spawn(
+          strand_,
+          [first = cbegin(apis_), last = cend(apis_), s](auto yield) mutable {
+            dispatch(first, last, *s, yield);
+          },
+          [s](auto eptr, auto yield) noexcept { replyError(eptr, *s, yield); });
     }
-    cout << "Socket Error: " << ec.message() << endl;
   });
 }
 

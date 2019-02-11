@@ -9,6 +9,7 @@
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
+#include <pichi/net/spawn.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
@@ -31,38 +32,7 @@ IngressManager::ValueType IngressManager::generatePair(DelegateIterator it)
   return make_pair(cref(it->first), cref(it->second.first));
 }
 
-void IngressManager::logging(exception_ptr eptr)
-{
-  try {
-    if (eptr) rethrow_exception(eptr);
-  }
-  catch (Exception& e) {
-    cout << "Pichi Error: " << e.what() << endl;
-  }
-  catch (sys::system_error& e) {
-    if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-    cout << "Socket Error: " << e.what() << endl;
-  }
-}
-
-void IngressManager::stub(exception_ptr) {}
-
-template <typename Function, typename FaultHandler>
-void IngressManager::spawn(Function&& func, FaultHandler&& faultHandler)
-{
-  asio::spawn(strand_, [f = forward<Function>(func),
-                        fh = forward<FaultHandler>(faultHandler)](auto yield) mutable {
-    try {
-      f(yield);
-    }
-    catch (...) {
-      fh(current_exception());
-      logging(current_exception());
-    }
-  });
-}
-
-bool IngressManager::isDuplicated(ConstBuffer<uint8_t> raw, asio::yield_context yield)
+template <typename Yield> bool IngressManager::isDuplicated(ConstBuffer<uint8_t> raw, Yield yield)
 {
   if (raw.size() == 0) return false;
 
@@ -71,7 +41,7 @@ bool IngressManager::isDuplicated(ConstBuffer<uint8_t> raw, asio::yield_context 
     cout << "Pichi Error: Duplicated IV" << endl;
     return true;
   }
-  spawn([it = it, this](auto yield) {
+  net::spawn(strand_, [it = it, this](auto yield) {
     // Exceptions prohibited
     auto ec = sys::error_code{};
     asio::system_timer{strand_.context(), IV_EXPIRE_TIME}.async_wait(yield[ec]);
@@ -80,9 +50,9 @@ bool IngressManager::isDuplicated(ConstBuffer<uint8_t> raw, asio::yield_context 
   return false;
 }
 
-pair<EgressVO const&, net::Endpoint> IngressManager::route(net::Endpoint const& remote,
-                                                           string_view iname, AdapterType type,
-                                                           asio::yield_context yield)
+template <typename Yield>
+pair<EgressVO const&, net::Endpoint>
+IngressManager::route(net::Endpoint const& remote, string_view iname, AdapterType type, Yield yield)
 {
   auto resolve = [&yield, &remote, &io = strand_.context()]() {
     auto ec = sys::error_code{};
@@ -104,13 +74,13 @@ IngressManager::ConstIterator IngressManager::end() const noexcept
   return {cend(c_), cend(c_), &IngressManager::generatePair};
 }
 
-void IngressManager::listen(typename Container::iterator it, asio::yield_context yield)
+template <typename Yield> void IngressManager::listen(typename Container::iterator it, Yield yield)
 {
   auto& acceptor = it->second.second;
 
   while (true) {
-    spawn([s = acceptor.async_accept(yield), &vo = as_const(it->second.first),
-           &iname = as_const(it->first), this](auto yield) mutable {
+    net::spawn(strand_, [s = acceptor.async_accept(yield), &vo = as_const(it->second.first),
+                         &iname = as_const(it->first), this](auto yield) mutable {
       auto& io = strand_.context();
       auto ingress = net::makeIngress(vo, move(s));
       auto iv = array<uint8_t, 32>{};
@@ -143,18 +113,19 @@ void IngressManager::update(string const& name, IngressVO ivo)
     it->second =
         make_pair(move(ivo), Acceptor{strand_.context(), {ip::make_address(ivo.bind_), ivo.port_}});
   }
-  spawn([it, this](auto yield) { listen(it, yield); },
-        [it, this](auto eptr) {
-          try {
-            if (eptr) rethrow_exception(eptr);
+  net::spawn(
+      strand_, [it, this](auto yield) { listen(it, yield); },
+      [ it, this ](auto eptr, auto) noexcept {
+        try {
+          if (eptr) rethrow_exception(eptr);
+        }
+        catch (sys::system_error const& e) {
+          if (e.code() != asio::error::operation_aborted) {
+            assert(it != std::end(c_));
+            c_.erase(it);
           }
-          catch (sys::system_error const& e) {
-            if (e.code() != asio::error::operation_aborted) {
-              assert(it != std::end(c_));
-              c_.erase(it);
-            }
-          }
-        });
+        }
+      });
 }
 
 void IngressManager::erase(string_view name)
