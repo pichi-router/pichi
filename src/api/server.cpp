@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/spawn2.hpp>
 #include <boost/beast/core/flat_static_buffer.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/status.hpp>
@@ -10,6 +9,7 @@
 #include <pichi/api/rest.hpp>
 #include <pichi/api/server.hpp>
 #include <pichi/asserts.hpp>
+#include <pichi/net/spawn.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <sstream>
@@ -217,29 +217,30 @@ Server::Server(asio::io_context& io, char const* fn)
 
 void Server::listen(string_view address, uint16_t port)
 {
-  asio::spawn(strand_, [a = tcp::acceptor{strand_.context(), {ip::make_address(address), port}},
-                        this](auto yield) mutable {
-    auto ec = sys::error_code{};
-    while (!ec) {
-      asio::spawn(strand_, [first = cbegin(apis_), last = cend(apis_),
-                            s = a.async_accept(yield)](auto yield) mutable {
-        try {
-          dispatch(first, last, s, yield);
-        }
-        catch (Exception const& e) {
-          cout << "Pichi Error: " << e.what() << endl;
-          replyError(s, yield, {e.what()}, mapCode(e.error()));
-        }
-        catch (sys::system_error const& e) {
-          if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-          cout << "Socket Error: " << e.what() << endl;
-          replyError(s, yield, {e.what()},
-                     e.code() == asio::error::address_in_use ? http::status::locked :
-                                                               http::status::internal_server_error);
-        }
-      });
+  net::spawn(strand_, [a = tcp::acceptor{strand_.context(), {ip::make_address(address), port}},
+                       this](auto yield) mutable {
+    while (true) {
+      auto s = make_shared<tcp::socket>(a.async_accept(yield));
+      net::spawn(
+          strand_,
+          [first = cbegin(apis_), last = cend(apis_), s](auto yield) mutable {
+            dispatch(first, last, *s, yield);
+          },
+          [s](auto eptr, auto yield) noexcept {
+            try {
+              if (eptr) rethrow_exception(eptr);
+            }
+            catch (Exception const& e) {
+              replyError(*s, yield, {e.what()}, mapCode(e.error()));
+            }
+            catch (sys::system_error const& e) {
+              replyError(*s, yield, {e.what()},
+                         e.code() == asio::error::address_in_use ?
+                             http::status::locked :
+                             http::status::internal_server_error);
+            }
+          });
     }
-    cout << "Socket Error: " << ec.message() << endl;
   });
 }
 

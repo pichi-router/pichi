@@ -22,6 +22,6 @@ void logException(std::exception_ptr eptr) noexcept
   }
 }
 
-void stubHandler(std::exception_ptr) noexcept {}
+void stubHandler(std::exception_ptr, asio::yield_context) noexcept {}
 
 } // namespace pichi::net

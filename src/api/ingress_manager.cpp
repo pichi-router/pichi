@@ -114,7 +114,8 @@ void IngressManager::update(string const& name, IngressVO ivo)
         make_pair(move(ivo), Acceptor{strand_.context(), {ip::make_address(ivo.bind_), ivo.port_}});
   }
   net::spawn(
-      strand_, [it, this](auto yield) { listen(it, yield); }, [ it, this ](auto eptr) noexcept {
+      strand_, [it, this](auto yield) { listen(it, yield); },
+      [ it, this ](auto eptr, auto) noexcept {
         try {
           if (eptr) rethrow_exception(eptr);
         }
