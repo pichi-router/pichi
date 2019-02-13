@@ -3,9 +3,7 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/spawn2.hpp>
 #include <boost/asio/strand.hpp>
-#include <exception>
 #include <map>
 #include <pichi/api/iterator.hpp>
 #include <pichi/api/rest.hpp>
@@ -32,15 +30,12 @@ private:
 
 private:
   static ValueType generatePair(DelegateIterator);
-  static void stub(std::exception_ptr);
-  static void logging(std::exception_ptr);
 
+  template <typename Yield>
   std::pair<EgressVO const&, net::Endpoint> route(net::Endpoint const&, std::string_view ingress,
-                                                  AdapterType, boost::asio::yield_context);
-  bool isDuplicated(ConstBuffer<uint8_t>, boost::asio::yield_context);
-  template <typename Function, typename FaultHandler = decltype(stub)>
-  void spawn(Function&&, FaultHandler&& = stub);
-  void listen(typename Container::iterator, boost::asio::yield_context);
+                                                  AdapterType, Yield);
+  template <typename Yield> bool isDuplicated(ConstBuffer<uint8_t>, Yield);
+  template <typename Yield> void listen(typename Container::iterator, Yield);
 
 public:
   IngressManager(Strand, Router const&, EgressManager const&);
