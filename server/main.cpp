@@ -104,7 +104,7 @@ int main(int argc, char const* argv[])
 
 #if defined(HAS_FORK) && defined(HAS_SETSID)
     if (vm.count("daemon")) {
-      assertTrue(chdir("/") == 0);
+      assertTrue(chdir(fs::path{PICHI_PREFIX}.root_directory().c_str()) == 0);
       auto pid = fork();
       assertFalse(pid < 0);
       if (pid > 0) {
