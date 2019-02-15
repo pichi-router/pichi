@@ -31,6 +31,8 @@ private:
   using IngressPtr = std::unique_ptr<net::Ingress>;
   using EgressPtr = std::unique_ptr<net::Egress>;
 
+  void close();
+
 public:
   Session(Session const&) = delete;
   Session(Session&&) = delete;
