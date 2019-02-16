@@ -137,6 +137,9 @@ Allow options:
   -p [ --port ] arg                     API server port
   -g [ --geo ] arg (=/usr/share/pichi/geo.mmdb)
                                         GEO file
+  -d [ --daemon ]                       daemonize
+  -u [ --user ] arg                     run as user
+  --group arg                           run as group
 $ docker run -d --name pichi --net host --restart always pichi/pichi \
 >   pichi -g /usr/share/pichi/geo.mmdb -p 1024 -l 127.0.0.1
 c51b832bd29dd0333b0d32b0b0563ddc72821f7301c36c7635ae47d00a3bb902
