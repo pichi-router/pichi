@@ -177,8 +177,8 @@ template <typename Function, typename Executor, typename StackAllocator = detail
 void spawn(Executor const& ex, Function&& function, StackAllocator&& alloc = StackAllocator{},
            std::enable_if_t<is_executor<Executor>::value>* = nullptr)
 {
-  spawn(strand<Executor>{ex}, std::forward<Function>(function),
-        std::forward<StackAllocator>(alloc));
+  boost::asio::spawn(strand<Executor>{ex}, std::forward<Function>(function),
+                     std::forward<StackAllocator>(alloc));
 }
 
 template <typename Function, typename ExecutorContext,
@@ -186,7 +186,8 @@ template <typename Function, typename ExecutorContext,
 void spawn(ExecutorContext& ctx, Function&& function, StackAllocator&& alloc = StackAllocator{},
            std::enable_if_t<std::is_convertible_v<ExecutorContext&, execution_context&>>* = nullptr)
 {
-  spawn(ctx.get_executor(), std::forward<Function>(function), std::forward<StackAllocator>(alloc));
+  boost::asio::spawn(ctx.get_executor(), std::forward<Function>(function),
+                     std::forward<StackAllocator>(alloc));
 }
 
 using yield_context = detail::YieldContext;

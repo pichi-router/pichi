@@ -1,11 +1,10 @@
 #include <array>
-#include <boost/asio/spawn2.hpp>
 #include <iostream>
 #include <pichi/api/session.hpp>
 #include <pichi/exception.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/common.hpp>
-#include <pichi/scope_guard.hpp>
+#include <pichi/net/spawn.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
@@ -13,15 +12,10 @@ namespace sys = boost::system;
 
 namespace pichi::api {
 
-static void bridge(net::Adapter* from, net::Adapter* to, asio::yield_context yield)
+static void bridge(net::Adapter& from, net::Adapter& to, asio::yield_context yield)
 {
-  auto guard = makeScopeGuard([=]() {
-    from->close();
-    to->close();
-  });
   auto buf = array<uint8_t, net::MAX_FRAME_SIZE>{};
-  while (from->readable() && to->writable()) to->send({buf, from->recv(buf, yield)}, yield);
-  guard.disable();
+  while (from.readable() && to.writable()) to.send({buf, from.recv(buf, yield)}, yield);
 }
 
 Session::~Session() = default;
@@ -33,31 +27,24 @@ Session::Session(asio::io_context& io, Session::IngressPtr&& ingress, Session::E
 
 void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
 {
-  spawn([=, self = shared_from_this()](auto yield) {
-    auto i = ingress_.get();
-    auto e = egress_.get();
-    e->connect(remote, next, yield);
-    i->confirm(yield);
-    spawn([f = i, t = e, self = self](auto yield) { bridge(f, t, yield); });
-    spawn([f = e, t = i, self = self](auto yield) { bridge(f, t, yield); });
+  net::spawn(strand_, [=, self = shared_from_this()](auto yield) {
+    egress_->connect(remote, next, yield);
+    ingress_->confirm(yield);
+    net::spawn(
+        strand_, [self, this](auto yield) { bridge(*ingress_, *egress_, yield); },
+        // FIXME Not copying for self because net::spawn ensures that
+        //   Function and ExceptionHandler share the same scope.
+        [this](auto, auto) noexcept { close(); });
+    net::spawn(
+        strand_, [self, this](auto yield) { bridge(*egress_, *ingress_, yield); },
+        [this](auto, auto) noexcept { close(); });
   });
 }
 
-template <typename Function> void Session::spawn(Function&& func)
+void Session::close()
 {
-  static_assert(is_invocable_v<Function, asio::yield_context>);
-  asio::spawn(strand_, [f = forward<Function>(func)](auto yield) mutable {
-    try {
-      f(yield);
-    }
-    catch (Exception& e) {
-      cout << "Pichi Error: " << e.what() << endl;
-    }
-    catch (sys::system_error& e) {
-      if (e.code() == asio::error::eof || e.code() == asio::error::operation_aborted) return;
-      cout << "Socket Error: " << e.what() << endl;
-    }
-  });
+  ingress_->close();
+  egress_->close();
 }
 
 } // namespace pichi::api
