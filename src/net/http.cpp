@@ -49,7 +49,7 @@ struct ParseOnlyBody {
 using Socket = asio::ip::tcp::socket;
 using Yield = asio::yield_context;
 
-class HttpRelay : public Ingress {
+class HttpRelayIngress : public Ingress {
 public:
   using Body = http::buffer_body;
   using Buffer = beast::flat_buffer;
@@ -58,7 +58,8 @@ public:
   using ResponseParser = http::response_parser<ParseOnlyBody>;
 
 public:
-  HttpRelay(Socket&& socket, Buffer&& buffer, http::request_parser<http::empty_body>&& parser)
+  HttpRelayIngress(Socket&& socket, Buffer&& buffer,
+                   http::request_parser<http::empty_body>&& parser)
     : socket_{move(socket)}, reqBuf_{move(buffer)}, reqParser_{move(parser)}, reqSerializer_{
                                                                                   reqParser_.get()}
   {
@@ -67,7 +68,7 @@ public:
     reqSerializer_.split(true);
   }
 
-  ~HttpRelay() override = default;
+  ~HttpRelayIngress() override = default;
 
   void close() override { socket_.close(); }
 
@@ -80,7 +81,7 @@ public:
 
   Endpoint readRemote(Yield) override
   {
-    fail(PichiError::MISC, "Shouldn't invoke HttpRelay::readRemote");
+    fail(PichiError::MISC, "Shouldn't invoke HttpRelayIngress::readRemote");
     return {};
   }
 
@@ -100,7 +101,7 @@ private:
   Buffer respBuf_;
 };
 
-void HttpRelay::send(ConstBuffer<uint8_t> src, Yield yield)
+void HttpRelayIngress::send(ConstBuffer<uint8_t> src, Yield yield)
 {
   auto b = respBuf_.prepare(src.size());
   copy_n(cbegin(src), src.size(), asio::buffers_begin(b));
@@ -117,7 +118,7 @@ void HttpRelay::send(ConstBuffer<uint8_t> src, Yield yield)
   }
 }
 
-size_t HttpRelay::recv(MutableBuffer<uint8_t> dst, Yield yield)
+size_t HttpRelayIngress::recv(MutableBuffer<uint8_t> dst, Yield yield)
 {
   assertTrue(reqParser_.is_header_done(), PichiError::MISC);
 
@@ -182,7 +183,7 @@ void HttpConnectIngress::confirm(Yield yield)
 
 Endpoint HttpIngress::readRemote(Yield yield)
 {
-  auto buf = HttpRelay::Buffer{};
+  auto buf = HttpRelayIngress::Buffer{};
   auto parser = http::request_parser<http::empty_body>{};
 
   parser.header_limit(numeric_limits<uint32_t>::max());
@@ -226,25 +227,30 @@ Endpoint HttpIngress::readRemote(Yield yield)
     assertTrue(it != cend(header), PichiError::BAD_PROTO, "Missing HOST field in HTTP header");
     auto hp = HostAndPort{{it->value().data(), it->value().size()}};
 
-    delegate_ = make_unique<HttpRelay>(move(socket_), move(buf), move(parser));
+    delegate_ = make_unique<HttpRelayIngress>(move(socket_), move(buf), move(parser));
     return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
   }
 }
 
-HttpEgress::HttpEgress(Socket&& socket) : socket_{move(socket)} {}
+class HttpConnectEgress : public Egress {
+public:
+  HttpConnectEgress(Socket& s) : socket_{s} {}
 
-void HttpEgress::close() { return socket_.close(); }
-bool HttpEgress::readable() const { return socket_.is_open(); }
-bool HttpEgress::writable() const { return socket_.is_open(); }
+  void close() override { socket_.close(); }
+  bool readable() const override { return socket_.is_open(); }
+  bool writable() const override { return socket_.is_open(); }
+  size_t recv(MutableBuffer<uint8_t> buf, Yield yield) override
+  {
+    return socket_.async_read_some(asio::buffer(buf), yield);
+  }
+  void send(ConstBuffer<uint8_t> buf, Yield yield) override { write(socket_, buf, yield); }
+  void connect(Endpoint const&, Endpoint const&, Yield) override;
 
-size_t HttpEgress::recv(MutableBuffer<uint8_t> buf, Yield yield)
-{
-  return socket_.async_read_some(asio::buffer(buf), yield);
-}
+private:
+  Socket& socket_;
+};
 
-void HttpEgress::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
-
-void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
+void HttpConnectEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
   pichi::net::connect(next, socket_, yield);
 
@@ -261,6 +267,110 @@ void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yie
   http::async_read_header(socket_, buf, parser, yield);
   assertTrue(resp.result() == http::status::ok, PichiError::BAD_PROTO,
              "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
+}
+
+class HttpRelayEgress : public Egress {
+private:
+  using Buffer = beast::flat_buffer;
+  template <bool isRequest> using Header = http::header<isRequest>;
+  template <bool isRequest> using Parser = http::parser<isRequest, ParseOnlyBody>;
+  template <bool isRequest> using Serializer = http::serializer<isRequest, ParseOnlyBody>;
+  using RequestParser = Parser<true>;
+  using ResponseParser = Parser<false>;
+
+  void rewriteTarget(Header<true>& h)
+  {
+    auto it = h.find(http::field::host);
+    assertFalse(it == cend(h), PichiError::BAD_PROTO);
+    auto prefix = "http://"s;
+    prefix.append(cbegin(it->value()), cend(it->value()));
+    prefix.append(cbegin(h.target()), cend(h.target()));
+    h.target(prefix);
+  }
+
+  template <bool isRequest> void writeHeader(Header<isRequest>& h, asio::yield_context yield)
+  {
+    auto msg = http::message<isRequest, http::empty_body>{h};
+    auto sr = http::serializer<isRequest, http::empty_body>{msg};
+    http::async_write_header(socket_, sr, yield);
+  }
+
+public:
+  HttpRelayEgress(Socket& s) : socket_{s} { respParser_.eager(true); }
+
+  void close() override { socket_.close(); }
+  bool readable() const override
+  {
+    return socket_.is_open() && (!respParser_.is_done() || parsed_ > 0);
+  }
+  bool writable() const override { return socket_.is_open() && !reqParser_.is_done(); }
+
+  size_t recv(MutableBuffer<uint8_t> buf, Yield yield) override
+  {
+    if (parsed_ == 0) {
+      assertFalse(respParser_.is_done(), PichiError::BAD_PROTO);
+      respBuf_.commit(socket_.async_read_some(respBuf_.prepare(1024), yield));
+      auto ec = sys::error_code{};
+      parsed_ += respParser_.put(beast::buffers_prefix(respBuf_.size(), respBuf_.data()), ec);
+      assertFalse(ec && ec != http::error::need_more, PichiError::BAD_PROTO, ec.message());
+    }
+    auto copied = min(buf.size(), parsed_);
+    copy_n(asio::buffers_begin(beast::buffers_prefix(copied, respBuf_.data())), copied, begin(buf));
+    parsed_ -= copied;
+    respBuf_.consume(copied);
+    return copied;
+  }
+
+  void send(ConstBuffer<uint8_t> buf, Yield yield) override
+  {
+    if (reqParser_.is_header_done()) {
+      auto ec = sys::error_code{};
+      auto parsed = reqParser_.put(asio::buffer(buf), ec);
+      assertFalse(ec && ec != http::error::need_more, PichiError::BAD_PROTO, ec.message());
+      assertTrue(parsed == buf.size());
+      write(socket_, buf, yield);
+    }
+    else {
+      copy_n(cbegin(buf), buf.size(), asio::buffers_begin(reqBuf_.prepare(buf.size())));
+      reqBuf_.commit(buf.size());
+      auto ec = sys::error_code{};
+      auto parsed = reqParser_.put(beast::buffers_prefix(reqBuf_.size(), reqBuf_.data()), ec);
+      reqBuf_.consume(parsed);
+      if (ec == http::error::need_more) return;
+      assertFalse(static_cast<bool>(ec), PichiError::BAD_PROTO, ec.message());
+      assertTrue(reqParser_.is_header_done());
+
+      rewriteTarget(reqParser_.get());
+      writeHeader(reqParser_.get(), yield);
+      if (reqBuf_.size() > 0) send({reqBuf_.data()}, yield);
+      reqBuf_.consume(reqBuf_.size());
+    }
+  }
+
+  void connect(Endpoint const& remote, Endpoint const& next, Yield yield) override
+  {
+    pichi::net::connect(next, socket_, yield);
+  }
+
+private:
+  Socket& socket_;
+  RequestParser reqParser_;
+  ResponseParser respParser_;
+  Buffer reqBuf_;
+  Buffer respBuf_;
+  size_t parsed_ = 0;
+};
+
+HttpEgress::HttpEgress(Socket&& socket) : socket_{move(socket)} {}
+
+void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
+{
+  // FIXME hardcode for detecting which proxy type will be chosen.
+  if (remote.port_ == "https" || remote.port_ == "443")
+    delegate_ = make_unique<HttpConnectEgress>(socket_);
+  else
+    delegate_ = make_unique<HttpRelayEgress>(socket_);
+  delegate_->connect(remote, next, yield);
 }
 
 } // namespace pichi::net
