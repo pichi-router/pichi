@@ -13,102 +13,6 @@ using namespace rapidjson;
 using namespace pichi;
 using namespace pichi::api;
 
-static decltype(auto) ph = "placeholder";
-static auto doc = Document{};
-static auto& alloc = doc.GetAllocator();
-
-static IngressVO defaultIngressVO(AdapterType type)
-{
-  switch (type) {
-  case AdapterType::HTTP:
-    return {AdapterType::HTTP, ph, 1};
-  case AdapterType::SOCKS5:
-    return {AdapterType::SOCKS5, ph, 1};
-  case AdapterType::SS:
-    return {AdapterType::SS, ph, 1, CryptoMethod::RC4_MD5, ph};
-  default:
-    BOOST_ERROR("Invalid type");
-    return {};
-  }
-}
-
-static auto defaultIngressJson(AdapterType type)
-{
-  auto v = Value{};
-  v.SetObject();
-  v.AddMember("bind", ph, alloc);
-  v.AddMember("port", 1, alloc);
-  switch (type) {
-  case AdapterType::HTTP:
-    v.AddMember("type", "http", alloc);
-    break;
-  case AdapterType::SOCKS5:
-    v.AddMember("type", "socks5", alloc);
-    break;
-  case AdapterType::SS:
-    v.AddMember("type", "ss", alloc);
-    v.AddMember("method", "rc4-md5", alloc);
-    v.AddMember("password", ph, alloc);
-    break;
-  default:
-    break;
-  }
-  return v;
-}
-
-static EgressVO defaultEgressVO(AdapterType type)
-{
-  switch (type) {
-  case AdapterType::DIRECT:
-    return {AdapterType::DIRECT};
-  case AdapterType::REJECT:
-    return {AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0};
-  case AdapterType::HTTP:
-    return {AdapterType::HTTP, ph, 1};
-  case AdapterType::SOCKS5:
-    return {AdapterType::SOCKS5, ph, 1};
-  case AdapterType::SS:
-    return {AdapterType::SS, ph, 1, CryptoMethod::RC4_MD5, ph};
-  default:
-    BOOST_ERROR("Invalid type");
-    return {};
-  }
-}
-
-static auto defaultEgressJson(AdapterType type)
-{
-  auto v = Value{};
-  v.SetObject();
-  if (type != AdapterType::DIRECT && type != AdapterType::REJECT) {
-    v.AddMember("host", ph, alloc);
-    v.AddMember("port", 1, alloc);
-  }
-  switch (type) {
-  case AdapterType::DIRECT:
-    v.AddMember("type", "direct", alloc);
-    break;
-  case AdapterType::REJECT:
-    v.AddMember("type", "reject", alloc);
-    v.AddMember("mode", "fixed", alloc);
-    v.AddMember("delay", 0, alloc);
-    break;
-  case AdapterType::HTTP:
-    v.AddMember("type", "http", alloc);
-    break;
-  case AdapterType::SOCKS5:
-    v.AddMember("type", "socks5", alloc);
-    break;
-  case AdapterType::SS:
-    v.AddMember("type", "ss", alloc);
-    v.AddMember("method", "rc4-md5", alloc);
-    v.AddMember("password", ph, alloc);
-    break;
-  default:
-    break;
-  }
-  return v;
-}
-
 BOOST_AUTO_TEST_SUITE(REST_TO_JSON)
 
 BOOST_AUTO_TEST_CASE(toJson_AdapterType)
@@ -185,14 +89,14 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_Mandatory_Fields)
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_Additional_Fields)
 {
   auto ingress = defaultIngressVO(AdapterType::HTTP);
-  ingress.method_ = CryptoMethod::AES_128_CFB;
+  ingress.method_ = CryptoMethod::RC4_MD5;
   ingress.password_ = ph;
   auto fact = toJson(ingress, alloc);
 
   auto expect = defaultIngressJson(AdapterType::HTTP);
   BOOST_CHECK(expect == fact);
 
-  expect.AddMember("method", "aes-128-cfb", alloc);
+  expect.AddMember("method", "rc4-md5", alloc);
   expect.AddMember("password", ph, alloc);
   BOOST_CHECK(expect != fact);
 }
@@ -214,14 +118,14 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_SOCKS5_Mandatory_Fields)
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_SOCKS5_Additional_Fields)
 {
   auto ingress = defaultIngressVO(AdapterType::SOCKS5);
-  ingress.method_ = CryptoMethod::AES_128_CFB;
+  ingress.method_ = CryptoMethod::RC4_MD5;
   ingress.password_ = ph;
   auto fact = toJson(ingress, alloc);
 
   auto expect = defaultIngressJson(AdapterType::SOCKS5);
   BOOST_CHECK(expect == fact);
 
-  expect.AddMember("method", "aes-128-cfb", alloc);
+  expect.AddMember("method", "rc4-md5", alloc);
   expect.AddMember("password", ph, alloc);
   BOOST_CHECK(expect != fact);
 }
