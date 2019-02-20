@@ -62,7 +62,7 @@ public:
     : socket_{move(socket)}, reqBuf_{move(buffer)}, reqParser_{move(parser)}, reqSerializer_{
                                                                                   reqParser_.get()}
   {
-    respParser_.header_limit(MAX_FRAME_SIZE);
+    respParser_.header_limit(numeric_limits<uint32_t>::max());
     respParser_.body_limit(numeric_limits<uint64_t>::max());
     reqSerializer_.split(true);
   }
@@ -185,7 +185,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
   auto buf = HttpRelay::Buffer{};
   auto parser = http::request_parser<http::empty_body>{};
 
-  parser.header_limit(MAX_FRAME_SIZE);
+  parser.header_limit(numeric_limits<uint32_t>::max());
   parser.body_limit(numeric_limits<uint64_t>::max());
 
   http::async_read_header(socket_, buf, parser, yield);

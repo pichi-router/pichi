@@ -21,7 +21,7 @@ template <CryptoMethod method> void SSAeadAdapter<method>::close() { socket_.clo
 
 template <CryptoMethod method> bool SSAeadAdapter<method>::readable() const
 {
-  return socket_.is_open();
+  return cache_.size() > 0 || socket_.is_open();
 }
 
 template <CryptoMethod method> bool SSAeadAdapter<method>::writable() const
@@ -37,10 +37,13 @@ size_t SSAeadAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
     readIV(iv, yield);
   }
 
+  // Here's some buffer who should be returned first.
   if (cache_.size() > 0) return copyTo(plain);
 
   auto len = recvFrame(plain, yield);
 
+  // frame is cached if plain's size is less than this frame,
+  // otherwise, frame is written into plain directly.
   return cache_.size() == 0 ? len : copyTo(plain);
 }
 
@@ -85,8 +88,8 @@ size_t SSAeadAdapter<method>::readIV(MutableBuffer<uint8_t> iv, Yield yield)
 template <CryptoMethod method> Endpoint SSAeadAdapter<method>::readRemote(Yield yield)
 {
   return parseEndpoint([this, yield](auto dst) {
-    size_t r = 0;
-    while (r < dst.size()) r += recv({dst.data() + r, dst.size() - r}, yield);
+    for (size_t r = 0; r < dst.size(); r += recv({dst.data() + r, dst.size() - r}, yield))
+      ;
   });
 }
 
