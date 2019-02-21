@@ -53,7 +53,7 @@ void SSStreamAdapter<method>::send(ConstBuffer<uint8_t> plain, Yield yield)
   }
 }
 
-template <CryptoMethod method> void SSStreamAdapter<method>::close() { socket_.close(); }
+template <CryptoMethod method> void SSStreamAdapter<method>::close() { pichi::net::close(socket_); }
 
 template <CryptoMethod method> bool SSStreamAdapter<method>::readable() const
 {

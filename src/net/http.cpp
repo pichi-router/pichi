@@ -69,7 +69,7 @@ public:
 
   ~HttpRelay() override = default;
 
-  void close() override { socket_.close(); }
+  void close() override { fail("Shouldn't invoke HttpRelay::close"); }
 
   bool readable() const override
   {
@@ -154,7 +154,7 @@ public:
 
   void send(ConstBuffer<uint8_t> src, Yield yield) override { write(socket_, src, yield); }
 
-  void close() override { socket_.close(); }
+  void close() override { fail("Shouldn't invoke HttpConnectIngress::close"); }
   bool readable() const override { return socket_.is_open(); }
   bool writable() const override { return socket_.is_open(); }
 
@@ -182,6 +182,8 @@ void HttpConnectIngress::confirm(Yield yield)
 
   http::async_write(socket_, rep, yield);
 }
+
+void HttpIngress::close() { pichi::net::close(socket_); }
 
 void HttpIngress::disconnect(Yield yield)
 {
@@ -246,7 +248,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
 
 HttpEgress::HttpEgress(Socket&& socket) : socket_{move(socket)} {}
 
-void HttpEgress::close() { return socket_.close(); }
+void HttpEgress::close() { pichi::net::close(socket_); }
 bool HttpEgress::readable() const { return socket_.is_open(); }
 bool HttpEgress::writable() const { return socket_.is_open(); }
 

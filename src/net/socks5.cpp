@@ -22,7 +22,7 @@ size_t Socks5Adapter::recv(MutableBuffer<uint8_t> buf, Yield yield)
 
 void Socks5Adapter::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
 
-void Socks5Adapter::close() { socket_.close(); }
+void Socks5Adapter::close() { pichi::net::close(socket_); }
 
 bool Socks5Adapter::readable() const { return socket_.is_open(); }
 

@@ -17,7 +17,7 @@ SSAeadAdapter<method>::SSAeadAdapter(Socket&& socket, ConstBuffer<uint8_t> psk)
 {
 }
 
-template <CryptoMethod method> void SSAeadAdapter<method>::close() { socket_.close(); }
+template <CryptoMethod method> void SSAeadAdapter<method>::close() { pichi::net::close(socket_); }
 
 template <CryptoMethod method> bool SSAeadAdapter<method>::readable() const
 {
