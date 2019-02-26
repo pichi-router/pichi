@@ -14,8 +14,6 @@ using namespace rapidjson;
 using namespace pichi;
 using namespace pichi::api;
 
-static decltype(auto) ph = "placeholder";
-
 static string toString(Value const& v)
 {
   auto buf = StringBuffer{};
@@ -26,78 +24,74 @@ static string toString(Value const& v)
 
 static string toString(IngressVO const& ingress)
 {
-  auto doc = Document{};
-  auto& alloc = doc.GetAllocator();
-  doc.SetObject();
+  auto v = Value{};
+  v.SetObject();
 
-  doc.AddMember("type", toJson(ingress.type_, alloc), alloc);
-  doc.AddMember("bind", toJson(ingress.bind_, alloc), alloc);
-  doc.AddMember("port", ingress.port_, alloc);
-  if (ingress.method_.has_value()) doc.AddMember("method", toJson(*ingress.method_, alloc), alloc);
+  v.AddMember("type", toJson(ingress.type_, alloc), alloc);
+  v.AddMember("bind", toJson(ingress.bind_, alloc), alloc);
+  v.AddMember("port", ingress.port_, alloc);
+  if (ingress.method_.has_value()) v.AddMember("method", toJson(*ingress.method_, alloc), alloc);
   if (ingress.password_.has_value())
-    doc.AddMember("password", toJson(*ingress.password_, alloc), alloc);
+    v.AddMember("password", toJson(*ingress.password_, alloc), alloc);
 
-  return toString(doc);
+  return toString(v);
 }
 
 static string toString(EgressVO const& evo)
 {
-  auto doc = Document{};
-  auto& alloc = doc.GetAllocator();
-  doc.SetObject();
+  auto v = Value{};
+  v.SetObject();
 
-  doc.AddMember("type", toJson(evo.type_, alloc), alloc);
-  if (evo.host_) doc.AddMember("host", toJson(*evo.host_, alloc), alloc);
-  if (evo.port_) doc.AddMember("port", *evo.port_, alloc);
-  if (evo.method_) doc.AddMember("method", toJson(*evo.method_, alloc), alloc);
-  if (evo.password_) doc.AddMember("password", toJson(*evo.password_, alloc), alloc);
-  if (evo.mode_) doc.AddMember("mode", toJson(*evo.mode_, alloc), alloc);
-  if (evo.delay_) doc.AddMember("delay", *evo.delay_, alloc);
+  v.AddMember("type", toJson(evo.type_, alloc), alloc);
+  if (evo.host_) v.AddMember("host", toJson(*evo.host_, alloc), alloc);
+  if (evo.port_) v.AddMember("port", *evo.port_, alloc);
+  if (evo.method_) v.AddMember("method", toJson(*evo.method_, alloc), alloc);
+  if (evo.password_) v.AddMember("password", toJson(*evo.password_, alloc), alloc);
+  if (evo.mode_) v.AddMember("mode", toJson(*evo.mode_, alloc), alloc);
+  if (evo.delay_) v.AddMember("delay", *evo.delay_, alloc);
 
-  return toString(doc);
+  return toString(v);
 }
 
 static string toString(RuleVO const& rvo)
 {
-  auto doc = Document{};
-  auto& alloc = doc.GetAllocator();
-  doc.SetObject();
+  auto v = Value{};
+  v.SetObject();
 
   if (!rvo.range_.empty())
-    doc.AddMember("range", toJson(begin(rvo.range_), end(rvo.range_), alloc), alloc);
+    v.AddMember("range", toJson(begin(rvo.range_), end(rvo.range_), alloc), alloc);
   if (!rvo.ingress_.empty())
-    doc.AddMember("ingress_name", toJson(begin(rvo.ingress_), end(rvo.ingress_), alloc), alloc);
+    v.AddMember("ingress_name", toJson(begin(rvo.ingress_), end(rvo.ingress_), alloc), alloc);
   if (!rvo.type_.empty())
-    doc.AddMember("ingress_type", toJson(begin(rvo.type_), end(rvo.type_), alloc), alloc);
+    v.AddMember("ingress_type", toJson(begin(rvo.type_), end(rvo.type_), alloc), alloc);
   if (!rvo.pattern_.empty())
-    doc.AddMember("pattern", toJson(begin(rvo.pattern_), end(rvo.pattern_), alloc), alloc);
+    v.AddMember("pattern", toJson(begin(rvo.pattern_), end(rvo.pattern_), alloc), alloc);
   if (!rvo.domain_.empty())
-    doc.AddMember("domain", toJson(begin(rvo.domain_), end(rvo.domain_), alloc), alloc);
+    v.AddMember("domain", toJson(begin(rvo.domain_), end(rvo.domain_), alloc), alloc);
   if (!rvo.country_.empty())
-    doc.AddMember("country", toJson(begin(rvo.country_), end(rvo.country_), alloc), alloc);
+    v.AddMember("country", toJson(begin(rvo.country_), end(rvo.country_), alloc), alloc);
 
-  return toString(doc);
+  return toString(v);
 }
 
 static string toString(RouteVO const& rvo)
 {
-  auto doc = Document{};
-  auto& alloc = doc.GetAllocator();
-  doc.SetObject();
+  auto v = Value{};
+  v.SetObject();
 
-  if (rvo.default_) doc.AddMember("default", toJson(*rvo.default_, alloc), alloc);
+  if (rvo.default_) v.AddMember("default", toJson(*rvo.default_, alloc), alloc);
   auto rules = Value{};
   rules.SetArray();
-  for_each(cbegin(rvo.rules_), cend(rvo.rules_), [&rules, &alloc](auto&& rule) {
+  for_each(cbegin(rvo.rules_), cend(rvo.rules_), [&rules](auto&& rule) {
     auto vo = Value{};
     vo.SetArray();
     vo.PushBack(toJson(rule.first, alloc), alloc);
     vo.PushBack(toJson(rule.second, alloc), alloc);
     rules.PushBack(move(vo), alloc);
   });
-  doc.AddMember("rules", rules, alloc);
+  v.AddMember("rules", rules, alloc);
 
-  return toString(doc);
+  return toString(v);
 }
 
 static bool operator==(IngressVO const& lhs, IngressVO const& rhs)
@@ -151,22 +145,29 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Type)
                         verifyException<PichiError::BAD_JSON>);
 }
 
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Default_Ones)
+{
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS}) {
+    BOOST_CHECK(defaultIngressVO(type) == parse<IngressVO>(toString(defaultIngressJson(type))));
+  }
+}
+
 BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Additional_Fields)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const expect = IngressVO{type, ph, 1};
-    auto fact = parse<IngressVO>(toString(expect));
-    BOOST_CHECK(expect == fact);
+    auto vo = defaultIngressVO(type);
+    BOOST_CHECK(vo == parse<IngressVO>(toString(vo)));
 
-    fact = parse<IngressVO>(toString(IngressVO{type, ph, 1, CryptoMethod::AES_128_CFB, ph}));
-    BOOST_CHECK(expect == fact);
+    vo.method_ = CryptoMethod::RC4_MD5;
+    vo.password_ = ph;
+    BOOST_CHECK(defaultIngressVO(type) == parse<IngressVO>(toString(vo)));
   }
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Empty_Fields)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const origin = IngressVO{type, ph, 1};
+    auto origin = defaultIngressVO(type);
     parse<IngressVO>(toString(origin));
 
     auto emptyBind = origin;
@@ -183,7 +184,7 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Empty_Fields)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
 {
-  auto const origin = IngressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto origin = defaultIngressVO(AdapterType::SS);
   auto holder = parse<IngressVO>(toString(origin));
 
   auto emptyBind = origin;
@@ -222,32 +223,6 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Port)
   BOOST_CHECK_EXCEPTION(parse<IngressVO>(huge), Exception, verifyException<PichiError::BAD_JSON>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Base)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const expect = IngressVO{type, ph, 1};
-    auto fact = parse<IngressVO>(toString(expect));
-    BOOST_CHECK(fact == expect);
-
-    auto withMethod = expect;
-    withMethod.method_ = CryptoMethod::AES_128_CFB;
-    fact = parse<IngressVO>(toString(withMethod));
-    BOOST_CHECK(fact == expect);
-
-    auto withPassword = expect;
-    withPassword.password_ = ph;
-    fact = parse<IngressVO>(toString(withPassword));
-    BOOST_CHECK(fact == expect);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_SS)
-{
-  auto const expect = IngressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = parse<IngressVO>(toString(expect));
-  BOOST_CHECK(fact == expect);
-}
-
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
 {
   BOOST_CHECK_EXCEPTION(parse<EgressVO>("not a json"), Exception,
@@ -256,30 +231,36 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
                         verifyException<PichiError::BAD_JSON>);
 }
 
+BOOST_AUTO_TEST_CASE(parse_Egress_Default_Ones)
+{
+  for (auto type : {AdapterType::DIRECT, AdapterType::HTTP, AdapterType::REJECT,
+                    AdapterType::SOCKS5, AdapterType::SS}) {
+    BOOST_CHECK(defaultEgressVO(type) == parse<EgressVO>(toString(defaultEgressJson(type))));
+  }
+}
+
 BOOST_AUTO_TEST_CASE(parse_Egress_Direct_Additional_Fields)
 {
-  auto const expect = EgressVO{AdapterType::DIRECT};
-  auto fact = parse<EgressVO>(toString(expect));
-  BOOST_CHECK(expect == fact);
-
-  fact = parse<EgressVO>(
-      toString(EgressVO{AdapterType::DIRECT, ph, 1, CryptoMethod::AES_128_CFB, ph}));
-  BOOST_CHECK(expect == fact);
+  auto vo = defaultEgressVO(AdapterType::DIRECT);
+  vo.delay_ = 0;
+  vo.host_ = ph;
+  vo.method_ = CryptoMethod::RC4_MD5;
+  vo.mode_ = DelayMode::FIXED;
+  vo.password_ = ph;
+  vo.port_ = 1;
+  BOOST_CHECK(defaultEgressVO(AdapterType::DIRECT) == parse<EgressVO>(toString(vo)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Default_Mode)
 {
-  auto const expect = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0};
-  auto fact = parse<EgressVO>(toString(expect));
-  BOOST_CHECK(expect == fact);
-
-  fact = parse<EgressVO>(
-      toString(EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph}));
-  BOOST_CHECK(expect == fact);
-
-  fact = parse<EgressVO>(
-      toString(EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph, {}, 1}));
-  BOOST_CHECK(expect == fact);
+  auto vo = defaultEgressVO(AdapterType::REJECT);
+  vo.host_ = ph;
+  vo.method_ = CryptoMethod::RC4_MD5;
+  vo.password_ = ph;
+  vo.port_ = 1;
+  vo.delay_.reset();
+  vo.mode_.reset();
+  BOOST_CHECK(defaultEgressVO(AdapterType::REJECT) == parse<EgressVO>(toString(vo)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Invalid_Mode)
@@ -290,13 +271,18 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Invalid_Mode)
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Random_Additional_Fields)
 {
-  auto const expect = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
-  auto fact = parse<EgressVO>(toString(expect));
-  BOOST_CHECK(expect == fact);
+  auto origin = defaultEgressVO(AdapterType::REJECT);
+  origin.mode_ = DelayMode::RANDOM;
+  origin.delay_.reset();
+  BOOST_CHECK(origin == parse<EgressVO>(toString(origin)));
 
-  fact = parse<EgressVO>(toString(
-      EgressVO{AdapterType::REJECT, ph, 1, CryptoMethod::AES_128_CFB, ph, DelayMode::RANDOM, 1}));
-  BOOST_CHECK(expect == fact);
+  auto vo = origin;
+  vo.delay_ = 0;
+  vo.host_ = ph;
+  vo.method_ = CryptoMethod::RC4_MD5;
+  vo.password_ = ph;
+  vo.port_ = 1;
+  BOOST_CHECK(origin == parse<EgressVO>(toString(vo)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Missing_Delay)
@@ -318,16 +304,16 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Delay_Out_Of_Range)
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Fixed)
 {
   for (auto i = 0; i <= 300; ++i) {
-    auto const expect = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, i};
-    auto fact = parse<EgressVO>(toString(expect));
-    BOOST_CHECK(expect == fact);
+    auto vo = defaultEgressVO(AdapterType::REJECT);
+    vo.delay_ = i;
+    BOOST_CHECK(vo == parse<EgressVO>(toString(vo)));
   }
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Empty_Fields)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const origin = EgressVO{type, ph, 1};
+    auto origin = defaultEgressVO(type);
     auto holder = parse<EgressVO>(toString(origin));
 
     auto noHost = origin;
@@ -354,7 +340,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Empty_Fields)
 
 BOOST_AUTO_TEST_CASE(parse_Egress_SS_Empty_Fields)
 {
-  auto const origin = EgressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
+  auto origin = defaultEgressVO(AdapterType::SS);
   auto holder = parse<EgressVO>(toString(origin));
 
   auto noHost = origin;
@@ -406,27 +392,17 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
 BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto const expect = EgressVO{type, ph, 1};
-    auto fact = parse<EgressVO>(toString(expect));
-    BOOST_CHECK(fact == expect);
+    auto origin = defaultEgressVO(type);
+    BOOST_CHECK(origin == parse<EgressVO>(toString(origin)));
 
-    auto withMethod = expect;
-    withMethod.method_ = CryptoMethod::AES_128_CFB;
-    fact = parse<EgressVO>(toString(withMethod));
-    BOOST_CHECK(fact == expect);
+    auto withMethod = origin;
+    withMethod.method_ = CryptoMethod::RC4_MD5;
+    BOOST_CHECK(origin == parse<EgressVO>(toString(withMethod)));
 
-    auto withPassword = expect;
+    auto withPassword = origin;
     withPassword.password_ = ph;
-    fact = parse<EgressVO>(toString(withPassword));
-    BOOST_CHECK(fact == expect);
+    BOOST_CHECK(origin == parse<EgressVO>(toString(withPassword)));
   }
-}
-
-BOOST_AUTO_TEST_CASE(parse_Egress_SS)
-{
-  auto const expect = EgressVO{AdapterType::SS, ph, 1, CryptoMethod::AES_128_CFB, ph};
-  auto fact = parse<EgressVO>(toString(expect));
-  BOOST_CHECK(fact == expect);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)

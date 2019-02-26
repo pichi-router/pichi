@@ -15,7 +15,6 @@ using ResolvedResults = ip::basic_resolver_results<ip::tcp>;
 using Endpoint = ip::tcp::endpoint;
 
 static decltype(auto) fn = "geo.mmdb";
-static decltype(auto) ph = "placeholder";
 
 static ResolvedResults createRR(string_view str = ""sv)
 {
