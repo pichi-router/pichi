@@ -33,6 +33,11 @@ static string toString(IngressVO const& ingress)
   if (ingress.method_.has_value()) v.AddMember("method", toJson(*ingress.method_, alloc), alloc);
   if (ingress.password_.has_value())
     v.AddMember("password", toJson(*ingress.password_, alloc), alloc);
+  if (ingress.tls_.has_value()) v.AddMember("tls", *ingress.tls_, alloc);
+  if (ingress.certFile_.has_value())
+    v.AddMember("cert_file", toJson(*ingress.certFile_, alloc), alloc);
+  if (ingress.keyFile_.has_value())
+    v.AddMember("key_file", toJson(*ingress.keyFile_, alloc), alloc);
 
   return toString(v);
 }
@@ -49,6 +54,9 @@ static string toString(EgressVO const& evo)
   if (evo.password_) v.AddMember("password", toJson(*evo.password_, alloc), alloc);
   if (evo.mode_) v.AddMember("mode", toJson(*evo.mode_, alloc), alloc);
   if (evo.delay_) v.AddMember("delay", *evo.delay_, alloc);
+  if (evo.tls_) v.AddMember("tls", *evo.tls_, alloc);
+  if (evo.insecure_) v.AddMember("insecure", *evo.insecure_, alloc);
+  if (evo.caFile_) v.AddMember("ca_file", toJson(*evo.caFile_, alloc), alloc);
 
   return toString(v);
 }
@@ -97,14 +105,16 @@ static string toString(RouteVO const& rvo)
 static bool operator==(IngressVO const& lhs, IngressVO const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.bind_ == rhs.bind_ && lhs.port_ == rhs.port_ &&
-         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_;
+         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.tls_ == rhs.tls_ &&
+         lhs.certFile_ == rhs.certFile_ && lhs.keyFile_ == rhs.keyFile_;
 }
 
 static bool operator==(EgressVO const& lhs, EgressVO const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_ &&
          lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.mode_ == rhs.mode_ &&
-         lhs.delay_ == rhs.delay_;
+         lhs.delay_ == rhs.delay_ && lhs.tls_ == rhs.tls_ && lhs.insecure_ == rhs.insecure_ &&
+         lhs.caFile_ == rhs.caFile_;
 }
 
 static bool operator==(RuleVO const& lhs, RuleVO const& rhs)
@@ -152,7 +162,27 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Default_Ones)
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Additional_Fields)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Mandatory_Fields)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto noType = defaultIngressJson(type);
+    noType.RemoveMember("type");
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noType)), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+
+    auto noBind = defaultEgressJson(type);
+    noBind.RemoveMember("bind");
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noBind)), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+
+    auto noPort = defaultEgressJson(type);
+    noPort.RemoveMember("port");
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noPort)), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Additional_Fields)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
     auto vo = defaultIngressVO(type);
@@ -160,11 +190,22 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Additional_Fields)
 
     vo.method_ = CryptoMethod::RC4_MD5;
     vo.password_ = ph;
+    vo.certFile_ = ph;
+    vo.keyFile_ = ph;
     BOOST_CHECK(defaultIngressVO(type) == parse<IngressVO>(toString(vo)));
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Empty_Fields)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Default_TLS_Fields)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto json = defaultIngressJson(type);
+    json.RemoveMember("tls");
+    BOOST_CHECK(defaultIngressVO(type) == parse<IngressVO>(toString(json)));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Empty_Fields)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
     auto origin = defaultIngressVO(type);
@@ -180,6 +221,65 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_Socks5_Empty_Fields)
     BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(zeroPort)), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_TLS_Mandatory_Fields)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto noCertFile = defaultIngressJson(type);
+    noCertFile["tls"] = true;
+    noCertFile.AddMember("key_file", toJson(ph, alloc), alloc);
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noCertFile)), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+
+    auto emptyCertFile = defaultIngressJson(type);
+    emptyCertFile["tls"] = true;
+    emptyCertFile.AddMember("cert_file", toJson("", alloc), alloc);
+    emptyCertFile.AddMember("key_file", toJson(ph, alloc), alloc);
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyCertFile)), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+
+    auto noKeyFile = defaultIngressJson(type);
+    noKeyFile["tls"] = true;
+    noKeyFile.AddMember("cert_file", toJson(ph, alloc), alloc);
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noKeyFile)), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+
+    auto emptyKeyFile = defaultIngressJson(type);
+    emptyKeyFile["tls"] = true;
+    emptyKeyFile.AddMember("cert_file", toJson(ph, alloc), alloc);
+    emptyKeyFile.AddMember("key_file", toJson("", alloc), alloc);
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyKeyFile)), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_TLS_Additional_Fields)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto vo = defaultIngressVO(type);
+    vo.tls_ = true;
+    vo.certFile_ = ph;
+    vo.keyFile_ = ph;
+
+    auto json = defaultIngressJson(type);
+    json["tls"] = true;
+    json.AddMember("key_file", toJson(ph, alloc), alloc);
+    json.AddMember("cert_file", toJson(ph, alloc), alloc);
+    json.AddMember("password", toJson(ph, alloc), alloc);
+    json.AddMember("method", toJson(ph, alloc), alloc);
+
+    BOOST_CHECK(vo == parse<IngressVO>(json));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Additional_Fields)
+{
+  auto json = defaultIngressJson(AdapterType::SS);
+  json.AddMember("tls", false, alloc);
+  json.AddMember("cert_file", toJson(ph, alloc), alloc);
+  json.AddMember("key_file", toJson(ph, alloc), alloc);
+  BOOST_CHECK(defaultIngressVO(AdapterType::SS) == parse<IngressVO>(json));
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
@@ -248,6 +348,9 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Direct_Additional_Fields)
   vo.mode_ = DelayMode::FIXED;
   vo.password_ = ph;
   vo.port_ = 1;
+  vo.tls_ = true;
+  vo.insecure_ = true;
+  vo.caFile_ = ph;
   BOOST_CHECK(defaultEgressVO(AdapterType::DIRECT) == parse<EgressVO>(toString(vo)));
 }
 
@@ -260,6 +363,9 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Default_Mode)
   vo.port_ = 1;
   vo.delay_.reset();
   vo.mode_.reset();
+  vo.tls_ = true;
+  vo.insecure_ = true;
+  vo.caFile_ = ph;
   BOOST_CHECK(defaultEgressVO(AdapterType::REJECT) == parse<EgressVO>(toString(vo)));
 }
 
@@ -282,6 +388,9 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Random_Additional_Fields)
   vo.method_ = CryptoMethod::RC4_MD5;
   vo.password_ = ph;
   vo.port_ = 1;
+  vo.tls_ = true;
+  vo.insecure_ = true;
+  vo.caFile_ = ph;
   BOOST_CHECK(origin == parse<EgressVO>(toString(vo)));
 }
 
@@ -310,35 +419,105 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Fixed)
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Empty_Fields)
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Mandatory_Fields)
 {
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto origin = defaultEgressVO(type);
-    auto holder = parse<EgressVO>(toString(origin));
-
-    auto noHost = origin;
-    noHost.host_.reset();
+    auto noHost = defaultEgressJson(type);
+    noHost.RemoveMember("host");
     BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noHost)), Exception,
                           verifyException<PichiError::BAD_JSON>);
 
-    auto emptyHost = origin;
-    emptyHost.host_->clear();
+    auto emptyHost = defaultEgressJson(type);
+    emptyHost["host"] = "";
     BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(emptyHost)), Exception,
                           verifyException<PichiError::BAD_JSON>);
 
-    auto zeroPort = origin;
-    zeroPort.port_.reset();
-    BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(zeroPort)), Exception,
+    auto noPort = defaultEgressJson(type);
+    noPort.RemoveMember("port");
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPort)), Exception,
                           verifyException<PichiError::BAD_JSON>);
 
-    auto noPort = origin;
-    noPort.port_ = 0;
-    BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPort)), Exception,
+    auto zeroPort = defaultEgressJson(type);
+    zeroPort["port"] = 0;
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(zeroPort)), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_Egress_SS_Empty_Fields)
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Additional_Fields)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto json = defaultEgressJson(type);
+    json.AddMember("method", toJson(ph, alloc), alloc);
+    json.AddMember("password", toJson(ph, alloc), alloc);
+    json.AddMember("mode", toJson(ph, alloc), alloc);
+    json.AddMember("delay", 0, alloc);
+    json.AddMember("insecure", true, alloc);
+    json.AddMember("ca_file", toJson(ph, alloc), alloc);
+    BOOST_CHECK(defaultEgressVO(type) == parse<EgressVO>(json));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Default_TLS_Field)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto json = defaultEgressJson(type);
+    json.RemoveMember("tls");
+    BOOST_CHECK(defaultEgressVO(type) == parse<EgressVO>(json));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Default_Insecure_Field)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto json = defaultEgressJson(type);
+    json["tls"] = true;
+    auto vo = defaultEgressVO(type);
+    vo.tls_ = true;
+    vo.insecure_ = false;
+    BOOST_CHECK(vo == parse<EgressVO>(json));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Insecure_With_CA_Field)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto json = defaultEgressJson(type);
+    json["tls"] = true;
+    json.AddMember("insecure", true, alloc);
+    json.AddMember("ca_file", toJson(ph, alloc), alloc);
+    auto vo = defaultEgressVO(type);
+    vo.tls_ = true;
+    vo.insecure_ = true;
+    BOOST_CHECK(vo == parse<EgressVO>(json));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Secure_With_CA_Field)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto json = defaultEgressJson(type);
+    json["tls"] = true;
+    json.AddMember("ca_file", toJson(ph, alloc), alloc);
+    auto vo = defaultEgressVO(type);
+    vo.tls_ = true;
+    vo.insecure_ = false;
+    vo.caFile_ = ph;
+    BOOST_CHECK(vo == parse<EgressVO>(json));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Secure_With_Empty_CA_Field)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto json = defaultEgressJson(type);
+    json["tls"] = true;
+    json.AddMember("ca_file", toJson("", alloc), alloc);
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_SS_Mandatory_Fields)
 {
   auto origin = defaultEgressVO(AdapterType::SS);
   auto holder = parse<EgressVO>(toString(origin));
@@ -379,6 +558,17 @@ BOOST_AUTO_TEST_CASE(parse_Egress_SS_Empty_Fields)
                         verifyException<PichiError::BAD_JSON>);
 }
 
+BOOST_AUTO_TEST_CASE(parse_Egress_SS_Additional_Fields)
+{
+  auto json = defaultEgressJson(AdapterType::SS);
+  json.AddMember("mode", toJson(ph, alloc), alloc);
+  json.AddMember("delay", 0, alloc);
+  json.AddMember("tls", true, alloc);
+  json.AddMember("insecure", true, alloc);
+  json.AddMember("ca_file", toJson(ph, alloc), alloc);
+  BOOST_CHECK(defaultEgressVO(AdapterType::SS) == parse<EgressVO>(json));
+}
+
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
 {
   decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
@@ -387,22 +577,6 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
 
   decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(huge), Exception, verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto origin = defaultEgressVO(type);
-    BOOST_CHECK(origin == parse<EgressVO>(toString(origin)));
-
-    auto withMethod = origin;
-    withMethod.method_ = CryptoMethod::RC4_MD5;
-    BOOST_CHECK(origin == parse<EgressVO>(toString(withMethod)));
-
-    auto withPassword = origin;
-    withPassword.password_ = ph;
-    BOOST_CHECK(origin == parse<EgressVO>(toString(withPassword)));
-  }
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)

@@ -94,6 +94,7 @@ static auto const OBJ_TYPE_ERROR = "JSON object required"sv;
 static auto const ARY_TYPE_ERROR = "JSON array required"sv;
 static auto const INT_TYPE_ERROR = "Integer required"sv;
 static auto const STR_TYPE_ERROR = "String required"sv;
+static auto const BOOL_TYPE_ERROR = "Boolean required"sv;
 static auto const PAIR_TYPE_ERROR = "Pair required"sv;
 static auto const AT_INVALID = "Invalid adapter type string"sv;
 static auto const CM_INVALID = "Invalid crypto method string"sv;
@@ -110,6 +111,8 @@ static auto const MISSING_PW_FIELD = "Missing password field"sv;
 static auto const MISSING_EG_FIELD = "Missing egress field"sv;
 static auto const MISSING_MODE_FIELD = "Missing mode field"sv;
 static auto const MISSING_DELAY_FIELD = "Missing delay field"sv;
+static auto const MISSING_CERT_FILE_FIELD = "Missing cert_file field"sv;
+static auto const MISSING_KEY_FILE_FIELD = "Missing key_file field"sv;
 
 } // namespace msg
 
@@ -175,6 +178,12 @@ static string parseString(json::Value const& v)
   auto ret = string{v.GetString()};
   assertFalse(ret.empty(), PichiError::BAD_JSON, msg::STR_EMPTY);
   return ret;
+}
+
+static auto parseBoolean(json::Value const& v)
+{
+  assertTrue(v.IsBool(), PichiError::BAD_JSON, msg::BOOL_TYPE_ERROR);
+  return v.GetBool();
 }
 
 static pair<string, string> parseRule(json::Value const& v)
@@ -434,6 +443,13 @@ template <> IngressVO parse(json::Value const& v)
   auto ivo = IngressVO{};
 
   ivo.type_ = parseAdapterType(v[IngressVOKey::type_]);
+  if (ivo.type_ == AdapterType::HTTP || ivo.type_ == AdapterType::SOCKS5 ||
+      ivo.type_ == AdapterType::SS) {
+    assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
+    assertTrue(v.HasMember(IngressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
+    ivo.bind_ = parseString(v[IngressVOKey::bind_]);
+    ivo.port_ = parsePort(v[IngressVOKey::port_]);
+  }
 
   switch (ivo.type_) {
   case AdapterType::SS:
@@ -441,13 +457,18 @@ template <> IngressVO parse(json::Value const& v)
     assertTrue(v.HasMember(IngressVOKey::password_), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
     ivo.method_ = parseCryptoMethod(v[IngressVOKey::method_]);
     ivo.password_ = parseString(v[IngressVOKey::password_]);
-    // Don't break here
+    break;
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
-    assertTrue(v.HasMember(IngressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-    ivo.bind_ = parseString(v[IngressVOKey::bind_]);
-    ivo.port_ = parsePort(v[IngressVOKey::port_]);
+    ivo.tls_ = v.HasMember(IngressVOKey::tls_) && parseBoolean(v[IngressVOKey::tls_]);
+    if (*ivo.tls_) {
+      assertTrue(v.HasMember(IngressVOKey::certFile_), PichiError::BAD_JSON,
+                 msg::MISSING_CERT_FILE_FIELD);
+      assertTrue(v.HasMember(IngressVOKey::keyFile_), PichiError::BAD_JSON,
+                 msg::MISSING_KEY_FILE_FIELD);
+      ivo.certFile_ = parseString(v[IngressVOKey::certFile_]);
+      ivo.keyFile_ = parseString(v[IngressVOKey::keyFile_]);
+    }
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
@@ -464,19 +485,30 @@ template <> EgressVO parse(json::Value const& v)
   auto evo = EgressVO{};
   evo.type_ = parseAdapterType(v[EgressVOKey::type_]);
 
+  if (evo.type_ == AdapterType::HTTP || evo.type_ == AdapterType::SOCKS5 ||
+      evo.type_ == AdapterType::SS) {
+    assertTrue(v.HasMember(EgressVOKey::host_), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
+    assertTrue(v.HasMember(EgressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
+    evo.host_ = parseString(v[EgressVOKey::host_]);
+    evo.port_ = parsePort(v[EgressVOKey::port_]);
+  }
+
   switch (evo.type_) {
   case AdapterType::SS:
     assertTrue(v.HasMember(EgressVOKey::method_), PichiError::BAD_JSON, msg::MISSING_METHOD_FIELD);
     assertTrue(v.HasMember(EgressVOKey::password_), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
     evo.method_ = parseCryptoMethod(v[EgressVOKey::method_]);
     evo.password_ = parseString(v[EgressVOKey::password_]);
-    // Don't break here
+    break;
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    assertTrue(v.HasMember(EgressVOKey::host_), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
-    assertTrue(v.HasMember(EgressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-    evo.host_ = parseString(v[EgressVOKey::host_]);
-    evo.port_ = parsePort(v[EgressVOKey::port_]);
+    evo.tls_ = v.HasMember(EgressVOKey::tls_) && parseBoolean(v[EgressVOKey::tls_]);
+    if (*evo.tls_) {
+      evo.insecure_ =
+          v.HasMember(EgressVOKey::insecure_) && parseBoolean(v[EgressVOKey::insecure_]);
+      if (!*evo.insecure_ && v.HasMember(EgressVOKey::caFile_))
+        evo.caFile_ = parseString(v[EgressVOKey::caFile_]);
+    }
     break;
   case AdapterType::REJECT:
     if (v.HasMember(EgressVOKey::mode_)) {
