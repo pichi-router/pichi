@@ -43,6 +43,9 @@ static decltype(auto) bind_ = "bind";
 static decltype(auto) port_ = "port";
 static decltype(auto) method_ = "method";
 static decltype(auto) password_ = "password";
+static decltype(auto) tls_ = "tls";
+static decltype(auto) certFile_ = "cert_file";
+static decltype(auto) keyFile_ = "key_file";
 
 } // namespace IngressVOKey
 
@@ -55,6 +58,9 @@ static decltype(auto) method_ = "method";
 static decltype(auto) password_ = "password";
 static decltype(auto) mode_ = "mode";
 static decltype(auto) delay_ = "delay";
+static decltype(auto) tls_ = "tls";
+static decltype(auto) insecure_ = "insecure";
+static decltype(auto) caFile_ = "ca_file";
 
 } // namespace EgressVOKey
 
@@ -275,6 +281,14 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
 {
   auto ret = json::Value{};
   ret.SetObject();
+  if (ingress.type_ == AdapterType::HTTP || ingress.type_ == AdapterType::SOCKS5 ||
+      ingress.type_ == AdapterType::SS) {
+    assertFalse(ingress.bind_.empty(), PichiError::MISC);
+    assertFalse(ingress.port_ == 0, PichiError::MISC);
+    ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
+    ret.AddMember(IngressVOKey::port_, json::Value{ingress.port_}, alloc);
+    ret.AddMember(IngressVOKey::type_, toJson(ingress.type_, alloc), alloc);
+  }
   switch (ingress.type_) {
   case AdapterType::SS:
     assertTrue(ingress.method_.has_value(), PichiError::MISC);
@@ -282,14 +296,19 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
     assertFalse(ingress.password_->empty(), PichiError::MISC);
     ret.AddMember(IngressVOKey::method_, toJson(*ingress.method_, alloc), alloc);
     ret.AddMember(IngressVOKey::password_, toJson(*ingress.password_, alloc), alloc);
-    // Don't break here
+    break;
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    assertFalse(ingress.bind_.empty(), PichiError::MISC);
-    assertFalse(ingress.port_ == 0, PichiError::MISC);
-    ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
-    ret.AddMember(IngressVOKey::port_, json::Value{ingress.port_}, alloc);
-    ret.AddMember(IngressVOKey::type_, toJson(ingress.type_, alloc), alloc);
+    assertTrue(ingress.tls_.has_value(), PichiError::MISC);
+    ret.AddMember(IngressVOKey::tls_, *ingress.tls_, alloc);
+    if (*ingress.tls_) {
+      assertTrue(ingress.certFile_.has_value(), PichiError::MISC);
+      assertFalse(ingress.certFile_->empty(), PichiError::MISC);
+      assertTrue(ingress.keyFile_.has_value(), PichiError::MISC);
+      assertFalse(ingress.keyFile_->empty(), PichiError::MISC);
+      ret.AddMember(IngressVOKey::certFile_, toJson(*ingress.certFile_, alloc), alloc);
+      ret.AddMember(IngressVOKey::keyFile_, toJson(*ingress.keyFile_, alloc), alloc);
+    }
     break;
   default:
     fail(PichiError::MISC);
@@ -302,7 +321,14 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
   auto egress_ = json::Value{};
   egress_.SetObject();
   egress_.AddMember(EgressVOKey::type_, toJson(evo.type_, alloc), alloc);
-
+  if (evo.type_ != AdapterType::DIRECT && evo.type_ != AdapterType::REJECT) {
+    assertTrue(evo.host_.has_value(), PichiError::MISC);
+    assertFalse(evo.host_->empty(), PichiError::MISC);
+    assertTrue(evo.port_.has_value(), PichiError::MISC);
+    assertFalse(*evo.port_ == 0, PichiError::MISC);
+    egress_.AddMember(EgressVOKey::host_, toJson(*evo.host_, alloc), alloc);
+    egress_.AddMember(EgressVOKey::port_, json::Value{*evo.port_}, alloc);
+  }
   switch (evo.type_) {
   case AdapterType::SS:
     assertTrue(evo.method_.has_value(), PichiError::MISC);
@@ -310,15 +336,19 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
     assertFalse(evo.password_->empty(), PichiError::MISC);
     egress_.AddMember(EgressVOKey::method_, toJson(*evo.method_, alloc), alloc);
     egress_.AddMember(EgressVOKey::password_, toJson(*evo.password_, alloc), alloc);
-    // Don't break here
+    break;
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    assertTrue(evo.host_.has_value(), PichiError::MISC);
-    assertFalse(evo.host_->empty(), PichiError::MISC);
-    assertTrue(evo.port_.has_value(), PichiError::MISC);
-    assertFalse(*evo.port_ == 0, PichiError::MISC);
-    egress_.AddMember(EgressVOKey::host_, toJson(*evo.host_, alloc), alloc);
-    egress_.AddMember(EgressVOKey::port_, json::Value{*evo.port_}, alloc);
+    assertTrue(evo.tls_.has_value(), PichiError::MISC);
+    egress_.AddMember(EgressVOKey::tls_, *evo.tls_, alloc);
+    if (*evo.tls_) {
+      assertTrue(evo.insecure_.has_value(), PichiError::MISC);
+      egress_.AddMember(EgressVOKey::insecure_, *evo.insecure_, alloc);
+      if (!*evo.insecure_ && evo.caFile_.has_value()) {
+        assertFalse(evo.caFile_->empty());
+        egress_.AddMember(EgressVOKey::caFile_, toJson(*evo.caFile_, alloc), alloc);
+      }
+    }
     break;
   case AdapterType::REJECT:
     assertTrue(evo.mode_.has_value());

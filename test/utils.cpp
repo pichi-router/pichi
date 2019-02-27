@@ -9,6 +9,9 @@ using namespace rapidjson;
 
 namespace pichi {
 
+static auto doc = Document{};
+Document::AllocatorType& alloc = doc.GetAllocator();
+
 vector<uint8_t> str2vec(string_view s) { return {cbegin(s), cend(s)}; }
 
 vector<uint8_t> hex2bin(string_view hex)
@@ -22,9 +25,8 @@ IngressVO defaultIngressVO(AdapterType type)
 {
   switch (type) {
   case AdapterType::HTTP:
-    return {AdapterType::HTTP, ph, 1};
   case AdapterType::SOCKS5:
-    return {AdapterType::SOCKS5, ph, 1};
+    return {type, ph, 1, {}, {}, false};
   case AdapterType::SS:
     return {AdapterType::SS, ph, 1, CryptoMethod::RC4_MD5, ph};
   default:
@@ -32,9 +34,6 @@ IngressVO defaultIngressVO(AdapterType type)
     return {};
   }
 }
-
-static auto doc = Document{};
-Document::AllocatorType& alloc = doc.GetAllocator();
 
 Value defaultIngressJson(AdapterType type)
 {
@@ -45,9 +44,11 @@ Value defaultIngressJson(AdapterType type)
   switch (type) {
   case AdapterType::HTTP:
     v.AddMember("type", "http", alloc);
+    v.AddMember("tls", false, alloc);
     break;
   case AdapterType::SOCKS5:
     v.AddMember("type", "socks5", alloc);
+    v.AddMember("tls", false, alloc);
     break;
   case AdapterType::SS:
     v.AddMember("type", "ss", alloc);
@@ -69,9 +70,8 @@ EgressVO defaultEgressVO(AdapterType type)
   case AdapterType::REJECT:
     return {AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0};
   case AdapterType::HTTP:
-    return {AdapterType::HTTP, ph, 1};
   case AdapterType::SOCKS5:
-    return {AdapterType::SOCKS5, ph, 1};
+    return {type, ph, 1, {}, {}, {}, {}, false};
   case AdapterType::SS:
     return {AdapterType::SS, ph, 1, CryptoMethod::RC4_MD5, ph};
   default:
@@ -99,9 +99,11 @@ Value defaultEgressJson(AdapterType type)
     break;
   case AdapterType::HTTP:
     v.AddMember("type", "http", alloc);
+    v.AddMember("tls", false, alloc);
     break;
   case AdapterType::SOCKS5:
     v.AddMember("type", "socks5", alloc);
+    v.AddMember("tls", false, alloc);
     break;
   case AdapterType::SS:
     v.AddMember("type", "ss", alloc);
