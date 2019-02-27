@@ -92,6 +92,8 @@ template <CryptoMethod method> Endpoint SSAeadAdapter<method>::readRemote(Yield 
 
 template <CryptoMethod method> void SSAeadAdapter<method>::confirm(Yield) {}
 
+template <CryptoMethod method> void SSAeadAdapter<method>::disconnect(Yield) {}
+
 template <CryptoMethod method>
 MutableBuffer<uint8_t> SSAeadAdapter<method>::prepare(size_t n, MutableBuffer<uint8_t> provided)
 {

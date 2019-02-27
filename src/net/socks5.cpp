@@ -7,6 +7,7 @@
 
 using namespace std;
 namespace asio = boost::asio;
+namespace sys = boost::system;
 
 namespace pichi::net {
 
@@ -55,6 +56,14 @@ void Socks5Adapter::confirm(Yield yield)
 {
   static uint8_t const buf[] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   write(socket_, buf, yield);
+}
+
+void Socks5Adapter::disconnect(Yield yield)
+{
+  // REP = 0x04(Host unreachable) according to RFC1928
+  static uint8_t const buf[] = {0x05, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  auto ec = sys::error_code{};
+  write(socket_, buf, yield[ec]);
 }
 
 void Socks5Adapter::connect(Endpoint const& remote, Endpoint const& next, Yield yield)

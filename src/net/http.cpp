@@ -49,6 +49,16 @@ struct ParseOnlyBody {
 using Socket = asio::ip::tcp::socket;
 using Yield = asio::yield_context;
 
+template <typename Socket> void disconnect(Socket& s, Yield yield)
+{
+  auto ec = sys::error_code{};
+  auto rep = http::response<http::empty_body>{};
+  rep.version(11);
+  rep.result(http::status::request_timeout);
+  // Ignoring all errors here
+  http::async_write(s, rep, yield[ec]);
+}
+
 class HttpRelay : public Ingress {
 public:
   using Body = http::buffer_body;
@@ -85,6 +95,7 @@ public:
   }
 
   void confirm(Yield) override {}
+  void disconnect(Yield) override;
 
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
   void send(ConstBuffer<uint8_t>, Yield) override;
@@ -142,6 +153,8 @@ size_t HttpRelay::recv(MutableBuffer<uint8_t> dst, Yield yield)
   return len;
 }
 
+void HttpRelay::disconnect(Yield yield) { pichi::net::disconnect(socket_, yield); }
+
 class HttpConnectIngress : public Ingress {
 public:
   HttpConnectIngress(Socket&& socket) : socket_{move(socket)} {}
@@ -165,6 +178,7 @@ public:
   }
 
   void confirm(Yield) override;
+  void disconnect(Yield) override;
 
 private:
   Socket socket_;
@@ -179,6 +193,8 @@ void HttpConnectIngress::confirm(Yield yield)
 
   http::async_write(socket_, rep, yield);
 }
+
+void HttpConnectIngress::disconnect(Yield yield) { pichi::net::disconnect(socket_, yield); }
 
 Endpoint HttpIngress::readRemote(Yield yield)
 {

@@ -36,10 +36,12 @@ void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
   spawn([=, self = shared_from_this()](auto yield) {
     auto i = ingress_.get();
     auto e = egress_.get();
+    auto guard = makeScopeGuard([=]() { i->disconnect(yield); });
     e->connect(remote, next, yield);
     i->confirm(yield);
     spawn([f = i, t = e, self = self](auto yield) { bridge(f, t, yield); });
     spawn([f = e, t = i, self = self](auto yield) { bridge(f, t, yield); });
+    guard.disable();
   });
 }
 
