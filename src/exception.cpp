@@ -26,6 +26,8 @@ char const* Exception::what() const noexcept
     return "Resource in use";
   case PichiError::RES_LOCKED:
     return "Resource locked";
+  case PichiError::CONN_FAILURE:
+    return "Connection failure";
   case PichiError::MISC:
     return "Misc error";
   default:

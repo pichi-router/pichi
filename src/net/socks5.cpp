@@ -87,8 +87,8 @@ void Socks5Adapter::connect(Endpoint const& remote, Endpoint const& next, Yield 
 
   read(socket_, {buf, 3}, yield);
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
-  assertTrue(buf[1] == 0x00, PichiError::BAD_PROTO);
-  assertTrue(buf[1] == 0x00, PichiError::BAD_PROTO);
+  assertTrue(buf[1] == 0x00, PichiError::CONN_FAILURE,
+             "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
   parseEndpoint([this, yield](auto dst) { read(socket_, dst, yield); });
 }
 
