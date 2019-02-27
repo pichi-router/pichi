@@ -49,16 +49,6 @@ struct ParseOnlyBody {
 using Socket = asio::ip::tcp::socket;
 using Yield = asio::yield_context;
 
-template <typename Socket> void disconnect(Socket& s, Yield yield)
-{
-  auto ec = sys::error_code{};
-  auto rep = http::response<http::empty_body>{};
-  rep.version(11);
-  rep.result(http::status::request_timeout);
-  // Ignoring all errors here
-  http::async_write(s, rep, yield[ec]);
-}
-
 class HttpRelay : public Ingress {
 public:
   using Body = http::buffer_body;
@@ -68,9 +58,9 @@ public:
   using ResponseParser = http::response_parser<ParseOnlyBody>;
 
 public:
-  HttpRelay(Socket&& socket, Buffer&& buffer, http::request_parser<http::empty_body>&& parser)
-    : socket_{move(socket)}, reqBuf_{move(buffer)}, reqParser_{move(parser)}, reqSerializer_{
-                                                                                  reqParser_.get()}
+  HttpRelay(Socket& socket, Buffer&& buffer, http::request_parser<http::empty_body>&& parser)
+    : socket_{socket}, reqBuf_{move(buffer)}, reqParser_{move(parser)}, reqSerializer_{
+                                                                            reqParser_.get()}
   {
     respParser_.header_limit(MAX_FRAME_SIZE);
     respParser_.body_limit(numeric_limits<uint64_t>::max());
@@ -88,20 +78,19 @@ public:
 
   bool writable() const override { return socket_.is_open() && !respParser_.is_done(); }
 
-  Endpoint readRemote(Yield) override
+  [[noreturn]] Endpoint readRemote(Yield) override
   {
-    fail(PichiError::MISC, "Shouldn't invoke HttpRelay::readRemote");
-    return {};
+    fail("Shouldn't invoke HttpRelay::readRemote");
   }
 
   void confirm(Yield) override {}
-  void disconnect(Yield) override;
+  [[noreturn]] void disconnect(Yield) override { fail("Shouldn't invoke HttpRelay::disconnect"); }
 
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
   void send(ConstBuffer<uint8_t>, Yield) override;
 
 private:
-  Socket socket_;
+  Socket& socket_;
 
   Buffer reqBuf_;
   RequestParser reqParser_;
@@ -153,11 +142,9 @@ size_t HttpRelay::recv(MutableBuffer<uint8_t> dst, Yield yield)
   return len;
 }
 
-void HttpRelay::disconnect(Yield yield) { pichi::net::disconnect(socket_, yield); }
-
 class HttpConnectIngress : public Ingress {
 public:
-  HttpConnectIngress(Socket&& socket) : socket_{move(socket)} {}
+  HttpConnectIngress(Socket& socket) : socket_{socket} {}
   ~HttpConnectIngress() override = default;
 
   size_t recv(MutableBuffer<uint8_t> dst, Yield yield) override
@@ -171,17 +158,19 @@ public:
   bool readable() const override { return socket_.is_open(); }
   bool writable() const override { return socket_.is_open(); }
 
-  Endpoint readRemote(Yield) override
+  [[noreturn]] Endpoint readRemote(Yield) override
   {
-    fail(PichiError::MISC, "Shouldn't invoke HttpConnectIngress::readRemote");
-    return {};
+    fail("Shouldn't invoke HttpConnectIngress::readRemote");
   }
 
   void confirm(Yield) override;
-  void disconnect(Yield) override;
+  [[noreturn]] void disconnect(Yield) override
+  {
+    fail("Shouldn't invoke HttpConnectIngress::disconnect");
+  }
 
 private:
-  Socket socket_;
+  Socket& socket_;
 };
 
 void HttpConnectIngress::confirm(Yield yield)
@@ -194,7 +183,15 @@ void HttpConnectIngress::confirm(Yield yield)
   http::async_write(socket_, rep, yield);
 }
 
-void HttpConnectIngress::disconnect(Yield yield) { pichi::net::disconnect(socket_, yield); }
+void HttpIngress::disconnect(Yield yield)
+{
+  auto ec = sys::error_code{};
+  auto rep = http::response<http::empty_body>{};
+  rep.version(11);
+  rep.result(http::status::request_timeout);
+  // Ignoring all errors here
+  http::async_write(socket_, rep, yield[ec]);
+}
 
 Endpoint HttpIngress::readRemote(Yield yield)
 {
@@ -214,7 +211,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
      *   Some clients are not standard and send the CONNECT request without HOST field.
      */
     auto hp = HostAndPort{{header.target().data(), header.target().size()}};
-    delegate_ = make_unique<HttpConnectIngress>(move(socket_));
+    delegate_ = make_unique<HttpConnectIngress>(socket_);
     return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
   }
   else {
@@ -242,7 +239,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
     assertTrue(it != cend(header), PichiError::BAD_PROTO, "Missing HOST field in HTTP header");
     auto hp = HostAndPort{{it->value().data(), it->value().size()}};
 
-    delegate_ = make_unique<HttpRelay>(move(socket_), move(buf), move(parser));
+    delegate_ = make_unique<HttpRelay>(socket_, move(buf), move(parser));
     return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
   }
 }

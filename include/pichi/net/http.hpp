@@ -34,7 +34,7 @@ public:
 
   void confirm(Yield yield) override { delegate_->confirm(yield); }
 
-  void disconnect(Yield yield) override { delegate_->disconnect(yield); }
+  void disconnect(Yield yield) override;
 
   Endpoint readRemote(Yield) override;
 
