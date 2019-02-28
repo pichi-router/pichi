@@ -1,10 +1,5 @@
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/write.hpp>
-#include <boost/beast/core/buffers_prefix.hpp>
-#include <boost/beast/core/flat_buffer.hpp>
-#include <boost/beast/http/buffer_body.hpp>
-#include <boost/beast/http/empty_body.hpp>
-#include <boost/beast/http/parser.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/write.hpp>
@@ -16,7 +11,6 @@
 #include <pichi/uri.hpp>
 
 using namespace std;
-using namespace std::string_view_literals;
 namespace asio = boost::asio;
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -24,164 +18,194 @@ namespace sys = boost::system;
 
 namespace pichi::net {
 
-struct ParseOnlyBody {
-  using value_type = int;
+namespace detail {
 
-  struct reader {
-    template <bool isRequest, typename Fields>
-    explicit reader(http::header<isRequest, Fields>&, value_type&)
-    {
-    }
+template <bool isRequest> using Header = boost::beast::http::header<isRequest>;
+template <bool isRequest> using Message = boost::beast::http::message<isRequest, Body>;
+using Request = Message<true>;
+using Response = Message<false>;
+template <bool isRequest> using Serializer = boost::beast::http::serializer<isRequest, Body>;
 
-    template <typename Unused> void init(Unused&&, sys::error_code& ec) { ec = {}; }
-
-    template <typename ConstBufferSeq>
-    size_t put(ConstBufferSeq const& buffers, sys::error_code& ec)
-    {
-      ec = {};
-      return asio::buffer_size(buffers);
-    }
-
-    void finish(sys::error_code& ec) { ec = {}; }
-  };
-};
-
-using Socket = asio::ip::tcp::socket;
-using Yield = asio::yield_context;
-
-class HttpRelay : public Ingress {
-public:
-  using Body = http::buffer_body;
-  using Buffer = beast::flat_buffer;
-  using RequestParser = http::request_parser<Body>;
-  using RequestSerializer = http::request_serializer<Body>;
-  using ResponseParser = http::response_parser<ParseOnlyBody>;
-
-public:
-  HttpRelay(Socket& socket, Buffer&& buffer, http::request_parser<http::empty_body>&& parser)
-    : socket_{socket}, reqBuf_{move(buffer)}, reqParser_{move(parser)}, reqSerializer_{
-                                                                            reqParser_.get()}
-  {
-    respParser_.header_limit(numeric_limits<uint32_t>::max());
-    respParser_.body_limit(numeric_limits<uint64_t>::max());
-    reqSerializer_.split(true);
-  }
-
-  ~HttpRelay() override = default;
-
-  void close() override { fail("Shouldn't invoke HttpRelay::close"); }
-
-  bool readable() const override
-  {
-    return socket_.is_open() && !(reqParser_.is_done() && reqSerializer_.is_header_done());
-  }
-
-  bool writable() const override { return socket_.is_open() && !respParser_.is_done(); }
-
-  [[noreturn]] Endpoint readRemote(Yield) override
-  {
-    fail("Shouldn't invoke HttpRelay::readRemote");
-  }
-
-  void confirm(Yield) override {}
-  [[noreturn]] void disconnect(Yield) override { fail("Shouldn't invoke HttpRelay::disconnect"); }
-
-  size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  void send(ConstBuffer<uint8_t>, Yield) override;
-
-private:
-  Socket& socket_;
-
-  Buffer reqBuf_;
-  RequestParser reqParser_;
-  mutable RequestSerializer reqSerializer_;
-
-  ResponseParser respParser_;
-  Buffer respBuf_;
-};
-
-void HttpRelay::send(ConstBuffer<uint8_t> src, Yield yield)
+static void assertNoError(sys::error_code ec)
 {
-  auto b = respBuf_.prepare(src.size());
-  copy_n(cbegin(src), src.size(), asio::buffers_begin(b));
-  respBuf_.commit(src.size());
-
-  auto ec = sys::error_code{};
-
-  while (respBuf_.size() != 0 && !respParser_.is_done()) {
-    auto parsed = respParser_.put(beast::buffers_prefix(respBuf_.size(), respBuf_.data()), ec);
-    assertFalse(ec && ec != http::error::need_more, PichiError::BAD_PROTO);
-    if (parsed == 0) break;
-    asio::async_write(socket_, beast::buffers_prefix(parsed, respBuf_.data()), yield);
-    respBuf_.consume(parsed);
-  }
+  if (ec) throw sys::system_error{ec};
 }
 
-size_t HttpRelay::recv(MutableBuffer<uint8_t> dst, Yield yield)
+template <typename R, typename... Args> static R badInvoking(Args&&...)
 {
-  assertTrue(reqParser_.is_header_done(), PichiError::MISC);
+  fail("Bad invocation"sv);
+}
 
+template <typename ConstBufferSequence>
+static size_t copyOrCache(ConstBufferSequence const& src, MutableBuffer<uint8_t> dst, Cache& cache)
+{
+  auto first = asio::buffers_begin(src);
+  auto n = asio::buffer_size(src);
+  auto copied = min(n, dst.size());
+  copy_n(first, copied, begin(dst));
+  if (n > copied) {
+    copy_n(first + copied, n - copied, asio::buffers_begin(cache.prepare(n - copied)));
+    cache.commit(n - copied);
+  }
+  return copied;
+}
+
+template <bool isRequest, typename DynamicBuffer>
+static size_t parseFromBuffer(Parser<isRequest>& parser, DynamicBuffer& cache,
+                              ConstBuffer<uint8_t> data)
+{
+  assertFalse(parser.is_header_done());
+  auto fromCache = cache.size() > 0;
+  if (fromCache) {
+    copy(cbegin(data), cend(data), asio::buffers_begin(cache.prepare(data.size())));
+    cache.commit(data.size());
+  }
   auto ec = sys::error_code{};
-  if (!reqSerializer_.is_header_done()) {
-    auto copied = dst.size();
-    reqSerializer_.next(ec, [this, dst, &copied](auto& ec, auto const& buffer) {
-      ec = {};
-      if (copied > asio::buffer_size(buffer)) copied = asio::buffer_size(buffer);
-      copy_n(asio::buffers_begin(buffer), copied, begin(dst));
-      reqSerializer_.consume(copied);
+  auto parsed = parser.put(fromCache ? cache.data() : asio::buffer(data), ec);
+  if (ec == http::error::need_more) ec = {};
+  assertNoError(ec);
+  if (fromCache) {
+    parsed -= cache.size();
+    cache.consume(parsed);
+  }
+  else {
+    copy(cbegin(data) + parsed, cend(data),
+         asio::buffers_begin(cache.prepare(data.size() - parsed)));
+  }
+  return parsed;
+}
+
+template <typename DynamicBuffer>
+static size_t recvRaw(Socket& s, DynamicBuffer& cache, MutableBuffer<uint8_t> buf, Yield yield)
+{
+  if (cache.size() == 0) return readSome(s, buf, yield);
+  auto copied = min(buf.size(), cache.size());
+  copy_n(asio::buffers_begin(cache.data()), copied, begin(buf));
+  cache.consume(copied);
+  return copied;
+}
+
+template <bool isRequest, typename DynamicBuffer>
+static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
+                         MutableBuffer<uint8_t> buf)
+{
+  auto m = Message<isRequest>{header};
+  auto sr = Serializer<isRequest>{m};
+  auto left = buf;
+  do {
+    auto ec = sys::error_code{};
+    sr.next(ec, [&](auto&&, auto&& serialized) {
+      left += copyOrCache(serialized, left, cache);
+      sr.consume(asio::buffer_size(serialized));
     });
-    return copied;
-  }
-
-  reqParser_.get().body().data = dst.data();
-  reqParser_.get().body().size = dst.size();
-
-  auto len = http::async_read_some(socket_, reqBuf_, reqParser_, yield[ec]);
-  assertFalse(ec && ec != http::error::need_buffer, PichiError::BAD_PROTO);
-
-  return len;
+    assertNoError(ec);
+  } while (!sr.is_header_done());
+  return buf.size() - left.size();
 }
 
-class HttpConnectIngress : public Ingress {
-public:
-  HttpConnectIngress(Socket& socket) : socket_{socket} {}
-  ~HttpConnectIngress() override = default;
-
-  size_t recv(MutableBuffer<uint8_t> dst, Yield yield) override
-  {
-    return readSome(socket_, dst, yield);
-  }
-
-  void send(ConstBuffer<uint8_t> src, Yield yield) override { write(socket_, src, yield); }
-
-  void close() override { fail("Shouldn't invoke HttpConnectIngress::close"); }
-  bool readable() const override { return socket_.is_open(); }
-  bool writable() const override { return socket_.is_open(); }
-
-  [[noreturn]] Endpoint readRemote(Yield) override
-  {
-    fail("Shouldn't invoke HttpConnectIngress::readRemote");
-  }
-
-  void confirm(Yield) override;
-  [[noreturn]] void disconnect(Yield) override
-  {
-    fail("Shouldn't invoke HttpConnectIngress::disconnect");
-  }
-
-private:
-  Socket& socket_;
-};
-
-void HttpConnectIngress::confirm(Yield yield)
+template <bool isRequest, typename DynamicBuffer>
+static void sendHeader(Socket& s, Header<isRequest>& header, DynamicBuffer& cache, Yield yield)
 {
-  auto rep = http::response<http::empty_body>{};
+  auto m = Message<isRequest>{header};
+  http::async_write(s, m, yield);
+  asio::async_write(s, cache.data(), yield);
+  cache.consume(cache.size());
+}
+
+static void removeHostFromTarget(http::request_header<>& req)
+{
+  /*
+   * HTTP Proxy @RFC2068
+   *   The HOST field and absolute_path are both mandatory and same according to the standard.
+   *   But some non-standard clients might send request:
+   *     - with different destinations discribed in HOST field and absolute_path;
+   *     - without absolute_path but relative_path specified.
+   *   The rules, which are not very strict but still standard, listed below are followed
+   *   to handle these non-standard clients:
+   *     - HOST field is mandatory and taken as the destination;
+   *     - the destination described in absolute_path is ignored;
+   *     - relative_path will be forwarded without any change.
+   */
+  auto target = req.target().to_string();
+  assertFalse(target.empty(), PichiError::BAD_PROTO, "Empty path");
+  if (target[0] != '/') {
+    // absolute_path specified, so convert it to relative one.
+    auto uri = Uri{target};
+    req.target(boost::string_view{uri.suffix_.data(), uri.suffix_.size()});
+  }
+}
+
+static void addHostToTarget(http::request_header<>& req)
+{
+  auto it = req.find(http::field::host);
+  assertTrue(it != cend(req), PichiError::BAD_PROTO, "Missing HOST field in HTTP header");
+  auto target = "http://"s;
+  target.append(cbegin(it->value()), cend(it->value()));
+  target.append(cbegin(req.target()), cend(req.target()));
+  req.target(target);
+}
+
+template <bool isRequest> static void addCloseHeader(Header<isRequest>& header)
+{
+  /*
+   * FIXME Pichi doesn't actually do active closing. We wish upstream server
+   *   could work correctly if we set 'close' header.
+   */
+  header.set(http::field::connection, "close"sv);
+  header.set(http::field::proxy_connection, "close"sv);
+}
+
+static void tunnelConfirm(Socket& s, Yield yield)
+{
+  auto rep = Response{};
   rep.version(11);
   rep.result(http::status::ok);
   rep.reason("Connection Established");
-
-  http::async_write(socket_, rep, yield);
+  addCloseHeader(rep);
+  http::async_write(s, rep, yield);
 }
+
+static void tunnelConnect(Endpoint const& remote, Socket& s, Yield yield)
+{
+  auto host = remote.host_ + ":" + remote.port_;
+  auto req = Request{};
+  req.method(http::verb::connect);
+  req.target(host);
+  req.set(http::field::host, host);
+  addCloseHeader(req);
+  req.prepare_payload();
+
+  http::async_write(s, req, yield);
+
+  auto parser = ResponseParser{};
+  auto cache = Cache{};
+  http::async_read_header(s, cache, parser, yield);
+  auto resp = parser.release();
+
+  assertTrue(resp.result_int() / 100 == 2, PichiError::BAD_PROTO,
+             "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
+}
+
+} // namespace detail
+
+using namespace detail;
+
+HttpIngress::HttpIngress(Socket&& socket)
+  : socket_{move(socket)}, confirm_{badInvoking<void, Yield>},
+    send_(badInvoking<void, ConstBuffer<uint8_t>, Yield>),
+    recv_(badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
+{
+}
+
+size_t HttpIngress::recv(MutableBuffer<uint8_t> buf, Yield yield) { return recv_(buf, yield); }
+
+void HttpIngress::send(ConstBuffer<uint8_t> buf, Yield yield) { send_(buf, yield); }
+
+bool HttpIngress::readable() const { return socket_.is_open() || reqCache_.size() > 0; }
+
+bool HttpIngress::writable() const { return socket_.is_open(); }
+
+void HttpIngress::confirm(Yield yield) { confirm_(yield); }
 
 void HttpIngress::close() { pichi::net::close(socket_); }
 
@@ -197,85 +221,89 @@ void HttpIngress::disconnect(Yield yield)
 
 Endpoint HttpIngress::readRemote(Yield yield)
 {
-  auto buf = HttpRelay::Buffer{};
-  auto parser = http::request_parser<http::empty_body>{};
+  http::async_read_header(socket_, reqCache_, reqParser_, yield);
 
-  parser.header_limit(numeric_limits<uint32_t>::max());
-  parser.body_limit(numeric_limits<uint64_t>::max());
+  auto& req = reqParser_.get();
+  if (req.method() == http::verb::connect) {
+    send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) { return readSome(socket_, buf, yield); };
+    confirm_ = [this](auto yield) {
+      tunnelConfirm(socket_, yield);
+      reqParser_.release();
+    };
 
-  http::async_read_header(socket_, buf, parser, yield);
-
-  auto& header = parser.get();
-  if (header.method() == http::verb::connect) {
     /*
      * HTTP CONNECT @RFC2616
      *   Don't validate whether the HOST field exists or not here.
      *   Some clients are not standard and send the CONNECT request without HOST field.
      */
-    auto hp = HostAndPort{{header.target().data(), header.target().size()}};
-    delegate_ = make_unique<HttpConnectIngress>(socket_);
+    auto hp = HostAndPort{{req.target().data(), req.target().size()}};
     return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
   }
   else {
-    /*
-     * HTTP Proxy @RFC2068
-     *   The HOST field and absolute_path are both mandatory and same according to the standard.
-     *   But some non-standard clients might send request:
-     *     - with different destinations discribed in HOST field and absolute_path;
-     *     - without absolute_path but relative_path specified.
-     *   The rules, which are not very strict but still standard, listed below are followed
-     *   to handle these non-standard clients:
-     *     - HOST field is mandatory and taken as the destination;
-     *     - the destination described in absolute_path is ignored;
-     *     - relative_path will be forwarded without any change.
-     */
-    auto target = header.target().to_string();
-    assertFalse(target.empty(), PichiError::BAD_PROTO, "Empty path");
-    if (target[0] != '/') {
-      // absolute_path specified, so convert it to relative one.
-      auto uri = Uri{target};
-      header.target(boost::string_view{uri.suffix_.data(), uri.suffix_.size()});
-    }
+    send_ = [this](auto buf, auto yield) {
+      auto consumed = parseFromBuffer(respParser_, respCache_, buf);
+      if (!respParser_.is_header_done()) return;
+      auto resp = respParser_.release();
+      addCloseHeader(resp);
+      sendHeader(socket_, resp, respCache_, yield);
+      write(socket_, buf + consumed, yield);
+      send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
+    };
+    recv_ = [this](auto buf, auto yield) {
+      recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
+      auto req = reqParser_.release();
+      addCloseHeader(req);
+      return recvHeader(req, reqCache_, buf);
+    };
+    confirm_ = [](auto) {};
 
-    auto it = header.find(http::field::host);
-    assertTrue(it != cend(header), PichiError::BAD_PROTO, "Missing HOST field in HTTP header");
+    removeHostFromTarget(req);
+    auto it = req.find(http::field::host);
+    assertTrue(it != cend(req), PichiError::BAD_PROTO, "Missing HOST field in HTTP header");
     auto hp = HostAndPort{{it->value().data(), it->value().size()}};
-
-    delegate_ = make_unique<HttpRelay>(socket_, move(buf), move(parser));
     return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
   }
 }
 
-HttpEgress::HttpEgress(Socket&& socket) : socket_{move(socket)} {}
-
-void HttpEgress::close() { pichi::net::close(socket_); }
-bool HttpEgress::readable() const { return socket_.is_open(); }
-bool HttpEgress::writable() const { return socket_.is_open(); }
-
-size_t HttpEgress::recv(MutableBuffer<uint8_t> buf, Yield yield)
+HttpEgress::HttpEgress(Socket&& socket)
+  : socket_{move(socket)}, send_(badInvoking<void, ConstBuffer<uint8_t>, Yield>),
+    recv_(badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
 {
-  return readSome(socket_, buf, yield);
 }
-
-void HttpEgress::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
 
 void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
   pichi::net::connect(next, socket_, yield);
-
-  auto req = http::request<http::empty_body>{};
-  req.method(http::verb::connect);
-  req.target(remote.host_ + ":" + remote.port_);
-  req.prepare_payload();
-
-  http::async_write(socket_, req, yield);
-
-  auto resp = http::response<http::empty_body>{};
-  auto parser = http::response_parser<http::empty_body>{resp};
-  auto buf = beast::flat_buffer{};
-  http::async_read_header(socket_, buf, parser, yield);
-  assertTrue(resp.result() == http::status::ok, PichiError::CONN_FAILURE,
-             "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
+  // FIXME hardcode for detecting which proxy type will be chosen.
+  if (remote.port_ == "https" || remote.port_ == "443") {
+    send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) { return readSome(socket_, buf, yield); };
+    tunnelConnect(remote, socket_, yield);
+  }
+  else {
+    send_ = [this](auto buf, auto yield) {
+      auto consumed = parseFromBuffer(reqParser_, reqCache_, buf);
+      if (!reqParser_.is_header_done()) return;
+      auto req = reqParser_.release();
+      addCloseHeader(req);
+      addHostToTarget(req);
+      sendHeader(socket_, req, reqCache_, yield);
+      write(socket_, buf + consumed, yield);
+      send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
+    };
+    recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
+  }
 }
+
+size_t HttpEgress::recv(MutableBuffer<uint8_t> buf, Yield yield) { return recv_(buf, yield); }
+
+void HttpEgress::send(ConstBuffer<uint8_t> buf, Yield yield) { send_(buf, yield); }
+
+void HttpEgress::close() { pichi::net::close(socket_); }
+
+bool HttpEgress::readable() const { return socket_.is_open() || respCache_.size() > 0; }
+
+bool HttpEgress::writable() const { return socket_.is_open(); }
 
 } // namespace pichi::net
