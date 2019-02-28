@@ -17,15 +17,14 @@ public:
   explicit RejectEgress(Socket&&, uint16_t);
   ~RejectEgress() override = default;
 
-  size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  void send(ConstBuffer<uint8_t>, Yield) override;
+  [[noreturn]] size_t recv(MutableBuffer<uint8_t>, Yield) override;
+  [[noreturn]] void send(ConstBuffer<uint8_t>, Yield) override;
   void close() override;
-  bool readable() const override;
-  bool writable() const override;
+  [[noreturn]] bool readable() const override;
+  [[noreturn]] bool writable() const override;
   void connect(Endpoint const& remote, Endpoint const& next, Yield) override;
 
 private:
-  bool running_ = true;
   Timer t_;
 };
 
