@@ -23,6 +23,9 @@ struct IngressVO {
   uint16_t port_;
   std::optional<CryptoMethod> method_;
   std::optional<std::string> password_;
+  std::optional<bool> tls_;
+  std::optional<std::string> certFile_;
+  std::optional<std::string> keyFile_;
 };
 
 struct EgressVO {
@@ -33,6 +36,9 @@ struct EgressVO {
   std::optional<std::string> password_;
   std::optional<DelayMode> mode_;
   std::optional<uint16_t> delay_;
+  std::optional<bool> tls_;
+  std::optional<bool> insecure_;
+  std::optional<std::string> caFile_;
 };
 
 struct RuleVO {
