@@ -275,7 +275,7 @@ void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yie
   auto parser = http::response_parser<http::empty_body>{resp};
   auto buf = beast::flat_buffer{};
   http::async_read_header(socket_, buf, parser, yield);
-  assertTrue(resp.result() == http::status::ok, PichiError::BAD_PROTO,
+  assertTrue(resp.result() == http::status::ok, PichiError::CONN_FAILURE,
              "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
 }
 
