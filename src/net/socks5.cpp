@@ -7,6 +7,7 @@
 
 using namespace std;
 namespace asio = boost::asio;
+namespace sys = boost::system;
 
 namespace pichi::net {
 
@@ -21,7 +22,7 @@ size_t Socks5Adapter::recv(MutableBuffer<uint8_t> buf, Yield yield)
 
 void Socks5Adapter::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
 
-void Socks5Adapter::close() { socket_.close(); }
+void Socks5Adapter::close() { pichi::net::close(socket_); }
 
 bool Socks5Adapter::readable() const { return socket_.is_open(); }
 
@@ -57,6 +58,14 @@ void Socks5Adapter::confirm(Yield yield)
   write(socket_, buf, yield);
 }
 
+void Socks5Adapter::disconnect(Yield yield)
+{
+  // REP = 0x04(Host unreachable) according to RFC1928
+  static uint8_t const buf[] = {0x05, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  auto ec = sys::error_code{};
+  write(socket_, buf, yield[ec]);
+}
+
 void Socks5Adapter::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
   auto buf = HeaderBuffer<uint8_t>{0x05, 0x01, 0x00};
@@ -78,8 +87,8 @@ void Socks5Adapter::connect(Endpoint const& remote, Endpoint const& next, Yield 
 
   read(socket_, {buf, 3}, yield);
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
-  assertTrue(buf[1] == 0x00, PichiError::BAD_PROTO);
-  assertTrue(buf[1] == 0x00, PichiError::BAD_PROTO);
+  assertTrue(buf[1] == 0x00, PichiError::CONN_FAILURE,
+             "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
   parseEndpoint([this, yield](auto dst) { read(socket_, dst, yield); });
 }
 

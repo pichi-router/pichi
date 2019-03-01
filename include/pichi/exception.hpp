@@ -16,6 +16,7 @@ enum class PichiError {
   SEMANTIC_ERROR,
   RES_IN_USE,
   RES_LOCKED,
+  CONN_FAILURE,
   MISC
 };
 

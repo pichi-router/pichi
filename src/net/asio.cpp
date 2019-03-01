@@ -21,6 +21,7 @@
 using namespace std;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
+namespace sys = boost::system;
 using ip::tcp;
 using pichi::crypto::CryptoMethod;
 
@@ -47,12 +48,19 @@ void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
   asio::async_write(s, asio::buffer(buf), yield);
 }
 
+template <typename Socket> void close(Socket& s)
+{
+  auto ec = sys::error_code{};
+  s.close(ec);
+}
+
 template void connect<tcp::socket, asio::yield_context>(Endpoint const&, tcp::socket&,
                                                         asio::yield_context);
 template void read<tcp::socket, asio::yield_context>(tcp::socket&, MutableBuffer<uint8_t>,
                                                      asio::yield_context);
 template void write<tcp::socket, asio::yield_context>(tcp::socket&, ConstBuffer<uint8_t>,
                                                       asio::yield_context);
+template void close<tcp::socket>(tcp::socket&);
 
 template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const& vo, Socket&& s)
 {

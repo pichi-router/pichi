@@ -26,13 +26,15 @@ public:
 
   void send(ConstBuffer<uint8_t> buf, Yield yield) override { delegate_->send(buf, yield); }
 
-  void close() override { delegate_->close(); }
+  void close() override;
 
   bool readable() const override { return delegate_->readable(); }
 
   bool writable() const override { return delegate_->writable(); }
 
   void confirm(Yield yield) override { delegate_->confirm(yield); }
+
+  void disconnect(Yield) override;
 
   Endpoint readRemote(Yield) override;
 

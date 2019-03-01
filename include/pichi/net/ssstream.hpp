@@ -24,6 +24,7 @@ public:
   size_t readIV(MutableBuffer<uint8_t>, Yield) override;
   Endpoint readRemote(Yield) override;
   void confirm(Yield) override;
+  void disconnect(Yield) override;
   void connect(Endpoint const& remote, Endpoint const& server, Yield) override;
 
 private:
