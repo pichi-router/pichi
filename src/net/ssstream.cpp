@@ -29,7 +29,7 @@ size_t SSStreamAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
   }
 
   auto cipher = FrameBuffer<uint8_t>{};
-  auto len = socket_.async_read_some(boost::asio::buffer(cipher, plain.size()), yield);
+  auto len = readSome(socket_, {cipher, plain.size()}, yield);
   return decryptor_.decrypt({cipher, len}, plain);
 }
 

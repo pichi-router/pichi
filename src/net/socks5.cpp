@@ -17,7 +17,7 @@ Socks5Adapter::Socks5Adapter(Socket&& socket) : socket_{move(socket)} {}
 
 size_t Socks5Adapter::recv(MutableBuffer<uint8_t> buf, Yield yield)
 {
-  return socket_.async_read_some(asio::buffer(buf), yield);
+  return readSome(socket_, buf, yield);
 }
 
 void Socks5Adapter::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }

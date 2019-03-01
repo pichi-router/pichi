@@ -43,6 +43,12 @@ void read(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 }
 
 template <typename Socket, typename Yield>
+size_t readSome(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
+{
+  return s.async_read_some(asio::buffer(buf), yield);
+}
+
+template <typename Socket, typename Yield>
 void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
 {
   asio::async_write(s, asio::buffer(buf), yield);
@@ -58,6 +64,8 @@ template void connect<tcp::socket, asio::yield_context>(Endpoint const&, tcp::so
                                                         asio::yield_context);
 template void read<tcp::socket, asio::yield_context>(tcp::socket&, MutableBuffer<uint8_t>,
                                                      asio::yield_context);
+template size_t readSome<tcp::socket, asio::yield_context>(tcp::socket&, MutableBuffer<uint8_t>,
+                                                           asio::yield_context);
 template void write<tcp::socket, asio::yield_context>(tcp::socket&, ConstBuffer<uint8_t>,
                                                       asio::yield_context);
 template void close<tcp::socket>(tcp::socket&);
