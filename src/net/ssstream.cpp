@@ -53,7 +53,7 @@ void SSStreamAdapter<method>::send(ConstBuffer<uint8_t> plain, Yield yield)
   }
 }
 
-template <CryptoMethod method> void SSStreamAdapter<method>::close() { socket_.close(); }
+template <CryptoMethod method> void SSStreamAdapter<method>::close() { pichi::net::close(socket_); }
 
 template <CryptoMethod method> bool SSStreamAdapter<method>::readable() const
 {
@@ -82,6 +82,8 @@ template <CryptoMethod method> Endpoint SSStreamAdapter<method>::readRemote(Yiel
 }
 
 template <CryptoMethod method> void SSStreamAdapter<method>::confirm(Yield) {}
+
+template <CryptoMethod method> void SSStreamAdapter<method>::disconnect(Yield) {}
 
 template <CryptoMethod method>
 void SSStreamAdapter<method>::connect(Endpoint const& remote, Endpoint const& server, Yield yield)

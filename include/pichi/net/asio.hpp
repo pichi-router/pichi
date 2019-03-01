@@ -49,6 +49,7 @@ class Egress;
 template <typename Socket, typename Yield> void connect(Endpoint const&, Socket&, Yield);
 template <typename Socket, typename Yield> void read(Socket&, MutableBuffer<uint8_t>, Yield);
 template <typename Socket, typename Yield> void write(Socket&, ConstBuffer<uint8_t>, Yield);
+template <typename Socket> void close(Socket&);
 
 template <typename Socket> std::unique_ptr<Ingress> makeIngress(api::IngressVO const&, Socket&&);
 template <typename Socket> std::unique_ptr<Egress> makeEgress(api::EgressVO const&, Socket&&);

@@ -17,13 +17,13 @@ size_t DirectAdapter::recv(MutableBuffer<uint8_t> buf, Yield yield)
 
 void DirectAdapter::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
 
-void DirectAdapter::close() { socket_.close(); }
+void DirectAdapter::close() { pichi::net::close(socket_); }
 
 bool DirectAdapter::readable() const { return socket_.is_open(); }
 
 bool DirectAdapter::writable() const { return socket_.is_open(); }
 
-void DirectAdapter::connect(Endpoint const& remote, Endpoint const& server, Yield yield)
+void DirectAdapter::connect(Endpoint const&, Endpoint const& server, Yield yield)
 {
   pichi::net::connect(server, socket_, yield);
 }

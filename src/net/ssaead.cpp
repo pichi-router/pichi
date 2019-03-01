@@ -17,7 +17,7 @@ SSAeadAdapter<method>::SSAeadAdapter(Socket&& socket, ConstBuffer<uint8_t> psk)
 {
 }
 
-template <CryptoMethod method> void SSAeadAdapter<method>::close() { socket_.close(); }
+template <CryptoMethod method> void SSAeadAdapter<method>::close() { pichi::net::close(socket_); }
 
 template <CryptoMethod method> bool SSAeadAdapter<method>::readable() const
 {
@@ -94,6 +94,8 @@ template <CryptoMethod method> Endpoint SSAeadAdapter<method>::readRemote(Yield 
 }
 
 template <CryptoMethod method> void SSAeadAdapter<method>::confirm(Yield) {}
+
+template <CryptoMethod method> void SSAeadAdapter<method>::disconnect(Yield) {}
 
 template <CryptoMethod method>
 MutableBuffer<uint8_t> SSAeadAdapter<method>::prepare(size_t n, MutableBuffer<uint8_t> provided)

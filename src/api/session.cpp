@@ -27,18 +27,21 @@ Session::Session(asio::io_context& io, Session::IngressPtr&& ingress, Session::E
 
 void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
 {
-  net::spawn(strand_, [=, self = shared_from_this()](auto yield) {
-    egress_->connect(remote, next, yield);
-    ingress_->confirm(yield);
-    net::spawn(
-        strand_, [self, this](auto yield) { bridge(*ingress_, *egress_, yield); },
-        // FIXME Not copying for self because net::spawn ensures that
-        //   Function and ExceptionHandler share the same scope.
-        [this](auto, auto) noexcept { close(); });
-    net::spawn(
-        strand_, [self, this](auto yield) { bridge(*egress_, *ingress_, yield); },
-        [this](auto, auto) noexcept { close(); });
-  });
+  // FIXME Not copying for self because net::spawn ensures that
+  //   Function and ExceptionHandler share the same scope.
+  net::spawn(
+      strand_,
+      [=, self = shared_from_this()](auto yield) {
+        egress_->connect(remote, next, yield);
+        ingress_->confirm(yield);
+        net::spawn(
+            strand_, [self, this](auto yield) { bridge(*ingress_, *egress_, yield); },
+            [this](auto, auto) noexcept { close(); });
+        net::spawn(
+            strand_, [self, this](auto yield) { bridge(*egress_, *ingress_, yield); },
+            [this](auto, auto) noexcept { close(); });
+      },
+      [this](auto, auto yield) noexcept { ingress_->disconnect(yield); });
 }
 
 void Session::close()

@@ -30,6 +30,7 @@ struct Ingress : public Adapter {
   virtual size_t readIV(MutableBuffer<uint8_t>, Yield) { return 0; };
   virtual Endpoint readRemote(Yield) = 0;
   virtual void confirm(Yield) = 0;
+  virtual void disconnect(Yield) = 0;
 };
 
 struct Egress : public Adapter {
