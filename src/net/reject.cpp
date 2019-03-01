@@ -5,6 +5,7 @@
 
 using namespace std;
 namespace asio = boost::asio;
+namespace sys = boost::system;
 
 namespace pichi::net {
 
@@ -20,25 +21,33 @@ RejectEgress::RejectEgress(Socket&& s, uint16_t delay) : t_{s.get_executor().con
   t_.expires_after(delay * 1s);
 }
 
-size_t RejectEgress::recv(MutableBuffer<uint8_t>, Yield yield)
+[[noreturn]] size_t RejectEgress::recv(MutableBuffer<uint8_t>, Yield yield)
 {
-  assertTrue(running_);
-  t_.async_wait(yield);
-  fail("Force to reject connection");
+  fail("RejectEgress::recv shouldn't be invoked");
 }
 
-void RejectEgress::send(ConstBuffer<uint8_t>, Yield) { assertTrue(running_); }
-
-void RejectEgress::close()
+[[noreturn]] void RejectEgress::send(ConstBuffer<uint8_t>, Yield)
 {
-  if (running_) t_.cancel();
-  running_ = false;
+  fail("RejectEgress::send shouldn't be invoked");
 }
 
-bool RejectEgress::readable() const { return running_; }
+void RejectEgress::close() { t_.cancel(); }
 
-bool RejectEgress::writable() const { return running_; }
+[[noreturn]] bool RejectEgress::readable() const
+{
+  fail("RejectEgress::readable shouldn't be invoked");
+}
 
-void RejectEgress::connect(Endpoint const&, Endpoint const&, Yield) { assertTrue(running_); }
+[[noreturn]] bool RejectEgress::writable() const
+{
+  fail("RejectEgress::writable shouldn't be invoked");
+}
+
+void RejectEgress::connect(Endpoint const&, Endpoint const&, Yield yield)
+{
+  auto ec = sys::error_code{};
+  t_.async_wait(yield[ec]);
+  if (ec != asio::error::operation_aborted) fail("Force to reject connection");
+}
 
 } // namespace pichi::net
