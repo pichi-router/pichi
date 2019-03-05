@@ -57,12 +57,12 @@ template <CryptoMethod method> void SSStreamAdapter<method>::close() { pichi::ne
 
 template <CryptoMethod method> bool SSStreamAdapter<method>::readable() const
 {
-  return socket_.is_open();
+  return isOpen(socket_);
 }
 
 template <CryptoMethod method> bool SSStreamAdapter<method>::writable() const
 {
-  return socket_.is_open();
+  return isOpen(socket_);
 }
 
 template <CryptoMethod method>
