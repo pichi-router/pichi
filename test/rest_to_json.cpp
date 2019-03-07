@@ -72,62 +72,83 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Default_Ones)
     BOOST_CHECK(defaultEgressJson(t) == toJson(defaultEgressVO(t), alloc));
 }
 
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_Mandatory_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_Mandatory_Fields)
 {
-  auto normal = defaultIngressVO(AdapterType::HTTP);
-  toJson(normal, alloc);
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto normal = defaultIngressVO(type);
+    toJson(normal, alloc);
 
-  auto noBind = normal;
-  noBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
+    auto noBind = normal;
+    noBind.bind_.clear();
+    BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
 
-  auto noPort = normal;
-  noPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
+    auto noPort = normal;
+    noPort.port_ = 0;
+    BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
+
+    auto noTls = normal;
+    noTls.tls_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(noTls, alloc), Exception, verifyException<PichiError::MISC>);
+  }
 }
 
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_Additional_Fields)
 {
-  auto ingress = defaultIngressVO(AdapterType::HTTP);
-  ingress.method_ = CryptoMethod::RC4_MD5;
-  ingress.password_ = ph;
-  auto fact = toJson(ingress, alloc);
-
-  auto expect = defaultIngressJson(AdapterType::HTTP);
-  BOOST_CHECK(expect == fact);
-
-  expect.AddMember("method", "rc4-md5", alloc);
-  expect.AddMember("password", ph, alloc);
-  BOOST_CHECK(expect != fact);
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultIngressVO(type);
+    vo.method_ = CryptoMethod::RC4_MD5;
+    vo.password_ = ph;
+    vo.certFile_ = ph;
+    vo.keyFile_ = ph;
+    BOOST_CHECK(defaultIngressJson(type) == toJson(vo, alloc));
+  }
 }
 
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_SOCKS5_Mandatory_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_TLS_Mandatory_Fields)
 {
-  auto normal = defaultIngressVO(AdapterType::SOCKS5);
-  toJson(normal, alloc);
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultIngressVO(type);
+    vo.tls_ = true;
+    vo.certFile_ = ph;
+    vo.keyFile_ = ph;
 
-  auto noBind = normal;
-  noBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
+    auto noCertFile = vo;
+    noCertFile.certFile_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(noCertFile, alloc), Exception, verifyException<PichiError::MISC>);
 
-  auto noPort = normal;
-  noPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
+    auto emptyCertFile = vo;
+    emptyCertFile.certFile_->clear();
+    BOOST_CHECK_EXCEPTION(toJson(emptyCertFile, alloc), Exception,
+                          verifyException<PichiError::MISC>);
+
+    auto noKeyFile = vo;
+    noKeyFile.keyFile_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(noKeyFile, alloc), Exception, verifyException<PichiError::MISC>);
+
+    auto emptyKeyFile = vo;
+    emptyKeyFile.keyFile_->clear();
+    BOOST_CHECK_EXCEPTION(toJson(emptyKeyFile, alloc), Exception,
+                          verifyException<PichiError::MISC>);
+  }
 }
 
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_SOCKS5_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_TLS_Additional_Fields)
 {
-  auto ingress = defaultIngressVO(AdapterType::SOCKS5);
-  ingress.method_ = CryptoMethod::RC4_MD5;
-  ingress.password_ = ph;
-  auto fact = toJson(ingress, alloc);
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultIngressVO(type);
+    vo.tls_ = true;
+    vo.certFile_ = ph;
+    vo.keyFile_ = ph;
+    vo.method_ = CryptoMethod::RC4_MD5;
+    vo.password_ = ph;
 
-  auto expect = defaultIngressJson(AdapterType::SOCKS5);
-  BOOST_CHECK(expect == fact);
+    auto json = defaultIngressJson(type);
+    json["tls"] = true;
+    json.AddMember("cert_file", ph, alloc);
+    json.AddMember("key_file", ph, alloc);
 
-  expect.AddMember("method", "rc4-md5", alloc);
-  expect.AddMember("password", ph, alloc);
-  BOOST_CHECK(expect != fact);
+    BOOST_CHECK(json == toJson(vo, alloc));
+  }
 }
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Mandatory_Fields)
@@ -156,6 +177,15 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Mandatory_Fields)
   BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Additional_Fields)
+{
+  auto vo = defaultIngressVO(AdapterType::SS);
+  vo.tls_ = true;
+  vo.certFile_ = ph;
+  vo.keyFile_ = ph;
+  BOOST_CHECK(defaultIngressJson(AdapterType::SS) == toJson(vo, alloc));
+}
+
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Empty_Pack)
 {
   auto empty = unordered_map<string, IngressVO>{};
@@ -181,7 +211,7 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack)
   for (auto i = 0; i < 10; ++i) {
     expect.AddMember(Value{to_string(i).data(), alloc}, defaultIngressJson(AdapterType::HTTP),
                      alloc);
-    src[to_string(i)] = IngressVO{AdapterType::HTTP, ph, 1};
+    src[to_string(i)] = defaultIngressVO(AdapterType::HTTP);
   }
 
   auto fact = toJson(begin(src), end(src), alloc);
@@ -203,6 +233,9 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_DIRECT_Additional_Fields)
   vo.mode_ = DelayMode::FIXED;
   vo.method_ = CryptoMethod::RC4_MD5;
   vo.password_ = ph;
+  vo.tls_ = true;
+  vo.insecure_ = true;
+  vo.caFile_ = ph;
 
   BOOST_CHECK(defaultEgressJson(AdapterType::DIRECT) == toJson(vo, alloc));
 }
@@ -262,69 +295,105 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Fixed_Additional_Fields)
   BOOST_CHECK(defaultEgressJson(AdapterType::REJECT) == toJson(vo, alloc));
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Egress_SOCKS5_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_Additional_Fields)
 {
-  auto vo = defaultEgressVO(AdapterType::SOCKS5);
-  vo.delay_ = 0;
-  vo.mode_ = DelayMode::FIXED;
-  vo.method_ = CryptoMethod::RC4_MD5;
-  vo.password_ = ph;
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultEgressVO(type);
+    vo.delay_ = 0;
+    vo.mode_ = DelayMode::FIXED;
+    vo.method_ = CryptoMethod::RC4_MD5;
+    vo.password_ = ph;
+    vo.insecure_ = true;
+    vo.caFile_ = ph;
 
-  BOOST_CHECK(defaultEgressJson(AdapterType::SOCKS5) == toJson(vo, alloc));
+    BOOST_CHECK(defaultEgressJson(type) == toJson(vo, alloc));
+  }
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Egress_SOCKS5_Missing_Fields)
+BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_Missing_Fields)
 {
-  auto origin = defaultEgressVO(AdapterType::SOCKS5);
-  toJson(origin, alloc);
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto origin = defaultEgressVO(AdapterType::SOCKS5);
+    toJson(origin, alloc);
 
-  auto noHost = origin;
-  noHost.host_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noHost, alloc), Exception, verifyException<PichiError::MISC>);
+    auto noHost = origin;
+    noHost.host_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(noHost, alloc), Exception, verifyException<PichiError::MISC>);
 
-  auto emptyHost = origin;
-  emptyHost.host_->clear();
-  BOOST_CHECK_EXCEPTION(toJson(emptyHost, alloc), Exception, verifyException<PichiError::MISC>);
+    auto emptyHost = origin;
+    emptyHost.host_->clear();
+    BOOST_CHECK_EXCEPTION(toJson(emptyHost, alloc), Exception, verifyException<PichiError::MISC>);
 
-  auto noPort = origin;
-  noPort.port_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
+    auto noPort = origin;
+    noPort.port_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 
-  auto emptyPort = origin;
-  emptyPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(toJson(emptyPort, alloc), Exception, verifyException<PichiError::MISC>);
+    auto emptyPort = origin;
+    emptyPort.port_ = 0;
+    BOOST_CHECK_EXCEPTION(toJson(emptyPort, alloc), Exception, verifyException<PichiError::MISC>);
+
+    auto noTls = origin;
+    noTls.tls_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(noTls, alloc), Exception, verifyException<PichiError::MISC>);
+  }
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_Additional_Fields)
+BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_TLS_Mandatory_Fields)
 {
-  auto vo = defaultEgressVO(AdapterType::HTTP);
-  vo.delay_ = 0;
-  vo.mode_ = DelayMode::FIXED;
-  vo.method_ = CryptoMethod::RC4_MD5;
-  vo.password_ = ph;
-  BOOST_CHECK(defaultEgressJson(AdapterType::HTTP) == toJson(vo, alloc));
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultEgressVO(type);
+    vo.tls_ = true;
+    vo.insecure_ = true;
+
+    auto noInsecure = vo;
+    noInsecure.insecure_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(noInsecure, alloc), Exception, verifyException<PichiError::MISC>);
+  }
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_Missing_Fields)
+BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_TLS_Addtional_Fields)
 {
-  auto origin = defaultEgressVO(AdapterType::HTTP);
-  toJson(origin, alloc);
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultEgressVO(type);
+    vo.tls_ = true;
+    vo.insecure_ = true;
+    vo.caFile_ = ph;
 
-  auto noHost = origin;
-  noHost.host_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noHost, alloc), Exception, verifyException<PichiError::MISC>);
+    auto json = defaultEgressJson(type);
+    json["tls"] = true;
+    json.AddMember("insecure", true, alloc);
 
-  auto emptyHost = origin;
-  emptyHost.host_->clear();
-  BOOST_CHECK_EXCEPTION(toJson(emptyHost, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK(json == toJson(vo, alloc));
+  }
+}
 
-  auto noPort = origin;
-  noPort.port_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
+BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_TLS_With_CA)
+{
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultEgressVO(type);
+    vo.tls_ = true;
+    vo.insecure_ = false;
+    vo.caFile_ = ph;
 
-  auto emptyPort = origin;
-  emptyPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(toJson(emptyPort, alloc), Exception, verifyException<PichiError::MISC>);
+    auto json = defaultEgressJson(type);
+    json["tls"] = true;
+    json.AddMember("insecure", false, alloc);
+    json.AddMember("ca_file", ph, alloc);
+
+    BOOST_CHECK(json == toJson(vo, alloc));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS_TLS_With_Empty_CA)
+{
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultEgressVO(type);
+    vo.tls_ = true;
+    vo.insecure_ = false;
+    vo.caFile_ = "";
+
+    BOOST_CHECK_EXCEPTION(toJson(vo, alloc), Exception, verifyException<PichiError::MISC>);
+  }
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_SS_Missing_Fields)
