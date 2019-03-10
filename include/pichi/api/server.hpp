@@ -4,27 +4,15 @@
 #include <array>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
-#include <boost/beast/http/message.hpp>
-#include <boost/beast/http/string_body.hpp>
-#include <boost/beast/http/verb.hpp>
-#include <functional>
 #include <pichi/api/egress_manager.hpp>
 #include <pichi/api/ingress_manager.hpp>
+#include <pichi/api/rest.hpp>
 #include <pichi/api/router.hpp>
-#include <regex>
 #include <string_view>
-#include <tuple>
 
 namespace pichi::api {
 
 class Server {
-public:
-  using HttpBody = boost::beast::http::string_body;
-  using Request = boost::beast::http::request<HttpBody>;
-  using Response = boost::beast::http::response<HttpBody>;
-  using HttpHandler = std::function<Response(Request const&, std::cmatch const&)>;
-  using RouteItem = std::tuple<boost::beast::http::verb, std::regex, HttpHandler>;
-
 public:
   Server(Server const&) = delete;
   Server(Server&&) = delete;
@@ -39,9 +27,9 @@ public:
 private:
   boost::asio::io_context::strand strand_;
   Router router_;
-  EgressManager eManager_;
-  IngressManager iManager_;
-  std::array<RouteItem, 18> apis_;
+  EgressManager egresses_;
+  IngressManager ingresses_;
+  Rest rest_;
 };
 
 } // namespace pichi::api
