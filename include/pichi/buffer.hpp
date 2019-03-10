@@ -7,6 +7,11 @@
 
 namespace pichi {
 
+template <typename PodType> class Buffer;
+
+template <typename PodType> Buffer<PodType> operator+(Buffer<PodType> const&, size_t);
+template <typename PodType> Buffer<PodType> operator+(size_t, Buffer<PodType> const&);
+
 // TODO avoid lots of constructors if conditional explicit is supported
 template <typename PodType> class Buffer {
 private:
@@ -96,11 +101,30 @@ public:
   PodType* end() const { return data_ + size_; }
   PodType const* cbegin() const { return begin(); }
   PodType const* cend() const { return end(); }
+  Buffer& operator+=(size_t n)
+  {
+    n = std::min(n, size_);
+    data_ += n;
+    size_ -= n;
+    return *this;
+  }
 
 private:
   PodType* data_ = nullptr;
   size_t size_ = 0;
 };
+
+template <typename PodType> Buffer<PodType> operator+(Buffer<PodType> const& b, size_t n)
+{
+  auto ret = b;
+  ret += n;
+  return ret;
+}
+
+template <typename PodType> Buffer<PodType> operator+(size_t n, Buffer<PodType> const& b)
+{
+  return b + n;
+}
 
 template <typename PodType> using ConstBuffer = Buffer<PodType const>;
 template <typename PodType, std::enable_if_t<!std::is_const_v<PodType>, int> = 0>
