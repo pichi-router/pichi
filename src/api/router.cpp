@@ -77,11 +77,8 @@ Router::ValueType Router::generatePair(DelegateIterator it)
 Router::Router(char const* fn) : geo_{fn} {}
 
 string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterType type,
-                          function<ResolvedResult()> const& resolve) const
+                          ResolvedResult const& r) const
 {
-  auto r = needResolving_ ? resolve() : ResolvedResult{};
-
-  // No asynchronous IO operation can run while routing
   auto it = find_if(cbegin(route_.rules_), cend(route_.rules_), [&, this](auto&& pair) {
     auto it = rules_.find(pair.first);
     assertFalse(it == cend(rules_), PichiError::MISC);
@@ -179,6 +176,8 @@ bool Router::isUsed(string_view egress) const
   return route_.default_ == egress || any_of(cbegin(route_.rules_), cend(route_.rules_),
                                              [=](auto&& item) { return item.first == egress; });
 }
+
+bool Router::needResloving() const { return needResolving_; }
 
 RouteVO Router::getRoute() const { return route_; }
 
