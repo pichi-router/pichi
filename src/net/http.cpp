@@ -111,14 +111,6 @@ static void sendHeader(Socket& s, Header<isRequest>& header, DynamicBuffer& cach
   cache.consume(cache.size());
 }
 
-template <typename DynamicBuffer>
-static void sendRaw(Socket& s, DynamicBuffer& cache, ConstBuffer<uint8_t> buf, Yield yield)
-{
-  asio::async_write(s, cache.data(), yield);
-  cache.consume(cache.size());
-  write(s, buf, yield);
-}
-
 static void removeHostFromTarget(http::request_header<>& req)
 {
   /*
@@ -163,16 +155,19 @@ static void tunnelConfirm(Socket& s, Yield yield)
 
 static void tunnelConnect(Endpoint const& remote, Socket& s, Yield yield)
 {
+  auto host = remote.host_ + ":" + remote.port_;
   auto req = Request{};
   req.method(http::verb::connect);
-  req.target(remote.host_ + ":" + remote.port_);
+  req.target(host);
+  req.set(http::field::host, host);
   req.prepare_payload();
 
   http::async_write(s, req, yield);
 
-  auto resp = Response{};
+  auto parser = ResponseParser{};
   auto cache = Cache{};
-  http::async_read(s, cache, resp, yield);
+  http::async_read_header(s, cache, parser, yield);
+  auto resp = parser.release();
   assertTrue(resp.result() == http::status::ok, PichiError::BAD_PROTO,
              "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
 }
@@ -206,8 +201,10 @@ Endpoint HttpIngress::readRemote(Yield yield)
 
   auto& req = reqParser_.get();
   if (req.method() == http::verb::connect) {
-    send_ = [this](auto buf, auto yield) { sendRaw(socket_, reqCache_, buf, yield); };
-    recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
+    send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) {
+      return socket_.async_read_some(asio::buffer(buf), yield);
+    };
     confirm_ = [this](auto yield) {
       tunnelConfirm(socket_, yield);
       reqParser_.release();
@@ -228,7 +225,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
       auto resp = respParser_.release();
       sendHeader(socket_, resp, respCache_, yield);
       write(socket_, buf + consumed, yield);
-      send_ = [this](auto buf, auto yield) { sendRaw(socket_, respCache_, buf, yield); };
+      send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
     };
     recv_ = [this](auto buf, auto yield) {
       recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
@@ -256,8 +253,10 @@ void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yie
   pichi::net::connect(next, socket_, yield);
   // FIXME hardcode for detecting which proxy type will be chosen.
   if (remote.port_ == "https" || remote.port_ == "443") {
-    send_ = [this](auto buf, auto yield) { sendRaw(socket_, reqCache_, buf, yield); };
-    recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
+    send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) {
+      return socket_.async_read_some(asio::buffer(buf), yield);
+    };
     tunnelConnect(remote, socket_, yield);
   }
   else {
@@ -268,7 +267,7 @@ void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yie
       addHostToTarget(req);
       sendHeader(socket_, req, reqCache_, yield);
       write(socket_, buf + consumed, yield);
-      send_ = [this](auto buf, auto yield) { sendRaw(socket_, reqCache_, buf, yield); };
+      send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
     };
     recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
   }
