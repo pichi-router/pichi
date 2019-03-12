@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  version: "1.1"
+  version: "1.2"
   title: 'Pichi API'
   description: 'RESTful API for pichi server'
 tags:
@@ -348,65 +348,6 @@ components:
         - aes-256-gcm
         - chacha20-ietf-poly1305
         - xchacha20-ietf-poly1305
-    Adapter:
-      type: object
-      properties:
-        port:
-          description: 'Ingress binding port'
-          type: integer
-          format: int32
-          example: 8388
-          minimum: 1
-          maximum: 65535
-        method:
-          $ref: '#/components/schemas/CryptoMethod'
-        password:
-          description: 'SS psk'
-          type: string
-          example: 'ss password'
-    Ingress:
-      allOf:
-        - $ref: '#/components/schemas/Adapter'
-        - type: object
-          properties:
-            type:
-              $ref: '#/components/schemas/AdapterType'
-            bind:
-              description: 'Ingress binding address'
-              type: string
-              example: '0.0.0.0'
-          required:
-            - type
-    Egress:
-      allOf:
-        - $ref: '#/components/schemas/Adapter'
-        - type: object
-          properties:
-            type:
-              allOf:
-                - type: string
-                  enum:
-                    - direct
-                    - reject
-                - $ref: '#/components/schemas/AdapterType'
-            host:
-              type: string
-              description: 'Remote server address'
-              example: 'socks5.example.com'
-            mode:
-              type: string
-              description: 'Delay mode for reject egress'
-              enum:
-                - random
-                - fixed
-              example: 'random'
-            delay:
-              type: integer
-              description: 'Seconds delayed before rejecting connection'
-              minimum: 0
-              maximum: 300
-          required:
-            - type
     Rule:
       type: object
       properties:
@@ -462,3 +403,151 @@ components:
             items:
               type: string
             example: ['rule_0', 'egress_0']
+    Host:
+      description: "IP(v4/v6) address or domain name"
+      type: string
+      example: "1.1.1.1"
+    Port:
+      description: "TCP port"
+      type: integer
+      format: int32
+      minimum: 1
+      maximum: 65535
+      example: 8388
+    LocalEndpoint:
+      properties:
+        bind:
+          $ref: "#/components/schemas/Host"
+        port:
+          $ref: "#/components/schemas/Port"
+      required:
+        - bind
+        - port
+    RemoteEndpoint:
+      properties:
+        host:
+          $ref: "#/components/schemas/Host"
+        port:
+          $ref: "#/components/schemas/Port"
+      required:
+        - host
+        - port
+    TlsIngress:
+      description: "HTTP(s) or Socks5(s) ingress"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - http
+            - socks5
+        tls:
+          type: boolean
+          description: "Whether TLS is enabled"
+          default: false
+          example: false
+        cert_file:
+          description: "TLS certification file path"
+          type: string
+          example: "/etc/cert/cert.pem"
+        key_file:
+          description: "TLS private key file path"
+          type: string
+          example: "/etc/cert/privkey.pem"
+      required:
+        - type
+        - tls
+    TlsEgress:
+      description: "HTTP(s) or Socks5(s) egress"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - http
+            - socks5
+        tls:
+          type: boolean
+          description: "Whether TLS is enabled"
+          default: false
+          example: false
+        insecure:
+          description: "Whether to verify the peer certificate"
+          type: boolean
+          default: true
+          example: true
+        ca_file:
+          description: "CA file path"
+          type: string
+          example: "/etc/cert/ca.pem"
+      required:
+        - type
+        - tls
+    SSAdapter:
+      description: "Shadowsocks adapter"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - ss
+        method:
+          $ref: '#/components/schemas/CryptoMethod'
+        password:
+          description: 'SS psk'
+          type: string
+          example: 'ss password'
+      required:
+        - type
+        - method
+        - password
+    RejectEgress:
+      description: "Reject egress"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - reject
+        mode:
+          type: string
+          description: 'Delay mode for reject egress'
+          enum:
+            - random
+            - fixed
+          default: 'fixed'
+          example: 'random'
+        delay:
+          type: integer
+          description: 'Seconds delayed before rejecting connection'
+          default: 0
+          minimum: 0
+          maximum: 300
+      required:
+        - type
+        - mode
+    DirectEgress:
+      description: "Direct egress"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - direct
+      required:
+        - type
+    Ingress:
+      allOf:
+        - $ref: "#/components/schemas/LocalEndpoint"
+        - oneOf:
+          - $ref: "#/components/schemas/TlsIngress"
+          - $ref: "#/components/schemas/SSAdapter"
+    Egress:
+      oneOf:
+        - $ref: "#/components/schemas/DirectEgress"
+        - $ref: "#/components/schemas/RejectEgress"
+        - allOf:
+          - $ref: "#/components/schemas/RemoteEndpoint"
+          - oneOf:
+            - $ref: "#/components/schemas/TlsEgress"
+            - $ref: "#/components/schemas/SSAdapter"
