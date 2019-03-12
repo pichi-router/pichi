@@ -144,12 +144,23 @@ static void addHostToTarget(http::request_header<>& req)
   req.target(target);
 }
 
+template <bool isRequest> static void addCloseHeader(Header<isRequest>& header)
+{
+  /*
+   * FIXME Pichi doesn't actually do active closing. We wish upstream server
+   *   could work correctly if we set 'close' header.
+   */
+  header.set(http::field::connection, "close"sv);
+  header.set(http::field::proxy_connection, "close"sv);
+}
+
 static void tunnelConfirm(Socket& s, Yield yield)
 {
   auto rep = Response{};
   rep.version(11);
   rep.result(http::status::ok);
   rep.reason("Connection Established");
+  addCloseHeader(rep);
   http::async_write(s, rep, yield);
 }
 
@@ -160,6 +171,7 @@ static void tunnelConnect(Endpoint const& remote, Socket& s, Yield yield)
   req.method(http::verb::connect);
   req.target(host);
   req.set(http::field::host, host);
+  addCloseHeader(req);
   req.prepare_payload();
 
   http::async_write(s, req, yield);
@@ -223,6 +235,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
       auto consumed = parseFromBuffer(respParser_, respCache_, buf);
       if (!respParser_.is_header_done()) return;
       auto resp = respParser_.release();
+      addCloseHeader(resp);
       sendHeader(socket_, resp, respCache_, yield);
       write(socket_, buf + consumed, yield);
       send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
@@ -230,6 +243,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
     recv_ = [this](auto buf, auto yield) {
       recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
       auto req = reqParser_.release();
+      addCloseHeader(req);
       return recvHeader(req, reqCache_, buf);
     };
     confirm_ = [](auto) {};
@@ -264,6 +278,7 @@ void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yie
       auto consumed = parseFromBuffer(reqParser_, reqCache_, buf);
       if (!reqParser_.is_header_done()) return;
       auto req = reqParser_.release();
+      addCloseHeader(req);
       addHostToTarget(req);
       sendHeader(socket_, req, reqCache_, yield);
       write(socket_, buf + consumed, yield);
