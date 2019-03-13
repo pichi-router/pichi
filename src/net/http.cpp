@@ -149,7 +149,7 @@ public:
 
   size_t recv(MutableBuffer<uint8_t> dst, Yield yield) override
   {
-    return socket_.async_read_some(asio::buffer(dst), yield);
+    return readSome(socket_, dst, yield);
   }
 
   void send(ConstBuffer<uint8_t> src, Yield yield) override { write(socket_, src, yield); }
@@ -254,7 +254,7 @@ bool HttpEgress::writable() const { return socket_.is_open(); }
 
 size_t HttpEgress::recv(MutableBuffer<uint8_t> buf, Yield yield)
 {
-  return socket_.async_read_some(asio::buffer(buf), yield);
+  return readSome(socket_, buf, yield);
 }
 
 void HttpEgress::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
