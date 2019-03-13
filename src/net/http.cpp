@@ -106,7 +106,8 @@ static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
 template <bool isRequest, typename DynamicBuffer>
 static void sendHeader(Socket& s, Header<isRequest>& header, DynamicBuffer& cache, Yield yield)
 {
-  http::async_write(s, Message<isRequest>{header}, yield);
+  auto m = Message<isRequest>{header};
+  http::async_write(s, m, yield);
   asio::async_write(s, cache.data(), yield);
   cache.consume(cache.size());
 }
