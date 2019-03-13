@@ -180,7 +180,8 @@ static void tunnelConnect(Endpoint const& remote, Socket& s, Yield yield)
   auto cache = Cache{};
   http::async_read_header(s, cache, parser, yield);
   auto resp = parser.release();
-  assertTrue(resp.result() == http::status::ok, PichiError::BAD_PROTO,
+
+  assertTrue(resp.result_int() / 100 == 2, PichiError::BAD_PROTO,
              "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
 }
 
