@@ -10,6 +10,7 @@ else (STATIC_LINK)
     ${Boost_SYSTEM_LIBRARY}
   )
   if (WIN32)
+    target_link_libraries(${PICHI_LIBRARY} PRIVATE ${Boost_DATE_TIME_LIBRARY})
     set_target_properties(${PICHI_LIBRARY} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
   endif (WIN32)
   if (VERSION)
