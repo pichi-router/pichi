@@ -2,7 +2,7 @@
 #define PICHI_TEST_UTILS_HPP
 
 #include <boost/asio/error.hpp>
-#include <pichi/api/rest.hpp>
+#include <pichi/api/vos.hpp>
 #include <pichi/exception.hpp>
 #include <string_view>
 #include <vector>

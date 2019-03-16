@@ -6,8 +6,8 @@
 #include <boost/beast/http/write.hpp>
 #include <iostream>
 #include <memory>
-#include <pichi/api/rest.hpp>
 #include <pichi/api/server.hpp>
+#include <pichi/api/vos.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/net/spawn.hpp>
 #include <rapidjson/stringbuffer.h>

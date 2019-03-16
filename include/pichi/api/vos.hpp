@@ -1,5 +1,5 @@
-#ifndef PICHI_API_REST_HPP
-#define PICHI_API_REST_HPP
+#ifndef PICHI_API_VOS_HPP
+#define PICHI_API_VOS_HPP
 
 #include <algorithm>
 #include <pichi/api/iterator.hpp>
@@ -99,4 +99,4 @@ template <typename VO> VO parse(std::string_view src)
 
 } // namespace pichi::api
 
-#endif // PICHI_API_REST_HPP
+#endif // PICHI_API_VOS_HPP

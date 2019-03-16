@@ -2,7 +2,7 @@
 #define PICHI_API_EGRESS_MANAGER_HPP
 
 #include <map>
-#include <pichi/api/rest.hpp>
+#include <pichi/api/vos.hpp>
 #include <string>
 #include <string_view>
 

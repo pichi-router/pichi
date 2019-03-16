@@ -4,7 +4,7 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/spawn2.hpp>
 #include <boost/asio/write.hpp>
-#include <pichi/api/rest.hpp>
+#include <pichi/api/vos.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/crypto/key.hpp>
 #include <pichi/net/adapter.hpp>
