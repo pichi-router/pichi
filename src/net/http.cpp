@@ -251,7 +251,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
       send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
     };
     recv_ = [this](auto buf, auto yield) {
-      recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
+      recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, reqCache_, buf, yield); };
       auto req = reqParser_.release();
       addCloseHeader(req);
       return recvHeader(req, reqCache_, buf);
