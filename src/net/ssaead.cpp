@@ -21,12 +21,12 @@ template <CryptoMethod method> void SSAeadAdapter<method>::close() { pichi::net:
 
 template <CryptoMethod method> bool SSAeadAdapter<method>::readable() const
 {
-  return cache_.size() > 0 || socket_.is_open();
+  return cache_.size() > 0 || isOpen(socket_);
 }
 
 template <CryptoMethod method> bool SSAeadAdapter<method>::writable() const
 {
-  return socket_.is_open();
+  return isOpen(socket_);
 }
 
 template <CryptoMethod method>

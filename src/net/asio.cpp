@@ -1,9 +1,11 @@
+#include "config.h"
 #include <array>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/spawn2.hpp>
 #include <boost/asio/write.hpp>
+#include <iostream>
 #include <pichi/api/rest.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/crypto/key.hpp>
@@ -18,22 +20,61 @@
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
 
+#ifdef ENABLE_TLS
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/stream.hpp>
+#endif // ENABLE_TLS
+
 using namespace std;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
+namespace ssl = asio::ssl;
 namespace sys = boost::system;
 using ip::tcp;
 using pichi::crypto::CryptoMethod;
+using TcpSocket = tcp::socket;
+using TlsSocket = ssl::stream<TcpSocket>;
 
 namespace pichi::net {
+
+#ifdef ENABLE_TLS
+static auto createTlsContext(api::IngressVO const& vo)
+{
+  auto ctx = ssl::context{ssl::context::tls_server};
+  ctx.use_certificate_chain_file(*vo.certFile_);
+  ctx.use_private_key_file(*vo.keyFile_, ssl::context::pem);
+  return ctx;
+}
+
+static auto createTlsContext(api::EgressVO const& vo)
+{
+  auto ctx = ssl::context{ssl::context::tls_client};
+  if (*vo.insecure_) {
+    ctx.set_verify_mode(ssl::context::verify_none);
+  }
+  else {
+    ctx.set_verify_mode(ssl::context::verify_peer);
+    ctx.set_default_verify_paths();
+    if (vo.caFile_.has_value()) ctx.load_verify_file(*vo.caFile_);
+  }
+  return ctx;
+}
+#endif // ENABLE_TLS
 
 template <typename Socket, typename Yield>
 void connect(Endpoint const& endpoint, Socket& s, Yield yield)
 {
-  asio::async_connect(s,
-                      tcp::resolver{s.get_executor().context()}.async_resolve(
-                          endpoint.host_, endpoint.port_, yield),
-                      yield);
+#ifdef ENABLE_TLS
+  if constexpr (IsSslStreamV<Socket>) {
+    connect(endpoint, s.next_layer(), yield);
+    s.async_handshake(ssl::stream_base::handshake_type::client, yield);
+  }
+  else
+#endif // ENABLE_TLS
+    asio::async_connect(s,
+                        tcp::resolver{s.get_executor().context()}.async_resolve(
+                            endpoint.host_, endpoint.port_, yield),
+                        yield);
 }
 
 template <typename Socket, typename Yield>
@@ -56,19 +97,24 @@ void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
 
 template <typename Socket> void close(Socket& s)
 {
-  auto ec = sys::error_code{};
-  s.close(ec);
+  if constexpr (IsSslStreamV<Socket>) {
+    close(s.next_layer());
+  }
+  else {
+    auto ec = sys::error_code{};
+    s.close(ec);
+  }
 }
 
-template void connect<tcp::socket, asio::yield_context>(Endpoint const&, tcp::socket&,
-                                                        asio::yield_context);
-template void read<tcp::socket, asio::yield_context>(tcp::socket&, MutableBuffer<uint8_t>,
-                                                     asio::yield_context);
-template size_t readSome<tcp::socket, asio::yield_context>(tcp::socket&, MutableBuffer<uint8_t>,
-                                                           asio::yield_context);
-template void write<tcp::socket, asio::yield_context>(tcp::socket&, ConstBuffer<uint8_t>,
-                                                      asio::yield_context);
-template void close<tcp::socket>(tcp::socket&);
+template <typename Socket> bool isOpen(Socket const& s)
+{
+  if constexpr (IsSslStreamV<Socket>) {
+    return isOpen(s.next_layer());
+  }
+  else {
+    return s.is_open();
+  }
+}
 
 template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const& vo, Socket&& s)
 {
@@ -76,9 +122,23 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
   auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
   case AdapterType::HTTP:
-    return make_unique<HttpIngress>(forward<Socket>(s));
+#ifdef ENABLE_TLS
+    if (*vo.tls_) {
+      auto ctx = createTlsContext(vo);
+      return make_unique<HttpIngress<TlsSocket>>(forward<Socket>(s), ctx);
+    }
+    else
+#endif // ENABLE_TLS
+      return make_unique<HttpIngress<TcpSocket>>(forward<Socket>(s));
   case AdapterType::SOCKS5:
-    return make_unique<Socks5Adapter>(forward<Socket>(s));
+#ifdef ENABLE_TLS
+    if (*vo.tls_) {
+      auto ctx = createTlsContext(vo);
+      return make_unique<Socks5Adapter<TlsSocket>>(forward<Socket>(s), ctx);
+    }
+    else
+#endif // ENABLE_TLS
+      return make_unique<Socks5Adapter<TcpSocket>>(forward<Socket>(s));
   case AdapterType::SS:
     psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
     switch (*vo.method_) {
@@ -130,17 +190,29 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
   }
 }
 
-template unique_ptr<Ingress> makeIngress<tcp::socket>(api::IngressVO const&, tcp::socket&&);
-
 template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo, Socket&& s)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
   case AdapterType::HTTP:
-    return make_unique<HttpEgress>(forward<Socket>(s));
+#ifdef ENABLE_TLS
+    if (*vo.tls_) {
+      auto ctx = createTlsContext(vo);
+      return make_unique<HttpEgress<TlsSocket>>(forward<Socket>(s), ctx);
+    }
+    else
+#endif // ENABLE_TLS
+      return make_unique<HttpEgress<TcpSocket>>(forward<Socket>(s));
   case AdapterType::SOCKS5:
-    return make_unique<Socks5Adapter>(forward<Socket>(s));
+#ifdef ENABLE_TLS
+    if (*vo.tls_) {
+      auto ctx = createTlsContext(vo);
+      return make_unique<Socks5Adapter<ssl::stream<tcp::socket>>>(forward<Socket>(s), ctx);
+    }
+    else
+#endif // ENABLE_TLS
+      return make_unique<Socks5Adapter<tcp::socket>>(forward<Socket>(s));
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(forward<Socket>(s));
   case AdapterType::REJECT:
@@ -203,6 +275,25 @@ template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo
   }
 }
 
-template unique_ptr<Egress> makeEgress<tcp::socket>(api::EgressVO const&, tcp::socket&&);
+using Yield = asio::yield_context;
+
+template void connect<>(Endpoint const&, TcpSocket&, Yield);
+template void read<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
+template size_t readSome<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
+template void write<>(TcpSocket&, ConstBuffer<uint8_t>, Yield);
+template void close<>(TcpSocket&);
+template bool isOpen<>(TcpSocket const&);
+
+#ifdef ENABLE_TLS
+template void connect<>(Endpoint const&, TlsSocket&, Yield);
+template void read<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
+template size_t readSome<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
+template void write<>(TlsSocket&, ConstBuffer<uint8_t>, Yield);
+template void close<>(TlsSocket&);
+template bool isOpen<>(TlsSocket const&);
+#endif // ENABLE_TLS
+
+template unique_ptr<Ingress> makeIngress<>(api::IngressVO const&, TcpSocket&&);
+template unique_ptr<Egress> makeEgress<>(api::EgressVO const&, TcpSocket&&);
 
 } // namespace pichi::net
