@@ -51,16 +51,10 @@ template <typename Manager> static auto getVO(Manager const& manager)
 }
 
 template <typename Manager>
-static auto putVO(typename Manager::VO&& vo, cmatch const& mr, Manager& manager)
-{
-  manager.update(mr[1].str(), move(vo));
-  return genResp(http::status::no_content);
-}
-
-template <typename Manager>
 static auto putVO(Rest::Request const& req, cmatch const& mr, Manager& manager)
 {
-  return putVO(parse<typename Manager::VO>(req.body()), mr, manager);
+  manager.update(mr[1].str(), parse<typename Manager::VO>(req.body()));
+  return genResp(http::status::no_content);
 }
 
 template <typename Manager> static auto delVO(cmatch const& mr, Manager& manager)
@@ -139,7 +133,7 @@ Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
                      return options({http::verb::get, http::verb::options});
                    }),
         make_tuple(http::verb::put, RULE_NAME_REGEX,
-                   [&](auto&& r, auto&& mr) { return putVO(parse<RuleVO>(r.body()), mr, router); }),
+                   [&](auto&& r, auto&& mr) { return putVO(r, mr, router); }),
         make_tuple(http::verb::delete_, RULE_NAME_REGEX,
                    [&](auto&&, auto&& mr) { return delVO(mr, router); }),
         make_tuple(http::verb::options, RULE_NAME_REGEX,
