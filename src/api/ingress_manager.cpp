@@ -76,11 +76,12 @@ IngressManager::ConstIterator IngressManager::end() const noexcept
 
 template <typename Yield> void IngressManager::listen(typename Container::iterator it, Yield yield)
 {
-  auto& acceptor = it->second.second;
+  auto&& [iname, v] = *it;
+  auto&& [vo, acceptor] = v;
 
   while (true) {
-    net::spawn(strand_, [s = acceptor.async_accept(yield), &vo = as_const(it->second.first),
-                         &iname = as_const(it->first), this](auto yield) mutable {
+    net::spawn(strand_, [s = acceptor.async_accept(yield), &vo = vo, &iname = iname,
+                         this](auto yield) mutable {
       auto& io = strand_.context();
       auto ingress = net::makeIngress(vo, move(s));
       auto iv = array<uint8_t, 32>{};
