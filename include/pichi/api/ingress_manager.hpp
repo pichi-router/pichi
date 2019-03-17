@@ -3,42 +3,30 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/strand.hpp>
+#include <functional>
 #include <map>
 #include <pichi/api/iterator.hpp>
 #include <pichi/api/vos.hpp>
-#include <pichi/buffer.hpp>
-#include <unordered_set>
 #include <utility>
 
 namespace pichi::api {
-
-class Router;
-class EgressManager;
 
 class IngressManager {
 public:
   using VO = IngressVO;
 
 private:
-  using Strand = boost::asio::io_context::strand;
   using Acceptor = boost::asio::ip::tcp::acceptor;
   using Container = std::map<std::string, std::pair<IngressVO, Acceptor>, std::less<>>;
   using DelegateIterator = typename Container::const_iterator;
   using ValueType = std::pair<std::string_view, IngressVO const&>;
   using ConstIterator = Iterator<DelegateIterator, ValueType>;
+  using Handler = std::function<void(Acceptor&, std::string_view, IngressVO const&)>;
 
-private:
   static ValueType generatePair(DelegateIterator);
 
-  template <typename Yield>
-  std::pair<EgressVO const&, net::Endpoint> route(net::Endpoint const&, std::string_view ingress,
-                                                  AdapterType, Yield);
-  template <typename Yield> bool isDuplicated(ConstBuffer<uint8_t>, Yield);
-  template <typename Yield> void listen(typename Container::iterator, Yield);
-
 public:
-  IngressManager(Strand, Router const&, EgressManager const&);
+  IngressManager(boost::asio::io_context&, Handler);
 
   void update(std::string const&, IngressVO);
   void erase(std::string_view);
@@ -47,11 +35,9 @@ public:
   ConstIterator end() const noexcept;
 
 private:
-  Strand strand_;
-  Router const& router_;
-  EgressManager const& eManager_;
+  boost::asio::io_context& io_;
+  Handler onChange_;
   Container c_;
-  std::unordered_set<std::string> ivs_;
 };
 
 } // namespace pichi::api

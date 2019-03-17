@@ -8,11 +8,25 @@
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/rest.hpp>
 #include <pichi/api/router.hpp>
+#include <pichi/buffer.hpp>
+#include <string>
 #include <string_view>
+#include <unordered_set>
+#include <utility>
 
 namespace pichi::api {
 
 class Server {
+private:
+  using Acceptor = boost::asio::basic_socket_acceptor<boost::asio::ip::tcp>;
+
+  template <typename Yield> void listen(Acceptor&, std::string_view, IngressVO const&, Yield);
+  template <typename ExceptionPtr> void removeIngress(ExceptionPtr, std::string_view);
+  template <typename Yield>
+  std::pair<EgressVO const&, net::Endpoint> route(net::Endpoint const&, std::string_view ingress,
+                                                  AdapterType, Yield);
+  template <typename Yield> bool isDuplicated(ConstBuffer<uint8_t>, Yield);
+
 public:
   Server(Server const&) = delete;
   Server(Server&&) = delete;
@@ -23,9 +37,11 @@ public:
   ~Server() = default;
 
   void listen(std::string_view, uint16_t);
+  void startIngress(Acceptor&, std::string_view, IngressVO const&);
 
 private:
   boost::asio::io_context::strand strand_;
+  std::unordered_set<std::string> ivs_;
   Router router_;
   EgressManager egresses_;
   IngressManager ingresses_;
