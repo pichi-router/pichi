@@ -195,6 +195,10 @@ HttpIngress::HttpIngress(Socket&& socket)
     send_(badInvoking<void, ConstBuffer<uint8_t>, Yield>),
     recv_(badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
 {
+  reqParser_.header_limit(numeric_limits<uint32_t>::max());
+  reqParser_.body_limit(numeric_limits<uint64_t>::max());
+  respParser_.header_limit(numeric_limits<uint32_t>::max());
+  respParser_.body_limit(numeric_limits<uint64_t>::max());
 }
 
 size_t HttpIngress::recv(MutableBuffer<uint8_t> buf, Yield yield) { return recv_(buf, yield); }
@@ -270,6 +274,10 @@ HttpEgress::HttpEgress(Socket&& socket)
   : socket_{move(socket)}, send_(badInvoking<void, ConstBuffer<uint8_t>, Yield>),
     recv_(badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
 {
+  reqParser_.header_limit(numeric_limits<uint32_t>::max());
+  reqParser_.body_limit(numeric_limits<uint64_t>::max());
+  respParser_.header_limit(numeric_limits<uint32_t>::max());
+  respParser_.body_limit(numeric_limits<uint64_t>::max());
 }
 
 void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
