@@ -5,6 +5,7 @@ option(BUILD_SERVER "Build pichi application" ON)
 option(BUILD_TEST "Build unit test cases" ON)
 option(STATIC_LINK "Static linking" ON)
 option(INSTALL_HEADERS "Install header files" OFF)
+option(ENABLE_TLS "Enable TLS adapters" ON)
 
 set(PICHI_LIBRARY pichi_lib)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
@@ -30,9 +31,15 @@ include_directories(
 link_libraries(
   ${MbedTLS_LIBRARIES}
   ${Sodium_LIBRARIES}
-  ${MaxmindDB_LIBRARIES} 
+  ${MaxmindDB_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT}
 )
+
+if (ENABLE_TLS)
+  find_package(OpenSSL REQUIRED)
+  include_directories(${OPENSSL_INCLUDE_DIR})
+  link_libraries(${OPENSSL_LIBRARIES})
+endif (ENABLE_TLS)
 
 add_subdirectory(src)
 
