@@ -5,16 +5,18 @@
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/parser.hpp>
+#include <pichi/asserts.hpp>
 #include <pichi/buffer.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/common.hpp>
+#include <string_view>
 #include <utility>
 
 namespace pichi::net {
 
 namespace detail {
 
-using Socket = boost::asio::ip::tcp::socket;
+// using Socket = boost::asio::ip::tcp::socket;
 using Yield = boost::asio::yield_context;
 
 using Cache = boost::beast::flat_buffer;
@@ -24,12 +26,23 @@ template <bool isRequest> using Parser = boost::beast::http::parser<isRequest, B
 using RequestParser = Parser<true>;
 using ResponseParser = Parser<false>;
 
+template <typename R, typename... Args> R badInvoking(Args&&...)
+{
+  using namespace std;
+  fail("Bad invocation"sv);
+}
+
 } // namespace detail
 
-class HttpIngress : public Ingress {
+template <typename Stream> class HttpIngress : public Ingress {
 public:
-  HttpIngress(detail::Socket&&);
-  ~HttpIngress() override = default;
+  template <typename... Args>
+  HttpIngress(Args&&... args)
+    : stream_{std::forward<Args>(args)...}, confirm_{detail::badInvoking<void, Yield>},
+      send_(detail::badInvoking<void, ConstBuffer<uint8_t>, Yield>),
+      recv_(detail::badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
+  {
+  }
 
 public:
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
@@ -49,7 +62,7 @@ public:
   Endpoint readRemote(Yield) override;
 
 private:
-  detail::Socket socket_;
+  Stream stream_;
   detail::RequestParser reqParser_;
   detail::Cache reqCache_;
   detail::ResponseParser respParser_;
@@ -59,12 +72,18 @@ private:
   std::function<size_t(MutableBuffer<uint8_t>, Yield)> recv_;
 };
 
-class HttpEgress : public Egress {
+template <typename Stream> class HttpEgress : public Egress {
 public:
-  HttpEgress(detail::Socket&&);
+  template <typename... Args>
+  HttpEgress(Args&&... args)
+    : stream_{std::forward<Args>(args)...},
+      send_(detail::badInvoking<void, ConstBuffer<uint8_t>, Yield>),
+      recv_(detail::badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
+  {
+  }
+
   ~HttpEgress() override = default;
 
-public:
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
   void send(ConstBuffer<uint8_t>, Yield) override;
   void close() override;
@@ -73,7 +92,7 @@ public:
   void connect(Endpoint const&, Endpoint const&, Yield) override;
 
 private:
-  detail::Socket socket_;
+  Stream stream_;
   std::function<void(ConstBuffer<uint8_t>, Yield)> send_;
   std::function<size_t(MutableBuffer<uint8_t>, Yield)> recv_;
   detail::RequestParser reqParser_;
