@@ -64,7 +64,7 @@ public:
   Router(char const* fn);
 
   std::string_view route(net::Endpoint const&, std::string_view ingress, AdapterType,
-                         std::function<ResolvedResult()> const&) const;
+                         ResolvedResult const&) const;
 
   void update(std::string const&, RuleVO);
   void erase(std::string_view);
@@ -72,6 +72,7 @@ public:
   ConstIterator begin() const noexcept;
   ConstIterator end() const noexcept;
   bool isUsed(std::string_view) const;
+  bool needResloving() const;
 
   RouteVO getRoute() const;
   void setRoute(RouteVO);

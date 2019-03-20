@@ -4,12 +4,12 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <memory>
+#include <pichi/net/common.hpp>
 
 #ifndef _MSC_VER
 
 namespace pichi::net {
 
-class Endpoint;
 class Ingress;
 class Egress;
 
@@ -43,6 +43,7 @@ public:
   ~Session();
   explicit Session(boost::asio::io_context& io, IngressPtr&&, EgressPtr&&);
   void start(net::Endpoint const&, net::Endpoint const&);
+  void start(net::Endpoint const& = {});
 
 private:
   Strand strand_;

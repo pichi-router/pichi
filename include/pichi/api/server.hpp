@@ -19,12 +19,12 @@ namespace pichi::api {
 class Server {
 private:
   using Acceptor = boost::asio::basic_socket_acceptor<boost::asio::ip::tcp>;
+  using ResolveResult = boost::asio::ip::tcp::resolver::results_type;
 
   template <typename Yield> void listen(Acceptor&, std::string_view, IngressVO const&, Yield);
   template <typename ExceptionPtr> void removeIngress(ExceptionPtr, std::string_view);
-  template <typename Yield>
-  std::pair<EgressVO const&, net::Endpoint> route(net::Endpoint const&, std::string_view ingress,
-                                                  AdapterType, Yield);
+  EgressVO const& route(net::Endpoint const&, std::string_view ingress, AdapterType,
+                        ResolveResult const&);
   template <typename Yield> bool isDuplicated(ConstBuffer<uint8_t>, Yield);
 
 public:
