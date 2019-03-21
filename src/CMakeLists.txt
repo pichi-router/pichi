@@ -23,3 +23,6 @@ if (INSTALL_HEADERS)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/pichi DESTINATION include)
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/boost DESTINATION include)
 endif (INSTALL_HEADERS)
+
+configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_BINARY_DIR}/src/config.h)
+target_include_directories(${PICHI_LIBRARY} PRIVATE ${CMAKE_BINARY_DIR}/src)

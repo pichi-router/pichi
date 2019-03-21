@@ -1,5 +1,5 @@
+#include "config.h"
 #include <boost/asio/buffers_iterator.hpp>
-#include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/serializer.hpp>
@@ -10,6 +10,10 @@
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/uri.hpp>
+
+#ifdef ENABLE_TLS
+#include <boost/asio/ssl/stream.hpp>
+#endif // ENABLE_TLS
 
 using namespace std;
 namespace asio = boost::asio;
@@ -221,9 +225,11 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(Yield yield)
 
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 {
+#ifdef ENABLE_TLS
   if constexpr (IsSslStreamV<Stream>) {
     stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
   }
+#endif // ENABLE_TLS
 
   http::async_read_header(stream_, reqCache_, reqParser_, yield);
 
@@ -318,9 +324,11 @@ using TcpSocket = tcp::socket;
 using TlsSocket = ssl::stream<TcpSocket>;
 
 template class HttpIngress<TcpSocket>;
-template class HttpIngress<TlsSocket>;
-
 template class HttpEgress<TcpSocket>;
+
+#ifdef ENABLE_TLS
+template class HttpIngress<TlsSocket>;
 template class HttpEgress<TlsSocket>;
+#endif // ENABLE_TLS
 
 } // namespace pichi::net

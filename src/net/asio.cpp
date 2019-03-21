@@ -1,10 +1,9 @@
+#include "config.h"
 #include <array>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/spawn2.hpp>
-#include <boost/asio/ssl/context.hpp>
-#include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/write.hpp>
 #include <iostream>
 #include <pichi/api/rest.hpp>
@@ -21,6 +20,11 @@
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
 
+#ifdef ENABLE_TLS
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/stream.hpp>
+#endif // ENABLE_TLS
+
 using namespace std;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
@@ -33,6 +37,7 @@ using TlsSocket = ssl::stream<TcpSocket>;
 
 namespace pichi::net {
 
+#ifdef ENABLE_TLS
 static auto createTlsContext(api::IngressVO const& vo)
 {
   auto ctx = ssl::context{ssl::context::tls_server};
@@ -54,15 +59,18 @@ static auto createTlsContext(api::EgressVO const& vo)
   }
   return ctx;
 }
+#endif // ENABLE_TLS
 
 template <typename Socket, typename Yield>
 void connect(Endpoint const& endpoint, Socket& s, Yield yield)
 {
+#ifdef ENABLE_TLS
   if constexpr (IsSslStreamV<Socket>) {
     connect(endpoint, s.next_layer(), yield);
     s.async_handshake(ssl::stream_base::handshake_type::client, yield);
   }
   else
+#endif // ENABLE_TLS
     asio::async_connect(s,
                         tcp::resolver{s.get_executor().context()}.async_resolve(
                             endpoint.host_, endpoint.port_, yield),
@@ -114,18 +122,22 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
   auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
   case AdapterType::HTTP:
+#ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
       return make_unique<HttpIngress<TlsSocket>>(forward<Socket>(s), ctx);
     }
     else
+#endif // ENABLE_TLS
       return make_unique<HttpIngress<TcpSocket>>(forward<Socket>(s));
   case AdapterType::SOCKS5:
+#ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
       return make_unique<Socks5Adapter<TlsSocket>>(forward<Socket>(s), ctx);
     }
     else
+#endif // ENABLE_TLS
       return make_unique<Socks5Adapter<TcpSocket>>(forward<Socket>(s));
   case AdapterType::SS:
     psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
@@ -184,18 +196,22 @@ template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo
   auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
   case AdapterType::HTTP:
+#ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
       return make_unique<HttpEgress<TlsSocket>>(forward<Socket>(s), ctx);
     }
     else
+#endif // ENABLE_TLS
       return make_unique<Socks5Adapter<TcpSocket>>(forward<Socket>(s));
   case AdapterType::SOCKS5:
+#ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
       return make_unique<Socks5Adapter<ssl::stream<tcp::socket>>>(forward<Socket>(s), ctx);
     }
     else
+#endif // ENABLE_TLS
       return make_unique<Socks5Adapter<tcp::socket>>(forward<Socket>(s));
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(forward<Socket>(s));
@@ -262,25 +278,22 @@ template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo
 using Yield = asio::yield_context;
 
 template void connect<>(Endpoint const&, TcpSocket&, Yield);
-template void connect<>(Endpoint const&, TlsSocket&, Yield);
-
 template void read<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
-template void read<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
-
 template size_t readSome<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
-template size_t readSome<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
-
 template void write<>(TcpSocket&, ConstBuffer<uint8_t>, Yield);
-template void write<>(TlsSocket&, ConstBuffer<uint8_t>, Yield);
-
 template void close<>(TcpSocket&);
-template void close<>(TlsSocket&);
-
 template bool isOpen<>(TcpSocket const&);
+
+#ifdef ENABLE_TLS
+template void connect<>(Endpoint const&, TlsSocket&, Yield);
+template void read<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
+template size_t readSome<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
+template void write<>(TlsSocket&, ConstBuffer<uint8_t>, Yield);
+template void close<>(TlsSocket&);
 template bool isOpen<>(TlsSocket const&);
+#endif // ENABLE_TLS
 
 template unique_ptr<Ingress> makeIngress<>(api::IngressVO const&, TcpSocket&&);
-
 template unique_ptr<Egress> makeEgress<>(api::EgressVO const&, TcpSocket&&);
 
 } // namespace pichi::net

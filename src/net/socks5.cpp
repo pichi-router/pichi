@@ -1,12 +1,15 @@
+#include "config.h"
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl/context.hpp>
-#include <boost/asio/ssl/stream.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>
 #include <utility>
+
+#ifdef ENABLE_TLS
+#include <boost/asio/ssl/stream.hpp>
+#endif // ENABLE_TLS
 
 using namespace std;
 namespace asio = boost::asio;
@@ -37,9 +40,11 @@ template <typename Stream> bool Socks5Adapter<Stream>::writable() const { return
 
 template <typename Stream> Endpoint Socks5Adapter<Stream>::readRemote(Yield yield)
 {
+#ifdef ENABLE_TLS
   if constexpr (IsSslStreamV<Stream>) {
     stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
   }
+#endif // ENABLE_TLS
 
   auto buf = HeaderBuffer<uint8_t>{};
 
@@ -105,6 +110,9 @@ template <typename Stream> void Socks5Adapter<Stream>::disconnect(Yield yield)
 }
 
 template class Socks5Adapter<tcp::socket>;
+
+#ifdef ENABLE_TLS
 template class Socks5Adapter<ssl::stream<tcp::socket>>;
+#endif // ENABLE_TLS
 
 } // namespace pichi::net
