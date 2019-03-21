@@ -249,7 +249,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
       auto consumed = parseFromBuffer(respParser_, respCache_, buf);
       if (!respParser_.is_header_done()) return;
       auto resp = respParser_.release();
-      addCloseHeader(resp);
+      if (!respParser_.upgrade()) addCloseHeader(resp);
       sendHeader(socket_, resp, respCache_, yield);
       write(socket_, buf + consumed, yield);
       send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
@@ -257,7 +257,7 @@ Endpoint HttpIngress::readRemote(Yield yield)
     recv_ = [this](auto buf, auto yield) {
       recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, reqCache_, buf, yield); };
       auto req = reqParser_.release();
-      addCloseHeader(req);
+      if (!reqParser_.upgrade()) addCloseHeader(req);
       return recvHeader(req, reqCache_, buf);
     };
     confirm_ = [](auto) {};
@@ -294,7 +294,7 @@ void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yie
       auto consumed = parseFromBuffer(reqParser_, reqCache_, buf);
       if (!reqParser_.is_header_done()) return;
       auto req = reqParser_.release();
-      addCloseHeader(req);
+      if (!reqParser_.upgrade()) addCloseHeader(req);
       addHostToTarget(req);
       sendHeader(socket_, req, reqCache_, yield);
       write(socket_, buf + consumed, yield);
