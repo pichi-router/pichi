@@ -1,10 +1,17 @@
+#include "config.h"
 #include <pichi/api/egress_manager.hpp>
 
 using namespace std;
 
 namespace pichi::api {
 
-void EgressManager::update(string const& name, EgressVO vo) { c_[name] = move(vo); }
+void EgressManager::update(string const& name, EgressVO vo)
+{
+#ifndef ENABLE_TLS
+  assertFalse(vo.tls_.has_value() && *vo.tls_, PichiError::SEMANTIC_ERROR, "TLS not supported");
+#endif // ENABLE_TLS
+  c_[name] = move(vo);
+}
 
 void EgressManager::erase(string_view name)
 {

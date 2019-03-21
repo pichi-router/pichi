@@ -1,3 +1,4 @@
+#include "config.h"
 #include <boost/asio/system_timer.hpp>
 #include <chrono>
 #include <iostream>
@@ -101,6 +102,10 @@ void IngressManager::update(string const& name, IngressVO ivo)
 {
   assertFalse(ivo.type_ == AdapterType::DIRECT, PichiError::MISC);
   assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::MISC);
+#ifndef ENABLE_TLS
+  assertFalse(ivo.tls_.has_value() && *ivo.tls_, PichiError::SEMANTIC_ERROR, "TLS not supported");
+#endif // ENABLE_TLS
+
   auto it = c_.find(name);
   if (it == std::end(c_)) {
     auto p = c_.try_emplace(
