@@ -15,12 +15,6 @@ template <typename T> using HeaderBuffer = array<T, MAX_HEADER_SIZE>;
 template <typename T> using FrameBuffer = array<T, MAX_FRAME_SIZE>;
 
 template <CryptoMethod method>
-SSStreamAdapter<method>::SSStreamAdapter(Socket&& socket, ConstBuffer<uint8_t> psk)
-  : socket_{move(socket)}, encryptor_{psk}, decryptor_{psk}
-{
-}
-
-template <CryptoMethod method>
 size_t SSStreamAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
 {
   if (!ivReceived_) {

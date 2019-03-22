@@ -15,7 +15,11 @@ private:
   using Cache = boost::beast::basic_flat_buffer<std::allocator<uint8_t>>;
 
 public:
-  SSAeadAdapter(Socket&&, ConstBuffer<uint8_t> psk);
+  template <typename Arg>
+  SSAeadAdapter(Arg&& arg, ConstBuffer<uint8_t> psk)
+    : socket_{std::forward<Arg>(arg)}, encryptor_{psk}, decryptor_{psk}
+  {
+  }
   ~SSAeadAdapter() override = default;
 
 public:

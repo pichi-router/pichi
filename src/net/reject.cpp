@@ -9,14 +9,14 @@ namespace sys = boost::system;
 
 namespace pichi::net {
 
-RejectEgress::RejectEgress(Socket&& s) : t_{s.get_executor().context()}
+RejectEgress::RejectEgress(asio::io_context& io) : t_{io}
 {
   auto g = mt19937{random_device{}()};
   auto r = uniform_int_distribution<>{0, 300};
   t_.expires_after(r(g) * 1s);
 }
 
-RejectEgress::RejectEgress(Socket&& s, uint16_t delay) : t_{s.get_executor().context()}
+RejectEgress::RejectEgress(asio::io_context& io, uint16_t delay) : t_{io}
 {
   t_.expires_after(delay * 1s);
 }

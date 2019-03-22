@@ -1,7 +1,6 @@
 #ifndef PICHI_NET_REJECT_HPP
 #define PICHI_NET_REJECT_HPP
 
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/system_timer.hpp>
 #include <pichi/net/adapter.hpp>
 
@@ -9,12 +8,11 @@ namespace pichi::net {
 
 class RejectEgress : public Egress {
 private:
-  using Socket = boost::asio::ip::tcp::socket;
   using Timer = boost::asio::system_timer;
 
 public:
-  explicit RejectEgress(Socket&&);
-  explicit RejectEgress(Socket&&, uint16_t);
+  explicit RejectEgress(boost::asio::io_context&);
+  explicit RejectEgress(boost::asio::io_context&, uint16_t);
   ~RejectEgress() override = default;
 
   [[noreturn]] size_t recv(MutableBuffer<uint8_t>, Yield) override;

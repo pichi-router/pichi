@@ -209,19 +209,19 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
 #ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
-      return make_unique<Socks5Adapter<ssl::stream<tcp::socket>>>(tcp::socket{io}, ctx);
+      return make_unique<Socks5Adapter<ssl::stream<tcp::socket>>>(io, ctx);
     }
     else
 #endif // ENABLE_TLS
-      return make_unique<Socks5Adapter<tcp::socket>>(tcp::socket{io});
+      return make_unique<Socks5Adapter<tcp::socket>>(io);
   case AdapterType::DIRECT:
-    return make_unique<DirectAdapter>(tcp::socket{io});
+    return make_unique<DirectAdapter>(io);
   case AdapterType::REJECT:
     switch (*vo.mode_) {
     case api::DelayMode::RANDOM:
-      return make_unique<RejectEgress>(tcp::socket{io});
+      return make_unique<RejectEgress>(io);
     case api::DelayMode::FIXED:
-      return make_unique<RejectEgress>(tcp::socket{io}, *vo.delay_);
+      return make_unique<RejectEgress>(io, *vo.delay_);
     default:
       fail(PichiError::BAD_PROTO);
     }
@@ -229,44 +229,43 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
     psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
     switch (*vo.method_) {
     case CryptoMethod::RC4_MD5:
-      return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5>>(io, psk);
     case CryptoMethod::BF_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB>>(io, psk);
     case CryptoMethod::AES_128_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR>>(io, psk);
     case CryptoMethod::AES_192_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CTR>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CTR>>(io, psk);
     case CryptoMethod::AES_256_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CTR>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CTR>>(io, psk);
     case CryptoMethod::AES_128_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CFB>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CFB>>(io, psk);
     case CryptoMethod::AES_192_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CFB>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CFB>>(io, psk);
     case CryptoMethod::AES_256_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CFB>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CFB>>(io, psk);
     case CryptoMethod::CAMELLIA_128_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB>>(io, psk);
     case CryptoMethod::CAMELLIA_192_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB>>(io, psk);
     case CryptoMethod::CAMELLIA_256_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB>>(io, psk);
     case CryptoMethod::CHACHA20:
-      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20>>(io, psk);
     case CryptoMethod::SALSA20:
-      return make_unique<SSStreamAdapter<CryptoMethod::SALSA20>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::SALSA20>>(io, psk);
     case CryptoMethod::CHACHA20_IETF:
-      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF>>(tcp::socket{io}, psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF>>(io, psk);
     case CryptoMethod::AES_128_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM>>(tcp::socket{io}, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM>>(io, psk);
     case CryptoMethod::AES_192_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM>>(tcp::socket{io}, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM>>(io, psk);
     case CryptoMethod::AES_256_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM>>(tcp::socket{io}, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM>>(io, psk);
     case CryptoMethod::CHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305>>(tcp::socket{io}, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305>>(io, psk);
     case CryptoMethod::XCHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>>(tcp::socket{io},
-                                                                               psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>>(io, psk);
     default:
       fail(PichiError::BAD_PROTO);
     }
