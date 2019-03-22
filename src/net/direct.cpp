@@ -8,7 +8,7 @@ namespace asio = boost::asio;
 
 namespace pichi::net {
 
-DirectAdapter::DirectAdapter(Socket&& socket) : socket_{move(socket)} {}
+DirectAdapter::DirectAdapter(asio::io_context& io) : socket_{io} {}
 
 size_t DirectAdapter::recv(MutableBuffer<uint8_t> buf, Yield yield)
 {
