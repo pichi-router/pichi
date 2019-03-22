@@ -90,8 +90,7 @@ void Server::listen(Acceptor& acceptor, string_view iname, IngressVO const& vo, 
         if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
           session->start(remote);
         else
-          session->start(remote, net::Endpoint{net::detectHostType(*evo.host_), *evo.host_,
-                                               to_string(*evo.port_)});
+          session->start(remote, net::makeEndpoint(*evo.host_, *evo.port_));
       }
     });
   }

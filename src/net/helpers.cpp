@@ -143,4 +143,14 @@ Endpoint::Type detectHostType(string_view host)
   return address.is_v4() ? Endpoint::Type::IPV4 : Endpoint::Type::IPV6;
 }
 
+Endpoint makeEndpoint(string_view host, uint16_t port)
+{
+  return {detectHostType(host), to_string(host), to_string(port)};
+}
+
+Endpoint makeEndpoint(string_view host, string_view port)
+{
+  return {detectHostType(host), to_string(host), to_string(port)};
+}
+
 } // namespace pichi::net

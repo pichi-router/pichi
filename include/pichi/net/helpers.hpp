@@ -39,6 +39,8 @@ template <typename Int> Int ntoh(ConstBuffer<uint8_t> src)
 extern size_t serializeEndpoint(Endpoint const&, MutableBuffer<uint8_t>);
 extern Endpoint parseEndpoint(std::function<void(MutableBuffer<uint8_t>)>);
 extern Endpoint::Type detectHostType(std::string_view);
+extern Endpoint makeEndpoint(std::string_view, uint16_t);
+extern Endpoint makeEndpoint(std::string_view, std::string_view);
 
 } // namespace pichi::net
 
