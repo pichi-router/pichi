@@ -1,12 +1,10 @@
 #include <array>
 #include <boost/asio/ip/address.hpp>
 #include <limits>
-#include <pichi/api/rest.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/net/helpers.hpp>
 
 using namespace std;
-using namespace pichi::crypto;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;
@@ -143,6 +141,16 @@ Endpoint::Type detectHostType(string_view host)
   auto address = ip::make_address(host, ec);
   if (ec) return Endpoint::Type::DOMAIN_NAME;
   return address.is_v4() ? Endpoint::Type::IPV4 : Endpoint::Type::IPV6;
+}
+
+Endpoint makeEndpoint(string_view host, uint16_t port)
+{
+  return {detectHostType(host), to_string(host), to_string(port)};
+}
+
+Endpoint makeEndpoint(string_view host, string_view port)
+{
+  return {detectHostType(host), to_string(host), to_string(port)};
 }
 
 } // namespace pichi::net
