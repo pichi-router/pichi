@@ -1,6 +1,7 @@
 #include "config.h"
 #include <array>
 #include <boost/asio/connect.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/spawn2.hpp>
@@ -190,7 +191,7 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
   }
 }
 
-template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo, Socket&& s)
+unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
@@ -199,28 +200,28 @@ template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo
 #ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
-      return make_unique<HttpEgress<TlsSocket>>(forward<Socket>(s), ctx);
+      return make_unique<HttpEgress<TlsSocket>>(io, ctx);
     }
     else
 #endif // ENABLE_TLS
-      return make_unique<HttpEgress<TcpSocket>>(forward<Socket>(s));
+      return make_unique<HttpEgress<TcpSocket>>(io);
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
-      return make_unique<Socks5Adapter<ssl::stream<tcp::socket>>>(forward<Socket>(s), ctx);
+      return make_unique<Socks5Adapter<ssl::stream<tcp::socket>>>(tcp::socket{io}, ctx);
     }
     else
 #endif // ENABLE_TLS
-      return make_unique<Socks5Adapter<tcp::socket>>(forward<Socket>(s));
+      return make_unique<Socks5Adapter<tcp::socket>>(tcp::socket{io});
   case AdapterType::DIRECT:
-    return make_unique<DirectAdapter>(forward<Socket>(s));
+    return make_unique<DirectAdapter>(tcp::socket{io});
   case AdapterType::REJECT:
     switch (*vo.mode_) {
     case api::DelayMode::RANDOM:
-      return make_unique<RejectEgress>(forward<Socket>(s));
+      return make_unique<RejectEgress>(tcp::socket{io});
     case api::DelayMode::FIXED:
-      return make_unique<RejectEgress>(forward<Socket>(s), *vo.delay_);
+      return make_unique<RejectEgress>(tcp::socket{io}, *vo.delay_);
     default:
       fail(PichiError::BAD_PROTO);
     }
@@ -228,44 +229,43 @@ template <typename Socket> unique_ptr<Egress> makeEgress(api::EgressVO const& vo
     psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
     switch (*vo.method_) {
     case CryptoMethod::RC4_MD5:
-      return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5>>(tcp::socket{io}, psk);
     case CryptoMethod::BF_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_128_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_192_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CTR>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CTR>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_256_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CTR>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CTR>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_128_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CFB>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CFB>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_192_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CFB>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CFB>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_256_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CFB>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CFB>>(tcp::socket{io}, psk);
     case CryptoMethod::CAMELLIA_128_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB>>(tcp::socket{io}, psk);
     case CryptoMethod::CAMELLIA_192_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB>>(tcp::socket{io}, psk);
     case CryptoMethod::CAMELLIA_256_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB>>(tcp::socket{io}, psk);
     case CryptoMethod::CHACHA20:
-      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20>>(tcp::socket{io}, psk);
     case CryptoMethod::SALSA20:
-      return make_unique<SSStreamAdapter<CryptoMethod::SALSA20>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::SALSA20>>(tcp::socket{io}, psk);
     case CryptoMethod::CHACHA20_IETF:
-      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF>>(forward<Socket>(s), psk);
+      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_128_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM>>(forward<Socket>(s), psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_192_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM>>(forward<Socket>(s), psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM>>(tcp::socket{io}, psk);
     case CryptoMethod::AES_256_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM>>(forward<Socket>(s), psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM>>(tcp::socket{io}, psk);
     case CryptoMethod::CHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305>>(forward<Socket>(s),
-                                                                              psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305>>(tcp::socket{io}, psk);
     case CryptoMethod::XCHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>>(forward<Socket>(s),
+      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>>(tcp::socket{io},
                                                                                psk);
     default:
       fail(PichiError::BAD_PROTO);
@@ -294,6 +294,5 @@ template bool isOpen<>(TlsSocket const&);
 #endif // ENABLE_TLS
 
 template unique_ptr<Ingress> makeIngress<>(api::IngressVO const&, TcpSocket&&);
-template unique_ptr<Egress> makeEgress<>(api::EgressVO const&, TcpSocket&&);
 
 } // namespace pichi::net

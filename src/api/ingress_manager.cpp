@@ -92,8 +92,7 @@ template <typename Yield> void IngressManager::listen(typename Container::iterat
           evo.type_ == AdapterType::REJECT || evo.type_ == AdapterType::DIRECT ?
               remote :
               net::Endpoint{net::detectHostType(*evo.host_), *evo.host_, to_string(*evo.port_)};
-      make_shared<Session>(io, move(ingress), net::makeEgress(evo, tcp::socket{io}))
-          ->start(remote, next);
+      make_shared<Session>(io, move(ingress), net::makeEgress(evo, io))->start(remote, next);
     });
   }
 }
