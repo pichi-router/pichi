@@ -1,20 +1,26 @@
+#include "config.h"
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/write.hpp>
-#include <limits>
 #include <pichi/asserts.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/uri.hpp>
 
+#ifdef ENABLE_TLS
+#include <boost/asio/ssl/stream.hpp>
+#endif // ENABLE_TLS
+
 using namespace std;
 namespace asio = boost::asio;
 namespace beast = boost::beast;
 namespace http = beast::http;
+namespace ssl = asio::ssl;
 namespace sys = boost::system;
+using tcp = asio::ip::tcp;
 
 namespace pichi::net {
 
@@ -29,11 +35,6 @@ template <bool isRequest> using Serializer = boost::beast::http::serializer<isRe
 static void assertNoError(sys::error_code ec)
 {
   if (ec) throw sys::system_error{ec};
-}
-
-template <typename R, typename... Args> static R badInvoking(Args&&...)
-{
-  fail("Bad invocation"sv);
 }
 
 template <typename ConstBufferSequence>
@@ -75,8 +76,8 @@ static size_t parseFromBuffer(Parser<isRequest>& parser, DynamicBuffer& cache,
   return parsed;
 }
 
-template <typename DynamicBuffer>
-static size_t recvRaw(Socket& s, DynamicBuffer& cache, MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream, typename DynamicBuffer>
+static size_t recvRaw(Stream& s, DynamicBuffer& cache, MutableBuffer<uint8_t> buf, Yield yield)
 {
   if (cache.size() == 0) return readSome(s, buf, yield);
   auto copied = min(buf.size(), cache.size());
@@ -103,8 +104,8 @@ static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
   return buf.size() - left.size();
 }
 
-template <bool isRequest, typename DynamicBuffer>
-static void sendHeader(Socket& s, Header<isRequest>& header, DynamicBuffer& cache, Yield yield)
+template <typename Stream, bool isRequest, typename DynamicBuffer>
+static void sendHeader(Stream& s, Header<isRequest>& header, DynamicBuffer& cache, Yield yield)
 {
   auto m = Message<isRequest>{header};
   http::async_write(s, m, yield);
@@ -155,7 +156,7 @@ template <bool isRequest> static void addCloseHeader(Header<isRequest>& header)
   header.set(http::field::proxy_connection, "close"sv);
 }
 
-static void tunnelConfirm(Socket& s, Yield yield)
+template <typename Stream> static void tunnelConfirm(Stream& s, Yield yield)
 {
   auto rep = Response{};
   rep.version(11);
@@ -165,7 +166,7 @@ static void tunnelConfirm(Socket& s, Yield yield)
   http::async_write(s, rep, yield);
 }
 
-static void tunnelConnect(Endpoint const& remote, Socket& s, Yield yield)
+template <typename Stream> static void tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
 {
   auto host = remote.host_ + ":" + remote.port_;
   auto req = Request{};
@@ -190,49 +191,53 @@ static void tunnelConnect(Endpoint const& remote, Socket& s, Yield yield)
 
 using namespace detail;
 
-HttpIngress::HttpIngress(Socket&& socket)
-  : socket_{move(socket)}, confirm_{badInvoking<void, Yield>},
-    send_(badInvoking<void, ConstBuffer<uint8_t>, Yield>),
-    recv_(badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
+template <typename Stream> size_t HttpIngress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
 {
-  reqParser_.header_limit(numeric_limits<uint32_t>::max());
-  reqParser_.body_limit(numeric_limits<uint64_t>::max());
-  respParser_.header_limit(numeric_limits<uint32_t>::max());
-  respParser_.body_limit(numeric_limits<uint64_t>::max());
+  return recv_(buf, yield);
 }
 
-size_t HttpIngress::recv(MutableBuffer<uint8_t> buf, Yield yield) { return recv_(buf, yield); }
+template <typename Stream> void HttpIngress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+{
+  send_(buf, yield);
+}
 
-void HttpIngress::send(ConstBuffer<uint8_t> buf, Yield yield) { send_(buf, yield); }
+template <typename Stream> bool HttpIngress<Stream>::readable() const
+{
+  return isOpen(stream_) || reqCache_.size() > 0;
+}
 
-bool HttpIngress::readable() const { return socket_.is_open() || reqCache_.size() > 0; }
+template <typename Stream> bool HttpIngress<Stream>::writable() const { return isOpen(stream_); }
 
-bool HttpIngress::writable() const { return socket_.is_open(); }
+template <typename Stream> void HttpIngress<Stream>::confirm(Yield yield) { confirm_(yield); }
 
-void HttpIngress::confirm(Yield yield) { confirm_(yield); }
+template <typename Stream> void HttpIngress<Stream>::close() { pichi::net::close(stream_); }
 
-void HttpIngress::close() { pichi::net::close(socket_); }
-
-void HttpIngress::disconnect(Yield yield)
+template <typename Stream> void HttpIngress<Stream>::disconnect(Yield yield)
 {
   auto ec = sys::error_code{};
   auto rep = http::response<http::empty_body>{};
   rep.version(11);
   rep.result(http::status::request_timeout);
   // Ignoring all errors here
-  http::async_write(socket_, rep, yield[ec]);
+  http::async_write(stream_, rep, yield[ec]);
 }
 
-Endpoint HttpIngress::readRemote(Yield yield)
+template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 {
-  http::async_read_header(socket_, reqCache_, reqParser_, yield);
+#ifdef ENABLE_TLS
+  if constexpr (IsSslStreamV<Stream>) {
+    stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
+  }
+#endif // ENABLE_TLS
+
+  http::async_read_header(stream_, reqCache_, reqParser_, yield);
 
   auto& req = reqParser_.get();
   if (req.method() == http::verb::connect) {
-    send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
-    recv_ = [this](auto buf, auto yield) { return readSome(socket_, buf, yield); };
+    send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) { return readSome(stream_, buf, yield); };
     confirm_ = [this](auto yield) {
-      tunnelConfirm(socket_, yield);
+      tunnelConfirm(stream_, yield);
       reqParser_.release();
     };
 
@@ -250,12 +255,12 @@ Endpoint HttpIngress::readRemote(Yield yield)
       if (!respParser_.is_header_done()) return;
       auto resp = respParser_.release();
       addCloseHeader(resp);
-      sendHeader(socket_, resp, respCache_, yield);
-      write(socket_, buf + consumed, yield);
-      send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
+      sendHeader(stream_, resp, respCache_, yield);
+      write(stream_, buf + consumed, yield);
+      send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
     };
     recv_ = [this](auto buf, auto yield) {
-      recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, reqCache_, buf, yield); };
+      recv_ = [this](auto buf, auto yield) { return recvRaw(stream_, reqCache_, buf, yield); };
       auto req = reqParser_.release();
       addCloseHeader(req);
       return recvHeader(req, reqCache_, buf);
@@ -270,24 +275,15 @@ Endpoint HttpIngress::readRemote(Yield yield)
   }
 }
 
-HttpEgress::HttpEgress(Socket&& socket)
-  : socket_{move(socket)}, send_(badInvoking<void, ConstBuffer<uint8_t>, Yield>),
-    recv_(badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
+template <typename Stream>
+void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
-  reqParser_.header_limit(numeric_limits<uint32_t>::max());
-  reqParser_.body_limit(numeric_limits<uint64_t>::max());
-  respParser_.header_limit(numeric_limits<uint32_t>::max());
-  respParser_.body_limit(numeric_limits<uint64_t>::max());
-}
-
-void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
-{
-  pichi::net::connect(next, socket_, yield);
+  pichi::net::connect(next, stream_, yield);
   // FIXME hardcode for detecting which proxy type will be chosen.
   if (remote.port_ == "https" || remote.port_ == "443") {
-    send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
-    recv_ = [this](auto buf, auto yield) { return readSome(socket_, buf, yield); };
-    tunnelConnect(remote, socket_, yield);
+    send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) { return readSome(stream_, buf, yield); };
+    tunnelConnect(remote, stream_, yield);
   }
   else {
     send_ = [this](auto buf, auto yield) {
@@ -296,22 +292,42 @@ void HttpEgress::connect(Endpoint const& remote, Endpoint const& next, Yield yie
       auto req = reqParser_.release();
       addCloseHeader(req);
       addHostToTarget(req);
-      sendHeader(socket_, req, reqCache_, yield);
-      write(socket_, buf + consumed, yield);
-      send_ = [this](auto buf, auto yield) { write(socket_, buf, yield); };
+      sendHeader(stream_, req, reqCache_, yield);
+      write(stream_, buf + consumed, yield);
+      send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
     };
-    recv_ = [this](auto buf, auto yield) { return recvRaw(socket_, respCache_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) { return recvRaw(stream_, respCache_, buf, yield); };
   }
 }
 
-size_t HttpEgress::recv(MutableBuffer<uint8_t> buf, Yield yield) { return recv_(buf, yield); }
+template <typename Stream> size_t HttpEgress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+{
+  return recv_(buf, yield);
+}
 
-void HttpEgress::send(ConstBuffer<uint8_t> buf, Yield yield) { send_(buf, yield); }
+template <typename Stream> void HttpEgress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+{
+  send_(buf, yield);
+}
 
-void HttpEgress::close() { pichi::net::close(socket_); }
+template <typename Stream> void HttpEgress<Stream>::close() { pichi::net::close(stream_); }
 
-bool HttpEgress::readable() const { return socket_.is_open() || respCache_.size() > 0; }
+template <typename Stream> bool HttpEgress<Stream>::readable() const
+{
+  return isOpen(stream_) || respCache_.size() > 0;
+}
 
-bool HttpEgress::writable() const { return socket_.is_open(); }
+template <typename Stream> bool HttpEgress<Stream>::writable() const { return isOpen(stream_); }
+
+using TcpSocket = tcp::socket;
+using TlsSocket = ssl::stream<TcpSocket>;
+
+template class HttpIngress<TcpSocket>;
+template class HttpEgress<TcpSocket>;
+
+#ifdef ENABLE_TLS
+template class HttpIngress<TlsSocket>;
+template class HttpEgress<TlsSocket>;
+#endif // ENABLE_TLS
 
 } // namespace pichi::net

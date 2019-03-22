@@ -76,6 +76,7 @@ matrix:
             - mbedtls
             - libsodium
             - libmaxminddb
+            - openssl
             - rapidjson
       env:
         - PLATFORM=osx
@@ -91,6 +92,7 @@ matrix:
             - mbedtls
             - libsodium
             - libmaxminddb
+            - openssl
             - rapidjson
       env:
         - PLATFORM=osx
@@ -187,18 +189,19 @@ script:
           pichi/builder ctest --output-on-failure;;
       "osx")
         cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DSTATIC_LINK="${STATIC_LINK}" \
-          -DCMAKE_CXX_COMPILER="clang++" "${TRAVIS_BUILD_DIR}" &&
+          -DCMAKE_CXX_COMPILER="clang++" -DOPENSSL_ROOT_DIR="$(brew --prefix)/opt/openssl" \
+          "${TRAVIS_BUILD_DIR}" &&
         make -j "${PARALLEL}" &&
         ctest --output-on-failure;;
       "iphoneos")
         cmake -D CMAKE_INSTALL_PREFIX="${IOS_ROOT}" -D CMAKE_SYSROOT="${IOS_ROOT}" \
           -D CMAKE_TOOLCHAIN_FILE="${IOS_TOOLCHAIN_FILE}" -D IOS_PLATFORM=OS \
           -D CMAKE_BUILD_TYPE=MinSizeRel -D BUILD_SERVER=OFF -D BUILD_TEST=OFF \
-          "${TRAVIS_BUILD_DIR}" &&
+          -D ENABLE_TLS=OFF "${TRAVIS_BUILD_DIR}" &&
         make -j "${PARALLEL}";;
       "android-28")
         cmake -D CMAKE_INSTALL_PREFIX="${ANDROID_ROOT}/sysroot" \
-          -D CMAKE_SYSROOT="${ANDROID_ROOT}/sysroot" \
+          -D CMAKE_SYSROOT="${ANDROID_ROOT}/sysroot" -D ENABLE_TLS=OFF \
           -D CMAKE_CXX_COMPILER="${ANDROID_ROOT}/bin/clang++" -D CMAKE_BUILD_TYPE=MinSizeRel \
           -D BUILD_SERVER=OFF -D BUILD_TEST=OFF -D STATIC_LINK=OFF "${TRAVIS_BUILD_DIR}" &&
         make -j "${PARALLEL}";;
