@@ -78,15 +78,13 @@ void Server::listen(Acceptor& acceptor, string_view iname, IngressVO const& vo, 
       auto ingress = net::makeIngress(vo, move(s));
       auto iv = array<uint8_t, 32>{};
       if (isDuplicated({iv, ingress->readIV(iv, yield)}, yield)) {
-        make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_EJECTOR, tcp::socket{io}))
-            ->start();
+        make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_EJECTOR, io))->start();
       }
       else {
         auto remote = ingress->readRemote(yield);
         auto&& evo = route(remote, iname, vo.type_,
                            router_.needResloving() ? resolve(remote, io, yield) : ResolveResult{});
-        auto session =
-            make_shared<Session>(io, move(ingress), net::makeEgress(evo, tcp::socket{io}));
+        auto session = make_shared<Session>(io, move(ingress), net::makeEgress(evo, io));
         if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
           session->start(remote);
         else

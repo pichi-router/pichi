@@ -11,7 +11,7 @@ private:
   using Socket = boost::asio::ip::tcp::socket;
 
 public:
-  DirectAdapter(Socket&& socket);
+  DirectAdapter(boost::asio::io_context&);
   ~DirectAdapter() override = default;
 
 public:

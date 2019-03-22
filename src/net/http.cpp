@@ -163,7 +163,7 @@ template <typename Stream> static void tunnelConfirm(Stream& s, Yield yield)
   http::async_write(s, rep, yield);
 }
 
-template <typename Stream> static void tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
+template <typename Stream> static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
 {
   auto host = remote.host_ + ":" + remote.port_;
   auto req = Request{};
@@ -178,10 +178,9 @@ template <typename Stream> static void tunnelConnect(Endpoint const& remote, Str
   auto parser = ResponseParser{};
   auto cache = Cache{};
   http::async_read_header(s, cache, parser, yield);
-  auto resp = parser.release();
+  auto code = parser.release().result_int();
 
-  assertTrue(resp.result_int() / 100 == 2, PichiError::BAD_PROTO,
-             "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
+  return code >= 200 && code < 300;
 }
 
 } // namespace detail
@@ -279,30 +278,33 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 template <typename Stream>
 void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
-  pichi::net::connect(next, stream_, yield);
-  // FIXME hardcode for detecting which proxy type will be chosen.
-  if (remote.port_ == "https" || remote.port_ == "443") {
-    send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
-    recv_ = [this](auto buf, auto yield) { return readSome(stream_, buf, yield); };
-    tunnelConnect(remote, stream_, yield);
+  pichi::net::connect(next, *stream_, yield);
+  if (tunnelConnect(remote, *stream_, yield)) {
+    send_ = [this](auto buf, auto yield) { write(*stream_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) { return readSome(*stream_, buf, yield); };
+    return;
   }
-  else {
-    send_ = [this](auto buf, auto yield) {
-      buf += parseFromBuffer(reqParser_, reqCache_, buf);
-      if (!reqParser_.is_header_done()) {
-        copy(cbegin(buf), cend(buf), asio::buffers_begin(reqCache_.prepare(buf.size())));
-        reqCache_.commit(buf.size());
-        return;
-      }
-      auto req = reqParser_.release();
-      if (!reqParser_.upgrade()) addCloseHeader(req);
-      addHostToTarget(req);
-      sendHeader(stream_, req, reqCache_, yield);
-      write(stream_, buf, yield);
-      send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
-    };
-    recv_ = [this](auto buf, auto yield) { return recvRaw(stream_, respCache_, buf, yield); };
-  }
+
+  // Failed to make connection via HTTP CONNECT, so try HTTP relay again.
+  send_ = [this](auto buf, auto yield) {
+    buf += parseFromBuffer(reqParser_, reqCache_, buf);
+    if (!reqParser_.is_header_done()) {
+      copy(cbegin(buf), cend(buf), asio::buffers_begin(reqCache_.prepare(buf.size())));
+      reqCache_.commit(buf.size());
+      return;
+    }
+    auto req = reqParser_.release();
+    if (!reqParser_.upgrade()) addCloseHeader(req);
+    addHostToTarget(req);
+    sendHeader(*stream_, req, reqCache_, yield);
+    write(*stream_, buf, yield);
+    send_ = [this](auto buf, auto yield) { write(*stream_, buf, yield); };
+  };
+  recv_ = [this](auto buf, auto yield) { return recvRaw(*stream_, respCache_, buf, yield); };
+
+  pichi::net::close(origin_);
+  stream_ = addressof(backup_);
+  pichi::net::connect(next, *stream_, yield);
 }
 
 template <typename Stream> size_t HttpEgress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
@@ -315,14 +317,14 @@ template <typename Stream> void HttpEgress<Stream>::send(ConstBuffer<uint8_t> bu
   send_(buf, yield);
 }
 
-template <typename Stream> void HttpEgress<Stream>::close() { pichi::net::close(stream_); }
+template <typename Stream> void HttpEgress<Stream>::close() { pichi::net::close(*stream_); }
 
 template <typename Stream> bool HttpEgress<Stream>::readable() const
 {
-  return isOpen(stream_) || respCache_.size() > 0;
+  return isOpen(*stream_) || respCache_.size() > 0;
 }
 
-template <typename Stream> bool HttpEgress<Stream>::writable() const { return isOpen(stream_); }
+template <typename Stream> bool HttpEgress<Stream>::writable() const { return isOpen(*stream_); }
 
 using TcpSocket = tcp::socket;
 using TlsSocket = ssl::stream<TcpSocket>;

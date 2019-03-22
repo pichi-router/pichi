@@ -11,12 +11,6 @@ namespace asio = boost::asio;
 
 namespace pichi::net {
 
-template <CryptoMethod method>
-SSAeadAdapter<method>::SSAeadAdapter(Socket&& socket, ConstBuffer<uint8_t> psk)
-  : socket_{move(socket)}, encryptor_{psk}, decryptor_{psk}
-{
-}
-
 template <CryptoMethod method> void SSAeadAdapter<method>::close() { pichi::net::close(socket_); }
 
 template <CryptoMethod method> bool SSAeadAdapter<method>::readable() const

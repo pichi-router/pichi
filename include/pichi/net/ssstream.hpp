@@ -13,7 +13,11 @@ private:
   using Socket = boost::asio::ip::tcp::socket;
 
 public:
-  SSStreamAdapter(Socket&&, ConstBuffer<uint8_t> psk);
+  template <typename Arg>
+  SSStreamAdapter(Arg&& arg, ConstBuffer<uint8_t> psk)
+    : socket_{std::forward<Arg>(arg)}, encryptor_{psk}, decryptor_{psk}
+  {
+  }
   ~SSStreamAdapter() override = default;
 
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
