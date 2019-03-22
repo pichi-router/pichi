@@ -65,15 +65,12 @@ static size_t parseFromBuffer(Parser<isRequest>& parser, DynamicBuffer& cache,
   auto parsed = parser.put(fromCache ? cache.data() : asio::buffer(data), ec);
   if (ec == http::error::need_more) ec = {};
   assertNoError(ec);
-  if (fromCache) {
-    parsed -= cache.size();
-    cache.consume(parsed);
-  }
-  else {
-    copy(cbegin(data) + parsed, cend(data),
-         asio::buffers_begin(cache.prepare(data.size() - parsed)));
-  }
-  return parsed;
+
+  if (!fromCache) return parsed;
+
+  parsed -= cache.size();
+  cache.consume(parsed);
+  return data.size();
 }
 
 template <typename Stream, typename DynamicBuffer>
@@ -108,7 +105,8 @@ template <typename Stream, bool isRequest, typename DynamicBuffer>
 static void sendHeader(Stream& s, Header<isRequest>& header, DynamicBuffer& cache, Yield yield)
 {
   auto m = Message<isRequest>{header};
-  http::async_write(s, m, yield);
+  auto sr = Serializer<isRequest>{m};
+  http::async_write_header(s, sr, yield);
   asio::async_write(s, cache.data(), yield);
   cache.consume(cache.size());
 }
@@ -251,12 +249,12 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
   }
   else {
     send_ = [this](auto buf, auto yield) {
-      auto consumed = parseFromBuffer(respParser_, respCache_, buf);
+      buf += parseFromBuffer(respParser_, respCache_, buf);
       if (!respParser_.is_header_done()) return;
       auto resp = respParser_.release();
       addCloseHeader(resp);
       sendHeader(stream_, resp, respCache_, yield);
-      write(stream_, buf + consumed, yield);
+      write(stream_, buf, yield);
       send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
     };
     recv_ = [this](auto buf, auto yield) {
@@ -287,13 +285,13 @@ void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Y
   }
   else {
     send_ = [this](auto buf, auto yield) {
-      auto consumed = parseFromBuffer(reqParser_, reqCache_, buf);
+      buf += parseFromBuffer(reqParser_, reqCache_, buf);
       if (!reqParser_.is_header_done()) return;
       auto req = reqParser_.release();
       addCloseHeader(req);
       addHostToTarget(req);
       sendHeader(stream_, req, reqCache_, yield);
-      write(stream_, buf + consumed, yield);
+      write(stream_, buf, yield);
       send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
     };
     recv_ = [this](auto buf, auto yield) { return recvRaw(stream_, respCache_, buf, yield); };
