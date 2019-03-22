@@ -252,7 +252,7 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
       buf += parseFromBuffer(respParser_, respCache_, buf);
       if (!respParser_.is_header_done()) return;
       auto resp = respParser_.release();
-      addCloseHeader(resp);
+      if (!respParser_.upgrade()) addCloseHeader(resp);
       sendHeader(stream_, resp, respCache_, yield);
       write(stream_, buf, yield);
       send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
@@ -260,7 +260,7 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
     recv_ = [this](auto buf, auto yield) {
       recv_ = [this](auto buf, auto yield) { return recvRaw(stream_, reqCache_, buf, yield); };
       auto req = reqParser_.release();
-      addCloseHeader(req);
+      if (!reqParser_.upgrade()) addCloseHeader(req);
       return recvHeader(req, reqCache_, buf);
     };
     confirm_ = [](auto) {};
@@ -288,7 +288,7 @@ void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Y
       buf += parseFromBuffer(reqParser_, reqCache_, buf);
       if (!reqParser_.is_header_done()) return;
       auto req = reqParser_.release();
-      addCloseHeader(req);
+      if (!reqParser_.upgrade()) addCloseHeader(req);
       addHostToTarget(req);
       sendHeader(stream_, req, reqCache_, yield);
       write(stream_, buf, yield);
