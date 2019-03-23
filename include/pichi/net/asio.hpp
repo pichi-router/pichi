@@ -32,6 +32,8 @@ inline const_buffer buffer(pichi::ConstBuffer<PodType> origin, size_t size)
   return {origin.data(), size * sizeof(PodType)};
 }
 
+class io_context;
+
 namespace ssl {
 
 template <typename Stream> class stream;
@@ -69,7 +71,7 @@ template <typename Socket> void close(Socket&);
 template <typename Socket> bool isOpen(Socket const&);
 
 template <typename Socket> std::unique_ptr<Ingress> makeIngress(api::IngressVO const&, Socket&&);
-template <typename Socket> std::unique_ptr<Egress> makeEgress(api::EgressVO const&, Socket&&);
+std::unique_ptr<Egress> makeEgress(api::EgressVO const&, boost::asio::io_context&);
 
 } // namespace pichi::net
 
