@@ -21,7 +21,7 @@ Pichi is an application layer proxy, which can be fully controlled via RESTful A
 
 ### API Specification
 
-[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.1)
+[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.2)
 
 ### Examples
 
@@ -67,6 +67,38 @@ $ for((i=20000;i<20100;++i)); do \
 
 ```
 
+#### dark web
+
+```
+$ curl -i -X PUT -d '{"type":"socks5","host":"localhost","port":9050}' http://pichi-router:port/egresses/tor
+HTTP/1.1 204 No Content
+
+$ curl -i -X PUT -d '{"type":"http","host":"localhost","port":4444}' http://pichi-router:port/egresses/i2p
+HTTP/1.1 204 No Content
+
+$ curl -i -X PUT -d '{"domain":["onion"]}' http://pichi-router:port/rules/onion
+HTTP/1.1 204 No Content
+
+$ curl -i -X PUT -d '{"domain":["i2p"]}' http://pichi-router:port/rules/i2p
+HTTP/1.1 204 No Content
+
+$ curl -i -X PUT -d '{"rules":[["onion","tor"],["i2p","i2p"]]}' http://pichi-router:port/route
+HTTP/1.1 204 No Content
+
+```
+
+#### socks5 server with TLS certificate issued by Let's encrypt CA
+
+```
+$ curl -i -X PUT -d '{"type":"socks5","bind":"::1","port":1080, \
+      "tls":true, \
+      "key_file": "/etc/letsencrypt/live/example.com/privkey.pem", \
+      "cert_file": "/etc/letsencrypt/live/example.com/fullchain.pem" \
+    }' http://pichi-router:port/ingresses/socks5s
+HTTP/1.1 204 No Content
+
+```
+
 ## Supported protocols
 
 ### Ingress protocols
@@ -78,11 +110,14 @@ $ for((i=20000;i<20100;++i)); do \
 
 ### Egress protocols
 
+* HTTP Proxy: defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt)
 * HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
 * SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
 * Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
 * Direct: connecting to destination directly
 * Reject: rejecting request immediately or after a fixed/random delay
+
+**NOTE:** HTTP egress would like to try [HTTP CONNECT](https://www.ietf.org/rfc/rfc2817.txt) first. HTTP proxy will be chosen if the previous handshake is failed.
 
 ## Build
 
@@ -94,6 +129,7 @@ $ for((i=20000;i<20100;++i)); do \
 * [libsodium](https://libsodium.org) 1.0.12
 * [RapidJSON](http://rapidjson.org/) 1.1.0
 * [libmaxminddb](http://maxmind.github.io/libmaxminddb/) 1.3.0
+* [OpenSSL](https://www.openssl.org) (*Optional*)
 
 ### CMake options
 
@@ -101,6 +137,7 @@ $ for((i=20000;i<20100;++i)); do \
 * `BUILD_TEST`: Build unit test cases, the default is **ON**.
 * `STATIC_LINK`: Generate static library, the default is **ON**.
 * `INSTALL_HEADERS`: Install header files, the default is **OFF**.
+* `ENABLE_TLS`: Provide TLS support, the default is **ON**.
 
 ### Build and run tests
 
