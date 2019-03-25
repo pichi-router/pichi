@@ -244,7 +244,7 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
      *   Some clients are not standard and send the CONNECT request without HOST field.
      */
     auto hp = HostAndPort{{req.target().data(), req.target().size()}};
-    return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
+    return net::makeEndpoint(hp.host_, hp.port_);
   }
   else {
     send_ = [this](auto buf, auto yield) {
@@ -272,7 +272,7 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
     auto it = req.find(http::field::host);
     assertTrue(it != cend(req), PichiError::BAD_PROTO, "Missing HOST field in HTTP header");
     auto hp = HostAndPort{{it->value().data(), it->value().size()}};
-    return {detectHostType(hp.host_), to_string(hp.host_), to_string(hp.port_)};
+    return net::makeEndpoint(hp.host_, hp.port_);
   }
 }
 

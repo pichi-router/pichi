@@ -44,6 +44,8 @@ void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
       [this](auto, auto yield) noexcept { ingress_->disconnect(yield); });
 }
 
+void Session::start(net::Endpoint const& remote) { start(remote, remote); }
+
 void Session::close()
 {
   ingress_->close();
