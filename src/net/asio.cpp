@@ -98,6 +98,8 @@ void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
 template <typename Socket> void close(Socket& s)
 {
   if constexpr (IsSslStreamV<Socket>) {
+    auto ec = sys::error_code{};
+    s.shutdown(ec);
     close(s.next_layer());
   }
   else {
