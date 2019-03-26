@@ -3,7 +3,7 @@
 
 #include <map>
 #include <memory>
-#include <pichi/api/rest.hpp>
+#include <pichi/api/vos.hpp>
 
 class MMDB_s;
 

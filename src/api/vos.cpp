@@ -1,5 +1,5 @@
 #include <limits>
-#include <pichi/api/rest.hpp>
+#include <pichi/api/vos.hpp>
 
 using namespace std;
 namespace json = rapidjson;

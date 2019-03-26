@@ -6,7 +6,7 @@
 #include <boost/asio/strand.hpp>
 #include <map>
 #include <pichi/api/iterator.hpp>
-#include <pichi/api/rest.hpp>
+#include <pichi/api/vos.hpp>
 #include <pichi/buffer.hpp>
 #include <unordered_set>
 #include <utility>

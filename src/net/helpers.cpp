@@ -1,12 +1,10 @@
 #include <array>
 #include <boost/asio/ip/address.hpp>
 #include <limits>
-#include <pichi/api/rest.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/net/helpers.hpp>
 
 using namespace std;
-using namespace pichi::crypto;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;
