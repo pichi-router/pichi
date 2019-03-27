@@ -369,3 +369,9 @@ server.listen(bind, port);
 io.run();  // Thread blocked
 
 ```
+
+## Donation
+
+[![Please donate BTC](https://blockchain.info/Resources/buttons/donate_64.png)](
+https://www.blockchain.com/btc/payment_request?address=33CEcNHjKpyHSq4gfVHDhkDjYwWjLQt3Qo
+)
