@@ -1,12 +1,17 @@
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/system_timer.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/write.hpp>
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <pichi/api/server.hpp>
+#include <pichi/api/session.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/asserts.hpp>
+#include <pichi/net/asio.hpp>
+#include <pichi/net/helpers.hpp>
 #include <pichi/net/spawn.hpp>
 
 using namespace std;
@@ -19,9 +24,15 @@ using tcp = ip::tcp;
 
 namespace pichi::api {
 
+static auto const RANDOM_EJECTOR = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
+static auto const IV_EXPIRE_TIME = 1h;
+
 Server::Server(asio::io_context& io, char const* fn)
-  : strand_{io}, router_{fn}, egresses_{},
-    ingresses_{strand_, router_, egresses_}, rest_{ingresses_, egresses_, router_}
+  : strand_{io}, router_{fn}, egresses_{}, ingresses_{io,
+                                                      [this](auto&& a, auto in, auto& vo) {
+                                                        startIngress(a, in, vo);
+                                                      }},
+    rest_{ingresses_, egresses_, router_}
 {
 }
 
@@ -29,7 +40,7 @@ void Server::listen(string_view address, uint16_t port)
 {
   net::spawn(strand_, [a = tcp::acceptor{strand_.context(), {ip::make_address(address), port}},
                        this](auto yield) mutable {
-    while (true) {
+    while (a.is_open()) {
       auto s = make_shared<tcp::socket>(a.async_accept(yield));
       net::spawn(
           strand_,
@@ -49,6 +60,78 @@ void Server::listen(string_view address, uint16_t port)
           });
     }
   });
+}
+
+template <typename Yield>
+void Server::listen(Acceptor& acceptor, string_view iname, IngressVO const& vo, Yield yield)
+{
+  while (acceptor.is_open()) {
+    net::spawn(strand_, [s = acceptor.async_accept(yield), &vo, iname, this](auto yield) mutable {
+      auto& io = strand_.context();
+      auto ingress = net::makeIngress(vo, move(s));
+      auto iv = array<uint8_t, 32>{};
+      auto&& [evo, remote] = isDuplicated({iv, ingress->readIV(iv, yield)}, yield) ?
+                                 make_pair(cref(RANDOM_EJECTOR), net::Endpoint{}) :
+                                 route(ingress->readRemote(yield), iname, vo.type_, yield);
+      auto next =
+          evo.type_ == AdapterType::REJECT || evo.type_ == AdapterType::DIRECT ?
+              remote :
+              net::Endpoint{net::detectHostType(*evo.host_), *evo.host_, to_string(*evo.port_)};
+      make_shared<Session>(io, move(ingress), net::makeEgress(evo, tcp::socket{io}))
+          ->start(remote, next);
+    });
+  }
+}
+
+template <typename ExceptionPtr> void Server::removeIngress(ExceptionPtr eptr, string_view iname)
+{
+  try {
+    rethrow_exception(eptr);
+  }
+  catch (sys::system_error const& e) {
+    if (e.code() != asio::error::operation_aborted) {
+      ingresses_.erase(iname);
+    }
+  }
+}
+
+template <typename Yield> bool Server::isDuplicated(ConstBuffer<uint8_t> raw, Yield yield)
+{
+  if (raw.size() == 0) return false;
+
+  auto [it, inserted] = ivs_.insert({raw.cbegin(), raw.cend()});
+  if (!inserted) {
+    cout << "Pichi Error: Duplicated IV" << endl;
+    return true;
+  }
+  net::spawn(strand_, [it = it, this](auto yield) {
+    // Exceptions prohibited
+    auto ec = sys::error_code{};
+    asio::system_timer{strand_.context(), IV_EXPIRE_TIME}.async_wait(yield[ec]);
+    ivs_.erase(it);
+  });
+  return false;
+}
+
+template <typename Yield>
+pair<EgressVO const&, net::Endpoint> Server::route(net::Endpoint const& remote, string_view iname,
+                                                   AdapterType type, Yield yield)
+{
+  auto resolve = [&yield, &remote, &io = strand_.context()]() {
+    auto ec = sys::error_code{};
+    auto r = tcp::resolver{io}.async_resolve(remote.host_, remote.port_, yield[ec]);
+    return ec ? tcp::resolver::results_type{} : r;
+  };
+  auto it = egresses_.find(router_.route(remote, iname, type, resolve));
+  assertFalse(it == cend(egresses_));
+  return make_pair(cref(it->second), remote);
+}
+
+void Server::startIngress(Acceptor& acceptor, string_view iname, IngressVO const& vo)
+{
+  net::spawn(
+      strand_, [this, &acceptor, iname, &vo](auto yield) { listen(acceptor, iname, vo, yield); },
+      [ this, iname ](auto eptr, auto) noexcept { removeIngress(eptr, iname); });
 }
 
 } // namespace pichi::api
