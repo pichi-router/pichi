@@ -1,1 +1,2 @@
 #cmakedefine ENABLE_TLS
+#cmakedefine BUILD_TEST
