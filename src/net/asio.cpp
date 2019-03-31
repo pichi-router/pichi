@@ -18,6 +18,7 @@
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
+#include <pichi/test/socket.hpp>
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/context.hpp>
@@ -70,6 +71,12 @@ void connect(Endpoint const& endpoint, Socket& s, Yield yield)
   }
   else
 #endif // ENABLE_TLS
+#ifdef BUILD_TEST
+      if constexpr (is_same_v<Socket, pichi::test::Socket>) {
+    s.connect();
+  }
+  else
+#endif // BUILD_TEST
     asio::async_connect(s,
                         tcp::resolver{s.get_executor().context()}.async_resolve(
                             endpoint.host_, endpoint.port_, yield),
@@ -291,6 +298,15 @@ template void write<>(TlsSocket&, ConstBuffer<uint8_t>, Yield);
 template void close<>(TlsSocket&);
 template bool isOpen<>(TlsSocket const&);
 #endif // ENABLE_TLS
+
+#ifdef BUILD_TEST
+template void connect<>(Endpoint const&, pichi::test::Socket&, Yield);
+template void read<>(pichi::test::Socket&, MutableBuffer<uint8_t>, Yield);
+template size_t readSome<>(pichi::test::Socket&, MutableBuffer<uint8_t>, Yield);
+template void write<>(pichi::test::Socket&, ConstBuffer<uint8_t>, Yield);
+template void close<>(pichi::test::Socket&);
+template bool isOpen<>(pichi::test::Socket const&);
+#endif // BUILD_TEST
 
 template unique_ptr<Ingress> makeIngress<>(api::IngressVO const&, TcpSocket&&);
 template unique_ptr<Egress> makeEgress<>(api::EgressVO const&, TcpSocket&&);
