@@ -41,7 +41,9 @@ using IPv6 = AddressHelper<ip::address_v6>;
 
 static string bytes2Port(ConstBuffer<uint8_t> bytes)
 {
-  return to_string(ntoh<uint16_t>({bytes, sizeof(uint16_t)}));
+  auto p = ntoh<uint16_t>({bytes, sizeof(uint16_t)});
+  assertFalse(p == 0, PichiError::BAD_PROTO);
+  return to_string(p);
 }
 
 static size_t port2Bytes(string const& port, MutableBuffer<uint8_t> dst)
@@ -108,7 +110,7 @@ size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer<uint8_t> target
 Endpoint parseEndpoint(function<void(MutableBuffer<uint8_t>)> read)
 {
   auto buf = std::array<uint8_t, 512>{};
-  auto len = buf.front();
+  auto len = uint8_t{0};
 
   read({buf, 1});
   switch (buf[0]) {
