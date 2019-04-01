@@ -68,7 +68,6 @@ static size_t parseFromBuffer(Parser<isRequest>& parser, DynamicBuffer& cache,
 
   if (!fromCache) return parsed;
 
-  parsed -= cache.size();
   cache.consume(parsed);
   return data.size();
 }
@@ -250,7 +249,11 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
   else {
     send_ = [this](auto buf, auto yield) {
       buf += parseFromBuffer(respParser_, respCache_, buf);
-      if (!respParser_.is_header_done()) return;
+      if (!respParser_.is_header_done()) {
+        copy(cbegin(buf), cend(buf), asio::buffers_begin(respCache_.prepare(buf.size())));
+        respCache_.commit(buf.size());
+        return;
+      }
       auto resp = respParser_.release();
       if (!respParser_.upgrade()) addCloseHeader(resp);
       sendHeader(stream_, resp, respCache_, yield);
@@ -286,7 +289,11 @@ void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Y
   else {
     send_ = [this](auto buf, auto yield) {
       buf += parseFromBuffer(reqParser_, reqCache_, buf);
-      if (!reqParser_.is_header_done()) return;
+      if (!reqParser_.is_header_done()) {
+        copy(cbegin(buf), cend(buf), asio::buffers_begin(reqCache_.prepare(buf.size())));
+        reqCache_.commit(buf.size());
+        return;
+      }
       auto req = reqParser_.release();
       if (!reqParser_.upgrade()) addCloseHeader(req);
       addHostToTarget(req);
