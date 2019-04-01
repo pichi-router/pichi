@@ -86,19 +86,34 @@ void connect(Endpoint const& endpoint, Socket& s, Yield yield)
 template <typename Socket, typename Yield>
 void read(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
-  asio::async_read(s, asio::buffer(buf), yield);
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Socket, pichi::test::Socket>)
+    asio::read(s, asio::buffer(buf));
+  else
+#endif // BUILD_TEST
+    asio::async_read(s, asio::buffer(buf), yield);
 }
 
 template <typename Socket, typename Yield>
 size_t readSome(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
-  return s.async_read_some(asio::buffer(buf), yield);
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Socket, pichi::test::Socket>)
+    return s.read_some(asio::buffer(buf));
+  else
+#endif // BUILD_TEST
+    return s.async_read_some(asio::buffer(buf), yield);
 }
 
 template <typename Socket, typename Yield>
 void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
 {
-  asio::async_write(s, asio::buffer(buf), yield);
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Socket, pichi::test::Socket>)
+    asio::write(s, asio::buffer(buf));
+  else
+#endif // BUILD_TEST
+    asio::async_write(s, asio::buffer(buf), yield);
 }
 
 template <typename Socket> void close(Socket& s)
