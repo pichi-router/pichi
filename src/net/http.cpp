@@ -51,27 +51,6 @@ static size_t copyOrCache(ConstBufferSequence const& src, MutableBuffer<uint8_t>
   return copied;
 }
 
-template <bool isRequest, typename DynamicBuffer>
-static size_t parseFromBuffer(Parser<isRequest>& parser, DynamicBuffer& cache,
-                              ConstBuffer<uint8_t> data)
-{
-  assertFalse(parser.is_header_done());
-  auto fromCache = cache.size() > 0;
-  if (fromCache) {
-    copy(cbegin(data), cend(data), asio::buffers_begin(cache.prepare(data.size())));
-    cache.commit(data.size());
-  }
-  auto ec = sys::error_code{};
-  auto parsed = parser.put(fromCache ? cache.data() : asio::buffer(data), ec);
-  if (ec == http::error::need_more) ec = {};
-  assertNoError(ec);
-
-  if (!fromCache) return parsed;
-
-  cache.consume(parsed);
-  return data.size();
-}
-
 template <typename Stream, typename DynamicBuffer>
 static size_t recvRaw(Stream& s, DynamicBuffer& cache, MutableBuffer<uint8_t> buf, Yield yield)
 {
@@ -98,16 +77,6 @@ static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
     assertNoError(ec);
   } while (!sr.is_header_done());
   return buf.size() - left.size();
-}
-
-template <typename Stream, bool isRequest, typename DynamicBuffer>
-static void sendHeader(Stream& s, Header<isRequest>& header, DynamicBuffer& cache, Yield yield)
-{
-  auto m = Message<isRequest>{header};
-  auto sr = Serializer<isRequest>{m};
-  http::async_write_header(s, sr, yield);
-  asio::async_write(s, cache.data(), yield);
-  cache.consume(cache.size());
 }
 
 static void removeHostFromTarget(http::request_header<>& req)
@@ -183,6 +152,59 @@ template <typename Stream> static bool tunnelConnect(Endpoint const& remote, Str
   return code >= 200 && code < 300;
 }
 
+template <typename DynamicBuffer>
+static auto copyToCache(ConstBuffer<uint8_t> buf, DynamicBuffer& cache)
+{
+  copy(cbegin(buf), cend(buf), asio::buffers_begin(cache.prepare(buf.size())));
+  cache.commit(buf.size());
+  return cache.data();
+}
+
+template <bool isRequest, typename DynamicBuffer>
+static ConstBuffer<uint8_t> parseHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
+                                        ConstBuffer<uint8_t> buf)
+{
+  assertFalse(parser.is_header_done());
+
+  // Parse from cache if it has to happen.
+  auto fromCache = cache.size() > 0;
+  auto ec = sys::error_code{};
+  auto parsed = parser.put(fromCache ? copyToCache(buf, cache) : asio::buffer(buf), ec);
+  if (ec == http::error::need_more) ec = {};
+  assertNoError(ec);
+
+  if (fromCache) {
+    cache.consume(parsed);
+    return cache.data();
+  }
+  else
+    return buf + parsed;
+}
+
+template <bool isRequest, typename DynamicBuffer, typename Stream>
+static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
+                            ConstBuffer<uint8_t> buf, Stream& s, Yield yield)
+{
+  auto left = parseHeader(parser, cache, buf);
+  if (!parser.is_header_done()) {
+    // Unparsed data left in buf has to be stored in cache for next sending.
+    copyToCache(left, cache);
+    return false;
+  }
+
+  auto m = parser.release();
+  if (!parser.upgrade()) addCloseHeader(m);
+  if constexpr (isRequest) addHostToTarget(m);
+
+  auto sr = Serializer<isRequest>{m};
+  http::async_write_header(s, sr, yield);
+
+  write(s, left, yield);
+  cache.consume(cache.size());
+
+  return true;
+}
+
 } // namespace detail
 
 using namespace detail;
@@ -247,17 +269,8 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
   }
   else {
     send_ = [this](auto buf, auto yield) {
-      buf += parseFromBuffer(respParser_, respCache_, buf);
-      if (!respParser_.is_header_done()) {
-        copy(cbegin(buf), cend(buf), asio::buffers_begin(respCache_.prepare(buf.size())));
-        respCache_.commit(buf.size());
-        return;
-      }
-      auto resp = respParser_.release();
-      if (!respParser_.upgrade()) addCloseHeader(resp);
-      sendHeader(stream_, resp, respCache_, yield);
-      write(stream_, buf, yield);
-      send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
+      if (tryToSendHeader(respParser_, respCache_, buf, stream_, yield))
+        send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
     };
     recv_ = [this](auto buf, auto yield) {
       recv_ = [this](auto buf, auto yield) { return recvRaw(stream_, reqCache_, buf, yield); };
@@ -287,18 +300,8 @@ void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Y
 
   // Failed to make connection via HTTP CONNECT, so try HTTP relay again.
   send_ = [this](auto buf, auto yield) {
-    buf += parseFromBuffer(reqParser_, reqCache_, buf);
-    if (!reqParser_.is_header_done()) {
-      copy(cbegin(buf), cend(buf), asio::buffers_begin(reqCache_.prepare(buf.size())));
-      reqCache_.commit(buf.size());
-      return;
-    }
-    auto req = reqParser_.release();
-    if (!reqParser_.upgrade()) addCloseHeader(req);
-    addHostToTarget(req);
-    sendHeader(*stream_, req, reqCache_, yield);
-    write(*stream_, buf, yield);
-    send_ = [this](auto buf, auto yield) { write(*stream_, buf, yield); };
+    if (tryToSendHeader(reqParser_, reqCache_, buf, *stream_, yield))
+      send_ = [this](auto buf, auto yield) { write(*stream_, buf, yield); };
   };
   recv_ = [this](auto buf, auto yield) { return recvRaw(*stream_, respCache_, buf, yield); };
 
