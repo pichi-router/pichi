@@ -21,6 +21,7 @@ find_package(Threads REQUIRED)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
+  ${CMAKE_BINARY_DIR}/include
   ${Boost_INCLUDE_DIRS}
   ${MbedTLS_INCLUDE_DIRS}
   ${Sodium_INCLUDE_DIRS}
