@@ -14,6 +14,8 @@ private:
   using Cache = boost::beast::basic_flat_buffer<std::allocator<uint8_t>>;
 
 public:
+  inline static constexpr crypto::CryptoMethod METHOD = method;
+
   template <typename... Args>
   SSAeadAdapter(ConstBuffer<uint8_t> psk, Args&&... args)
     : stream_{std::forward<Args>(args)...}, encryptor_{psk}, decryptor_{psk}
