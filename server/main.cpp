@@ -1,4 +1,5 @@
 #include "config.h"
+#include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/program_options.hpp>
 #include <fstream>
@@ -20,6 +21,7 @@
 using namespace std;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
+namespace sys = boost::system;
 
 static auto const GEO_FILE = (fs::path{PICHI_PREFIX} / "share" / "pichi" / "geo.mmdb");
 static auto const PID_FILE = (fs::path{PICHI_PREFIX} / "var" / "run" / "pichi.pid");
@@ -112,7 +114,9 @@ int main(int argc, char const* argv[])
       auto pid = fork();
       assertFalse(pid < 0);
       if (pid > 0) {
-        ofstream{PID_FILE.string()} << pid << endl;
+        auto ec = sys::error_code{};
+        if (fs::create_directories(PID_FILE.parent_path(), ec))
+          ofstream{PID_FILE.string()} << pid << endl;
         exit(0);
       }
       setsid();
@@ -121,7 +125,11 @@ int main(int argc, char const* argv[])
       close(STDOUT_FILENO);
       close(STDERR_FILENO);
 #endif // HAS_CLOSE
-      assertTrue(freopen(LOG_FILE.c_str(), "w", stdout) != nullptr);
+      auto ec = sys::error_code{};
+      if (fs::create_directories(LOG_FILE.parent_path(), ec)) {
+        assertTrue(freopen(LOG_FILE.c_str(), "w", stdout) != nullptr);
+        assertTrue(freopen(LOG_FILE.c_str(), "w", stderr) != nullptr);
+      }
     }
 #endif // HAS_FORK && HAS_SETSID
 
