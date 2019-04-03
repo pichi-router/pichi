@@ -5,6 +5,7 @@
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>
+#include <pichi/test/socket.hpp>
 #include <utility>
 
 #ifdef ENABLE_TLS
@@ -55,7 +56,7 @@ template <typename Stream> Endpoint Socks5Adapter<Stream>::readRemote(Yield yiel
   uint8_t len = buf[1];
   read(stream_, {buf, len}, yield);
 
-  uint8_t m = find(begin(buf), begin(buf) + len, 0x00) != end(buf) ? 0x00 : 0xff;
+  uint8_t m = find(begin(buf), begin(buf) + len, 0x00) != begin(buf) + len ? 0x00 : 0xff;
   buf[0] = 0x05;
   buf[1] = m;
   write(stream_, {buf, 2}, yield);
@@ -92,6 +93,7 @@ void Socks5Adapter<Stream>::connect(Endpoint const& remote, Endpoint const& next
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
   assertTrue(buf[1] == 0x00, PichiError::CONN_FAILURE,
              "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
+  assertTrue(buf[2] == 0x00, PichiError::BAD_PROTO);
   parseEndpoint([this, yield](auto dst) { read(stream_, dst, yield); });
 }
 
@@ -114,5 +116,9 @@ template class Socks5Adapter<tcp::socket>;
 #ifdef ENABLE_TLS
 template class Socks5Adapter<ssl::stream<tcp::socket>>;
 #endif // ENABLE_TLS
+
+#ifdef BUILD_TEST
+template class Socks5Adapter<pichi::test::Stream>;
+#endif // BUILD_TEST
 
 } // namespace pichi::net
