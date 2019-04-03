@@ -41,9 +41,7 @@ using IPv6 = AddressHelper<ip::address_v6>;
 
 static string bytes2Port(ConstBuffer<uint8_t> bytes)
 {
-  auto p = ntoh<uint16_t>({bytes, sizeof(uint16_t)});
-  assertFalse(p == 0, PichiError::BAD_PROTO);
-  return to_string(p);
+  return to_string(ntoh<uint16_t>({bytes, sizeof(uint16_t)}));
 }
 
 static size_t port2Bytes(string const& port, MutableBuffer<uint8_t> dst)

@@ -204,15 +204,6 @@ BOOST_AUTO_TEST_CASE(parse_Empty_Domain)
                         verifyException<PichiError::BAD_PROTO>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_Domain_With_Zero_Port)
-{
-  auto stub = StubSocket{};
-  stub.write({0x03, 0x09, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0x00, 0x00});
-
-  BOOST_CHECK_EXCEPTION(parseEndpoint([&stub](auto buf) { stub.read(buf); }), Exception,
-                        verifyException<PichiError::BAD_PROTO>);
-}
-
 BOOST_AUTO_TEST_CASE(parse_Domain)
 {
   auto stub = StubSocket{};
@@ -225,15 +216,6 @@ BOOST_AUTO_TEST_CASE(parse_Domain)
   BOOST_CHECK_EQUAL(13, stub.transfered());
 }
 
-BOOST_AUTO_TEST_CASE(parse_IPv4_With_Zero_Port)
-{
-  auto stub = StubSocket{};
-  stub.write({0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
-
-  BOOST_CHECK_EXCEPTION(parseEndpoint([&stub](auto buf) { stub.read(buf); }), Exception,
-                        verifyException<PichiError::BAD_PROTO>);
-}
-
 BOOST_AUTO_TEST_CASE(parse_IPv4)
 {
   auto stub = StubSocket{};
@@ -244,16 +226,6 @@ BOOST_AUTO_TEST_CASE(parse_IPv4)
   BOOST_CHECK_EQUAL("0.0.0.0"sv, ep.host_);
   BOOST_CHECK_EQUAL("443"sv, ep.port_);
   BOOST_CHECK_EQUAL(7, stub.transfered());
-}
-
-BOOST_AUTO_TEST_CASE(parse_IPv6_With_Zero_Port)
-{
-  auto stub = StubSocket{};
-  stub.write({0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-              0x00, 0x00, 0x00, 0x00, 0x00});
-
-  BOOST_CHECK_EXCEPTION(parseEndpoint([&stub](auto buf) { stub.read(buf); }), Exception,
-                        verifyException<PichiError::BAD_PROTO>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_IPv6)
