@@ -203,17 +203,17 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
       return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF, Socket>>(psk,
                                                                                forward<Socket>(s));
     case CryptoMethod::AES_128_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM>>(forward<Socket>(s), psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM, Socket>>(psk, forward<Socket>(s));
     case CryptoMethod::AES_192_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM>>(forward<Socket>(s), psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM, Socket>>(psk, forward<Socket>(s));
     case CryptoMethod::AES_256_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM>>(forward<Socket>(s), psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM, Socket>>(psk, forward<Socket>(s));
     case CryptoMethod::CHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305>>(forward<Socket>(s),
-                                                                              psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, Socket>>(
+          psk, forward<Socket>(s));
     case CryptoMethod::XCHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>>(forward<Socket>(s),
-                                                                               psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, Socket>>(
+          psk, forward<Socket>(s));
     default:
       fail(PichiError::BAD_PROTO);
     }
@@ -288,15 +288,15 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
     case CryptoMethod::CHACHA20_IETF:
       return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF, TcpSocket>>(psk, io);
     case CryptoMethod::AES_128_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM>>(io, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM, TcpSocket>>(psk, io);
     case CryptoMethod::AES_192_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM>>(io, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM, TcpSocket>>(psk, io);
     case CryptoMethod::AES_256_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM>>(io, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM, TcpSocket>>(psk, io);
     case CryptoMethod::CHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305>>(io, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, TcpSocket>>(psk, io);
     case CryptoMethod::XCHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>>(io, psk);
+      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, TcpSocket>>(psk, io);
     default:
       fail(PichiError::BAD_PROTO);
     }
