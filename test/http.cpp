@@ -37,31 +37,21 @@ static auto genTunnelReq()
   return req;
 }
 
-static auto genOrignalRelayReq()
+static auto genRelayReq(string const& target)
 {
   auto req = http::request<http::empty_body>{};
   req.method(http::verb::get);
-  req.target("http://localhost/");
+  req.target(target);
   req.version(11);
   req.set(http::field::host, "localhost");
   return req;
 }
 
-static auto genParsedRelayReq()
-{
-  auto req = http::request<http::empty_body>{};
-  req.method(http::verb::get);
-  req.target("/");
-  req.version(11);
-  req.set(http::field::host, "localhost");
-  return req;
-}
-
-static auto genRelayReqWithBody()
+static auto genRelayReqWithBody(string const& target)
 {
   auto req = http::request<http::string_body>{};
   req.method(http::verb::post);
-  req.target("http://localhost/");
+  req.target(target);
   req.version(11);
   req.set(http::field::host, "localhost");
   req.body() = "http body";
@@ -74,6 +64,14 @@ static auto genResponse()
   auto resp = http::response<http::empty_body>{};
   resp.version(11);
   resp.result(http::status::no_content);
+  return resp;
+}
+
+static auto genRefuseResponse()
+{
+  auto resp = http::response<http::empty_body>{};
+  resp.version(11);
+  resp.result(http::status::forbidden);
   return resp;
 }
 
@@ -153,7 +151,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Tunnel_Correct)
 BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Host_Field_Only)
 {
   auto buf = array<uint8_t, 64>{};
-  auto req = genParsedRelayReq();
+  auto req = genRelayReq("/"s);
 
   auto socket = Socket{};
   auto ingress = HttpIngress{socket, true};
@@ -169,7 +167,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Host_Field_Only)
 BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Both_Fields)
 {
   auto buf = array<uint8_t, 64>{};
-  auto req = genOrignalRelayReq();
+  auto req = genRelayReq("http://localhost/"s);
 
   auto socket = Socket{};
   auto ingress = HttpIngress{socket, true};
@@ -185,7 +183,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Both_Fields)
 BOOST_AUTO_TEST_CASE(readRemote_Relay_Without_Host_Field)
 {
   auto buf = array<uint8_t, 64>{};
-  auto req = genOrignalRelayReq();
+  auto req = genRelayReq("http://localhost/"s);
   req.erase(http::field::host);
 
   auto socket = Socket{};
@@ -240,7 +238,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Tunnel_By_Insufficient_Buffer)
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_Without_Connection_Field)
 {
   auto buf = array<uint8_t, 1024>{};
-  auto origin = genOrignalRelayReq();
+  auto origin = genRelayReq("http://localhost/"s);
 
   auto socket = Socket{};
   auto ingress = HttpIngress{socket, true};
@@ -259,7 +257,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_Without_Connection_Field)
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Upgrade)
 {
   auto buf = array<uint8_t, 1024>{};
-  auto origin = genOrignalRelayReq();
+  auto origin = genRelayReq("http://localhost/"s);
   origin.set(http::field::connection, "upgrade");
 
   auto socket = Socket{};
@@ -279,7 +277,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Upgrade)
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Keep_Alive)
 {
   auto buf = array<uint8_t, 1024>{};
-  auto origin = genOrignalRelayReq();
+  auto origin = genRelayReq("http://localhost/"s);
   origin.set(http::field::connection, "keey-alive");
 
   auto socket = Socket{};
@@ -299,7 +297,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Keep_Alive)
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Body)
 {
   auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReqWithBody();
+  auto origin = genRelayReqWithBody("http://localhost/"s);
 
   auto socket = Socket{};
   auto ingress = HttpIngress{socket, true};
@@ -322,7 +320,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Body)
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_By_Insufficient_Buffer)
 {
   auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReqWithBody();
+  auto origin = genRelayReqWithBody("http://localhost/"s);
 
   auto socket = Socket{};
   auto ingress = HttpIngress{socket, true};
@@ -369,7 +367,7 @@ BOOST_AUTO_TEST_CASE(Ingress_confirm_Tunnel)
 BOOST_AUTO_TEST_CASE(Ingress_confirm_Relay)
 {
   auto buf = array<uint8_t, 1024>{};
-  auto origin = genOrignalRelayReq();
+  auto origin = genRelayReq("http://localhost/"s);
 
   auto socket = Socket{};
   auto ingress = HttpIngress{socket, true};
@@ -402,7 +400,7 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_Tunnel)
 BOOST_AUTO_TEST_CASE(Ingress_disconnect_Relay)
 {
   auto buf = array<uint8_t, 1024>{};
-  auto origin = genOrignalRelayReq();
+  auto origin = genRelayReq("http://localhost/"s);
 
   auto socket = Socket{};
   auto ingress = HttpIngress{socket, true};
@@ -443,7 +441,7 @@ BOOST_AUTO_TEST_CASE(Ingress_send_Tunnel)
 BOOST_AUTO_TEST_CASE(Ingress_send_Relay)
 {
   auto buf = array<uint8_t, 1024>{};
-  auto req = genOrignalRelayReq();
+  auto req = genRelayReq("http://localhost/"s);
 
   auto socket = Socket{};
   auto ingress = HttpIngress{socket, true};
@@ -460,6 +458,261 @@ BOOST_AUTO_TEST_CASE(Ingress_send_Relay)
   BOOST_CHECK_EQUAL(http::status::no_content, sent.result());
   verifyField(sent, http::field::connection, "close"sv);
   verifyField(sent, http::field::proxy_connection, "close"sv);
+}
+
+BOOST_AUTO_TEST_CASE(Egress_connect_Tunnel)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "443"sv), {}, yield);
+  auto req = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
+
+  BOOST_CHECK_EQUAL(http::verb::connect, req.method());
+  BOOST_CHECK_EQUAL("localhost:443", req.target());
+}
+
+BOOST_AUTO_TEST_CASE(Egress_connect_Fallback_To_Relay)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  auto req = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
+
+  BOOST_CHECK_EQUAL(http::verb::connect, req.method());
+  BOOST_CHECK_EQUAL("localhost:80", req.target());
+  BOOST_CHECK(egress.readable());
+  BOOST_CHECK(egress.writable());
+}
+
+BOOST_AUTO_TEST_CASE(Egress_send_Tunnel_Arbitrary_Data)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "443"sv), {}, yield);
+  socket.flush(buf);
+
+  auto expect = array<uint8_t, 0xff>{};
+  generate_n(begin(expect), expect.size(), [i = 0]() mutable { return static_cast<uint8_t>(i++); });
+  egress.send(expect, yield);
+
+  BOOST_CHECK_EQUAL(expect.size(), socket.flush(buf));
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(buf),
+                                cbegin(buf) + expect.size());
+}
+
+BOOST_AUTO_TEST_CASE(Egress_send_Relay_Non_HTTP_Request)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  socket.flush(buf);
+
+  BOOST_CHECK_EXCEPTION(egress.send(ConstBuffer<uint8_t>{"Non-HTTP request\r\n"sv}, yield),
+                        sys::system_error, verifyException<http::error::bad_target>);
+}
+
+BOOST_AUTO_TEST_CASE(Egress_send_Relay_HTTP_Request_Without_Upgrade)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  socket.flush(buf);
+
+  auto origin = genRelayReq("/"s);
+  egress.send({buf, serializeToBuffer(origin, buf)}, yield);
+
+  auto sent = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
+
+  BOOST_CHECK_EQUAL("http://localhost/", sent.target());
+  BOOST_CHECK_EQUAL(http::verb::get, sent.method());
+  verifyField(sent, http::field::host, "localhost"sv);
+  verifyField(sent, http::field::connection, "close"sv);
+  verifyField(sent, http::field::proxy_connection, "close"sv);
+}
+
+BOOST_AUTO_TEST_CASE(Egress_send_Relay_HTTP_Request_With_Upgrade)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  socket.flush(buf);
+
+  auto origin = genRelayReq("/"s);
+  origin.set(http::field::connection, "upgrade");
+  egress.send({buf, serializeToBuffer(origin, buf)}, yield);
+
+  auto sent = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
+
+  BOOST_CHECK_EQUAL("http://localhost/", sent.target());
+  BOOST_CHECK_EQUAL(http::verb::get, sent.method());
+  verifyField(sent, http::field::host, "localhost"sv);
+  verifyField(sent, http::field::connection, "upgrade"sv);
+}
+
+BOOST_AUTO_TEST_CASE(Egress_send_Relay_Multiple_Parts_Header)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  socket.flush(buf);
+
+  auto origin = genRelayReq("/"s);
+  for_each(cbegin(buf), cbegin(buf) + serializeToBuffer(origin, buf), [&](auto&& c) {
+    egress.send({addressof(c), 1}, yield);
+  });
+
+  auto sent = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
+
+  BOOST_CHECK_EQUAL("http://localhost/", sent.target());
+  BOOST_CHECK_EQUAL(http::verb::get, sent.method());
+  verifyField(sent, http::field::host, "localhost"sv);
+  verifyField(sent, http::field::connection, "close"sv);
+  verifyField(sent, http::field::proxy_connection, "close"sv);
+}
+
+BOOST_AUTO_TEST_CASE(Egress_send_Relay_Request_With_Body)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  socket.flush(buf);
+
+  auto origin = genRelayReqWithBody("/"s);
+  for_each(cbegin(buf), cbegin(buf) + serializeToBuffer(origin, buf), [&](auto&& c) {
+    egress.send({addressof(c), 1}, yield);
+  });
+
+  auto sent = parseFromBuffer<true, http::string_body>({buf, socket.flush(buf)});
+
+  BOOST_CHECK_EQUAL("http://localhost/"s, sent.target());
+  BOOST_CHECK_EQUAL(http::verb::post, sent.method());
+  verifyField(sent, http::field::host, "localhost"sv);
+  verifyField(sent, http::field::connection, "close"sv);
+  verifyField(sent, http::field::proxy_connection, "close"sv);
+  BOOST_CHECK_EQUAL("http body"s, sent.body());
+}
+
+BOOST_AUTO_TEST_CASE(Egress_send_Relay_Request_With_Extra_Data)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  socket.flush(buf);
+
+  auto origin = genRelayReq("/"s);
+  egress.send({buf, serializeToBuffer(origin, buf)}, yield);
+  parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
+
+  auto extra = "extra data"sv;
+  egress.send(ConstBuffer<uint8_t>{extra}, yield);
+
+  BOOST_CHECK_EQUAL(extra.size(), socket.flush(buf));
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(extra), cend(extra), cbegin(buf),
+                                cbegin(buf) + extra.size());
+}
+
+BOOST_AUTO_TEST_CASE(Egress_recv_Tunnel)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+  egress.connect(net::makeEndpoint("localhost"sv, "443"sv), {}, yield);
+  socket.flush(buf);
+
+  auto content = "content"sv;
+  socket.fill(ConstBuffer<uint8_t>{content});
+
+  BOOST_CHECK_EQUAL(content.size(), egress.recv(buf, yield));
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
+                                cbegin(buf) + content.size());
+}
+
+BOOST_AUTO_TEST_CASE(Egress_recv_Relay_Non_HTTP_Data)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  socket.flush(buf);
+
+  auto content = "non-HTTP data"sv;
+  socket.fill(ConstBuffer<uint8_t>{content});
+
+  BOOST_CHECK_EQUAL(content.size(), egress.recv(buf, yield));
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
+                                cbegin(buf) + content.size());
+}
+
+BOOST_AUTO_TEST_CASE(Egress_recv_Relay_HTTP_Response)
+{
+  auto buf = array<uint8_t, 1024>{};
+  auto socket = Socket{};
+  auto egress = HttpEgress{socket};
+
+  auto resp = genRefuseResponse();
+  socket.fill({buf, serializeToBuffer(resp, buf)});
+  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, yield);
+  socket.flush(buf);
+
+  auto origin = genResponse();
+  socket.fill({buf, serializeToBuffer(origin, buf)});
+
+  auto received = parseFromBuffer<false, http::empty_body>({buf, egress.recv(buf, yield)});
+
+  BOOST_CHECK_EQUAL(http::status::no_content, received.result());
+  BOOST_CHECK(received.find(http::field::connection) == cend(received));
+  BOOST_CHECK(received.find(http::field::proxy_connection) == cend(received));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
