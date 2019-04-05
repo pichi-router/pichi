@@ -1,1 +1,26 @@
+#ifndef PICHI_CONFIG_H
+#define PICHI_CONFIG_H
+
+#cmakedefine HAS_UNISTD_H
+#cmakedefine HAS_PWD_H
+#cmakedefine HAS_GRP_H
+#cmakedefine HAS_GETPWNAM
+#cmakedefine HAS_SETUID
+#cmakedefine HAS_GETGRNAM
+#cmakedefine HAS_SETGID
+#cmakedefine HAS_FORK
+#cmakedefine HAS_SETSID
+#cmakedefine HAS_CLOSE
+
+#cmakedefine CMAKE_INSTALL_PREFIX "@CMAKE_INSTALL_PREFIX@"
+
+#ifdef CMAKE_INSTALL_PREFIX
+#define PICHI_PREFIX CMAKE_INSTALL_PREFIX
+#else // CMAKE_INSTALL_PREFIX
+#error "CMAKE_INSTALL_PREFIX not defined"
+#endif // CMAKE_INSTALL_PREFIX
+
 #cmakedefine ENABLE_TLS
+#cmakedefine BUILD_TEST
+
+#endif // PICHI_CONFIG_H
