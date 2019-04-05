@@ -218,7 +218,7 @@ void run(string const& bind, uint16_t port, string const& fn, string const& mmdb
           flush(helper);
           load(helper, fn);
         }
-#endif // HAS_SIGNAL_H
+#endif // defined(HAS_SIGNAL_H) && defined(SIGHUP)
       },
       [](auto, auto) noexcept { io.stop(); });
 

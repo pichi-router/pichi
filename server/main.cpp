@@ -92,22 +92,6 @@ int main(int argc, char const* argv[])
 
     errno = 0;
 
-#if defined(HAS_SETGID) && defined(HAS_GETGRNAM)
-    if (!group.empty()) {
-      auto grp = getgrnam(group.c_str());
-      assertFalse(grp == nullptr);
-      assertFalse(setgid(grp->gr_gid) == -1);
-    }
-#endif // HAS_SETGID && HAS_GETGRNAM
-
-#if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
-    if (!user.empty()) {
-      auto pw = getpwnam(user.c_str());
-      assertFalse(pw == nullptr);
-      assertFalse(setuid(pw->pw_uid) == -1);
-    }
-#endif // HAS_SETUID && HAS_GETPWNAM
-
 #if defined(HAS_FORK) && defined(HAS_SETSID)
     if (vm.count("daemon")) {
       assertTrue(chdir(fs::path{PICHI_PREFIX}.root_directory().c_str()) == 0);
@@ -132,6 +116,22 @@ int main(int argc, char const* argv[])
       }
     }
 #endif // HAS_FORK && HAS_SETSID
+
+#if defined(HAS_SETGID) && defined(HAS_GETGRNAM)
+    if (!group.empty()) {
+      auto grp = getgrnam(group.c_str());
+      assertFalse(grp == nullptr);
+      assertFalse(setgid(grp->gr_gid) == -1);
+    }
+#endif // HAS_SETGID && HAS_GETGRNAM
+
+#if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
+    if (!user.empty()) {
+      auto pw = getpwnam(user.c_str());
+      assertFalse(pw == nullptr);
+      assertFalse(setuid(pw->pw_uid) == -1);
+    }
+#endif // HAS_SETUID && HAS_GETPWNAM
 
     run(listen, port, json, geo);
     return 0;
