@@ -108,7 +108,7 @@ size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer<uint8_t> target
 Endpoint parseEndpoint(function<void(MutableBuffer<uint8_t>)> read)
 {
   auto buf = std::array<uint8_t, 512>{};
-  auto len = buf.front();
+  auto len = uint8_t{0};
 
   read({buf, 1});
   switch (buf[0]) {

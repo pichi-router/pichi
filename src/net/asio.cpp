@@ -19,6 +19,7 @@
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
+#include <pichi/test/socket.hpp>
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/context.hpp>
@@ -71,6 +72,12 @@ void connect(Endpoint const& endpoint, Socket& s, Yield yield)
   }
   else
 #endif // ENABLE_TLS
+#ifdef BUILD_TEST
+      if constexpr (is_same_v<Socket, pichi::test::Stream>) {
+    s.connect();
+  }
+  else
+#endif // BUILD_TEST
     asio::async_connect(s,
                         tcp::resolver{s.get_executor().context()}.async_resolve(
                             endpoint.host_, endpoint.port_, yield),
@@ -80,19 +87,34 @@ void connect(Endpoint const& endpoint, Socket& s, Yield yield)
 template <typename Socket, typename Yield>
 void read(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
-  asio::async_read(s, asio::buffer(buf), yield);
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Socket, pichi::test::Stream>)
+    asio::read(s, asio::buffer(buf));
+  else
+#endif // BUILD_TEST
+    asio::async_read(s, asio::buffer(buf), yield);
 }
 
 template <typename Socket, typename Yield>
 size_t readSome(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
-  return s.async_read_some(asio::buffer(buf), yield);
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Socket, pichi::test::Stream>)
+    return s.read_some(asio::buffer(buf));
+  else
+#endif // BUILD_TEST
+    return s.async_read_some(asio::buffer(buf), yield);
 }
 
 template <typename Socket, typename Yield>
 void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
 {
-  asio::async_write(s, asio::buffer(buf), yield);
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Socket, pichi::test::Stream>)
+    asio::write(s, asio::buffer(buf));
+  else
+#endif // BUILD_TEST
+    asio::async_write(s, asio::buffer(buf), yield);
 }
 
 template <typename Socket> void close(Socket& s)
@@ -290,6 +312,15 @@ template void write<>(TlsSocket&, ConstBuffer<uint8_t>, Yield);
 template void close<>(TlsSocket&);
 template bool isOpen<>(TlsSocket const&);
 #endif // ENABLE_TLS
+
+#ifdef BUILD_TEST
+template void connect<>(Endpoint const&, pichi::test::Stream&, Yield);
+template void read<>(pichi::test::Stream&, MutableBuffer<uint8_t>, Yield);
+template size_t readSome<>(pichi::test::Stream&, MutableBuffer<uint8_t>, Yield);
+template void write<>(pichi::test::Stream&, ConstBuffer<uint8_t>, Yield);
+template void close<>(pichi::test::Stream&);
+template bool isOpen<>(pichi::test::Stream const&);
+#endif // BUILD_TEST
 
 template unique_ptr<Ingress> makeIngress<>(api::IngressVO const&, TcpSocket&&);
 
