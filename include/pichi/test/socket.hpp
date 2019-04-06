@@ -20,10 +20,11 @@ private:
 
   template <typename OutputIt> static auto read(Buffer& buf, OutputIt it, size_t n)
   {
-    assertTrue(n <= buf.size());
-    std::copy_n(boost::asio::buffers_begin(buf.data()), n, it);
-    buf.consume(n);
-    return n;
+    assertTrue(buf.size() > 0);
+    auto copied = std::min(buf.size(), n);
+    std::copy_n(boost::asio::buffers_begin(buf.data()), copied, it);
+    buf.consume(copied);
+    return copied;
   }
 
   template <typename InputIt> static auto write(Buffer& buf, InputIt it, size_t n)

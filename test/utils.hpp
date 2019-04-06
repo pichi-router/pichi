@@ -2,6 +2,7 @@
 #define PICHI_TEST_UTILS_HPP
 
 #include <boost/asio/error.hpp>
+#include <boost/beast/http/error.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/exception.hpp>
 #include <string_view>
@@ -12,6 +13,12 @@ namespace pichi {
 template <PichiError error> bool verifyException(Exception const& e) { return e.error() == error; }
 
 template <boost::asio::error::basic_errors error>
+bool verifyException(boost::system::system_error const& e)
+{
+  return e.code() == error;
+}
+
+template <boost::beast::http::error error>
 bool verifyException(boost::system::system_error const& e)
 {
   return e.code() == error;
