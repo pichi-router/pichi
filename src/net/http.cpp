@@ -125,6 +125,7 @@ static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
   auto m = Message<isRequest>{header};
   auto sr = Serializer<isRequest>{m};
   auto left = buf;
+  auto stickyLen = cache.size();
   do {
     auto ec = sys::error_code{};
     sr.next(ec, [&](auto&&, auto&& serialized) {
@@ -133,6 +134,9 @@ static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
     });
     assertNoError(ec);
   } while (!sr.is_header_done());
+  asio::buffer_copy(cache.prepare(stickyLen), cache.data());
+  cache.commit(stickyLen);
+  cache.consume(stickyLen);
   return buf.size() - left.size();
 }
 
@@ -248,7 +252,7 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(Yield yield)
   auto ec = sys::error_code{};
   auto rep = http::response<http::empty_body>{};
   rep.version(11);
-  rep.result(http::status::request_timeout);
+  rep.result(http::status::gateway_timeout);
   // Ignoring all errors here
   writeHttp(stream_, rep, yield[ec]);
 }
