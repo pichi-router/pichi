@@ -1,7 +1,6 @@
 #ifndef PICHI_NET_SSAEAD_HPP
 #define PICHI_NET_SSAEAD_HPP
 
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <pichi/crypto/aead.hpp>
 #include <pichi/crypto/method.hpp>
@@ -9,15 +8,15 @@
 
 namespace pichi::net {
 
-template <crypto::CryptoMethod method> class SSAeadAdapter : public Ingress, public Egress {
+template <crypto::CryptoMethod method, typename Stream>
+class SSAeadAdapter : public Ingress, public Egress {
 private:
-  using Socket = boost::asio::ip::tcp::socket;
   using Cache = boost::beast::basic_flat_buffer<std::allocator<uint8_t>>;
 
 public:
-  template <typename Arg>
-  SSAeadAdapter(Arg&& arg, ConstBuffer<uint8_t> psk)
-    : socket_{std::forward<Arg>(arg)}, encryptor_{psk}, decryptor_{psk}
+  template <typename... Args>
+  SSAeadAdapter(ConstBuffer<uint8_t> psk, Args&&... args)
+    : stream_{std::forward<Args>(args)...}, encryptor_{psk}, decryptor_{psk}
   {
   }
   ~SSAeadAdapter() override = default;
@@ -42,7 +41,7 @@ private:
   size_t encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher);
 
 private:
-  Socket socket_;
+  Stream stream_;
   Cache cache_;
   crypto::AeadEncryptor<method> encryptor_;
   crypto::AeadDecryptor<method> decryptor_;

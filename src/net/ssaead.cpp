@@ -1,30 +1,37 @@
+#include "config.h"
 #include <array>
+#include <boost/asio/ip/tcp.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/ssaead.hpp>
+#include <pichi/test/socket.hpp>
 #include <utility>
 
 using namespace std;
 using namespace pichi::crypto;
 namespace asio = boost::asio;
+using asio::ip::tcp;
 
 namespace pichi::net {
 
-template <CryptoMethod method> void SSAeadAdapter<method>::close() { pichi::net::close(socket_); }
-
-template <CryptoMethod method> bool SSAeadAdapter<method>::readable() const
+template <CryptoMethod method, typename Stream> void SSAeadAdapter<method, Stream>::close()
 {
-  return cache_.size() > 0 || isOpen(socket_);
+  pichi::net::close(stream_);
 }
 
-template <CryptoMethod method> bool SSAeadAdapter<method>::writable() const
+template <CryptoMethod method, typename Stream> bool SSAeadAdapter<method, Stream>::readable() const
 {
-  return isOpen(socket_);
+  return cache_.size() > 0 || isOpen(stream_);
 }
 
-template <CryptoMethod method>
-size_t SSAeadAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
+template <CryptoMethod method, typename Stream> bool SSAeadAdapter<method, Stream>::writable() const
+{
+  return isOpen(stream_);
+}
+
+template <CryptoMethod method, typename Stream>
+size_t SSAeadAdapter<method, Stream>::recv(MutableBuffer<uint8_t> plain, Yield yield)
 {
   if (!ivReceived_) {
     auto iv = array<uint8_t, IV_SIZE<method>>{};
@@ -41,11 +48,11 @@ size_t SSAeadAdapter<method>::recv(MutableBuffer<uint8_t> plain, Yield yield)
   return cache_.size() == 0 ? len : copyTo(plain);
 }
 
-template <CryptoMethod method>
-void SSAeadAdapter<method>::send(ConstBuffer<uint8_t> plain, Yield yield)
+template <CryptoMethod method, typename Stream>
+void SSAeadAdapter<method, Stream>::send(ConstBuffer<uint8_t> plain, Yield yield)
 {
   if (!ivSent_) {
-    write(socket_, encryptor_.getIv(), yield);
+    write(stream_, encryptor_.getIv(), yield);
     ivSent_ = true;
   }
 
@@ -54,13 +61,14 @@ void SSAeadAdapter<method>::send(ConstBuffer<uint8_t> plain, Yield yield)
   auto cipher = CipherBuffer{};
   auto len = encrypt(plain, cipher);
 
-  write(socket_, {cipher, len}, yield);
+  write(stream_, {cipher, len}, yield);
 }
 
-template <CryptoMethod method>
-void SSAeadAdapter<method>::connect(Endpoint const& remote, Endpoint const& server, Yield yield)
+template <CryptoMethod method, typename Stream>
+void SSAeadAdapter<method, Stream>::connect(Endpoint const& remote, Endpoint const& server,
+                                            Yield yield)
 {
-  pichi::net::connect(server, socket_, yield);
+  pichi::net::connect(server, stream_, yield);
 
   auto plain = array<uint8_t, 512>{};
   auto plen = serializeEndpoint(remote, plain);
@@ -68,18 +76,19 @@ void SSAeadAdapter<method>::connect(Endpoint const& remote, Endpoint const& serv
   send({plain, plen}, yield);
 }
 
-template <CryptoMethod method>
-size_t SSAeadAdapter<method>::readIV(MutableBuffer<uint8_t> iv, Yield yield)
+template <CryptoMethod method, typename Stream>
+size_t SSAeadAdapter<method, Stream>::readIV(MutableBuffer<uint8_t> iv, Yield yield)
 {
   assertFalse(ivReceived_);
   assertTrue(iv.size() >= IV_SIZE<method>);
-  read(socket_, {iv, IV_SIZE<method>}, yield);
+  read(stream_, {iv, IV_SIZE<method>}, yield);
   decryptor_.setIv({iv, IV_SIZE<method>});
   ivReceived_ = true;
   return IV_SIZE<method>;
 }
 
-template <CryptoMethod method> Endpoint SSAeadAdapter<method>::readRemote(Yield yield)
+template <CryptoMethod method, typename Stream>
+Endpoint SSAeadAdapter<method, Stream>::readRemote(Yield yield)
 {
   return parseEndpoint([this, yield](auto dst) {
     for (size_t r = 0; r < dst.size(); r += recv({dst.data() + r, dst.size() - r}, yield))
@@ -87,12 +96,18 @@ template <CryptoMethod method> Endpoint SSAeadAdapter<method>::readRemote(Yield 
   });
 }
 
-template <CryptoMethod method> void SSAeadAdapter<method>::confirm(Yield) {}
+template <CryptoMethod method, typename Stream> void SSAeadAdapter<method, Stream>::confirm(Yield)
+{
+}
 
-template <CryptoMethod method> void SSAeadAdapter<method>::disconnect(Yield) {}
+template <CryptoMethod method, typename Stream>
+void SSAeadAdapter<method, Stream>::disconnect(Yield)
+{
+}
 
-template <CryptoMethod method>
-MutableBuffer<uint8_t> SSAeadAdapter<method>::prepare(size_t n, MutableBuffer<uint8_t> provided)
+template <CryptoMethod method, typename Stream>
+MutableBuffer<uint8_t> SSAeadAdapter<method, Stream>::prepare(size_t n,
+                                                              MutableBuffer<uint8_t> provided)
 {
   if (n <= provided.size()) return {provided, n};
   auto buf = cache_.prepare(n);
@@ -100,19 +115,19 @@ MutableBuffer<uint8_t> SSAeadAdapter<method>::prepare(size_t n, MutableBuffer<ui
   return {buf};
 }
 
-template <CryptoMethod method>
-void SSAeadAdapter<method>::recvBlock(MutableBuffer<uint8_t> block, Yield yield)
+template <CryptoMethod method, typename Stream>
+void SSAeadAdapter<method, Stream>::recvBlock(MutableBuffer<uint8_t> block, Yield yield)
 {
   using CipherBuffer = array<uint8_t, MAX_FRAME_SIZE + TAG_SIZE<method>>;
 
   auto cipher = CipherBuffer{};
   auto clen = block.size() + TAG_SIZE<method>;
-  read(socket_, {cipher, clen}, yield);
+  read(stream_, {cipher, clen}, yield);
   decryptor_.decrypt({cipher, clen}, block);
 }
 
-template <CryptoMethod method>
-size_t SSAeadAdapter<method>::recvFrame(MutableBuffer<uint8_t> provided, Yield yield)
+template <CryptoMethod method, typename Stream>
+size_t SSAeadAdapter<method, Stream>::recvFrame(MutableBuffer<uint8_t> provided, Yield yield)
 {
   auto lb = array<uint8_t, 2>{};
   recvBlock(lb, yield);
@@ -126,15 +141,17 @@ size_t SSAeadAdapter<method>::recvFrame(MutableBuffer<uint8_t> provided, Yield y
   return len;
 }
 
-template <CryptoMethod method> size_t SSAeadAdapter<method>::copyTo(MutableBuffer<uint8_t> dst)
+template <CryptoMethod method, typename Stream>
+size_t SSAeadAdapter<method, Stream>::copyTo(MutableBuffer<uint8_t> dst)
 {
   auto copied = asio::buffer_copy(asio::buffer(dst), cache_.data(), dst.size());
   cache_.consume(copied);
   return copied;
 }
 
-template <CryptoMethod method>
-size_t SSAeadAdapter<method>::encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher)
+template <CryptoMethod method, typename Stream>
+size_t SSAeadAdapter<method, Stream>::encrypt(ConstBuffer<uint8_t> plain,
+                                              MutableBuffer<uint8_t> cipher)
 {
   assertTrue(plain.size() <= MAX_FRAME_SIZE, PichiError::BAD_PROTO);
   assertTrue(cipher.size() >= plain.size() + 2 + 2 * TAG_SIZE<method>, PichiError::BAD_PROTO);
@@ -148,10 +165,18 @@ size_t SSAeadAdapter<method>::encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<
   return len;
 }
 
-template class SSAeadAdapter<CryptoMethod::AES_128_GCM>;
-template class SSAeadAdapter<CryptoMethod::AES_192_GCM>;
-template class SSAeadAdapter<CryptoMethod::AES_256_GCM>;
-template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305>;
-template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>;
+template class SSAeadAdapter<CryptoMethod::AES_128_GCM, tcp::socket>;
+template class SSAeadAdapter<CryptoMethod::AES_192_GCM, tcp::socket>;
+template class SSAeadAdapter<CryptoMethod::AES_256_GCM, tcp::socket>;
+template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, tcp::socket>;
+template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, tcp::socket>;
+
+#ifdef BUILD_TEST
+template class SSAeadAdapter<CryptoMethod::AES_128_GCM, test::Stream>;
+template class SSAeadAdapter<CryptoMethod::AES_192_GCM, test::Stream>;
+template class SSAeadAdapter<CryptoMethod::AES_256_GCM, test::Stream>;
+template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, test::Stream>;
+template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, test::Stream>;
+#endif // BUILD_TEST
 
 } // namespace pichi::net
