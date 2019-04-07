@@ -21,7 +21,11 @@ bool verifyException(boost::system::system_error const& e)
 template <boost::beast::http::error error>
 bool verifyException(boost::system::system_error const& e)
 {
-  return e.code() == error;
+  auto expect = boost::beast::http::make_error_code(error);
+  auto fact = e.code();
+  // FIXME http_error_category equivalence is failed on Windows shared mode
+  return expect.value() == fact.value() &&
+         std::string_view{expect.category().name()} == std::string_view{fact.category().name()};
 }
 
 extern std::vector<uint8_t> str2vec(std::string_view);
