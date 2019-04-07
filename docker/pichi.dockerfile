@@ -9,8 +9,7 @@ ADD server ${SRC_DIR}/server
 ADD src ${SRC_DIR}/src
 ADD test ${SRC_DIR}/test
 
-RUN sed -i 's/v3\.9/edge/g' /etc/apk/repositories && \
-  apk add --no-cache g++ cmake make mbedtls-dev mbedtls-static libsodium-dev rapidjson-dev \
+RUN apk add --no-cache g++ cmake make mbedtls-dev mbedtls-static libsodium-dev rapidjson-dev \
   libmaxminddb-dev boost-dev boost-static libressl-dev && \
   mkdir -p "${BUILD_DIR}" && cd "${BUILD_DIR}" && \
   cmake -D CMAKE_BUILD_TYPE=MiniSizeRel -D CMAKE_INSTALL_PREFIX=/usr "${SRC_DIR}" && \
