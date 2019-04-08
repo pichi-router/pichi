@@ -1,21 +1,18 @@
 #ifndef PICHI_NET_SSSTREAM_HPP
 #define PICHI_NET_SSSTREAM_HPP
 
-#include <boost/asio/ip/tcp.hpp>
 #include <pichi/crypto/method.hpp>
 #include <pichi/crypto/stream.hpp>
 #include <pichi/net/adapter.hpp>
 
 namespace pichi::net {
 
-template <crypto::CryptoMethod method> class SSStreamAdapter : public Ingress, public Egress {
-private:
-  using Socket = boost::asio::ip::tcp::socket;
-
+template <crypto::CryptoMethod method, typename Stream>
+class SSStreamAdapter : public Ingress, public Egress {
 public:
-  template <typename Arg>
-  SSStreamAdapter(Arg&& arg, ConstBuffer<uint8_t> psk)
-    : socket_{std::forward<Arg>(arg)}, encryptor_{psk}, decryptor_{psk}
+  template <typename... Args>
+  SSStreamAdapter(ConstBuffer<uint8_t> psk, Args&&... args)
+    : stream_{std::forward<Args>(args)...}, encryptor_{psk}, decryptor_{psk}
   {
   }
   ~SSStreamAdapter() override = default;
@@ -32,7 +29,7 @@ public:
   void connect(Endpoint const& remote, Endpoint const& server, Yield) override;
 
 private:
-  Socket socket_;
+  Stream stream_;
   crypto::StreamEncryptor<method> encryptor_;
   crypto::StreamDecryptor<method> decryptor_;
   bool ivSent_ = false;
