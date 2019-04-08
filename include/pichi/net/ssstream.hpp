@@ -10,6 +10,8 @@ namespace pichi::net {
 template <crypto::CryptoMethod method, typename Stream>
 class SSStreamAdapter : public Ingress, public Egress {
 public:
+  inline static constexpr crypto::CryptoMethod METHOD = method;
+
   template <typename... Args>
   SSStreamAdapter(ConstBuffer<uint8_t> psk, Args&&... args)
     : stream_{std::forward<Args>(args)...}, encryptor_{psk}, decryptor_{psk}
