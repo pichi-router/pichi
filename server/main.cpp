@@ -60,7 +60,7 @@ int main(int argc, char const* argv[])
   auto group = string{};
   auto desc = po::options_description{"Allow options"};
   desc.add_options()("help,h", "produce help message")(
-      "listen,l", po::value<string>(&listen)->default_value(PICHI_DEFAULT_BIND),
+      "listen,l", po::value<string>(&listen)->default_value("::1"),
       "API server address")("port,p", po::value<uint16_t>(&port), "API server port")(
       "geo,g", po::value<string>(&geo)->default_value(GEO_FILE), "GEO file")
 #if defined(HAS_FORK) && defined(HAS_SETSID)
