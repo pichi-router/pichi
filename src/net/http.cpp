@@ -8,6 +8,7 @@
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
+#include <pichi/test/socket.hpp>
 #include <pichi/uri.hpp>
 
 #ifdef ENABLE_TLS
@@ -31,6 +32,41 @@ template <bool isRequest> using Message = boost::beast::http::message<isRequest,
 using Request = Message<true>;
 using Response = Message<false>;
 template <bool isRequest> using Serializer = boost::beast::http::serializer<isRequest, Body>;
+
+template <typename Stream, bool isRequest>
+static auto writeHttp(Stream& s, Message<isRequest>& m, asio::yield_context yield)
+{
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Stream, pichi::test::Stream>)
+    return http::write(s, m);
+  else
+#endif // BUILD_TEST
+    return http::async_write(s, m, yield);
+}
+
+template <typename Stream, bool isRequest>
+static auto writeHttpHeader(Stream& s, Message<isRequest>& m, asio::yield_context yield)
+{
+  auto sr = Serializer<isRequest>{m};
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Stream, pichi::test::Stream>)
+    return http::write_header(s, sr);
+  else
+#endif // BUILD_TEST
+    return http::async_write_header(s, sr, yield);
+}
+
+template <typename Stream, bool isRequest, typename DynamicBuffer>
+static auto readHttpHeader(Stream& s, DynamicBuffer& buffer, Parser<isRequest>& parser,
+                           asio::yield_context yield)
+{
+#ifdef BUILD_TEST
+  if constexpr (is_same_v<Stream, pichi::test::Stream>)
+    return http::read_header(s, buffer, parser);
+  else
+#endif // BUILD_TEST
+    return http::async_read_header(s, buffer, parser, yield);
+}
 
 static void assertNoError(sys::error_code ec)
 {
@@ -68,6 +104,7 @@ static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
   auto m = Message<isRequest>{header};
   auto sr = Serializer<isRequest>{m};
   auto left = buf;
+  auto stickyLen = cache.size();
   do {
     auto ec = sys::error_code{};
     sr.next(ec, [&](auto&&, auto&& serialized) {
@@ -76,6 +113,9 @@ static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
     });
     assertNoError(ec);
   } while (!sr.is_header_done());
+  asio::buffer_copy(cache.prepare(stickyLen), cache.data());
+  cache.commit(stickyLen);
+  cache.consume(stickyLen);
   return buf.size() - left.size();
 }
 
@@ -129,7 +169,7 @@ template <typename Stream> static void tunnelConfirm(Stream& s, Yield yield)
   rep.result(http::status::ok);
   rep.reason("Connection Established");
   addCloseHeader(rep);
-  http::async_write(s, rep, yield);
+  writeHttp(s, rep, yield);
 }
 
 template <typename Stream> static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
@@ -142,11 +182,11 @@ template <typename Stream> static bool tunnelConnect(Endpoint const& remote, Str
   addCloseHeader(req);
   req.prepare_payload();
 
-  http::async_write(s, req, yield);
+  writeHttp(s, req, yield);
 
   auto parser = ResponseParser{};
   auto cache = Cache{};
-  http::async_read_header(s, cache, parser, yield);
+  readHttpHeader(s, cache, parser, yield);
   auto code = parser.release().result_int();
 
   return code >= 200 && code < 300;
@@ -177,8 +217,12 @@ static ConstBuffer<uint8_t> parseHeader(Parser<isRequest>& parser, DynamicBuffer
     cache.consume(parsed);
     return cache.data();
   }
-  else
-    return buf + parsed;
+  else {
+    // Unparsed data left in buf has to be stored in cache for next sending.
+    auto left = buf + parsed;
+    copyToCache(left, cache);
+    return left;
+  }
 }
 
 template <bool isRequest, typename DynamicBuffer, typename Stream>
@@ -186,18 +230,12 @@ static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
                             ConstBuffer<uint8_t> buf, Stream& s, Yield yield)
 {
   auto left = parseHeader(parser, cache, buf);
-  if (!parser.is_header_done()) {
-    // Unparsed data left in buf has to be stored in cache for next sending.
-    copyToCache(left, cache);
-    return false;
-  }
+  if (!parser.is_header_done()) return false;
 
   auto m = parser.release();
   if (!parser.upgrade()) addCloseHeader(m);
   if constexpr (isRequest) addHostToTarget(m);
-
-  auto sr = Serializer<isRequest>{m};
-  http::async_write_header(s, sr, yield);
+  writeHttpHeader(s, m, yield);
 
   write(s, left, yield);
   cache.consume(cache.size());
@@ -235,9 +273,9 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(Yield yield)
   auto ec = sys::error_code{};
   auto rep = http::response<http::empty_body>{};
   rep.version(11);
-  rep.result(http::status::request_timeout);
+  rep.result(http::status::gateway_timeout);
   // Ignoring all errors here
-  http::async_write(stream_, rep, yield[ec]);
+  writeHttp(stream_, rep, yield[ec]);
 }
 
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
@@ -248,12 +286,19 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
   }
 #endif // ENABLE_TLS
 
-  http::async_read_header(stream_, reqCache_, reqParser_, yield);
+  readHttpHeader(stream_, reqCache_, reqParser_, yield);
 
   auto& req = reqParser_.get();
   if (req.method() == http::verb::connect) {
     send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
-    recv_ = [this](auto buf, auto yield) { return readSome(stream_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) {
+      if (reqCache_.size() == 0) return readSome(stream_, buf, yield);
+
+      auto copied = min(buf.size(), reqCache_.size());
+      copy_n(asio::buffers_begin(reqCache_.data()), copied, begin(buf));
+      reqCache_.consume(copied);
+      return copied;
+    };
     confirm_ = [this](auto yield) {
       tunnelConfirm(stream_, yield);
       reqParser_.release();
@@ -339,5 +384,10 @@ template class HttpEgress<TcpSocket>;
 template class HttpIngress<TlsSocket>;
 template class HttpEgress<TlsSocket>;
 #endif // ENABLE_TLS
+
+#ifdef BUILD_TEST
+template class HttpIngress<pichi::test::Stream>;
+template class HttpEgress<pichi::test::Stream>;
+#endif // BUILD_TEST
 
 } // namespace pichi::net

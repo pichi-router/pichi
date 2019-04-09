@@ -2,6 +2,7 @@
 #define PICHI_TEST_UTILS_HPP
 
 #include <boost/asio/error.hpp>
+#include <boost/beast/http/error.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/exception.hpp>
 #include <string_view>
@@ -15,6 +16,16 @@ template <boost::asio::error::basic_errors error>
 bool verifyException(boost::system::system_error const& e)
 {
   return e.code() == error;
+}
+
+template <boost::beast::http::error error>
+bool verifyException(boost::system::system_error const& e)
+{
+  auto expect = boost::beast::http::make_error_code(error);
+  auto fact = e.code();
+  // FIXME http_error_category equivalence is failed on Windows shared mode
+  return expect.value() == fact.value() &&
+         std::string_view{expect.category().name()} == std::string_view{fact.category().name()};
 }
 
 extern std::vector<uint8_t> str2vec(std::string_view);
