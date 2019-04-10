@@ -5,6 +5,7 @@
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/write.hpp>
 #include <pichi/asserts.hpp>
+#include <pichi/common.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
@@ -36,6 +37,7 @@ template <bool isRequest> using Serializer = boost::beast::http::serializer<isRe
 template <typename Stream, bool isRequest>
 static auto writeHttp(Stream& s, Message<isRequest>& m, asio::yield_context yield)
 {
+  suppressC4100(yield);
 #ifdef BUILD_TEST
   if constexpr (is_same_v<Stream, pichi::test::Stream>)
     return http::write(s, m);
@@ -47,6 +49,7 @@ static auto writeHttp(Stream& s, Message<isRequest>& m, asio::yield_context yiel
 template <typename Stream, bool isRequest>
 static auto writeHttpHeader(Stream& s, Message<isRequest>& m, asio::yield_context yield)
 {
+  suppressC4100(yield);
   auto sr = Serializer<isRequest>{m};
 #ifdef BUILD_TEST
   if constexpr (is_same_v<Stream, pichi::test::Stream>)
@@ -60,6 +63,7 @@ template <typename Stream, bool isRequest, typename DynamicBuffer>
 static auto readHttpHeader(Stream& s, DynamicBuffer& buffer, Parser<isRequest>& parser,
                            asio::yield_context yield)
 {
+  suppressC4100(yield);
 #ifdef BUILD_TEST
   if constexpr (is_same_v<Stream, pichi::test::Stream>)
     return http::read_header(s, buffer, parser);
@@ -317,7 +321,7 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
       if (tryToSendHeader(respParser_, respCache_, buf, stream_, yield))
         send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
     };
-    recv_ = [this](auto buf, auto yield) {
+    recv_ = [this](auto buf, auto) {
       recv_ = [this](auto buf, auto yield) { return recvRaw(stream_, reqCache_, buf, yield); };
       auto req = reqParser_.release();
       if (!reqParser_.upgrade()) addCloseHeader(req);

@@ -21,7 +21,7 @@ RejectEgress::RejectEgress(asio::io_context& io, uint16_t delay) : t_{io}
   t_.expires_after(delay * 1s);
 }
 
-[[noreturn]] size_t RejectEgress::recv(MutableBuffer<uint8_t>, Yield yield)
+[[noreturn]] size_t RejectEgress::recv(MutableBuffer<uint8_t>, Yield)
 {
   fail("RejectEgress::recv shouldn't be invoked");
 }

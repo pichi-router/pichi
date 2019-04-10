@@ -77,7 +77,7 @@ void Server::listen(Acceptor& acceptor, string_view iname, IngressVO const& vo, 
       auto& io = strand_.context();
       auto ingress = net::makeIngress(vo, move(s));
       auto iv = array<uint8_t, 32>{};
-      if (isDuplicated({iv, ingress->readIV(iv, yield)}, yield)) {
+      if (isDuplicated({iv, ingress->readIV(iv, yield)})) {
         make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_EJECTOR, io))->start();
       }
       else {
@@ -106,7 +106,7 @@ template <typename ExceptionPtr> void Server::removeIngress(ExceptionPtr eptr, s
   }
 }
 
-template <typename Yield> bool Server::isDuplicated(ConstBuffer<uint8_t> raw, Yield yield)
+bool Server::isDuplicated(ConstBuffer<uint8_t> raw)
 {
   if (raw.size() == 0) return false;
 
