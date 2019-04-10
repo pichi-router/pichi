@@ -91,7 +91,7 @@ template <CryptoMethod method, typename Stream>
 Endpoint SSAeadAdapter<method, Stream>::readRemote(Yield yield)
 {
   return parseEndpoint([this, yield](auto dst) {
-    for (size_t r = 0; r < dst.size(); r += recv({dst.data() + r, dst.size() - r}, yield))
+    for (size_t r = 0; r < dst.size(); r += recv(dst + r, yield))
       ;
   });
 }
@@ -160,7 +160,7 @@ size_t SSAeadAdapter<method, Stream>::encrypt(ConstBuffer<uint8_t> plain,
   hton(static_cast<uint16_t>(plain.size()), lb);
 
   auto len = encryptor_.encrypt(lb, cipher);
-  len += encryptor_.encrypt(plain, {cipher.data() + len, cipher.size() - len});
+  len += encryptor_.encrypt(plain, cipher + len);
 
   return len;
 }
