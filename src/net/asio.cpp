@@ -72,7 +72,7 @@ void connect(Endpoint const& endpoint, Socket& s, Yield yield)
   else
 #endif // ENABLE_TLS
 #ifdef BUILD_TEST
-      if constexpr (is_same_v<Socket, pichi::test::Socket>) {
+      if constexpr (is_same_v<Socket, pichi::test::Stream>) {
     s.connect();
   }
   else
@@ -87,7 +87,7 @@ template <typename Socket, typename Yield>
 void read(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Socket, pichi::test::Socket>)
+  if constexpr (is_same_v<Socket, pichi::test::Stream>)
     asio::read(s, asio::buffer(buf));
   else
 #endif // BUILD_TEST
@@ -98,7 +98,7 @@ template <typename Socket, typename Yield>
 size_t readSome(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Socket, pichi::test::Socket>)
+  if constexpr (is_same_v<Socket, pichi::test::Stream>)
     return s.read_some(asio::buffer(buf));
   else
 #endif // BUILD_TEST
@@ -109,7 +109,7 @@ template <typename Socket, typename Yield>
 void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
 {
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Socket, pichi::test::Socket>)
+  if constexpr (is_same_v<Socket, pichi::test::Stream>)
     asio::write(s, asio::buffer(buf));
   else
 #endif // BUILD_TEST
@@ -315,12 +315,12 @@ template bool isOpen<>(TlsSocket const&);
 #endif // ENABLE_TLS
 
 #ifdef BUILD_TEST
-template void connect<>(Endpoint const&, pichi::test::Socket&, Yield);
-template void read<>(pichi::test::Socket&, MutableBuffer<uint8_t>, Yield);
-template size_t readSome<>(pichi::test::Socket&, MutableBuffer<uint8_t>, Yield);
-template void write<>(pichi::test::Socket&, ConstBuffer<uint8_t>, Yield);
-template void close<>(pichi::test::Socket&);
-template bool isOpen<>(pichi::test::Socket const&);
+template void connect<>(Endpoint const&, pichi::test::Stream&, Yield);
+template void read<>(pichi::test::Stream&, MutableBuffer<uint8_t>, Yield);
+template size_t readSome<>(pichi::test::Stream&, MutableBuffer<uint8_t>, Yield);
+template void write<>(pichi::test::Stream&, ConstBuffer<uint8_t>, Yield);
+template void close<>(pichi::test::Stream&);
+template bool isOpen<>(pichi::test::Stream const&);
 #endif // BUILD_TEST
 
 template unique_ptr<Ingress> makeIngress<>(api::IngressVO const&, TcpSocket&&);
