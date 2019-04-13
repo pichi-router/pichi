@@ -1,3 +1,4 @@
+#include "config.h"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core/flat_static_buffer.hpp>
@@ -18,6 +19,12 @@
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#include <vector>
+
+#ifdef HAS_SIGNAL_H
+#include <boost/asio/signal_set.hpp>
+#include <signal.h>
+#endif // HAS_SIGNAL_H
 
 using namespace std;
 using namespace pichi;
@@ -34,8 +41,99 @@ static decltype(auto) INGRESSES = "ingresses";
 static decltype(auto) EGRESSES = "egresses";
 static decltype(auto) RULES = "rules";
 static decltype(auto) ROUTE = "route";
+static decltype(auto) INDENT = "  ";
 
 static asio::io_context io{1};
+static auto alloc = json::Document::AllocatorType{};
+
+static json::Document parseJson(char const* str)
+{
+  auto doc = json::Document{};
+  doc.Parse(str);
+  assertFalse(doc.HasParseError());
+  return doc;
+}
+
+class HttpHelper {
+public:
+  HttpHelper(string const& host, uint16_t port, asio::yield_context yield);
+
+  vector<string> get(string const& target);
+  void put(string const& target, string const& body);
+  void del(string const& target);
+
+private:
+  net::Endpoint endpoint_;
+  asio::yield_context yield_;
+};
+
+HttpHelper::HttpHelper(string const& host, uint16_t port, asio::yield_context yield)
+  : endpoint_{net::makeEndpoint(host, port)}, yield_{yield}
+{
+}
+
+vector<string> HttpHelper::get(string const& target)
+{
+  auto s = tcp::socket{io};
+  net::connect(endpoint_, s, yield_);
+
+  auto req = http::request<http::empty_body>{};
+  req.method(http::verb::get);
+  req.target(target);
+  req.version(11);
+  http::async_write(s, req, yield_);
+
+  auto buf = beast::flat_static_buffer<1024>{};
+  auto resp = http::response<http::string_body>{};
+  http::async_read(s, buf, resp, yield_);
+  assertTrue(resp.result() == http::status::ok);
+
+  auto doc = parseJson(resp.body().c_str());
+  auto ret = vector<string>{};
+  transform(doc.MemberBegin(), doc.MemberEnd(), back_inserter(ret),
+            [](auto&& member) { return member.name.GetString(); });
+  return ret;
+}
+
+void HttpHelper::put(string const& target, string const& body)
+{
+  auto s = tcp::socket{io};
+  net::connect(endpoint_, s, yield_);
+
+  auto req = http::request<http::string_body>{};
+  req.method(http::verb::put);
+  req.target(target);
+  req.version(11);
+  req.body() = body;
+  req.prepare_payload();
+  http::async_write(s, req, yield_);
+
+  auto buf = beast::flat_static_buffer<1024>{};
+  auto resp = http::response<http::string_body>{};
+  http::async_read(s, buf, resp, yield_);
+  if (resp.result() != http::status::no_content) cout << INDENT << target << " NOT loaded\n";
+}
+
+void HttpHelper::del(string const& target)
+{
+  auto s = tcp::socket{io};
+  net::connect(endpoint_, s, yield_);
+
+  auto req = http::request<http::string_body>{};
+  req.method(http::verb::delete_);
+  req.target(target);
+  req.version(11);
+  http::async_write(s, req, yield_);
+
+  auto buf = beast::flat_static_buffer<1024>{};
+  auto resp = http::response<http::string_body>{};
+  http::async_read(s, buf, resp, yield_);
+  assertTrue(resp.result() == http::status::no_content);
+}
+
+static auto genDirect() { return "{\"type\":\"direct\"}"; }
+
+static auto genRoute() { return "{\"default\":\"direct\",\"rules\":[]}"; }
 
 static auto readJson(string const& fn)
 {
@@ -59,61 +157,68 @@ static string toString(json::Value const& v)
   return buf.GetString();
 }
 
-static void loadValue(net::Endpoint const& server, asio::yield_context yield,
-                      json::Value const& value, string const& target)
-{
-  auto socket = tcp::socket{io};
-  net::connect(server, socket, yield);
-
-  auto req = http::request<http::string_body>{};
-  req.target(target);
-  req.method(http::verb::put);
-  req.body() = toString(value);
-  req.prepare_payload();
-  http::async_write(socket, req, yield);
-
-  auto buf = beast::flat_static_buffer<1024>{};
-  auto resp = http::response<http::string_body>{};
-  http::async_read(socket, buf, resp, yield);
-  if (resp.result() == http::status::no_content)
-    cout << target << " loaded.\n";
-  else
-    cout << target << " NOT loaded\n";
-}
-
 template <typename StringRef>
-static void loadSet(net::Endpoint const& endpoint, asio::yield_context yield,
-                    json::Value const& root, StringRef const& category)
+static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const& category)
 {
   auto it = root.FindMember(category);
   if (it == root.MemberEnd() || !it->value.IsObject()) {
-    cout << category << " NOT loaded\n";
+    cout << INDENT << category << " NOT loaded\n";
     return;
   }
 
   for (auto&& node : it->value.GetObject())
-    loadValue(endpoint, yield, node.value, "/"s + category + "/" + node.name.GetString());
+    helper.put("/"s + category + "/" + node.name.GetString(), toString(node.value));
 }
 
-static void loadJson(net::Endpoint const& endpoint, json::Value const& v, asio::yield_context yield)
+static void load(HttpHelper& helper, string const& fn)
 {
-  loadSet(endpoint, yield, v, INGRESSES);
-  loadSet(endpoint, yield, v, EGRESSES);
-  loadSet(endpoint, yield, v, RULES);
-  if (v.HasMember(ROUTE))
-    loadValue(endpoint, yield, v[ROUTE], "/"s + ROUTE);
+  cout << "Loading configuration: " << fn << "\n";
+  auto json = readJson(fn);
+  loadSet(helper, json, INGRESSES);
+  loadSet(helper, json, EGRESSES);
+  loadSet(helper, json, RULES);
+  if (json.HasMember(ROUTE))
+    helper.put("/"s + ROUTE, toString(json[ROUTE]));
   else
-    cout << ROUTE << " NOT loaded\n";
+    cout << INDENT << ROUTE << " NOT loaded\n";
+  cout << "Configuration " << fn << " loaded\n";
 }
 
-void run(string const& bind, uint16_t port, string const& json, string const& mmdb)
+static void flush(HttpHelper& helper)
+{
+  helper.put("/"s + EGRESSES + "/direct", genDirect());
+  helper.put("/"s + ROUTE, genRoute());
+
+  for (auto&& rule : helper.get("/"s + RULES)) helper.del("/"s + RULES + "/" + rule);
+  for (auto&& egress : helper.get("/"s + EGRESSES))
+    if (egress != "direct") helper.del("/"s + EGRESSES + "/" + egress);
+  for (auto&& ingress : helper.get("/"s + INGRESSES)) helper.del("/"s + INGRESSES + "/" + ingress);
+
+  cout << "Configuration reset\n";
+}
+
+void run(string const& bind, uint16_t port, string const& fn, string const& mmdb)
 {
   auto server = api::Server{io, mmdb.c_str()};
   server.listen(bind, port);
 
-  net::spawn(io, [ep = net::makeEndpoint(bind, port), v = readJson(json)](auto yield) {
-    loadJson(ep, v, yield);
-  });
+  net::spawn(
+      io,
+      [=](auto yield) {
+        auto helper = HttpHelper{bind, port, yield};
+        load(helper, fn);
+
+#ifdef HAS_SIGNAL_H
+        auto ss = asio::signal_set{io};
+        while (true) {
+          ss.add(SIGHUP);
+          ss.async_wait(yield);
+          flush(helper);
+          load(helper, fn);
+        }
+#endif // HAS_SIGNAL_H
+      },
+      [](auto, auto) noexcept { io.stop(); });
 
   io.run();
 }
