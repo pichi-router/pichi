@@ -111,7 +111,7 @@ void HttpHelper::put(string const& target, string const& body)
   auto buf = beast::flat_static_buffer<1024>{};
   auto resp = http::response<http::string_body>{};
   http::async_read(s, buf, resp, yield_);
-  if (resp.result() != http::status::no_content) cout << INDENT << target << " NOT loaded\n";
+  if (resp.result() != http::status::no_content) cout << INDENT << target << " NOT loaded" << endl;
 }
 
 void HttpHelper::del(string const& target)
@@ -142,7 +142,7 @@ static auto readJson(string const& fn)
   auto isw = json::IStreamWrapper{ifs};
   doc.ParseStream(isw);
   if (doc.HasParseError() || !doc.IsObject()) {
-    cout << "Invalid JSON configuration\n";
+    cout << "Invalid JSON configuration" << endl;
     doc = json::Document{};
     doc.SetObject();
   }
@@ -162,7 +162,7 @@ static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const
 {
   auto it = root.FindMember(category);
   if (it == root.MemberEnd() || !it->value.IsObject()) {
-    cout << INDENT << category << " NOT loaded\n";
+    cout << INDENT << category << " NOT loaded" << endl;
     return;
   }
 
@@ -173,7 +173,7 @@ static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const
 static void load(HttpHelper& helper, string const& fn)
 {
   if (fn.empty()) return;
-  cout << "Loading configuration: " << fn << "\n";
+  cout << "Loading configuration: " << fn << endl;
   auto json = readJson(fn);
   loadSet(helper, json, INGRESSES);
   loadSet(helper, json, EGRESSES);
@@ -181,8 +181,8 @@ static void load(HttpHelper& helper, string const& fn)
   if (json.HasMember(ROUTE))
     helper.put("/"s + ROUTE, toString(json[ROUTE]));
   else
-    cout << INDENT << ROUTE << " NOT loaded\n";
-  cout << "Configuration " << fn << " loaded\n";
+    cout << INDENT << ROUTE << " NOT loaded" << endl;
+  cout << "Configuration " << fn << " loaded" << endl;
 }
 
 static void flush(HttpHelper& helper)
@@ -195,7 +195,7 @@ static void flush(HttpHelper& helper)
     if (egress != "direct") helper.del("/"s + EGRESSES + "/" + egress);
   for (auto&& ingress : helper.get("/"s + INGRESSES)) helper.del("/"s + INGRESSES + "/" + ingress);
 
-  cout << "Configuration reset\n";
+  cout << "Configuration reset" << endl;
 }
 
 void run(string const& bind, uint16_t port, string const& fn, string const& mmdb)
@@ -203,13 +203,14 @@ void run(string const& bind, uint16_t port, string const& fn, string const& mmdb
   auto server = api::Server{io, mmdb.c_str()};
   server.listen(bind, port);
 
+  // FIXME load & flush aren't designed to be the atomic operations.
   net::spawn(
       io,
       [=](auto yield) {
         auto helper = HttpHelper{bind, port, yield};
         load(helper, fn);
 
-#ifdef HAS_SIGNAL_H
+#if defined(HAS_SIGNAL_H) && defined(SIGHUP)
         auto ss = asio::signal_set{io};
         while (true) {
           ss.add(SIGHUP);
