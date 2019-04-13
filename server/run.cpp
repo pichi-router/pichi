@@ -172,6 +172,7 @@ static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const
 
 static void load(HttpHelper& helper, string const& fn)
 {
+  if (fn.empty()) return;
   cout << "Loading configuration: " << fn << "\n";
   auto json = readJson(fn);
   loadSet(helper, json, INGRESSES);
