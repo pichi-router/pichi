@@ -39,15 +39,11 @@ void SSStreamAdapter<method, Stream>::send(ConstBuffer<uint8_t> plain, Yield yie
     ivSent_ = true;
   }
 
-  auto data = plain.data();
-  auto size = plain.size();
   auto cipher = FrameBuffer<uint8_t>{};
-  while (size > 0) {
-    auto consumed = size > cipher.size() ? cipher.size() : size;
-    auto len = encryptor_.encrypt({data, consumed}, {cipher, consumed});
-    write(stream_, {cipher, len}, yield);
-    size -= consumed;
-    data += consumed;
+  while (plain.size() > 0) {
+    auto consumed = min(plain.size(), cipher.size());
+    write(stream_, {cipher, encryptor_.encrypt({plain, consumed}, {cipher, consumed})}, yield);
+    plain += consumed;
   }
 }
 
