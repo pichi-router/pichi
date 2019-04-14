@@ -6,6 +6,7 @@
 #include <boost/test/unit_test.hpp>
 #include <initializer_list>
 #include <memory>
+#include <pichi/common.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>

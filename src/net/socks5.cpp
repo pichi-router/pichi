@@ -2,6 +2,7 @@
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/asserts.hpp>
+#include <pichi/common.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>
@@ -82,7 +83,7 @@ void Socks5Adapter<Stream>::connect(Endpoint const& remote, Endpoint const& next
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
   assertTrue(buf[1] == 0x00, PichiError::BAD_PROTO);
 
-  size_t i = 0;
+  auto i = 0_sz;
   buf[i++] = 0x05;
   buf[i++] = 0x01;
   buf[i++] = 0x00;

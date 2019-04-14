@@ -10,10 +10,6 @@
 
 namespace pichi {
 
-extern size_t operator""_sz(unsigned long long);
-extern uint8_t operator""_u8(unsigned long long);
-extern uint16_t operator""_u16(unsigned long long);
-
 template <PichiError error> bool verifyException(Exception const& e) { return e.error() == error; }
 
 template <boost::asio::error::basic_errors error>
