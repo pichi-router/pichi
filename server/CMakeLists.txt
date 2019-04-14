@@ -1,6 +1,6 @@
 set(SERVER pichi)
 
-add_executable(${SERVER} main.cpp)
+add_executable(${SERVER} main.cpp run.cpp)
 target_include_directories(${SERVER} PRIVATE ${CMAKE_BINARY_DIR}/server)
 target_link_libraries(${SERVER} PRIVATE
   ${Boost_CONTEXT_LIBRARY}
