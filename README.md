@@ -169,14 +169,14 @@ for development.
 $ docker pull pichi/pichi
 $ docker run --rm pichi/pichi pichi -h
 Allow options:
-  -h [ --help ]                         produce help message
-  -l [ --listen ] arg (=::1)            API server address
-  -p [ --port ] arg                     API server port
-  -g [ --geo ] arg (=/usr/share/pichi/geo.mmdb)
-                                        GEO file
-  -d [ --daemon ]                       daemonize
-  -u [ --user ] arg                     run as user
-  --group arg                           run as group
+  -h [ --help ]              produce help message
+  -l [ --listen ] arg (=::1) API server address
+  -p [ --port ] arg          API server port
+  -g [ --geo ] arg           GEO file
+  --json arg                 Initail configration(JSON format)
+  -d [ --daemon ]            daemonize
+  -u [ --user ] arg          run as user
+  --group arg                run as group
 $ docker run -d --name pichi --net host --restart always pichi/pichi \
 >   pichi -g /usr/share/pichi/geo.mmdb -p 1024 -l 127.0.0.1
 c51b832bd29dd0333b0d32b0b0563ddc72821f7301c36c7635ae47d00a3bb902
@@ -311,15 +311,37 @@ $ cmake -D CMAKE_INSTALL_PREFIX=/usr -D CMAKE_BUILD_TYPE=MinSizeRel -D BUILD_SER
 $ cmake --build build --target install/strip
 $ /usr/bin/pichi -h
 Allow options:
-  -h [ --help ]                         produce help message
-  -l [ --listen ] arg (=::1)            API server address
-  -p [ --port ] arg                     API server port
-  -g [ --geo ] arg (=/usr/share/pichi/geo.mmdb)
-                                        GEO file
-  -d [ --daemon ]                       daemonize
-  -u [ --user ] arg                     run as user
-  --group arg                           run as group
+  -h [ --help ]              produce help message
+  -l [ --listen ] arg (=::1) API server address
+  -p [ --port ] arg          API server port
+  -g [ --geo ] arg           GEO file
+  --json arg                 Initail configration(JSON format)
+  -d [ --daemon ]            daemonize
+  -u [ --user ] arg          run as user
+  --group arg                run as group
 ```
+
+`--port` and `--geo` are mandatory. `--json` option can take a JSON file as an Initial configuration to specify ingresses/egresses/rules/route. The initial configuration format looks like:
+
+```
+{
+  "ingresses": {
+    "ingress-0": {/* ingress configuration */},
+    "ingress-1": {/* ingress configuration */}
+  },
+  "egresses": {
+    "egress-0": {/* egress configuration */},
+    "egress-1": {/* egress configuration */}
+  },
+  "rules": {
+    "rule-0": {/* rule configuration */},
+    "rule-1": {/* rule configuration */}
+  },
+  "route": {/* route configuration */}
+}
+```
+
+Furthermore, Pichi server also reload JSON configuration on `SIGHUP` received if OS supports.
 
 ### In-Process
 
@@ -332,9 +354,9 @@ C function can be invoked by lots of program languages. It's defined in `include
 ```C
 /*
  * Start PICHI server according to
- *   - bind: server listening address, PICHI_DEFAULT_BIND if NULL,
+ *   - bind: server listening address, NOT NULL,
  *   - port: server listening port,
- *   - mmdb: IP GEO database, MMDB format, PICHI_DEFAULT_MMDB if NULL.
+ *   - mmdb: IP GEO database, MMDB format, NOT NULL.
  * The function doesn't return if no error occurs, otherwise -1.
  */
 extern int pichi_run_server(char const* bind, uint16_t port, char const* mmdb);
