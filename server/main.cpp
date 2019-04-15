@@ -67,7 +67,7 @@ int main(int argc, char const* argv[])
       "listen,l", po::value<string>(&listen)->default_value("::1"),
       "API server address")("port,p", po::value<uint16_t>(&port), "API server port")(
       "geo,g", po::value<string>(&geo), "GEO file")("json", po::value<string>(&json),
-                                                    "Initail configration(JSON format)")
+                                                    "Initial configration(JSON format)")
 #if defined(HAS_FORK) && defined(HAS_SETSID)
       ("daemon,d", "daemonize")
 #endif // HAS_SETUID && HAS_GETPWNAM
