@@ -10,8 +10,8 @@
 
 namespace pichi::net {
 
-class Ingress;
-class Egress;
+struct Ingress;
+struct Egress;
 
 } // namespace pichi::net
 
