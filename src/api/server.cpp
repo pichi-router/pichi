@@ -24,7 +24,10 @@ using tcp = ip::tcp;
 
 namespace pichi::api {
 
-static auto const RANDOM_EJECTOR = EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
+static auto const IMMEDIATE_REJECTOR =
+    EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0};
+static auto const RANDOM_REJECTOR =
+    EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
 static auto const IV_EXPIRE_TIME = 1h;
 
 static auto resolve(net::Endpoint const& remote, asio::io_context& io, asio::yield_context yield)
@@ -32,6 +35,14 @@ static auto resolve(net::Endpoint const& remote, asio::io_context& io, asio::yie
   auto ec = sys::error_code{};
   auto r = tcp::resolver{io}.async_resolve(remote.host_, remote.port_, yield[ec]);
   return ec ? tcp::resolver::results_type{} : r;
+}
+
+static auto visitingSelf(tcp::resolver::results_type const& r, string_view bind, uint16_t port)
+{
+  return cend(r) != find_if(cbegin(r), cend(r), [=](auto&& entry) {
+           return entry.endpoint().address() == ip::make_address(bind) &&
+                  entry.endpoint().port() == port;
+         });
 }
 
 Server::Server(asio::io_context& io, char const* fn)
@@ -45,6 +56,8 @@ Server::Server(asio::io_context& io, char const* fn)
 
 void Server::listen(string_view address, uint16_t port)
 {
+  bind_ = address;
+  port_ = port;
   net::spawn(strand_, [a = tcp::acceptor{strand_.context(), {ip::make_address(address), port}},
                        this](auto yield) mutable {
     while (a.is_open()) {
@@ -78,12 +91,17 @@ void Server::listen(Acceptor& acceptor, string_view iname, IngressVO const& vo, 
       auto ingress = net::makeIngress(vo, move(s));
       auto iv = array<uint8_t, 32>{};
       if (isDuplicated({iv, ingress->readIV(iv, yield)}, yield)) {
-        make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_EJECTOR, io))->start();
+        make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_REJECTOR, io))->start();
       }
       else {
         auto remote = ingress->readRemote(yield);
-        auto&& evo = route(remote, iname, vo.type_,
-                           router_.needResloving() ? resolve(remote, io, yield) : ResolveResult{});
+
+        // Refuse connection to the server itself via ingresses.
+        // TODO it might be a rule rather than hardcode.
+        auto r = resolve(remote, io, yield);
+        auto&& evo =
+            visitingSelf(r, bind_, port_) ? IMMEDIATE_REJECTOR : route(remote, iname, vo.type_, r);
+
         auto session = make_shared<Session>(io, move(ingress), net::makeEgress(evo, io));
         if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
           session->start(remote);
