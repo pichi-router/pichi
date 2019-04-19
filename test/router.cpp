@@ -4,6 +4,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/api/router.hpp>
+#include <pichi/common.hpp>
 
 using namespace std;
 using namespace pichi;
@@ -206,7 +207,7 @@ BOOST_AUTO_TEST_CASE(Router_setRoute_Without_Default)
   auto withRules = router.getRoute();
   BOOST_CHECK(withRules.default_.has_value());
   BOOST_CHECK_EQUAL(ph, *withRules.default_);
-  BOOST_CHECK_EQUAL(1, withRules.rules_.size());
+  BOOST_CHECK_EQUAL(1_sz, withRules.rules_.size());
   BOOST_CHECK_EQUAL(ph, withRules.rules_[0].first);
   BOOST_CHECK_EQUAL(ph, withRules.rules_[0].second);
 }

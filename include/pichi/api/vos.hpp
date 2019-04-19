@@ -19,40 +19,40 @@ enum class DelayMode { RANDOM, FIXED };
 
 struct IngressVO {
   AdapterType type_;
-  std::string bind_;
-  uint16_t port_;
-  std::optional<CryptoMethod> method_;
-  std::optional<std::string> password_;
-  std::optional<bool> tls_;
-  std::optional<std::string> certFile_;
-  std::optional<std::string> keyFile_;
+  std::string bind_ = {};
+  uint16_t port_ = 0;
+  std::optional<CryptoMethod> method_ = {};
+  std::optional<std::string> password_ = {};
+  std::optional<bool> tls_ = {};
+  std::optional<std::string> certFile_ = {};
+  std::optional<std::string> keyFile_ = {};
 };
 
 struct EgressVO {
   AdapterType type_;
-  std::optional<std::string> host_;
-  std::optional<uint16_t> port_;
-  std::optional<CryptoMethod> method_;
-  std::optional<std::string> password_;
-  std::optional<DelayMode> mode_;
-  std::optional<uint16_t> delay_;
-  std::optional<bool> tls_;
-  std::optional<bool> insecure_;
-  std::optional<std::string> caFile_;
+  std::optional<std::string> host_ = {};
+  std::optional<uint16_t> port_ = {};
+  std::optional<CryptoMethod> method_ = {};
+  std::optional<std::string> password_ = {};
+  std::optional<DelayMode> mode_ = {};
+  std::optional<uint16_t> delay_ = {};
+  std::optional<bool> tls_ = {};
+  std::optional<bool> insecure_ = {};
+  std::optional<std::string> caFile_ = {};
 };
 
 struct RuleVO {
-  std::vector<std::string> range_;
-  std::vector<std::string> ingress_;
-  std::vector<AdapterType> type_;
-  std::vector<std::string> pattern_;
-  std::vector<std::string> domain_;
-  std::vector<std::string> country_;
+  std::vector<std::string> range_ = {};
+  std::vector<std::string> ingress_ = {};
+  std::vector<AdapterType> type_ = {};
+  std::vector<std::string> pattern_ = {};
+  std::vector<std::string> domain_ = {};
+  std::vector<std::string> country_ = {};
 };
 
 struct RouteVO {
-  std::optional<std::string> default_;
-  std::vector<std::pair<std::string, std::string>> rules_;
+  std::optional<std::string> default_ = {};
+  std::vector<std::pair<std::string, std::string>> rules_ = {};
 };
 
 struct ErrorVO {

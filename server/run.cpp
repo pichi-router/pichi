@@ -44,7 +44,6 @@ static decltype(auto) ROUTE = "route";
 static decltype(auto) INDENT = "  ";
 
 static asio::io_context io{1};
-static auto alloc = json::Document::AllocatorType{};
 
 static json::Document parseJson(char const* str)
 {
@@ -131,10 +130,6 @@ void HttpHelper::del(string const& target)
   assertTrue(resp.result() == http::status::no_content);
 }
 
-static auto genDirect() { return "{\"type\":\"direct\"}"; }
-
-static auto genRoute() { return "{\"default\":\"direct\",\"rules\":[]}"; }
-
 static auto readJson(string const& fn)
 {
   auto doc = json::Document{};
@@ -185,10 +180,11 @@ static void load(HttpHelper& helper, string const& fn)
   cout << "Configuration " << fn << " loaded" << endl;
 }
 
+#if defined(HAS_SIGNAL_H) && defined(SIGHUP)
 static void flush(HttpHelper& helper)
 {
-  helper.put("/"s + EGRESSES + "/direct", genDirect());
-  helper.put("/"s + ROUTE, genRoute());
+  helper.put("/"s + EGRESSES + "/direct", "{\"type\":\"direct\"}"s);
+  helper.put("/"s + ROUTE, "{\"default\":\"direct\",\"rules\":[]}"s);
 
   for (auto&& rule : helper.get("/"s + RULES)) helper.del("/"s + RULES + "/" + rule);
   for (auto&& egress : helper.get("/"s + EGRESSES))
@@ -197,6 +193,7 @@ static void flush(HttpHelper& helper)
 
   cout << "Configuration reset" << endl;
 }
+#endif // defined(HAS_SIGNAL_H) && defined(SIGHUP)
 
 void run(string const& bind, uint16_t port, string const& fn, string const& mmdb)
 {

@@ -5,7 +5,7 @@
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/strand.hpp>
-#include <boost/coroutine2/all.hpp>
+#include <boost/coroutine2/coroutine.hpp>
 #include <cassert>
 #include <functional>
 #include <memory>
@@ -154,9 +154,9 @@ template <typename R, typename E, typename T> struct async_result<detail::YieldC
   std::optional<return_type> t_;
 };
 
-template <typename T> bool asio_handler_is_continuation(detail::SpawnHandler<T>* h) { return true; }
+template <typename T> bool asio_handler_is_continuation(detail::SpawnHandler<T>*) { return true; }
 
-template <typename F, typename T> void asio_handler_invoke(F&& f, detail::SpawnHandler<T>* h)
+template <typename F, typename T> void asio_handler_invoke(F&& f, detail::SpawnHandler<T>*)
 {
   std::invoke(std::forward<F>(f));
 }

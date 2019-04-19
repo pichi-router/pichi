@@ -1,3 +1,16 @@
+#include "config.h"
+
+#ifdef NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-std-move"
+#endif // __clang__
+#include <boost/asio/ip/basic_resolver.hpp>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif // __clang__
+#endif // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
+
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/system_timer.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
@@ -10,6 +23,7 @@
 #include <pichi/api/session.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/asserts.hpp>
+#include <pichi/common.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/spawn.hpp>
@@ -25,7 +39,7 @@ using tcp = ip::tcp;
 namespace pichi::api {
 
 static auto const IMMEDIATE_REJECTOR =
-    EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0};
+    EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
 static auto const RANDOM_REJECTOR =
     EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
 static auto const IV_EXPIRE_TIME = 1h;
@@ -90,7 +104,7 @@ void Server::listen(Acceptor& acceptor, string_view iname, IngressVO const& vo, 
       auto& io = strand_.context();
       auto ingress = net::makeIngress(vo, move(s));
       auto iv = array<uint8_t, 32>{};
-      if (isDuplicated({iv, ingress->readIV(iv, yield)}, yield)) {
+      if (isDuplicated({iv, ingress->readIV(iv, yield)})) {
         make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_REJECTOR, io))->start();
       }
       else {
@@ -124,7 +138,7 @@ template <typename ExceptionPtr> void Server::removeIngress(ExceptionPtr eptr, s
   }
 }
 
-template <typename Yield> bool Server::isDuplicated(ConstBuffer<uint8_t> raw, Yield yield)
+bool Server::isDuplicated(ConstBuffer<uint8_t> raw)
 {
   if (raw.size() == 0) return false;
 
