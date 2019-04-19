@@ -143,7 +143,7 @@ Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
         make_tuple(http::verb::get, ROUTE_REGEX,
                    [&](auto&&, auto&&) { return genResp(http::status::ok, router.getRoute()); }),
         make_tuple(http::verb::put, ROUTE_REGEX,
-                   [&](auto&& r, auto&& mr) {
+                   [&](auto&& r, auto&&) {
                      auto vo = parse<RouteVO>(r.body());
                      assertFalse(vo.default_.has_value() &&
                                      egresses.find(*vo.default_) == end(egresses),

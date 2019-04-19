@@ -1,5 +1,6 @@
 #include <iostream>
 #include <pichi/asserts.hpp>
+#include <pichi/common.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <pichi/crypto/stream.hpp>
 #include <sodium.h>
@@ -38,6 +39,7 @@ template <CryptoMethod method>
 static void initialize(StreamContext<method>& ctx, ConstBuffer<uint8_t> key,
                        ConstBuffer<uint8_t> iv)
 {
+  suppressC4100(ctx);
   assertTrue(key.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(iv.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
   if constexpr (helpers::isArc<method>()) {
@@ -74,6 +76,7 @@ static void initialize(StreamContext<method>& ctx, ConstBuffer<uint8_t> key,
 
 template <CryptoMethod method> static void release(StreamContext<method>& ctx)
 {
+  suppressC4100(ctx);
   if constexpr (helpers::isArc<method>())
     mbedtls_arc4_free(&ctx);
   else if constexpr (helpers::isBlowfish<method>())
@@ -93,6 +96,7 @@ template <CryptoMethod method>
 static size_t encrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uint8_t> plain,
                       MutableBuffer<uint8_t> iv, MutableBuffer<uint8_t> cipher)
 {
+  suppressC4100(ctx);
   assertTrue(plain.size() <= cipher.size(), PichiError::CRYPTO_ERROR);
   assertTrue(iv.size() >= IV_SIZE<method> + BLK_SIZE<method>, PichiError::CRYPTO_ERROR);
   if constexpr (helpers::isArc<method>()) {
@@ -138,6 +142,7 @@ template <CryptoMethod method>
 static size_t decrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uint8_t> cipher,
                       MutableBuffer<uint8_t> iv, MutableBuffer<uint8_t> plain)
 {
+  suppressC4100(ctx);
   assertTrue(plain.size() >= cipher.size(), PichiError::CRYPTO_ERROR);
   assertTrue(iv.size() >= IV_SIZE<method> + BLK_SIZE<method>, PichiError::CRYPTO_ERROR);
   if constexpr (helpers::isArc<method>()) {

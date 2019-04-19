@@ -8,6 +8,7 @@
 #include <boost/asio/write.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/asserts.hpp>
+#include <pichi/common.hpp>
 #include <pichi/crypto/key.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/asio.hpp>
@@ -65,6 +66,7 @@ static auto createTlsContext(api::EgressVO const& vo)
 template <typename Socket, typename Yield>
 void connect(Endpoint const& endpoint, Socket& s, Yield yield)
 {
+  suppressC4100(yield);
 #ifdef ENABLE_TLS
   if constexpr (IsSslStreamV<Socket>) {
     connect(endpoint, s.next_layer(), yield);
@@ -87,6 +89,7 @@ void connect(Endpoint const& endpoint, Socket& s, Yield yield)
 template <typename Socket, typename Yield>
 void read(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
+  suppressC4100(yield);
 #ifdef BUILD_TEST
   if constexpr (is_same_v<Socket, pichi::test::Stream>)
     asio::read(s, asio::buffer(buf));
@@ -98,6 +101,7 @@ void read(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 template <typename Socket, typename Yield>
 size_t readSome(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
+  suppressC4100(yield);
 #ifdef BUILD_TEST
   if constexpr (is_same_v<Socket, pichi::test::Stream>)
     return s.read_some(asio::buffer(buf));
@@ -109,6 +113,7 @@ size_t readSome(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
 template <typename Socket, typename Yield>
 void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
 {
+  suppressC4100(yield);
 #ifdef BUILD_TEST
   if constexpr (is_same_v<Socket, pichi::test::Stream>)
     asio::write(s, asio::buffer(buf));

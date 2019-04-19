@@ -25,7 +25,7 @@ private:
   template <typename ExceptionPtr> void removeIngress(ExceptionPtr, std::string_view);
   EgressVO const& route(net::Endpoint const&, std::string_view ingress, AdapterType,
                         ResolveResult const&);
-  template <typename Yield> bool isDuplicated(ConstBuffer<uint8_t>, Yield);
+  bool isDuplicated(ConstBuffer<uint8_t>);
 
 public:
   Server(Server const&) = delete;
