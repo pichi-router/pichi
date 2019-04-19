@@ -230,9 +230,8 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Tunnel_By_Insufficient_Buffer)
   auto content = "Very long content"sv;
   socket.fill(ConstBuffer<uint8_t>{content});
 
-  for_each_n(begin(buf), content.size(), [&ingress](auto&& c) {
-    BOOST_CHECK_EQUAL(1, ingress.recv({addressof(c), 1}, yield));
-  });
+  for (auto i = 0; i < content.size(); ++i)
+    BOOST_CHECK_EQUAL(1, ingress.recv({buf.data() + i, 1}, yield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
                                 cbegin(buf) + content.size());
   BOOST_CHECK_EXCEPTION(ingress.recv(buf, yield), Exception, verifyException<PichiError::MISC>);
