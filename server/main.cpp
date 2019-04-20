@@ -23,7 +23,6 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace sys = boost::system;
 
-static auto const GEO_FILE = (fs::path{PICHI_PREFIX} / "share" / "pichi" / "geo.mmdb");
 static auto const PID_FILE = (fs::path{PICHI_PREFIX} / "var" / "run" / "pichi.pid");
 static auto const LOG_FILE = (fs::path{PICHI_PREFIX} / "var" / "log" / "pichi.log");
 
@@ -67,8 +66,8 @@ int main(int argc, char const* argv[])
   desc.add_options()("help,h", "produce help message")(
       "listen,l", po::value<string>(&listen)->default_value("::1"),
       "API server address")("port,p", po::value<uint16_t>(&port), "API server port")(
-      "geo,g", po::value<string>(&geo)->default_value(GEO_FILE.string()),
-      "GEO file")("json", po::value<string>(&json), "Initail configration(JSON format)")
+      "geo,g", po::value<string>(&geo), "GEO file")("json", po::value<string>(&json),
+                                                    "Initail configration(JSON format)")
 #if defined(HAS_FORK) && defined(HAS_SETSID)
       ("daemon,d", "daemonize")
 #endif // HAS_SETUID && HAS_GETPWNAM
@@ -85,7 +84,7 @@ int main(int argc, char const* argv[])
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
-    if (vm.count("help") || !vm.count("port")) {
+    if (vm.count("help") || !vm.count("port") || !vm.count("geo")) {
       cout << desc << endl;
       return 1;
     }
@@ -99,8 +98,8 @@ int main(int argc, char const* argv[])
       assertFalse(pid < 0);
       if (pid > 0) {
         auto ec = sys::error_code{};
-        if (fs::create_directories(PID_FILE.parent_path(), ec))
-          ofstream{PID_FILE.string()} << pid << endl;
+        fs::create_directories(PID_FILE.parent_path(), ec);
+        if (!ec) ofstream{PID_FILE.string()} << pid << endl;
         exit(0);
       }
       setsid();
@@ -110,9 +109,10 @@ int main(int argc, char const* argv[])
       close(STDERR_FILENO);
 #endif // HAS_CLOSE
       auto ec = sys::error_code{};
-      if (fs::create_directories(LOG_FILE.parent_path(), ec)) {
-        assertTrue(freopen(LOG_FILE.c_str(), "w", stdout) != nullptr);
-        assertTrue(freopen(LOG_FILE.c_str(), "w", stderr) != nullptr);
+      fs::create_directories(LOG_FILE.parent_path(), ec);
+      if (!ec) {
+        assertTrue(freopen(LOG_FILE.c_str(), "a", stdout) != nullptr);
+        assertTrue(freopen(LOG_FILE.c_str(), "a", stderr) != nullptr);
       }
     }
 #endif // HAS_FORK && HAS_SETSID

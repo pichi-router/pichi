@@ -10,4 +10,3 @@ target_link_libraries(${SERVER} PRIVATE
 )
 
 install(TARGETS ${SERVER} DESTINATION bin)
-install(FILES ${CMAKE_SOURCE_DIR}/test/geo.mmdb DESTINATION share/pichi)
