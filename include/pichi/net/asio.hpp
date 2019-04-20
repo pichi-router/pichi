@@ -44,16 +44,16 @@ template <typename Stream> class stream;
 
 namespace pichi::api {
 
-class IngressVO;
-class EgressVO;
+struct IngressVO;
+struct EgressVO;
 
 } // namespace pichi::api
 
 namespace pichi::net {
 
-class Endpoint;
-class Ingress;
-class Egress;
+struct Endpoint;
+struct Ingress;
+struct Egress;
 
 template <typename T> struct IsSslStream : public std::false_type {
 };
