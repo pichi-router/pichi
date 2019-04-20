@@ -132,8 +132,6 @@ static bool operator==(RouteVO const& lhs, RouteVO const& rhs)
          equal(begin(lhs.rules_), end(lhs.rules_), begin(rhs.rules_), end(rhs.rules_));
 }
 
-static auto nonUpdating = [](auto&&, auto&&) { BOOST_ERROR("unexpected invocation"); };
-
 BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Str)
