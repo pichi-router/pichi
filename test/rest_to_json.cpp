@@ -312,7 +312,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_Additional_Fields)
 BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_Missing_Fields)
 {
   for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto origin = defaultEgressVO(AdapterType::SOCKS5);
+    auto origin = defaultEgressVO(type);
     toJson(origin, alloc);
 
     auto noHost = origin;

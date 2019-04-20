@@ -82,7 +82,6 @@ string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterTy
   auto it = find_if(cbegin(route_.rules_), cend(route_.rules_), [&, this](auto&& pair) {
     auto it = rules_.find(pair.first);
     assertFalse(it == cend(rules_), PichiError::MISC);
-    auto& rule = as_const(it->second.first);
     auto& matchers = as_const(it->second.second);
     return any_of(cbegin(matchers), cend(matchers),
                   [&](auto&& matcher) { return matcher(e, r, ingress, type); });
