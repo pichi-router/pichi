@@ -190,7 +190,39 @@ BOOST_AUTO_TEST_CASE(readRemote_Relay_Without_Host_Field)
   auto ingress = HttpIngress{socket, true};
 
   socket.fill({buf, serializeToBuffer(req, buf)});
+  auto remote = ingress.readRemote(yield);
 
+  BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+}
+
+BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Difference_Destinations)
+{
+  auto buf = array<uint8_t, 64>{};
+  auto req = genRelayReq("http://localhost:8080/"s);
+
+  auto socket = Socket{};
+  auto ingress = HttpIngress{socket, true};
+
+  socket.fill({buf, serializeToBuffer(req, buf)});
+  auto remote = ingress.readRemote(yield);
+
+  BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+  BOOST_CHECK_EQUAL("8080"sv, remote.port_);
+}
+
+BOOST_AUTO_TEST_CASE(readRemote_Relay_Without_Both_Fields)
+{
+  auto buf = array<uint8_t, 64>{};
+  auto req = genRelayReq("/"s);
+  req.erase(http::field::host);
+
+  auto socket = Socket{};
+  auto ingress = HttpIngress{socket, true};
+
+  socket.fill({buf, serializeToBuffer(req, buf)});
   BOOST_CHECK_EXCEPTION(ingress.readRemote(yield), Exception,
                         verifyException<PichiError::BAD_PROTO>);
 }
