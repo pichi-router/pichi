@@ -173,7 +173,7 @@ Allow options:
   -l [ --listen ] arg (=::1) API server address
   -p [ --port ] arg          API server port
   -g [ --geo ] arg           GEO file
-  --json arg                 Initail configration(JSON format)
+  --json arg                 Initial configuration(JSON format)
   -d [ --daemon ]            daemonize
   -u [ --user ] arg          run as user
   --group arg                run as group
@@ -187,7 +187,7 @@ c51b832bd29d        pichi/pichi         "pichi -g /usr/share…"   1 seconds ago
 
 ### Build library for iOS/Android
 
-Pichi is designed to run or be embeded into some APPs on iOS/Adnroid. `deps-build` directory gives some helping scripts to build Pichi's dependencies for iOS/Android.
+Pichi is designed to run or be embedded into some APPs on iOS/Adnroid. `deps-build` directory gives some helping scripts to build Pichi's dependencies for iOS/Android.
 
 #### iOS
 
@@ -315,7 +315,7 @@ Allow options:
   -l [ --listen ] arg (=::1) API server address
   -p [ --port ] arg          API server port
   -g [ --geo ] arg           GEO file
-  --json arg                 Initail configration(JSON format)
+  --json arg                 Initial configuration(JSON format)
   -d [ --daemon ]            daemonize
   -u [ --user ] arg          run as user
   --group arg                run as group
