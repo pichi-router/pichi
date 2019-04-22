@@ -67,10 +67,10 @@ template <HashAlgorithm algorithm> Hmac<algorithm>::Hmac(ConstBuffer<uint8_t> ke
 
   auto padding = array<uint8_t, Traits::block_size>{0};
 
-  transform(begin(k), end(k), begin(padding), [](auto c) { return c ^ 0x5c; });
+  transform(begin(k), end(k), begin(padding), [](auto c) -> uint8_t { return c ^ 0x5c; });
   o_.append(padding);
 
-  transform(begin(k), end(k), begin(padding), [](auto c) { return c ^ 0x36; });
+  transform(begin(k), end(k), begin(padding), [](auto c) -> uint8_t { return c ^ 0x36; });
   i_.append(padding);
 }
 
