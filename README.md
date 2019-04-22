@@ -219,7 +219,7 @@ $ bash deps-build/boost.sh /path/to/boost
 
 #### Android
 
-The usage of `deps-build/boost.sh` is very similar to iOS one, except environment varialbes:
+The usage of `deps-build/boost.sh` is very similar to iOS one, except environment variables:
 
 * **PLATFORM**: *android-\<API\>s* are available;
 * **ANDROID_ROOT**: to specify root install directory of headers/libraries;
