@@ -187,7 +187,7 @@ c51b832bd29d        pichi/pichi         "pichi -g /usr/share…"   1 seconds ago
 
 ### Build library for iOS/Android
 
-Pichi is designed to run or be embedded into some APPs on iOS/Adnroid. `deps-build` directory gives some helping scripts to build Pichi's dependencies for iOS/Android.
+Pichi is designed to run or be embedded into some APPs on iOS/Android. `deps-build` directory gives some helping scripts to build Pichi's dependencies for iOS/Android.
 
 #### iOS
 
