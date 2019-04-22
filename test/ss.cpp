@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(confirm, Ingress, Adapters)
   auto ingress = Ingress{psk, socket, true};
 
   ingress.confirm(yield);
-  BOOST_CHECK_EQUAL(0, socket.available());
+  BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(disconnect, Ingress, Adapters)
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(disconnect, Ingress, Adapters)
   auto ingress = Ingress{psk, socket, true};
 
   ingress.disconnect(yield);
-  BOOST_CHECK_EQUAL(0, socket.available());
+  BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Ingress, Ingress, Adapters)
@@ -198,8 +198,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Ingress_By_Insufficient_Buffer, Ingress, Adap
   socket.fill(cipher);
 
   auto fact = array<uint8_t, 1024>{};
-  for (auto i = 0; i < expect.size(); ++i)
-    BOOST_CHECK_EQUAL(1, ingress.recv({fact.data() + i, 1}, yield));
+  for (auto i = 0_sz; i < expect.size(); ++i)
+    BOOST_CHECK_EQUAL(1_sz, ingress.recv({fact.data() + i, 1}, yield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
 
@@ -322,8 +322,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Egress_By_Insufficient_Buffer, Egress, Adapte
   socket.fill(cipher);
 
   auto fact = array<uint8_t, 1024>{};
-  for (auto i = 0; i < expect.size(); ++i)
-    BOOST_CHECK_EQUAL(1, egress.recv({fact.data() + i, 1}, yield));
+  for (auto i = 0_sz; i < expect.size(); ++i)
+    BOOST_CHECK_EQUAL(1_sz, egress.recv({fact.data() + i, 1}, yield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
 

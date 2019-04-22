@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE(parse_Domain)
   BOOST_CHECK(EndpointType::DOMAIN_NAME == ep.type_);
   BOOST_CHECK_EQUAL("localhost"sv, ep.host_);
   BOOST_CHECK_EQUAL("443"sv, ep.port_);
-  BOOST_CHECK_EQUAL(13, stub.transfered());
+  BOOST_CHECK_EQUAL(13_sz, stub.transfered());
 }
 
 BOOST_AUTO_TEST_CASE(parse_IPv4)
@@ -225,7 +225,7 @@ BOOST_AUTO_TEST_CASE(parse_IPv4)
   BOOST_CHECK(EndpointType::IPV4 == ep.type_);
   BOOST_CHECK_EQUAL("0.0.0.0"sv, ep.host_);
   BOOST_CHECK_EQUAL("443"sv, ep.port_);
-  BOOST_CHECK_EQUAL(7, stub.transfered());
+  BOOST_CHECK_EQUAL(7_sz, stub.transfered());
 }
 
 BOOST_AUTO_TEST_CASE(parse_IPv6)
@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE(parse_IPv6)
   BOOST_CHECK(EndpointType::IPV6 == ep.type_);
   BOOST_CHECK_EQUAL("::"sv, ep.host_);
   BOOST_CHECK_EQUAL("443"sv, ep.port_);
-  BOOST_CHECK_EQUAL(19, stub.transfered());
+  BOOST_CHECK_EQUAL(19_sz, stub.transfered());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ntoh_0, Int, IntTypes)
   auto buf = array<uint8_t, sizeof(Int)>{};
 
   fill_n(begin(buf), sizeof(buf), 0);
-  BOOST_CHECK_EQUAL(0, ntoh<Int>(buf));
+  BOOST_CHECK_EQUAL(static_cast<Int>(0), ntoh<Int>(buf));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(ntoh_1, Int, IntTypes)
