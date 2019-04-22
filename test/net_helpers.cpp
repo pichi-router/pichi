@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(hton_0, Int, IntTypes)
   auto expt = array<uint8_t, sizeof(Int)>{};
   auto fact = array<uint8_t, sizeof(Int)>{};
 
-  fill_n(begin(expt), sizeof(Int), 0);
+  fill_n(begin(expt), sizeof(Int), 0_u8);
   auto zero = Int{0};
   hton(zero, fact);
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expt), cend(expt), cbegin(fact), cend(fact));
@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(hton_1, Int, IntTypes)
   auto expt = array<uint8_t, sizeof(Int)>{};
   auto fact = array<uint8_t, sizeof(Int)>{};
 
-  fill_n(begin(expt), sizeof(Int), 0xff);
+  fill_n(begin(expt), sizeof(Int), 0xff_u8);
   auto ff = static_cast<Int>(~0);
   hton(ff, fact);
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expt), cend(expt), cbegin(fact), cend(fact));
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ntoh_0, Int, IntTypes)
 {
   auto buf = array<uint8_t, sizeof(Int)>{};
 
-  fill_n(begin(buf), sizeof(buf), 0);
+  fill_n(begin(buf), sizeof(buf), 0_u8);
   BOOST_CHECK_EQUAL(static_cast<Int>(0), ntoh<Int>(buf));
 }
 
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ntoh_1, Int, IntTypes)
 {
   auto buf = array<uint8_t, sizeof(Int)>{};
 
-  fill_n(begin(buf), sizeof(buf), 0xff);
+  fill_n(begin(buf), sizeof(buf), 0xff_u8);
   BOOST_CHECK_EQUAL(static_cast<Int>(~0), ntoh<Int>(buf));
 }
 
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(serializeEndpoint_Normal, Helper, Helpers)
   fill_n(begin(expt), sizeof(expt), Helper::CHAR);
 
   auto fact = array<uint8_t, Helper::SIZE>{};
-  fill_n(begin(fact), sizeof(fact), 0);
+  fill_n(begin(fact), sizeof(fact), 0_u8);
   BOOST_CHECK_EQUAL(sizeof(expt), serializeEndpoint(Helper::ENDPOINT, fact));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expt), cend(expt), cbegin(fact), cend(fact));
 }

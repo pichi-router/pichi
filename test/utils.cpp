@@ -13,10 +13,22 @@ namespace pichi {
 static auto doc = Document{};
 Document::AllocatorType& alloc = doc.GetAllocator();
 
-size_t operator"" _sz(unsigned long long ull)
+size_t operator""_sz(unsigned long long ull)
 {
   BOOST_REQUIRE(ull <= numeric_limits<size_t>::max());
   return static_cast<size_t>(ull);
+}
+
+uint8_t operator""_u8(unsigned long long ull)
+{
+  BOOST_REQUIRE(ull <= numeric_limits<uint8_t>::max());
+  return static_cast<uint8_t>(ull);
+}
+
+uint16_t operator""_u16(unsigned long long ull)
+{
+  BOOST_REQUIRE(ull <= numeric_limits<uint16_t>::max());
+  return static_cast<uint16_t>(ull);
 }
 
 vector<uint8_t> str2vec(string_view s) { return {cbegin(s), cend(s)}; }
@@ -33,9 +45,9 @@ IngressVO defaultIngressVO(AdapterType type)
   switch (type) {
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return {type, ph, 1, {}, {}, false};
+    return {type, ph, 1_u16, {}, {}, false};
   case AdapterType::SS:
-    return {AdapterType::SS, ph, 1, CryptoMethod::RC4_MD5, ph};
+    return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
   default:
     BOOST_ERROR("Invalid type");
     return {};
@@ -75,12 +87,12 @@ EgressVO defaultEgressVO(AdapterType type)
   case AdapterType::DIRECT:
     return {AdapterType::DIRECT};
   case AdapterType::REJECT:
-    return {AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0};
+    return {AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return {type, ph, 1, {}, {}, {}, {}, false};
+    return {type, ph, 1_u16, {}, {}, {}, {}, false};
   case AdapterType::SS:
-    return {AdapterType::SS, ph, 1, CryptoMethod::RC4_MD5, ph};
+    return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
   default:
     BOOST_ERROR("Invalid type");
     return {};

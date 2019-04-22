@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(serialize_Domain_Lack_Of_Buffer)
 BOOST_AUTO_TEST_CASE(serialize_Domain)
 {
   auto host = "localhost"sv;
-  auto port = 443;
+  auto port = 443_u16;
   auto expect =
       array<uint8_t, 13>{0x03, 0x09, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0x01, 0xbb};
 
@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE(serialize_IPv4_Lack_Of_Buffer)
 BOOST_AUTO_TEST_CASE(serialize_IPv4)
 {
   auto address = "127.0.0.1"sv;
-  auto port = 443;
+  auto port = 443_u16;
   auto expect = array<uint8_t, 7>{0x01, 0x7f, 0x00, 0x00, 0x01, 0x01, 0xbb};
 
   auto fact = array<uint8_t, 7>{};
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE(serialize_IPv6_Lack_Of_Buffer)
 BOOST_AUTO_TEST_CASE(serialize_IPv6)
 {
   auto address = "::1"sv;
-  auto port = 443;
+  auto port = 443_u16;
   auto expect = array<uint8_t, 19>{0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xbb};
 
