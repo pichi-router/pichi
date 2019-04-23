@@ -10,6 +10,8 @@
 
 namespace pichi {
 
+extern size_t operator"" _sz(unsigned long long);
+
 template <PichiError error> bool verifyException(Exception const& e) { return e.error() == error; }
 
 template <boost::asio::error::basic_errors error>

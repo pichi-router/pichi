@@ -112,7 +112,7 @@ void hkdf(MutableBuffer<uint8_t> okm, ConstBuffer<uint8_t> ikm, ConstBuffer<uint
 
   auto prev = okm.data();
   auto curr = okm.data();
-  for (auto i = 1; i <= n; ++i) {
+  for (size_t i = 1; i <= n; ++i) {
     auto c = static_cast<uint8_t>(i);
     auto hmac = Hmac<algorithm>{prk};
     hmac.append({prev, static_cast<size_t>(curr - prev)});
