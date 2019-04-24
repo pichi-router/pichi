@@ -1,0 +1,13 @@
+{
+  "ingresses": {},
+  "egresses": {
+    "direct": {
+      "type": "direct"
+    }
+  },
+  "rules": {},
+  "route": {
+    "default": "direct",
+    "rules": []
+  }
+}
