@@ -3,6 +3,7 @@
 #include "utils.hpp"
 #include <algorithm>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/exception.hpp>
 #include <string_view>
 #include <unordered_map>

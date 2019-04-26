@@ -6,6 +6,7 @@
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>

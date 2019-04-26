@@ -7,6 +7,7 @@
 #include <boost/beast/core/flat_static_buffer.hpp>
 #include <boost/test/unit_test.hpp>
 #include <initializer_list>
+#include <pichi/common.hpp>
 #include <pichi/net/helpers.hpp>
 
 using namespace std;

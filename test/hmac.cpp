@@ -6,6 +6,7 @@
 #include <array>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <vector>
 

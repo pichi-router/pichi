@@ -1,6 +1,6 @@
 #include "utils.hpp"
 #include <boost/test/unit_test.hpp>
-#include <limits>
+#include <pichi/common.hpp>
 #include <sodium.h>
 #include <string.h>
 
@@ -12,24 +12,6 @@ namespace pichi {
 
 static auto doc = Document{};
 Document::AllocatorType& alloc = doc.GetAllocator();
-
-size_t operator""_sz(unsigned long long ull)
-{
-  BOOST_REQUIRE(ull <= numeric_limits<size_t>::max());
-  return static_cast<size_t>(ull);
-}
-
-uint8_t operator""_u8(unsigned long long ull)
-{
-  BOOST_REQUIRE(ull <= numeric_limits<uint8_t>::max());
-  return static_cast<uint8_t>(ull);
-}
-
-uint16_t operator""_u16(unsigned long long ull)
-{
-  BOOST_REQUIRE(ull <= numeric_limits<uint16_t>::max());
-  return static_cast<uint16_t>(ull);
-}
 
 vector<uint8_t> str2vec(string_view s) { return {cbegin(s), cend(s)}; }
 

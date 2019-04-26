@@ -1,5 +1,6 @@
 #include <limits>
 #include <pichi/api/vos.hpp>
+#include <pichi/common.hpp>
 
 using namespace std;
 namespace json = rapidjson;
@@ -165,7 +166,7 @@ static uint16_t parsePort(json::Value const& v)
 {
   assertTrue(v.IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
   auto port = v.GetInt();
-  assertTrue(port > 0, PichiError::BAD_JSON, msg::PT_INVALID);
+  assertTrue(port > 0_u16, PichiError::BAD_JSON, msg::PT_INVALID);
   assertTrue(port <= numeric_limits<uint16_t>::max(), PichiError::BAD_JSON, msg::PT_INVALID);
   return static_cast<uint16_t>(port);
 }
@@ -291,7 +292,7 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
   if (ingress.type_ == AdapterType::HTTP || ingress.type_ == AdapterType::SOCKS5 ||
       ingress.type_ == AdapterType::SS) {
     assertFalse(ingress.bind_.empty(), PichiError::MISC);
-    assertFalse(ingress.port_ == 0, PichiError::MISC);
+    assertFalse(ingress.port_ == 0_u16, PichiError::MISC);
     ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
     ret.AddMember(IngressVOKey::port_, json::Value{ingress.port_}, alloc);
     ret.AddMember(IngressVOKey::type_, toJson(ingress.type_, alloc), alloc);
@@ -332,7 +333,7 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
     assertTrue(evo.host_.has_value(), PichiError::MISC);
     assertFalse(evo.host_->empty(), PichiError::MISC);
     assertTrue(evo.port_.has_value(), PichiError::MISC);
-    assertFalse(*evo.port_ == 0, PichiError::MISC);
+    assertFalse(*evo.port_ == 0_u16, PichiError::MISC);
     egress_.AddMember(EgressVOKey::host_, toJson(*evo.host_, alloc), alloc);
     egress_.AddMember(EgressVOKey::port_, json::Value{*evo.port_}, alloc);
   }
@@ -362,7 +363,7 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
     egress_.AddMember(EgressVOKey::mode_, toJson(*evo.mode_, alloc), alloc);
     if (*evo.mode_ == DelayMode::FIXED) {
       assertTrue(evo.delay_.has_value());
-      assertTrue(*evo.delay_ <= 300);
+      assertTrue(*evo.delay_ <= 300_u16);
       egress_.AddMember(EgressVOKey::delay_, json::Value{*evo.delay_}, alloc);
     }
     break;
@@ -516,13 +517,13 @@ template <> EgressVO parse(json::Value const& v)
                    msg::MISSING_DELAY_FIELD);
         assertTrue(v[EgressVOKey::delay_].IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
         auto delay = v[EgressVOKey::delay_].GetInt();
-        assertTrue(delay >= 0 && delay <= 300, PichiError::BAD_JSON, msg::DL_INVALID);
+        assertTrue(delay >= 0_u16 && delay <= 300_u16, PichiError::BAD_JSON, msg::DL_INVALID);
         evo.delay_ = static_cast<uint16_t>(delay);
       }
     }
     else {
       evo.mode_ = DelayMode::FIXED;
-      evo.delay_ = 0;
+      evo.delay_ = 0_u16;
     }
     break;
   case AdapterType::DIRECT:

@@ -3,6 +3,7 @@
 #include "utils.hpp"
 #include <algorithm>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/exception.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>

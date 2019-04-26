@@ -112,7 +112,7 @@ AeadEncryptor<method>::AeadEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<uint8
     assertTrue(salt.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
     copy_n(cbegin(salt), IV_SIZE<method>, begin(salt_));
   }
-  fill_n(begin(nonce_), NONCE_SIZE<method>, 0);
+  fill_n(begin(nonce_), NONCE_SIZE<method>, 0_u8);
   initialize<method>(ctx_, key, salt_);
 }
 
@@ -143,7 +143,7 @@ template <CryptoMethod method> AeadDecryptor<method>::AeadDecryptor(ConstBuffer<
 {
   assertTrue(key.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
   copy_n(cbegin(key), KEY_SIZE<method>, begin(ikm_));
-  fill_n(begin(nonce_), NONCE_SIZE<method>, 0);
+  fill_n(begin(nonce_), NONCE_SIZE<method>, 0_u8);
 }
 
 template <CryptoMethod method> AeadDecryptor<method>::~AeadDecryptor()
