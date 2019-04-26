@@ -10,12 +10,54 @@ Pichi is an application layer proxy, which can be fully controlled via RESTful A
 | **Architecture** | x86_64 | x86_64 | x86_64 | arm64/arm64e | arm64 |
 | **Status** | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/5)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/3)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/project/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/1)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/2)](https://travis-ci.org/pichi-router/pichi) |
 
+## Overview
+
+Pichi is designed
+
+1. **to support common proxy protocols**: HTTP(S)/Socks5(s)/Shadowsocks;
+1. **to dynamically and flexibly control the proxy route**: just use RESTful APIs;
+1. **developer oriented**: NO GUI, but can be easily integrated into other GUIs;
+1. **for personal usage**: performance is important, but not the first priority;
+1. **for multiple platforms**: at least Windows, POSIX-compatible, Android and iOS.
+
+### Motivation
+
+Proxy is widely applied to traverse through the firewall, hide or change the original address, expose internal service port, etc. But if we iterate some famous proxy tools, it's easily recognized that each of them has at least one of these cons list below:
+
+* Not support all of HTTP, Socks5, Shadowsocks
+* Not support multiple ingresses or egresses
+* No rule-based routing
+
+As a result, the motivation of pichi is to provide a tool, which can
+
+1. support sufficient proxy protocols,
+1. be easily integrated with GUIs/APPs/scripts, which might have their own rule database,
+1. control rule-based routing at runtime.
+
+### Use cases
+
+#### Alternative to PAC
+
+If an individual user is using a proxy, it's very common that the network traffic is probably split into 2 pieces of flow, one going through the proxy and another going directly.
+[PAC](https://en.wikipedia.org/wiki/Proxy_auto-config) is a good choice if web browsing is heavily used. But unfortunately, not all applications support PAC, such as most of [MUA](https://en.wikipedia.org/wiki/Email_client), [IM](https://en.wikipedia.org/wiki/Instant_messaging), and so on.
+
+Pichi is an alternative choice for this situation. It separates routing rules from every application.
+
+![Use Case 0](images/use_case_0.png)
+
+#### Unified proxy configuration
+
+If the configuration for remote proxies is volatile, such as changing IP/Port periodically, it's a nightmare that lots of clients are using it.
+Pichi can centralize the varies, rather than editing the configuration client by client.
+
+![Use Case 1](images/use_case_1.png)
+
 ## Using Pichi API
 
 ### Resources
 
-* **Ingress**: defines an incoming network adapter, containing protocol, listening address/port and protocol specific configurations.
-* **Egress**: defines an outgoing network adapter, containing protocol, next hop address/port and protocol specific configurations.
+* **Ingress**: defines an incoming network adapter, containing protocol type, listening address/port, and protocol-specific configurations.
+* **Egress**: defines an outgoing network adapter, containing protocol type, next hop address/port, and protocol-specific configurations.
 * **Rule**: contains a group of conditions, such as IP ranges, domain regular expressions, the countries of the destination IP, and so on, that the incoming connection matching ANY conditions means the one matching this rule.
 * **Route**: indicates a priority ordered sequence of \[rule, egress\] pairs, and a default egress which would be forwarded to if none of the rules matched.
 
@@ -393,6 +435,8 @@ io.run();  // Thread blocked
 ```
 
 ## Donation
+
+Please offer me a cup of coffee if you like pichi.
 
 [![Please donate BTC](https://blockchain.info/Resources/buttons/donate_64.png)](
 https://www.blockchain.com/btc/payment_request?address=33CEcNHjKpyHSq4gfVHDhkDjYwWjLQt3Qo
