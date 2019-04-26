@@ -87,7 +87,7 @@ static size_t copyOrCache(ConstBufferSequence const& src, MutableBuffer<uint8_t>
   return copied;
 }
 
-template <typename Stream, typename DynamicBuffer>
+template <typename Stream, typename DynamicBuffer, typename Yield>
 static size_t recvRaw(Stream& s, DynamicBuffer& cache, MutableBuffer<uint8_t> buf, Yield yield)
 {
   if (cache.size() == 0) return readSome(s, buf, yield);
@@ -139,7 +139,7 @@ template <bool isRequest> static void addCloseHeader(Header<isRequest>& header)
   header.set(http::field::proxy_connection, "close"sv);
 }
 
-template <typename Stream> static void tunnelConfirm(Stream& s, Yield yield)
+template <typename Stream, typename Yield> static void tunnelConfirm(Stream& s, Yield yield)
 {
   auto rep = Response{};
   rep.version(11);
@@ -149,7 +149,8 @@ template <typename Stream> static void tunnelConfirm(Stream& s, Yield yield)
   writeHttp(s, rep, yield);
 }
 
-template <typename Stream> static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
+template <typename Stream, typename Yield>
+static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
 {
   auto host = remote.host_ + ":" + remote.port_;
   auto req = Request{};
@@ -202,7 +203,7 @@ static ConstBuffer<uint8_t> parseHeader(Parser<isRequest>& parser, DynamicBuffer
   }
 }
 
-template <bool isRequest, typename DynamicBuffer, typename Stream>
+template <bool isRequest, typename DynamicBuffer, typename Stream, typename Yield>
 static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
                             ConstBuffer<uint8_t> buf, Stream& s, Yield yield)
 {
