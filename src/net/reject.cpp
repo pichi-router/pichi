@@ -21,6 +21,10 @@ RejectEgress::RejectEgress(asio::io_context& io, uint16_t delay) : t_{io}
   t_.expires_after(delay * 1s);
 }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4646)
+#endif // _MSC_VER
 [[noreturn]] size_t RejectEgress::recv(MutableBuffer<uint8_t>, Yield)
 {
   fail("RejectEgress::recv shouldn't be invoked");
@@ -42,6 +46,9 @@ void RejectEgress::close() { t_.cancel(); }
 {
   fail("RejectEgress::writable shouldn't be invoked");
 }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif // _MSC_VER
 
 void RejectEgress::connect(Endpoint const&, Endpoint const&, Yield yield)
 {
