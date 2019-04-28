@@ -46,6 +46,8 @@ private:
   EgressManager egresses_;
   IngressManager ingresses_;
   Rest rest_;
+  std::string bind_;
+  uint16_t port_;
 };
 
 } // namespace pichi::api
