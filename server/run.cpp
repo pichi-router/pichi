@@ -44,7 +44,6 @@ static decltype(auto) ROUTE = "route";
 static decltype(auto) INDENT = "  ";
 
 static asio::io_context io{1};
-static auto alloc = json::Document::AllocatorType{};
 
 static json::Document parseJson(char const* str)
 {

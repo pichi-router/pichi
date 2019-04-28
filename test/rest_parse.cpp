@@ -597,7 +597,6 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
   auto const origin = RuleVO{};
   auto generate = [](auto&& key, auto&& value) {
     auto expect = Document{};
-    auto& alloc = expect.GetAllocator();
     auto array = Value{};
     expect.SetObject();
     expect.AddMember(key, array.SetArray().PushBack(toJson(value, alloc), alloc), alloc);

@@ -22,13 +22,11 @@ static auto const RULE_REGEX = regex{"^/rules/?([?#].*)?$"};
 static auto const RULE_NAME_REGEX = regex{"^/rules/([^?#]+)/?([?#].*)?$"};
 static auto const ROUTE_REGEX = regex{"^/route/?([?#].*)?$"};
 
-static auto doc = json::Document{};
-static auto& alloc = doc.GetAllocator();
-
 static auto genResp(http::status status) { return Rest::Response{status, 11}; }
 
 template <typename... Args> static auto genResp(http::status status, Args&&... args)
 {
+  auto alloc = json::Document::AllocatorType{};
   auto json = toJson(forward<Args>(args)..., alloc);
   auto buf = json::StringBuffer{};
   auto writer = json::Writer<json::StringBuffer>{buf};
