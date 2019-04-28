@@ -205,7 +205,7 @@ void parseArray(json::Value const& root, T const& key, OutputIt out, Convert&& c
 json::Value toJson(string_view str, Allocator& alloc)
 {
   auto ret = json::Value{};
-  ret.SetString(str.data(), str.size(), alloc);
+  ret.SetString(str.data(), static_cast<json::SizeType>(str.size()), alloc);
   return ret;
 }
 
