@@ -1,7 +1,7 @@
 #include "utils.hpp"
 #include <boost/test/unit_test.hpp>
 #include <pichi/common.hpp>
-#include <sodium.h>
+#include <sodium/utils.h>
 #include <string.h>
 
 using namespace std;

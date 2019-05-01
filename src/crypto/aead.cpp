@@ -3,7 +3,10 @@
 #include <pichi/common.hpp>
 #include <pichi/crypto/aead.hpp>
 #include <pichi/crypto/hash.hpp>
-#include <sodium.h>
+#include <sodium/crypto_aead_chacha20poly1305.h>
+#include <sodium/crypto_aead_xchacha20poly1305.h>
+#include <sodium/randombytes.h>
+#include <sodium/utils.h>
 
 using namespace std;
 
