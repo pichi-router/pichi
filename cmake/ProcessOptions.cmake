@@ -45,7 +45,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # C/C++ Macros
 add_definitions(-DBOOST_ASIO_NO_DEPRECATED)
 
-# Options for specific compilers
+# Enable complaining all warnings as errors
+if (MSVC)
+  add_compile_options(/W4 /WX)
+else (MSVC)
+  add_compile_options(-Wall -Wextra -pedantic -Werror)
+endif (MSVC)
+
+# Options for Microsoft C++
 if (MSVC)
   # Linking with the correct universal CRT library
   # https://blogs.msdn.microsoft.com/vcblog/2015/03/03/introducing-the-universal-crt/
