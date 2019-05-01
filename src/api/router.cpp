@@ -1,3 +1,16 @@
+#include "config.h"
+
+#ifdef NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-std-move"
+#endif // __clang__
+#include <boost/asio/ip/basic_resolver.hpp>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif // __clang__
+#endif // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
+
 #include <boost/asio/ip/network_v4.hpp>
 #include <boost/asio/ip/network_v6.hpp>
 #include <boost/asio/ip/tcp.hpp>
