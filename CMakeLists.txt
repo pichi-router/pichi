@@ -18,6 +18,13 @@ find_package(Sodium 1.0.12 REQUIRED)
 find_package(MaxmindDB 1.3.0 REQUIRED)
 find_package(Rapidjson 1.1.0 REQUIRED)
 find_package(Threads REQUIRED)
+if (ENABLE_TLS)
+  find_package(OpenSSL REQUIRED)
+  include_directories(${OPENSSL_INCLUDE_DIR})
+  link_libraries(${OPENSSL_LIBRARIES})
+endif (ENABLE_TLS)
+
+include(GenerateConfig)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
@@ -35,12 +42,6 @@ link_libraries(
   ${MaxmindDB_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT}
 )
-
-if (ENABLE_TLS)
-  find_package(OpenSSL REQUIRED)
-  include_directories(${OPENSSL_INCLUDE_DIR})
-  link_libraries(${OPENSSL_LIBRARIES})
-endif (ENABLE_TLS)
 
 add_subdirectory(src)
 

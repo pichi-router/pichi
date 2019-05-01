@@ -45,6 +45,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # C/C++ Macros
 add_definitions(-DBOOST_ASIO_NO_DEPRECATED)
 
+# Options for specific compilers
 if (MSVC)
   # Linking with the correct universal CRT library
   # https://blogs.msdn.microsoft.com/vcblog/2015/03/03/introducing-the-universal-crt/
@@ -83,5 +84,3 @@ if (BUILD_SERVER)
   check_function_exists("setsid" HAS_SETSID)
   check_function_exists("close" HAS_CLOSE)
 endif (BUILD_SERVER)
-
-configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_BINARY_DIR}/include/config.h)
