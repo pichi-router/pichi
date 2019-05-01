@@ -2,6 +2,7 @@
 #define PICHI_NET_SOCKS5_HPP
 
 #include <optional>
+#include <pichi/common.hpp>
 #include <pichi/net/adapter.hpp>
 #include <string>
 #include <type_traits>
@@ -19,6 +20,7 @@ template <typename First, typename Second> struct Helper {
       return First{std::forward<Arg0>(arg0)};
     }
     else {
+      suppressC4100(std::forward<Arg0>(arg0));
       return First{};
     }
   }
