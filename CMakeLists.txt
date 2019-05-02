@@ -24,7 +24,7 @@ if (ENABLE_TLS)
   link_libraries(${OPENSSL_LIBRARIES})
 endif (ENABLE_TLS)
 
-include(GenerateConfig)
+include(Configure)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
