@@ -1,12 +1,12 @@
 #define BOOST_TEST_MODULE pichi http test
 
-#include "config.h"
 #include "utils.hpp"
 #include <boost/beast/http/parser.hpp>
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/common.hpp>
+#include <pichi/config.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>

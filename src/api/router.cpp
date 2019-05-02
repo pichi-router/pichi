@@ -1,4 +1,4 @@
-#include "config.h"
+#include <pichi/config.hpp>
 
 #ifdef NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
 #ifdef __clang__

@@ -1,11 +1,11 @@
 #define BOOST_TEST_MODULE pichi ss test
 
-#include "config.h"
 #include "utils.hpp"
 #include <array>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/common.hpp>
+#include <pichi/config.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/ssaead.hpp>

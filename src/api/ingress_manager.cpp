@@ -1,6 +1,6 @@
-#include "config.h"
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/asserts.hpp>
+#include <pichi/config.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
