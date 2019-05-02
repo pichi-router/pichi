@@ -1,4 +1,5 @@
 #include <boost/algorithm/string.hpp>
+#include <cmath>
 #include <pichi/asserts.hpp>
 #include <pichi/uri.hpp>
 #include <regex>
@@ -16,16 +17,13 @@ static auto const URI_REGEX_SIZE = 9;
 static auto const HOST_REGEX = regex{"^(([^:/\\[\\]]+)|\\[([a-f0-9:.]+)\\])(:(\\d+))?$"};
 static auto const HOST_REGEX_SIZE = 6;
 
-static string_view r2sv(csub_match const& m)
-{
-  return {m.first, static_cast<string_view::size_type>(m.length())};
-}
-
-static string_view r2sv(csub_match const& m, size_t size)
+static string_view r2sv(csub_match const& m, csub_match::difference_type size)
 {
   assert(size <= m.length());
-  return {m.first, size};
+  return {m.first, static_cast<size_t>(abs(size))};
 }
+
+static string_view r2sv(csub_match const& m) { return r2sv(m, m.length()); }
 
 static auto matching(string_view s, regex const& re, size_t size)
 {

@@ -22,13 +22,11 @@ static auto const RULE_REGEX = regex{"^/rules/?([?#].*)?$"};
 static auto const RULE_NAME_REGEX = regex{"^/rules/([^?#]+)/?([?#].*)?$"};
 static auto const ROUTE_REGEX = regex{"^/route/?([?#].*)?$"};
 
-static auto doc = json::Document{};
-static auto& alloc = doc.GetAllocator();
-
 static auto genResp(http::status status) { return Rest::Response{status, 11}; }
 
 template <typename... Args> static auto genResp(http::status status, Args&&... args)
 {
+  auto alloc = json::Document::AllocatorType{};
   auto json = toJson(forward<Args>(args)..., alloc);
   auto buf = json::StringBuffer{};
   auto writer = json::Writer<json::StringBuffer>{buf};
@@ -143,7 +141,7 @@ Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
         make_tuple(http::verb::get, ROUTE_REGEX,
                    [&](auto&&, auto&&) { return genResp(http::status::ok, router.getRoute()); }),
         make_tuple(http::verb::put, ROUTE_REGEX,
-                   [&](auto&& r, auto&& mr) {
+                   [&](auto&& r, auto&&) {
                      auto vo = parse<RouteVO>(r.body());
                      assertFalse(vo.default_.has_value() &&
                                      egresses.find(*vo.default_) == end(egresses),

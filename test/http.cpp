@@ -6,6 +6,7 @@
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
@@ -228,8 +229,8 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Tunnel_By_Insufficient_Buffer)
   auto content = "Very long content"sv;
   socket.fill(ConstBuffer<uint8_t>{content});
 
-  for (auto i = 0; i < content.size(); ++i)
-    BOOST_CHECK_EQUAL(1, ingress.recv({buf.data() + i, 1}, yield));
+  for (auto i = 0_sz; i < content.size(); ++i)
+    BOOST_CHECK_EQUAL(1_sz, ingress.recv({buf.data() + i, 1}, yield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
                                 cbegin(buf) + content.size());
   BOOST_CHECK_EXCEPTION(ingress.recv(buf, yield), Exception, verifyException<PichiError::MISC>);
@@ -332,7 +333,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_By_Insufficient_Buffer)
   auto data = MutableBuffer<uint8_t>{buf};
   auto recv = [&]() {
     while (true) {
-      BOOST_CHECK_EQUAL(1, ingress.recv({data, 1}, yield));
+      BOOST_CHECK_EQUAL(1_sz, ingress.recv({data, 1}, yield));
       data += 1;
     }
   };
@@ -377,7 +378,7 @@ BOOST_AUTO_TEST_CASE(Ingress_confirm_Relay)
   ingress.readRemote(yield);
   ingress.confirm(yield);
 
-  BOOST_CHECK_EQUAL(0, socket.available());
+  BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_disconnect_Tunnel)
@@ -449,7 +450,7 @@ BOOST_AUTO_TEST_CASE(Ingress_send_Relay)
   socket.fill({buf, serializeToBuffer(req, buf)});
   ingress.readRemote(yield);
   ingress.confirm(yield);
-  BOOST_CHECK_EQUAL(0, socket.available());
+  BOOST_CHECK_EQUAL(0_sz, socket.available());
 
   auto origin = genResponse();
   ingress.send({buf, serializeToBuffer(origin, buf)}, yield);

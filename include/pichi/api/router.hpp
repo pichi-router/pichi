@@ -5,7 +5,7 @@
 #include <memory>
 #include <pichi/api/vos.hpp>
 
-class MMDB_s;
+struct MMDB_s;
 
 namespace boost::asio::ip {
 
@@ -17,7 +17,7 @@ template <typename Protocol> class basic_resolver_results;
 
 namespace pichi::net {
 
-class Endpoint;
+struct Endpoint;
 
 } // namespace pichi::net
 

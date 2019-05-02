@@ -6,6 +6,7 @@
 #include <array>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <vector>
 
@@ -450,7 +451,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Hmac_Cases, Case, TestCases)
   auto container = array<uint8_t, 128>{};
   auto fact = MutableBuffer<uint8_t>{container, Case::DIGEST.size()};
 
-  fill_n(begin(fact), fact.size(), 0);
+  fill_n(begin(fact), fact.size(), 0_u8);
   HMAC{Case::KEY}.hash(Case::DATA, fact);
 
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(Case::DIGEST), cend(Case::DIGEST), cbegin(fact), cend(fact));

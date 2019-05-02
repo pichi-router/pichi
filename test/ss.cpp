@@ -5,6 +5,7 @@
 #include <array>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/ssaead.hpp>
@@ -99,11 +100,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(readIV, Ingress, Adapters)
   auto ingress = Ingress{psk, socket, true};
 
   auto expect = array<uint8_t, IV_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(expect), IV_SIZE<Ingress::METHOD>, 0xff);
+  fill_n(begin(expect), IV_SIZE<Ingress::METHOD>, 0xff_u8);
   socket.fill(expect);
 
   auto fact = array<uint8_t, IV_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(fact), IV_SIZE<Ingress::METHOD>, 0);
+  fill_n(begin(fact), IV_SIZE<Ingress::METHOD>, 0_u8);
   BOOST_CHECK_EQUAL(IV_SIZE<Ingress::METHOD>, ingress.readIV(fact, yield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
@@ -111,10 +112,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(readIV, Ingress, Adapters)
 BOOST_AUTO_TEST_CASE_TEMPLATE(readRemote, Ingress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(psk), KEY_SIZE<Ingress::METHOD>, 0xff);
+  fill_n(begin(psk), KEY_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto iv = array<uint8_t, IV_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(iv), IV_SIZE<Ingress::METHOD>, 0xff);
+  fill_n(begin(iv), IV_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto encryptor = Encryptor<Ingress::METHOD>{psk, iv};
   auto expect = net::makeEndpoint("localhost"sv, 443);
@@ -141,7 +142,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(confirm, Ingress, Adapters)
   auto ingress = Ingress{psk, socket, true};
 
   ingress.confirm(yield);
-  BOOST_CHECK_EQUAL(0, socket.available());
+  BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(disconnect, Ingress, Adapters)
@@ -151,21 +152,21 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(disconnect, Ingress, Adapters)
   auto ingress = Ingress{psk, socket, true};
 
   ingress.disconnect(yield);
-  BOOST_CHECK_EQUAL(0, socket.available());
+  BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Ingress, Ingress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(psk), KEY_SIZE<Ingress::METHOD>, 0xff);
+  fill_n(begin(psk), KEY_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto iv = array<uint8_t, IV_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(iv), IV_SIZE<Ingress::METHOD>, 0xff);
+  fill_n(begin(iv), IV_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto encryptor = Encryptor<Ingress::METHOD>{psk, iv};
   auto expect = array<uint8_t, 1024>{};
   auto cipher = array<uint8_t, cipherLength<Ingress::METHOD>(1024)>{};
-  fill_n(begin(expect), expect.size(), 0xff);
+  fill_n(begin(expect), expect.size(), 0xff_u8);
   encrypt<Ingress::METHOD>(encryptor, expect, cipher);
 
   auto socket = Socket{};
@@ -181,15 +182,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Ingress, Ingress, Adapters)
 BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Ingress_By_Insufficient_Buffer, Ingress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(psk), KEY_SIZE<Ingress::METHOD>, 0xff);
+  fill_n(begin(psk), KEY_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto iv = array<uint8_t, IV_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(iv), IV_SIZE<Ingress::METHOD>, 0xff);
+  fill_n(begin(iv), IV_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto encryptor = Encryptor<Ingress::METHOD>{psk, iv};
   auto expect = array<uint8_t, 1024>{};
   auto cipher = array<uint8_t, cipherLength<Ingress::METHOD>(1024)>{};
-  fill_n(begin(expect), expect.size(), 0xff);
+  fill_n(begin(expect), expect.size(), 0xff_u8);
   encrypt<Ingress::METHOD>(encryptor, expect, cipher);
 
   auto socket = Socket{};
@@ -198,19 +199,19 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Ingress_By_Insufficient_Buffer, Ingress, Adap
   socket.fill(cipher);
 
   auto fact = array<uint8_t, 1024>{};
-  for (auto i = 0; i < expect.size(); ++i)
-    BOOST_CHECK_EQUAL(1, ingress.recv({fact.data() + i, 1}, yield));
+  for (auto i = 0_sz; i < expect.size(); ++i)
+    BOOST_CHECK_EQUAL(1_sz, ingress.recv({fact.data() + i, 1}, yield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(send_Ingress, Ingress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Ingress::METHOD>>{};
-  fill_n(begin(psk), KEY_SIZE<Ingress::METHOD>, 0xff);
+  fill_n(begin(psk), KEY_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto plain = array<uint8_t, 1024>{};
   auto expect = array<uint8_t, cipherLength<Ingress::METHOD>(1024)>{};
-  fill_n(begin(plain), plain.size(), 0xee);
+  fill_n(begin(plain), plain.size(), 0xee_u8);
 
   auto socket = Socket{};
   auto ingress = Ingress{psk, socket, true};
@@ -256,11 +257,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(connect, Egress, Adapters)
 BOOST_AUTO_TEST_CASE_TEMPLATE(send_Egress, Egress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Egress::METHOD>>{};
-  fill_n(begin(psk), KEY_SIZE<Egress::METHOD>, 0xff);
+  fill_n(begin(psk), KEY_SIZE<Egress::METHOD>, 0xff_u8);
 
   auto plain = array<uint8_t, 1024>{};
   auto expect = array<uint8_t, cipherLength<Egress::METHOD>(1024)>{};
-  fill_n(begin(plain), plain.size(), 0xee);
+  fill_n(begin(plain), plain.size(), 0xee_u8);
 
   auto socket = Socket{};
   auto egress = Egress{psk, socket, true};
@@ -281,15 +282,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(send_Egress, Egress, Adapters)
 BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Egress, Egress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Egress::METHOD>>{};
-  fill_n(begin(psk), KEY_SIZE<Egress::METHOD>, 0xff);
+  fill_n(begin(psk), KEY_SIZE<Egress::METHOD>, 0xff_u8);
 
   auto iv = array<uint8_t, IV_SIZE<Egress::METHOD>>{};
-  fill_n(begin(iv), IV_SIZE<Egress::METHOD>, 0xff);
+  fill_n(begin(iv), IV_SIZE<Egress::METHOD>, 0xff_u8);
 
   auto expect = array<uint8_t, 1024>{};
   auto cipher = array<uint8_t, cipherLength<Egress::METHOD>(1024)>{};
   auto encryptor = Encryptor<Egress::METHOD>{psk, iv};
-  fill_n(begin(expect), expect.size(), 0xff);
+  fill_n(begin(expect), expect.size(), 0xff_u8);
   encrypt<Egress::METHOD>(encryptor, expect, cipher);
 
   auto socket = Socket{};
@@ -305,15 +306,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Egress, Egress, Adapters)
 BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Egress_By_Insufficient_Buffer, Egress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Egress::METHOD>>{};
-  fill_n(begin(psk), KEY_SIZE<Egress::METHOD>, 0xff);
+  fill_n(begin(psk), KEY_SIZE<Egress::METHOD>, 0xff_u8);
 
   auto iv = array<uint8_t, IV_SIZE<Egress::METHOD>>{};
-  fill_n(begin(iv), IV_SIZE<Egress::METHOD>, 0xff);
+  fill_n(begin(iv), IV_SIZE<Egress::METHOD>, 0xff_u8);
 
   auto expect = array<uint8_t, 1024>{};
   auto cipher = array<uint8_t, cipherLength<Egress::METHOD>(1024)>{};
   auto encryptor = Encryptor<Egress::METHOD>{psk, iv};
-  fill_n(begin(expect), expect.size(), 0xff);
+  fill_n(begin(expect), expect.size(), 0xff_u8);
   encrypt<Egress::METHOD>(encryptor, expect, cipher);
 
   auto socket = Socket{};
@@ -322,8 +323,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Egress_By_Insufficient_Buffer, Egress, Adapte
   socket.fill(cipher);
 
   auto fact = array<uint8_t, 1024>{};
-  for (auto i = 0; i < expect.size(); ++i)
-    BOOST_CHECK_EQUAL(1, egress.recv({fact.data() + i, 1}, yield));
+  for (auto i = 0_sz; i < expect.size(); ++i)
+    BOOST_CHECK_EQUAL(1_sz, egress.recv({fact.data() + i, 1}, yield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
 

@@ -3,6 +3,7 @@
 #include "utils.hpp"
 #include <algorithm>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/exception.hpp>
 #include <string_view>
 #include <unordered_map>
@@ -228,7 +229,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_Default_Ones)
 BOOST_AUTO_TEST_CASE(toJson_Egress_DIRECT_Additional_Fields)
 {
   auto vo = defaultEgressVO(AdapterType::DIRECT);
-  vo.delay_ = 0;
+  vo.delay_ = 0_u16;
   vo.mode_ = DelayMode::FIXED;
   vo.method_ = CryptoMethod::RC4_MD5;
   vo.password_ = ph;
@@ -256,13 +257,13 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Missing_Delay)
 BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Delay_Out_Of_Range)
 {
   auto vo = defaultEgressVO(AdapterType::REJECT);
-  vo.delay_ = 301;
+  vo.delay_ = 301_u16;
   BOOST_CHECK_EXCEPTION(toJson(vo, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Fixed)
 {
-  for (auto i = 0; i <= 300; ++i) {
+  for (auto i = 0_u16; i <= 300_u16; ++i) {
     auto vo = defaultEgressVO(AdapterType::REJECT);
     vo.delay_ = i;
     auto expect = defaultEgressJson(AdapterType::REJECT);
@@ -298,7 +299,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_Additional_Fields)
 {
   for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
     auto vo = defaultEgressVO(type);
-    vo.delay_ = 0;
+    vo.delay_ = 0_u16;
     vo.mode_ = DelayMode::FIXED;
     vo.method_ = CryptoMethod::RC4_MD5;
     vo.password_ = ph;
@@ -312,7 +313,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_Additional_Fields)
 BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_Missing_Fields)
 {
   for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto origin = defaultEgressVO(AdapterType::SOCKS5);
+    auto origin = defaultEgressVO(type);
     toJson(origin, alloc);
 
     auto noHost = origin;
@@ -328,7 +329,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_Missing_Fields)
     BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 
     auto emptyPort = origin;
-    emptyPort.port_ = 0;
+    emptyPort.port_ = 0_u16;
     BOOST_CHECK_EXCEPTION(toJson(emptyPort, alloc), Exception, verifyException<PichiError::MISC>);
 
     auto noTls = origin;
@@ -413,7 +414,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_SS_Missing_Fields)
   BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto emptyPort = origin;
-  emptyPort.port_ = 0;
+  emptyPort.port_ = 0_u16;
   BOOST_CHECK_EXCEPTION(toJson(emptyPort, alloc), Exception, verifyException<PichiError::MISC>);
 
   auto noMethod = origin;

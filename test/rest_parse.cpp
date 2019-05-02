@@ -3,6 +3,7 @@
 #include "utils.hpp"
 #include <algorithm>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/exception.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -131,8 +132,6 @@ static bool operator==(RouteVO const& lhs, RouteVO const& rhs)
   return lhs.default_ == rhs.default_ &&
          equal(begin(lhs.rules_), end(lhs.rules_), begin(rhs.rules_), end(rhs.rules_));
 }
-
-static auto nonUpdating = [](auto&&, auto&&) { BOOST_ERROR("unexpected invocation"); };
 
 BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
@@ -341,12 +340,12 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Default_Ones)
 BOOST_AUTO_TEST_CASE(parse_Egress_Direct_Additional_Fields)
 {
   auto vo = defaultEgressVO(AdapterType::DIRECT);
-  vo.delay_ = 0;
+  vo.delay_ = 0_u16;
   vo.host_ = ph;
   vo.method_ = CryptoMethod::RC4_MD5;
   vo.mode_ = DelayMode::FIXED;
   vo.password_ = ph;
-  vo.port_ = 1;
+  vo.port_ = 1_u16;
   vo.tls_ = true;
   vo.insecure_ = true;
   vo.caFile_ = ph;
@@ -359,7 +358,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Default_Mode)
   vo.host_ = ph;
   vo.method_ = CryptoMethod::RC4_MD5;
   vo.password_ = ph;
-  vo.port_ = 1;
+  vo.port_ = 1_u16;
   vo.delay_.reset();
   vo.mode_.reset();
   vo.tls_ = true;
@@ -382,11 +381,11 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Random_Additional_Fields)
   BOOST_CHECK(origin == parse<EgressVO>(toString(origin)));
 
   auto vo = origin;
-  vo.delay_ = 0;
+  vo.delay_ = 0_u16;
   vo.host_ = ph;
   vo.method_ = CryptoMethod::RC4_MD5;
   vo.password_ = ph;
-  vo.port_ = 1;
+  vo.port_ = 1_u16;
   vo.tls_ = true;
   vo.insecure_ = true;
   vo.caFile_ = ph;
@@ -411,7 +410,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Delay_Out_Of_Range)
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Fixed)
 {
-  for (auto i = 0; i <= 300; ++i) {
+  for (auto i = 0_u16; i <= 300_u16; ++i) {
     auto vo = defaultEgressVO(AdapterType::REJECT);
     vo.delay_ = i;
     BOOST_CHECK(vo == parse<EgressVO>(toString(vo)));
@@ -537,7 +536,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_SS_Mandatory_Fields)
                         verifyException<PichiError::BAD_JSON>);
 
   auto noPort = origin;
-  noPort.port_ = 0;
+  noPort.port_ = 0_u16;
   BOOST_CHECK_EXCEPTION(parse<EgressVO>(toString(noPort)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
@@ -598,7 +597,6 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
   auto const origin = RuleVO{};
   auto generate = [](auto&& key, auto&& value) {
     auto expect = Document{};
-    auto& alloc = expect.GetAllocator();
     auto array = Value{};
     expect.SetObject();
     expect.AddMember(key, array.SetArray().PushBack(toJson(value, alloc), alloc), alloc);

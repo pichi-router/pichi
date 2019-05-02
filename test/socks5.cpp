@@ -6,6 +6,7 @@
 #include <boost/test/unit_test.hpp>
 #include <initializer_list>
 #include <memory>
+#include <pichi/common.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>
@@ -37,7 +38,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Invalid_Version)
     socket.fill({ver, 0x01, 0x00});
     BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
                           verifyException<PichiError::BAD_PROTO>);
-    BOOST_CHECK_EQUAL(0, socket.available());
+    BOOST_CHECK_EQUAL(0_sz, socket.available());
   }
 }
 
@@ -49,7 +50,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Zero_Nmethod)
   socket.fill({0x05, 0x00});
   BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
                         verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EQUAL(0, socket.available());
+  BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
 BOOST_AUTO_TEST_CASE(readRemote_Handshake_Without_Acceptable_Method)
@@ -64,7 +65,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Without_Acceptable_Method)
     BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception, verifyException<PichiError::MISC>);
 
     auto fact = array<uint8_t, 2>{};
-    BOOST_CHECK_EQUAL(2, socket.available());
+    BOOST_CHECK_EQUAL(2_sz, socket.available());
     socket.flush(fact);
     BOOST_CHECK_EQUAL(0x05, fact.front());
     BOOST_CHECK_EQUAL(0xff, fact.back());
@@ -86,7 +87,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_With_Acceptable_Method)
     BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception, verifyException<PichiError::MISC>);
 
     auto fact = array<uint8_t, 2>{};
-    BOOST_CHECK_EQUAL(2, socket.available());
+    BOOST_CHECK_EQUAL(2_sz, socket.available());
     socket.flush(fact);
     BOOST_CHECK_EQUAL(0x05, fact.front());
     BOOST_CHECK_EQUAL(0x00, fact.back());
@@ -112,7 +113,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_Version)
                           verifyException<PichiError::BAD_PROTO>);
 
     auto fact = array<uint8_t, 2>{};
-    BOOST_CHECK_EQUAL(2, socket.available());
+    BOOST_CHECK_EQUAL(2_sz, socket.available());
     socket.flush(fact);
     BOOST_CHECK_EQUAL(0x05, fact.front());
     BOOST_CHECK_EQUAL(0x00, fact.back());
@@ -138,7 +139,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_CMD)
                           verifyException<PichiError::BAD_PROTO>);
 
     auto fact = array<uint8_t, 2>{};
-    BOOST_CHECK_EQUAL(2, socket.available());
+    BOOST_CHECK_EQUAL(2_sz, socket.available());
     socket.flush(fact);
     BOOST_CHECK_EQUAL(0x05, fact.front());
     BOOST_CHECK_EQUAL(0x00, fact.back());
@@ -163,7 +164,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_RSV)
                           verifyException<PichiError::BAD_PROTO>);
 
     auto fact = array<uint8_t, 2>{};
-    BOOST_CHECK_EQUAL(2, socket.available());
+    BOOST_CHECK_EQUAL(2_sz, socket.available());
     socket.flush(fact);
     BOOST_CHECK_EQUAL(0x05, fact.front());
     BOOST_CHECK_EQUAL(0x00, fact.back());
@@ -185,7 +186,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Correct)
 
   auto fact = ingress->readRemote(yield);
 
-  BOOST_CHECK_EQUAL(2, socket.available());
+  BOOST_CHECK_EQUAL(2_sz, socket.available());
   socket.flush({otects, 2});
   BOOST_CHECK_EQUAL(0x05, otects[0]);
   BOOST_CHECK_EQUAL(0x00, otects[1]);
@@ -206,7 +207,7 @@ BOOST_AUTO_TEST_CASE(connect_Handshake_Invalid_Version)
     BOOST_CHECK_EXCEPTION(egress->connect({}, {}, yield), Exception,
                           verifyException<PichiError::BAD_PROTO>);
 
-    BOOST_CHECK_EQUAL(3, socket.available());
+    BOOST_CHECK_EQUAL(3_sz, socket.available());
     auto req = array<uint8_t, 3>{};
     socket.flush(req);
     BOOST_CHECK_EQUAL(0x05, req[0]);
@@ -225,7 +226,7 @@ BOOST_AUTO_TEST_CASE(connect_Handshake_Without_Acceptable_Method)
     BOOST_CHECK_EXCEPTION(egress->connect({}, {}, yield), Exception,
                           verifyException<PichiError::BAD_PROTO>);
 
-    BOOST_CHECK_EQUAL(3, socket.available());
+    BOOST_CHECK_EQUAL(3_sz, socket.available());
     auto req = array<uint8_t, 3>{};
     socket.flush(req);
     BOOST_CHECK_EQUAL(0x05, req[0]);
@@ -250,7 +251,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_With_Invalid_Version)
     BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, yield), Exception,
                           verifyException<PichiError::BAD_PROTO>);
 
-    BOOST_CHECK_EQUAL(25, socket.available());
+    BOOST_CHECK_EQUAL(25_sz, socket.available());
     auto fact = array<uint8_t, 25>{};
     socket.flush(fact);
     BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
@@ -272,7 +273,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Connection_Failure)
     BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, yield), Exception,
                           verifyException<PichiError::CONN_FAILURE>);
 
-    BOOST_CHECK_EQUAL(25, socket.available());
+    BOOST_CHECK_EQUAL(25_sz, socket.available());
     auto fact = array<uint8_t, 25>{};
     socket.flush(fact);
     BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
@@ -294,7 +295,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_With_Invalid_RSV)
     BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, yield), Exception,
                           verifyException<PichiError::BAD_PROTO>);
 
-    BOOST_CHECK_EQUAL(25, socket.available());
+    BOOST_CHECK_EQUAL(25_sz, socket.available());
     auto fact = array<uint8_t, 25>{};
     socket.flush(fact);
     BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
@@ -316,7 +317,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Invalid_Endpoint)
   BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, yield), Exception,
                         verifyException<PichiError::BAD_PROTO>);
 
-  BOOST_CHECK_EQUAL(25, socket.available());
+  BOOST_CHECK_EQUAL(25_sz, socket.available());
   auto fact = array<uint8_t, 25>{};
   socket.flush(fact);
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
@@ -337,7 +338,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Correct)
 
   egress->connect(remote, {}, yield);
 
-  BOOST_CHECK_EQUAL(25, socket.available());
+  BOOST_CHECK_EQUAL(25_sz, socket.available());
   auto fact = array<uint8_t, 25>{};
   socket.flush(fact);
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
@@ -356,7 +357,7 @@ BOOST_AUTO_TEST_CASE(confirm)
   BOOST_CHECK_EQUAL(0x00, buf[1]);
   BOOST_CHECK_EQUAL(0x00, buf[2]);
 
-  auto consumed = 0;
+  auto consumed = 0_sz;
   auto len = socket.available();
   socket.flush({buf, len});
   net::parseEndpoint([src = ConstBuffer<uint8_t>{buf, len}, &consumed](auto dst) mutable {
@@ -381,7 +382,7 @@ BOOST_AUTO_TEST_CASE(disconnect)
   BOOST_CHECK_EQUAL(0x04, buf[1]);
   BOOST_CHECK_EQUAL(0x00, buf[2]);
 
-  auto consumed = 0;
+  auto consumed = 0_sz;
   auto len = socket.available();
   socket.flush({buf, len});
   net::parseEndpoint([src = ConstBuffer<uint8_t>{buf, len}, &consumed](auto dst) mutable {

@@ -1,3 +1,16 @@
+#include "config.h"
+
+#ifdef NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-std-move"
+#endif // __clang__
+#include <boost/asio/ip/basic_resolver.hpp>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif // __clang__
+#endif // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
+
 #include <boost/asio/ip/network_v4.hpp>
 #include <boost/asio/ip/network_v6.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -82,7 +95,6 @@ string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterTy
   auto it = find_if(cbegin(route_.rules_), cend(route_.rules_), [&, this](auto&& pair) {
     auto it = rules_.find(pair.first);
     assertFalse(it == cend(rules_), PichiError::MISC);
-    auto& rule = as_const(it->second.first);
     auto& matchers = as_const(it->second.second);
     return any_of(cbegin(matchers), cend(matchers),
                   [&](auto&& matcher) { return matcher(e, r, ingress, type); });

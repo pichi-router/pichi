@@ -1,6 +1,7 @@
 #include "utils.hpp"
 #include <boost/test/unit_test.hpp>
-#include <sodium.h>
+#include <pichi/common.hpp>
+#include <sodium/utils.h>
 #include <string.h>
 
 using namespace std;
@@ -26,9 +27,9 @@ IngressVO defaultIngressVO(AdapterType type)
   switch (type) {
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return {type, ph, 1, {}, {}, false};
+    return {type, ph, 1_u16, {}, {}, false};
   case AdapterType::SS:
-    return {AdapterType::SS, ph, 1, CryptoMethod::RC4_MD5, ph};
+    return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
   default:
     BOOST_ERROR("Invalid type");
     return {};
@@ -68,12 +69,12 @@ EgressVO defaultEgressVO(AdapterType type)
   case AdapterType::DIRECT:
     return {AdapterType::DIRECT};
   case AdapterType::REJECT:
-    return {AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0};
+    return {AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return {type, ph, 1, {}, {}, {}, {}, false};
+    return {type, ph, 1_u16, {}, {}, {}, {}, false};
   case AdapterType::SS:
-    return {AdapterType::SS, ph, 1, CryptoMethod::RC4_MD5, ph};
+    return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
   default:
     BOOST_ERROR("Invalid type");
     return {};

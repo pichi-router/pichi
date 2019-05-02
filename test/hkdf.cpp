@@ -4,6 +4,7 @@
 #include <array>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common.hpp>
 #include <pichi/crypto/hash.hpp>
 
 using namespace std;
@@ -148,7 +149,7 @@ BOOST_AUTO_TEST_SUITE(HKDF)
 BOOST_AUTO_TEST_CASE_TEMPLATE(rfc5869, Case, RFC5869Cases)
 {
   auto okm = array<uint8_t, Case::LENGTH>{};
-  fill_n(begin(okm), sizeof(okm), 0);
+  fill_n(begin(okm), sizeof(okm), 0_u8);
   hkdf<Case::ALGORITHM>(okm, Case::IKM, Case::SALT, Case::INFO);
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(Case::OKM), cend(Case::OKM), cbegin(okm), cend(okm));
 }
