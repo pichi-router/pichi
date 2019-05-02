@@ -20,6 +20,8 @@ Pichi is designed
 1. **for personal usage**: performance is important, but not the first priority;
 1. **for multiple platforms**: at least Windows, POSIX-compatible, Android and iOS.
 
+![Overview](images/overview.png)
+
 ### Motivation
 
 Proxy is widely applied to traverse through the firewall, hide or change the original address, expose internal service port, etc. But if we iterate some famous proxy tools, it's easily recognized that each of them has at least one of these cons list below:
@@ -51,6 +53,93 @@ If the configuration for remote proxies is volatile, such as changing IP/Port pe
 Pichi can centralize the varies, rather than editing the configuration client by client.
 
 ![Use Case 1](images/use_case_1.png)
+
+### Supported protocols
+
+#### Ingress protocols
+
+* HTTP Proxy: defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt)
+* HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
+* SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
+* Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
+
+#### Egress protocols
+
+* HTTP Proxy: defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt)
+* HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
+* SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
+* Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
+* Direct: connecting to destination directly
+* Reject: rejecting request immediately or after a fixed/random delay
+
+**NOTE:** HTTP egress would like to try [HTTP CONNECT](https://www.ietf.org/rfc/rfc2817.txt) first. HTTP proxy will be chosen if the previous handshake is failed.
+
+## Get started
+
+### Installation
+
+#### Linux
+
+Please use [Docker](https://www.docker.com):
+
+```
+$ docker pull pichi/pichi:1.2.0
+$ docker run --rm pichi/pichi:1.2.0 pichi <options>
+```
+
+#### macOS
+
+Please use [Homebrew](https://brew.sh):
+
+```
+$ export PICHI_OPTS="options you like"
+$ brew tap pichi-router/pichi
+$ brew install pichi
+$ pichi <options>
+```
+
+#### Windows, FreeBSD or others
+
+Please refer to **Build** section.
+
+### Run
+
+```
+$ pichi -h
+Allow options:
+  -h [ --help ]              produce help message
+  -l [ --listen ] arg (=::1) API server address
+  -p [ --port ] arg          API server port
+  -g [ --geo ] arg           GEO file
+  --json arg                 Initail configration(JSON format)
+  -d [ --daemon ]            daemonize
+  -u [ --user ] arg          run as user
+  --group arg                run as group
+```
+
+`--port` and `--geo` are mandatory. `--json` option can take a JSON file as an Initial configuration to specify ingresses/egresses/rules/route. The initial configuration format looks like:
+
+```
+{
+  "ingresses": {
+    "ingress-0": {/* ingress configuration */},
+    "ingress-1": {/* ingress configuration */}
+  },
+  "egresses": {
+    "egress-0": {/* egress configuration */},
+    "egress-1": {/* egress configuration */}
+  },
+  "rules": {
+    "rule-0": {/* rule configuration */},
+    "rule-1": {/* rule configuration */}
+  },
+  "route": {/* route configuration */}
+}
+```
+
+Please refer to **Using Pichi API** section for the details of configurations of ingress/egress/rule/route.
+
+Furthermore, Pichi server reloads JSON configuration on `SIGHUP` received if OS supports.
 
 ## Using Pichi API
 
@@ -141,26 +230,6 @@ HTTP/1.1 204 No Content
 
 ```
 
-## Supported protocols
-
-### Ingress protocols
-
-* HTTP Proxy: defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt)
-* HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
-* SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
-* Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
-
-### Egress protocols
-
-* HTTP Proxy: defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt)
-* HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
-* SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
-* Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
-* Direct: connecting to destination directly
-* Reject: rejecting request immediately or after a fixed/random delay
-
-**NOTE:** HTTP egress would like to try [HTTP CONNECT](https://www.ietf.org/rfc/rfc2817.txt) first. HTTP proxy will be chosen if the previous handshake is failed.
-
 ## Build
 
 ### Requirements
@@ -209,16 +278,6 @@ for development.
 
 ```
 $ docker pull pichi/pichi
-$ docker run --rm pichi/pichi pichi -h
-Allow options:
-  -h [ --help ]              produce help message
-  -l [ --listen ] arg (=::1) API server address
-  -p [ --port ] arg          API server port
-  -g [ --geo ] arg           GEO file
-  --json arg                 Initial configuration(JSON format)
-  -d [ --daemon ]            daemonize
-  -u [ --user ] arg          run as user
-  --group arg                run as group
 $ docker run -d --name pichi --net host --restart always pichi/pichi \
 >   pichi -g /usr/share/pichi/geo.mmdb -p 1024 -l 127.0.0.1
 c51b832bd29dd0333b0d32b0b0563ddc72821f7301c36c7635ae47d00a3bb902
@@ -233,7 +292,7 @@ Pichi is designed to run or be embedded into some APPs on iOS/Android. `deps-bui
 
 #### iOS
 
-It's very simple to build a C/C++ project managed by CMake, if `CMAKE_TOOLCHAIN_FILE` is set to [ios.toolchain.cmake](https://github.com/leetal/ios-cmake/blob/2.1.4/ios.toolchain.cmake).
+It's very simple to build a C/C++ project managed by CMake, if `CMAKE_TOOLCHAIN_FILE` is set to [ios.toolchain.cmake](https://github.com/leetal/ios-cmake/blob/3.0.1/ios.toolchain.cmake).
 
 ```
 $ cmake -D CMAKE_TOOLCHAIN_FILE=/path/to/ios.toolchain.cmake \
@@ -337,12 +396,14 @@ dynamically linked, interpreter /libexec/ld-elf.so.1, for FreeBSD 12.0 (1200086)
 FreeBSD-style, with debug_info, not stripped
 ```
 
-## Run pichi server
+## Integration with pichi
 
-There are 2 ways to start pichi server:
+There are 2 ways to integrate with pichi:
 
-* **Standalone**: pichi server runs in its own process,
-* **In-Process**: pichi server runs in its supervisor process.
+* **Standalone**: pichi runs in its own process,
+* **In-Process**: pichi runs in its supervisor process.
+
+Regardless of any mode, the supervisor must communicate with pichi via RESTful APIs.
 
 ### Standalone
 
@@ -351,39 +412,7 @@ Standalone mode requires `BUILD_SERVER` CMake option, which builds code in `serv
 ```
 $ cmake -D CMAKE_INSTALL_PREFIX=/usr -D CMAKE_BUILD_TYPE=MinSizeRel -D BUILD_SERVER=ON -B build .
 $ cmake --build build --target install/strip
-$ /usr/bin/pichi -h
-Allow options:
-  -h [ --help ]              produce help message
-  -l [ --listen ] arg (=::1) API server address
-  -p [ --port ] arg          API server port
-  -g [ --geo ] arg           GEO file
-  --json arg                 Initial configuration(JSON format)
-  -d [ --daemon ]            daemonize
-  -u [ --user ] arg          run as user
-  --group arg                run as group
 ```
-
-`--port` and `--geo` are mandatory. `--json` option can take a JSON file as an Initial configuration to specify ingresses/egresses/rules/route. The initial configuration format looks like:
-
-```
-{
-  "ingresses": {
-    "ingress-0": {/* ingress configuration */},
-    "ingress-1": {/* ingress configuration */}
-  },
-  "egresses": {
-    "egress-0": {/* egress configuration */},
-    "egress-1": {/* egress configuration */}
-  },
-  "rules": {
-    "rule-0": {/* rule configuration */},
-    "rule-1": {/* rule configuration */}
-  },
-  "route": {/* route configuration */}
-}
-```
-
-Furthermore, Pichi server also reload JSON configuration on `SIGHUP` received if OS supports.
 
 ### In-Process
 
@@ -404,7 +433,7 @@ C function can be invoked by lots of program languages. It's defined in `include
 extern int pichi_run_server(char const* bind, uint16_t port, char const* mmdb);
 ```
 
-`pichi_run_server` will block the calling thread if no error occurs.
+`pichi_run_server` will block the caller thread if no error occurs.
 
 #### C++ class
 
@@ -418,7 +447,7 @@ public:
 };
 ```
 
-`pichi::api::Server` accepts a `boost::asio::io_context` object reference, which is shared by the supervisor. Furthermore, `Server::listen` **doesn't** block the calling thread. It means that the supervisor can invoke `io_context::run()` right where it wants to do. Here's a simple code snippet:
+`pichi::api::Server` accepts a `boost::asio::io_context` object reference, which is shared by the supervisor. Furthermore, `Server::listen` **doesn't** block the caller thread. It means that the supervisor can invoke `io_context::run()` right where it wants to do. Here's a simple code snippet:
 
 ```C++
 #include <pichi/api/server.hpp>
