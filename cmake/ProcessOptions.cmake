@@ -9,6 +9,9 @@ if (IOS)
     set(BUILD_SERVER OFF)
     set(BUILD_TEST OFF)
   endif (BUILD_SERVER OR BUILD_TEST)
+  if ("armv7" IN_LIST ARCHS OR "armv7s" IN_LIST ARCHS)
+    add_compile_options(-faligned-allocation)
+  endif ("armv7" IN_LIST ARCHS OR "armv7s" IN_LIST ARCHS)
 endif (IOS)
 
 # Setting library suffix for linking
