@@ -18,9 +18,6 @@ namespace pichi::net {
 
 namespace detail {
 
-// using Socket = boost::asio::ip::tcp::socket;
-using Yield = boost::asio::yield_context;
-
 using Cache = boost::beast::flat_buffer;
 using Body = boost::beast::http::empty_body;
 
@@ -34,6 +31,9 @@ template <typename R, typename... Args> R badInvoking(Args&&...)
   fail("Bad invocation"sv);
 }
 
+// FIXME hardcode HTTP header limit to 1M
+inline uint32_t const HEADER_LIMIT = 1024ul * 1024ul;
+
 } // namespace detail
 
 template <typename Stream> class HttpIngress : public Ingress {
@@ -44,9 +44,9 @@ public:
       send_(detail::badInvoking<void, ConstBuffer<uint8_t>, Yield>),
       recv_(detail::badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
   {
-    reqParser_.header_limit(std::numeric_limits<uint32_t>::max());
+    reqParser_.header_limit(detail::HEADER_LIMIT);
     reqParser_.body_limit(std::numeric_limits<uint64_t>::max());
-    respParser_.header_limit(std::numeric_limits<uint32_t>::max());
+    respParser_.header_limit(detail::HEADER_LIMIT);
     respParser_.body_limit(std::numeric_limits<uint64_t>::max());
   }
 
@@ -87,9 +87,9 @@ public:
       send_(detail::badInvoking<void, ConstBuffer<uint8_t>, Yield>),
       recv_(detail::badInvoking<size_t, MutableBuffer<uint8_t>, Yield>)
   {
-    reqParser_.header_limit(std::numeric_limits<uint32_t>::max());
+    reqParser_.header_limit(detail::HEADER_LIMIT);
     reqParser_.body_limit(std::numeric_limits<uint64_t>::max());
-    respParser_.header_limit(std::numeric_limits<uint32_t>::max());
+    respParser_.header_limit(detail::HEADER_LIMIT);
     respParser_.body_limit(std::numeric_limits<uint64_t>::max());
   }
 

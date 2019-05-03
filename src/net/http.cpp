@@ -91,7 +91,7 @@ static size_t copyOrCache(ConstBufferSequence const& src, MutableBuffer<uint8_t>
   return copied;
 }
 
-template <typename Stream, typename DynamicBuffer>
+template <typename Stream, typename DynamicBuffer, typename Yield>
 static size_t recvRaw(Stream& s, DynamicBuffer& cache, MutableBuffer<uint8_t> buf, Yield yield)
 {
   if (cache.size() == 0) return readSome(s, buf, yield);
@@ -123,29 +123,6 @@ static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
   return buf.size() - left.size();
 }
 
-static void removeHostFromTarget(http::request_header<>& req)
-{
-  /*
-   * HTTP Proxy @RFC2068
-   *   The HOST field and absolute_path are both mandatory and same according to the standard.
-   *   But some non-standard clients might send request:
-   *     - with different destinations discribed in HOST field and absolute_path;
-   *     - without absolute_path but relative_path specified.
-   *   The rules, which are not very strict but still standard, listed below are followed
-   *   to handle these non-standard clients:
-   *     - HOST field is mandatory and taken as the destination;
-   *     - the destination described in absolute_path is ignored;
-   *     - relative_path will be forwarded without any change.
-   */
-  auto target = req.target().to_string();
-  assertFalse(target.empty(), PichiError::BAD_PROTO, "Empty path");
-  if (target[0] != '/') {
-    // absolute_path specified, so convert it to relative one.
-    auto uri = Uri{target};
-    req.target(boost::string_view{uri.suffix_.data(), uri.suffix_.size()});
-  }
-}
-
 static void addHostToTarget(http::request_header<>& req)
 {
   auto it = req.find(http::field::host);
@@ -166,7 +143,7 @@ template <bool isRequest> static void addCloseHeader(Header<isRequest>& header)
   header.set(http::field::proxy_connection, "close"sv);
 }
 
-template <typename Stream> static void tunnelConfirm(Stream& s, Yield yield)
+template <typename Stream, typename Yield> static void tunnelConfirm(Stream& s, Yield yield)
 {
   auto rep = Response{};
   rep.version(11);
@@ -176,7 +153,8 @@ template <typename Stream> static void tunnelConfirm(Stream& s, Yield yield)
   writeHttp(s, rep, yield);
 }
 
-template <typename Stream> static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
+template <typename Stream, typename Yield>
+static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
 {
   auto host = remote.host_ + ":" + remote.port_;
   auto req = Request{};
@@ -229,7 +207,7 @@ static ConstBuffer<uint8_t> parseHeader(Parser<isRequest>& parser, DynamicBuffer
   }
 }
 
-template <bool isRequest, typename DynamicBuffer, typename Stream>
+template <bool isRequest, typename DynamicBuffer, typename Stream, typename Yield>
 static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
                             ConstBuffer<uint8_t> buf, Stream& s, Yield yield)
 {
@@ -329,11 +307,34 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
     };
     confirm_ = [](auto) {};
 
-    removeHostFromTarget(req);
-    auto it = req.find(http::field::host);
-    assertTrue(it != cend(req), PichiError::BAD_PROTO, "Missing HOST field in HTTP header");
-    auto hp = HostAndPort{{it->value().data(), it->value().size()}};
-    return net::makeEndpoint(hp.host_, hp.port_);
+    /*
+     * HTTP Proxy @RFC2068
+     *   The HOST field and absolute_path are both mandatory and same according to the standard.
+     *   But some non-standard clients might send request:
+     *     - with different destinations discribed in HOST field and absolute_path;
+     *     - without absolute_path but relative_path specified;
+     *     - without HOST field but absolute_path specified.
+     *   The rules, which are not very strict but still standard, listed below are followed
+     *   to handle these non-standard clients:
+     *     - the destination described in absolute_path would be chosen;
+     *     - the destination described in HOST field would be chosen if relative_path specified;
+     *     - relative_path will be forwarded without any change.
+     */
+    auto target = req.target().to_string();
+    assertFalse(target.empty(), PichiError::BAD_PROTO, "Empty path");
+    if (target[0] != '/') {
+      // absolute_path specified, so convert it to relative one.
+      auto uri = Uri{target};
+      req.target(boost::string_view{uri.suffix_.data(), uri.suffix_.size()});
+      return net::makeEndpoint(uri.host_, uri.port_);
+    }
+    else {
+      // HOST field is mandatory now since relative_path specified.
+      auto it = req.find(http::field::host);
+      assertTrue(it != cend(req), PichiError::BAD_PROTO, "Lack of target information");
+      auto hp = HostAndPort{{it->value().data(), it->value().size()}};
+      return net::makeEndpoint(hp.host_, hp.port_);
+    }
   }
 }
 
