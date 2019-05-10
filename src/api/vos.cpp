@@ -1,3 +1,4 @@
+#include <functional>
 #include <limits>
 #include <numeric>
 #include <pichi/api/vos.hpp>
@@ -61,6 +62,7 @@ static decltype(auto) method_ = "method";
 static decltype(auto) password_ = "password";
 static decltype(auto) mode_ = "mode";
 static decltype(auto) delay_ = "delay";
+static decltype(auto) credential_ = "credential";
 static decltype(auto) tls_ = "tls";
 static decltype(auto) insecure_ = "insecure";
 static decltype(auto) caFile_ = "ca_file";
@@ -189,19 +191,20 @@ static auto parseBoolean(json::Value const& v)
   return v.GetBool();
 }
 
-static pair<string, string> parseRule(json::Value const& v)
-{
-  assertTrue(v.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
-  auto array = v.GetArray();
-  assertTrue(array.Size() == 2, PichiError::BAD_JSON, msg::PAIR_TYPE_ERROR);
-  return make_pair(parseString(array[0]), parseString(array[1]));
-}
-
 static auto parseNameOrPassword(json::Value const& v)
 {
   auto ret = parseString(v);
   assertTrue(ret.size() < 256, PichiError::BAD_JSON, msg::TOO_LONG_NAME_PASSWORD);
   return ret;
+}
+
+static pair<string, string> parsePair(json::Value const& v,
+                                      function<string(json::Value const&)> parse)
+{
+  assertTrue(v.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
+  auto array = v.GetArray();
+  assertTrue(array.Size() == 2, PichiError::BAD_JSON, msg::PAIR_TYPE_ERROR);
+  return make_pair(parse(array[0]), parse(array[1]));
 }
 
 template <typename OutputIt, typename T, typename Convert>
@@ -543,6 +546,9 @@ template <> EgressVO parse(json::Value const& v)
       if (!*evo.insecure_ && v.HasMember(EgressVOKey::caFile_))
         evo.caFile_ = parseString(v[EgressVOKey::caFile_]);
     }
+    if (v.HasMember(EgressVOKey::credential_)) {
+      evo.credential_ = parsePair(v[EgressVOKey::credential_], parseNameOrPassword);
+    }
     break;
   case AdapterType::REJECT:
     if (v.HasMember(EgressVOKey::mode_)) {
@@ -594,7 +600,8 @@ template <> RouteVO parse(json::Value const& v)
 
   if (v.HasMember(RouteVOKey::default_)) rvo.default_.emplace(parseString(v[RouteVOKey::default_]));
 
-  parseArray(v, RouteVOKey::rules_, back_inserter(rvo.rules_), &parseRule);
+  parseArray(v, RouteVOKey::rules_, back_inserter(rvo.rules_),
+             [](auto&& v) { return parsePair(v, parseString); });
 
   return rvo;
 }
