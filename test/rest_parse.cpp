@@ -586,6 +586,59 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Secure_With_Empty_CA_Field)
   }
 }
 
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Incorrect_Type_Credential)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto obj = Value{};
+    obj.SetObject();
+    auto json = defaultEgressJson(type);
+    json.AddMember("credential", obj, alloc);
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Incorrect_Credential_Pair)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    for (auto count = 0; count < 10; ++count) {
+      if (count == 2) continue;
+      auto ary = Value{};
+      ary.SetArray();
+      for (auto i = 0; i < count; ++i) ary.PushBack(ph, alloc);
+      auto json = defaultEgressJson(type);
+      json.AddMember("credential", ary, alloc);
+      BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception,
+                            verifyException<PichiError::BAD_JSON>);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Too_Long_Name)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto ary = Value{};
+    ary.SetArray();
+    ary.PushBack(toJson(string(256_sz, 'n'), alloc), alloc);
+    ary.PushBack(ph, alloc);
+    auto json = defaultEgressJson(type);
+    json.AddMember("credential", ary, alloc);
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Too_Long_Password)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto ary = Value{};
+    ary.SetArray();
+    ary.PushBack(ph, alloc);
+    ary.PushBack(toJson(string(256_sz, 'p'), alloc), alloc);
+    auto json = defaultEgressJson(type);
+    json.AddMember("credential", ary, alloc);
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(parse_Egress_SS_Mandatory_Fields)
 {
   auto origin = defaultEgressVO(AdapterType::SS);

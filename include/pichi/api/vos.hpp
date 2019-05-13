@@ -38,6 +38,7 @@ struct EgressVO {
   std::optional<std::string> password_ = {};
   std::optional<DelayMode> mode_ = {};
   std::optional<uint16_t> delay_ = {};
+  std::optional<std::pair<std::string, std::string>> credential_ = {};
   std::optional<bool> tls_ = {};
   std::optional<bool> insecure_ = {};
   std::optional<std::string> caFile_ = {};
