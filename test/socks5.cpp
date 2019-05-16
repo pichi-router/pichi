@@ -1,12 +1,12 @@
 #define BOOST_TEST_MODULE pichi socks5 test
 
-#include "config.h"
 #include "utils.hpp"
 #include <array>
 #include <boost/test/unit_test.hpp>
 #include <initializer_list>
 #include <memory>
 #include <pichi/common.hpp>
+#include <pichi/config.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>

@@ -1,8 +1,8 @@
-#include "config.h"
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
+#include <pichi/config.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>

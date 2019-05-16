@@ -1,7 +1,7 @@
 #ifndef PICHI_TEST_SOCKET_HPP
 #define PICHI_TEST_SOCKET_HPP
 
-#include "config.h"
+#include <pichi/config.hpp>
 
 #ifdef BUILD_TEST
 

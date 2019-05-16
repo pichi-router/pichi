@@ -1,4 +1,3 @@
-#include "config.h"
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/http/read.hpp>
@@ -6,6 +5,7 @@
 #include <boost/beast/http/write.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
+#include <pichi/config.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>

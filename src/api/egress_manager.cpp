@@ -1,5 +1,5 @@
-#include "config.h"
 #include <pichi/api/egress_manager.hpp>
+#include <pichi/config.hpp>
 
 using namespace std;
 

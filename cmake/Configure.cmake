@@ -52,8 +52,8 @@ if (WIN32 AND CMAKE_SYSTEM_VERSION)
   add_compile_definitions(_WIN32_WINNT=${win32_version})
 endif (WIN32 AND CMAKE_SYSTEM_VERSION)
 
-# Generating config.h
-message(STATUS "Generating config.h")
+# Generating config.hpp
+message(STATUS "Generating config.hpp")
 
 if (Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
   # From libsodium 1.0.17, the declarations of crypto_stream_xxx functions contain
@@ -89,6 +89,6 @@ if (BUILD_SERVER)
   check_function_exists("close" HAS_CLOSE)
 endif (BUILD_SERVER)
 
-configure_file(${CMAKE_SOURCE_DIR}/include/config.h.in ${CMAKE_BINARY_DIR}/include/config.h)
+configure_file(${CMAKE_SOURCE_DIR}/include/pichi/config.hpp.in ${CMAKE_BINARY_DIR}/include/pichi/config.hpp)
 
-message(STATUS "Generating config.h - done")
+message(STATUS "Generating config.hpp - done")

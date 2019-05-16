@@ -1,11 +1,10 @@
-#include "config.h"
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <pichi.h>
+#include <pichi/config.hpp>
 #include <stdio.h>
 #ifdef HAS_UNISTD_H
 #include <errno.h>
