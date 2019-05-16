@@ -6,7 +6,7 @@ env:
     - TMP=/tmp
     - IOS_ROOT=${TMP}/iphoneos
     - ANDROID_ROOT=${TMP}/android
-    - IOS_TOOLCHAIN_URL=https://raw.githubusercontent.com/leetal/ios-cmake/2.1.4/ios.toolchain.cmake
+    - IOS_TOOLCHAIN_URL=https://raw.githubusercontent.com/leetal/ios-cmake/3.0.1/ios.toolchain.cmake
     - IOS_TOOLCHAIN_FILE=${IOS_ROOT}/ios.cmake
     - NDK_URL=https://dl.google.com/android/repository/android-ndk-r18b-linux-x86_64.zip
     - NDK_ROOT=${TMP}/android-ndk-r18b
