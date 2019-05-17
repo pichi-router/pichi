@@ -4,7 +4,9 @@
 #include <pichi/common.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <pichi/crypto/stream.hpp>
-#include <sodium.h>
+#include <sodium/crypto_stream_chacha20.h>
+#include <sodium/crypto_stream_salsa20.h>
+#include <sodium/randombytes.h>
 
 using namespace std;
 

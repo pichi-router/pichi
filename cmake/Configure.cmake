@@ -29,7 +29,28 @@ if (MSVC)
   # - https://docs.microsoft.com/en-us/cpp/build/reference/eh-exception-handling-model?view=vs-2017
   # - https://www.boost.org/doc/libs/release/libs/context/doc/html/context/requirements.html
   add_compile_options(/EHs)
+
+  # Avoid C1128 error
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(/bigobj)
+  endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+  # Avoid warning STL4015, caused by rapidjson
+  add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
+
+  # Avoid warning STL4009, which should be incorrectly complained.
+  #  https://github.com/chriskohlhoff/asio/issues/290
+  if (MSVC_VERSION VERSION_LESS "1920")
+    add_compile_definitions(_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
+  endif (MSVC_VERSION VERSION_LESS "1920")
 endif (MSVC)
+
+if (WIN32 AND CMAKE_SYSTEM_VERSION)
+  string(REGEX REPLACE "^([0-9]+)\.[0-9]+\.[0-9]+$" "\\1" major ${CMAKE_SYSTEM_VERSION})
+  string(REGEX REPLACE "^[0-9]+\.([0-9]+)\.[0-9]+$" "\\1" minor ${CMAKE_SYSTEM_VERSION})
+  math(EXPR win32_version "(${major} << 8) + ${minor}" OUTPUT_FORMAT HEXADECIMAL)
+  add_compile_definitions(_WIN32_WINNT=${win32_version})
+endif (WIN32 AND CMAKE_SYSTEM_VERSION)
 
 # Generating config.h
 message(STATUS "Generating config.h")
