@@ -70,7 +70,7 @@ size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer<uint8_t> target
     assertTrue(endpoint.host_.size() <= 0xff, PichiError::MISC);
     assertTrue(target.size() >= 4 + endpoint.host_.size(), PichiError::MISC);
     *pos++ = 0x03;
-    *pos++ = endpoint.host_.size();
+    *pos++ = static_cast<uint8_t>(endpoint.host_.size());
     pos = copy_n(cbegin(endpoint.host_), endpoint.host_.size(), pos);
     break;
   case Endpoint::Type::IPV4:

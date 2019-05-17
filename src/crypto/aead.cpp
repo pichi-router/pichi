@@ -20,7 +20,8 @@ static void initialize(AeadContext<method>& ctx, ConstBuffer<uint8_t> ikm,
     auto skey = array<uint8_t, KEY_SIZE<method>>{};
     hkdf<HashAlgorithm::SHA1>(skey, ikm, salt);
     mbedtls_gcm_init(&ctx);
-    assertTrue(mbedtls_gcm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, skey.data(), skey.size() * 8) == 0,
+    assertTrue(mbedtls_gcm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, skey.data(),
+                                  static_cast<unsigned int>(skey.size() * 8)) == 0,
                PichiError::CRYPTO_ERROR);
   }
   else if constexpr (helpers::isSodiumAead<method>()) {
