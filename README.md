@@ -92,7 +92,6 @@ $ docker run --rm pichi/pichi:1.2.0 pichi <options>
 Please use [Homebrew](https://brew.sh):
 
 ```
-$ export PICHI_OPTS="options you like"
 $ brew tap pichi-router/pichi
 $ brew install pichi
 $ pichi <options>
