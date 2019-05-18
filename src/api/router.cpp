@@ -44,16 +44,15 @@ bool matchPattern(string_view remote, string_view pattern)
 
 bool matchDomain(string_view subdomain, string_view domain)
 {
-  // TODO domain can start with '.'
-  assertFalse(!domain.empty() && domain[0] == '.', PichiError::SEMANTIC_ERROR, msg::DM_INVALID);
-  assertFalse(!subdomain.empty() && subdomain[0] == '.', PichiError::SEMANTIC_ERROR,
-              msg::DM_INVALID);
-  return !domain.empty() && !subdomain.empty() && // not matching if anyone is empty
-         (subdomain == domain ||                  // same
-          (subdomain.size() > domain.size() &&    // subdomain can not be shorter than domain
-           equal(crbegin(domain), crend(domain),
-                 crbegin(subdomain)) && // subdomain ends up with domain
-           subdomain[subdomain.size() - domain.size() - 1] == '.'));
+  domain.remove_prefix(min(domain.size(), domain.find_first_not_of('.')));
+  assertFalse(domain.empty(), PichiError::SEMANTIC_ERROR, msg::DM_INVALID);
+  assertFalse(subdomain.empty(), msg::DM_INVALID);
+  assertFalse('.' == subdomain.front(), msg::DM_INVALID);
+  return subdomain == domain ||               // same
+         (subdomain.size() > domain.size() && // subdomain can not be shorter than domain
+          equal(crbegin(domain), crend(domain),
+                crbegin(subdomain)) && // subdomain ends up with domain
+          subdomain[subdomain.size() - domain.size() - 1] == '.');
 }
 
 Geo::Geo(char const* fn) : db_{make_unique<MMDB_s>()}
@@ -165,7 +164,6 @@ void Router::update(string const& name, RuleVO rvo)
 
 void Router::erase(string_view name)
 {
-  // TODO use the correct exception
   assertFalse(any_of(cbegin(route_.rules_), cend(route_.rules_),
                      [name](auto&& rule) { return rule.first == name; }),
               PichiError::RES_IN_USE);
