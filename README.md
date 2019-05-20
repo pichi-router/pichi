@@ -1,6 +1,6 @@
 # Pichi ![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)
 
-Pichi is an application layer proxy, which can be fully controlled via RESTful APIs.
+Pichi is a flexible rule-based proxy.
 
 ## Build Status
 
