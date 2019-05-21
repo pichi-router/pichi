@@ -8,6 +8,7 @@
 #include <pichi/net/common.hpp>
 #include <rapidjson/document.h>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace pichi::api {
@@ -23,6 +24,7 @@ struct IngressVO {
   uint16_t port_ = 0;
   std::optional<CryptoMethod> method_ = {};
   std::optional<std::string> password_ = {};
+  std::unordered_map<std::string, std::string> credentials_ = {};
   std::optional<bool> tls_ = {};
   std::optional<std::string> certFile_ = {};
   std::optional<std::string> keyFile_ = {};
