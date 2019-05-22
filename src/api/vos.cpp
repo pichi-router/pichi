@@ -333,14 +333,15 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
     }
     if (!ingress.credentials_.empty()) {
       ret.AddMember(IngressVOKey::credentials_,
-                    reduce(cbegin(ingress.credentials_), cend(ingress.credentials_),
-                           move(json::Value{}.SetObject()),
-                           [&alloc](auto&& s, auto&& i) {
-                             assertTrue(i.first.size() < 256, msg::TOO_LONG_NAME_PASSWORD);
-                             assertTrue(i.second.size() < 256, msg::TOO_LONG_NAME_PASSWORD);
-                             s.AddMember(toJson(i.first, alloc), toJson(i.second, alloc), alloc);
-                             return move(s);
-                           }),
+                    accumulate(cbegin(ingress.credentials_), cend(ingress.credentials_),
+                               move(json::Value{}.SetObject()),
+                               [&alloc](auto&& s, auto&& i) {
+                                 assertTrue(i.first.size() < 256, msg::TOO_LONG_NAME_PASSWORD);
+                                 assertTrue(i.second.size() < 256, msg::TOO_LONG_NAME_PASSWORD);
+                                 s.AddMember(toJson(i.first, alloc), toJson(i.second, alloc),
+                                             alloc);
+                                 return move(s);
+                               }),
                     alloc);
     }
     break;
@@ -499,12 +500,12 @@ template <> IngressVO parse(json::Value const& v)
       assertTrue(credentials.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
       assertFalse(credentials.MemberCount() == 0, PichiError::BAD_JSON, msg::CRE_EMPTY);
       ivo.credentials_ =
-          reduce(credentials.MemberBegin(), credentials.MemberEnd(),
-                 unordered_map<string, string>{}, [](auto&& credentials, auto&& credential) {
-                   credentials.emplace(parseNameOrPassword(credential.name),
-                                       parseNameOrPassword(credential.value));
-                   return move(credentials);
-                 });
+          accumulate(credentials.MemberBegin(), credentials.MemberEnd(),
+                     unordered_map<string, string>{}, [](auto&& credentials, auto&& credential) {
+                       credentials.emplace(parseNameOrPassword(credential.name),
+                                           parseNameOrPassword(credential.value));
+                       return move(credentials);
+                     });
     }
     break;
   default:
