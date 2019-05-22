@@ -27,20 +27,19 @@ BOOST_AUTO_TEST_SUITE(ROUTER_TEST)
 
 BOOST_AUTO_TEST_CASE(matchDomain_Empty_Domains)
 {
-  BOOST_CHECK(!matchDomain("example.com", ""));
-  BOOST_CHECK(!matchDomain("", "example.com"));
+  BOOST_CHECK_EXCEPTION(matchDomain("example.com", ""), Exception,
+                        verifyException<PichiError::SEMANTIC_ERROR>);
+  BOOST_CHECK_EXCEPTION(matchDomain("", "example.com"), Exception,
+                        verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(matchDomain_Domains_Start_With_Dot)
 {
-  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), Exception,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK_EXCEPTION(matchDomain(".com", "com"), Exception,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
+  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(matchDomain(".com", "com"), Exception, verifyException<PichiError::MISC>);
   BOOST_CHECK_EXCEPTION(matchDomain("example.com", "."), Exception,
                         verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK_EXCEPTION(matchDomain("example.com", ".com"), Exception,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
+  BOOST_CHECK(matchDomain("example.com", ".com"));
 }
 
 BOOST_AUTO_TEST_CASE(matchDomain_Matched)
