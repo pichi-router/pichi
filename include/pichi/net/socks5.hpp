@@ -14,7 +14,8 @@ namespace detail {
 
 template <typename First, typename Second> struct Helper {
   template <typename T>
-  inline constexpr static bool IsFirst = std::is_same_v<First, std::decay_t<T>>;
+  inline constexpr static bool IsFirst = std::is_same_v<First, std::decay_t<T>> ||
+                                         std::is_same_v<std::optional<First>, std::decay_t<T>>;
 
   template <typename Arg0, typename... Args> static auto constructFirst(Arg0&& arg0, Args&&...)
   {
@@ -31,6 +32,7 @@ template <typename First, typename Second> struct Helper {
   static auto constructSecond(Arg0&& arg0, Args&&... args)
   {
     if constexpr (IsFirst<Arg0>) {
+      suppressC4100(std::forward<Arg0>(arg0));
       return Second{std::forward<Args>(args)...};
     }
     else {

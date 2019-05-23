@@ -259,11 +259,11 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
 #ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
-      return make_unique<Socks5Egress<ssl::stream<tcp::socket>>>(io, ctx);
+      return make_unique<Socks5Egress<ssl::stream<tcp::socket>>>(vo.credential_, io, ctx);
     }
     else
 #endif // ENABLE_TLS
-      return make_unique<Socks5Egress<tcp::socket>>(io);
+      return make_unique<Socks5Egress<tcp::socket>>(vo.credential_, io);
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(io);
   case AdapterType::REJECT:

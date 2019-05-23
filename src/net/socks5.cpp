@@ -146,6 +146,28 @@ template class Socks5Ingress<pichi::test::Stream>;
 #endif // BUILD_TEST
 
 template <typename Stream>
+static void writeString(Stream& stream, asio::yield_context yield, string_view str)
+{
+  auto len = static_cast<uint8_t>(str.size());
+  write(stream, {&len, 1}, yield);
+  write(stream, ConstBuffer<uint8_t>{str}, yield);
+}
+
+template <typename Stream> void Socks5Egress<Stream>::authenticate(Yield yield)
+{
+  static auto const VER = 0x01_u8;
+
+  write(stream_, {&VER, 1}, yield);
+  writeString(stream_, yield, credential_->first);
+  writeString(stream_, yield, credential_->second);
+
+  auto received = array<uint8_t, 2>{};
+  read(stream_, received, yield);
+  assertTrue(received.front() == 0x01_u8, PichiError::BAD_PROTO);
+  assertTrue(received.back() == 0x00_u8, PichiError::BAD_PROTO);
+}
+
+template <typename Stream>
 size_t Socks5Egress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
 {
   return readSome(stream_, buf, yield);
@@ -167,19 +189,22 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, Endpoint const& next,
 {
   pichi::net::connect(next, stream_, yield);
 
-  auto buf = HeaderBuffer<uint8_t>{0x05, 0x01, 0x00};
+  auto method = credential_.has_value() ? 0x02_u8 : 0x00_u8;
+  auto buf = HeaderBuffer<uint8_t>{0x05, 0x01, method};
 
   write(stream_, {buf, 3}, yield);
 
   read(stream_, {buf, 2}, yield);
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
-  assertTrue(buf[1] == 0x00, PichiError::BAD_PROTO);
+  assertTrue(buf[1] == method, PichiError::BAD_PROTO);
+
+  if (credential_.has_value()) authenticate(yield);
 
   auto i = 0_sz;
   buf[i++] = 0x05;
   buf[i++] = 0x01;
   buf[i++] = 0x00;
-  i += serializeEndpoint(remote, {buf.data() + i, buf.size() - i});
+  i += serializeEndpoint(remote, MutableBuffer<uint8_t>{buf} + i);
   write(stream_, {buf, i}, yield);
 
   read(stream_, {buf, 3}, yield);
