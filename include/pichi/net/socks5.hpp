@@ -10,6 +10,8 @@
 
 namespace pichi::net {
 
+namespace detail {
+
 template <typename First, typename Second> struct Helper {
   template <typename T>
   inline constexpr static bool IsFirst = std::is_same_v<First, std::decay_t<T>>;
@@ -17,11 +19,11 @@ template <typename First, typename Second> struct Helper {
   template <typename Arg0, typename... Args> static auto constructFirst(Arg0&& arg0, Args&&...)
   {
     if constexpr (IsFirst<Arg0>) {
-      return First{std::forward<Arg0>(arg0)};
+      return std::optional<First>{std::forward<Arg0>(arg0)};
     }
     else {
       suppressC4100(std::forward<Arg0>(arg0));
-      return First{};
+      return std::optional<First>{};
     }
   }
 
@@ -37,10 +39,12 @@ template <typename First, typename Second> struct Helper {
   }
 };
 
+} // namespace detail
+
 template <typename Stream> class Socks5Ingress : public Ingress {
 private:
   using Credentials = std::unordered_map<std::string, std::string>;
-  using Constructor = Helper<Credentials, Stream>;
+  using Constructor = detail::Helper<Credentials, Stream>;
 
   void authenticate(Yield);
 
@@ -63,13 +67,13 @@ public:
 
 private:
   Stream stream_;
-  Credentials credentials_;
+  std::optional<Credentials> credentials_;
 };
 
 template <typename Stream> class Socks5Egress : public Egress {
 private:
   using Credential = std::pair<std::string, std::string>;
-  using Constructor = Helper<Credential, Stream>;
+  using Constructor = detail::Helper<Credential, Stream>;
 
   void authenticate(Yield);
 
