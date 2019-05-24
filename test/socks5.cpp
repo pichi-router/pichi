@@ -21,19 +21,27 @@ namespace sys = boost::system;
 using test::Socket;
 using Ingress = pichi::net::Socks5Ingress<test::Stream>;
 using Egress = pichi::net::Socks5Egress<test::Stream>;
-using Credentials = unordered_map<string, string>;
 
-static auto const CREDENTIALS = Credentials{{"pichi", "pichi"}};
+static auto const CREDENTIALS = unordered_map<string, string>{{"pichi"s, "pichi"s}};
+static auto const CREDENTIAL = make_pair("pichi"s, "pichi"s);
 static asio::detail::Pull* pPull = nullptr;
 static asio::detail::Push* pPush = nullptr;
 static asio::yield_context yield = {*pPush, *pPull};
 
-static void fillNameAndPass(Socket& s, ConstBuffer<uint8_t> name, ConstBuffer<uint8_t> pass)
+static void fillString(Socket& s, string_view str)
 {
-  s.fill({static_cast<uint8_t>(name.size())});
-  s.fill(name);
-  s.fill({static_cast<uint8_t>(pass.size())});
-  s.fill(pass);
+  s.fill({static_cast<uint8_t>(str.size())});
+  s.fill(ConstBuffer<uint8_t>{str});
+}
+
+static void verifyString(Socket& s, string_view str)
+{
+  BOOST_CHECK_GE(s.available(), str.size() + 1);
+  auto holder = array<uint8_t, 0x100>{};
+  auto data = MutableBuffer<uint8_t>{holder, str.size() + 1};
+  s.flush(data);
+  BOOST_CHECK_EQUAL(static_cast<uint8_t>(str.size()), *data.data());
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(str), cend(str), cbegin(data) + 1, cend(data));
 }
 
 BOOST_AUTO_TEST_SUITE(SOCKS5)
@@ -133,10 +141,12 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Invalid_Version)
     auto ingress = make_unique<Ingress>(CREDENTIALS, socket, true);
 
     socket.fill({
-        0x05, 0x01, 0x02,                                                      // Handshake
-        static_cast<uint8_t>(i),                                               // Invalid VER
-        0x05, 0x70, 0x69, 0x63, 0x68, 0x69, 0x05, 0x70, 0x69, 0x63, 0x68, 0x69 // Credential
+        0x05, 0x01, 0x02,       // Handshake
+        static_cast<uint8_t>(i) // Invalid VER
     });
+    fillString(socket, cbegin(CREDENTIALS)->first);
+    fillString(socket, cbegin(CREDENTIALS)->second);
+
     BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
                           verifyException<PichiError::BAD_PROTO>);
 
@@ -154,11 +164,11 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Empty_Username)
   auto ingress = make_unique<Ingress>(CREDENTIALS, socket, true);
 
   socket.fill({
-      0x05, 0x01, 0x02,                  // Handshake
-      0x01,                              // VER
-      0x00,                              // Empty username
-      0x05, 0x70, 0x69, 0x63, 0x68, 0x69 // password
+      0x05, 0x01, 0x02, // Handshake
+      0x01,             // VER
+      0x00              // Empty username
   });
+  fillString(socket, cbegin(CREDENTIALS)->second);
 
   BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
                         verifyException<PichiError::BAD_PROTO>);
@@ -175,12 +185,9 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Empty_Password)
   auto socket = Socket{};
   auto ingress = make_unique<Ingress>(CREDENTIALS, socket, true);
 
-  socket.fill({
-      0x05, 0x01, 0x02,                   // Handshake
-      0x01,                               // VER
-      0x05, 0x70, 0x69, 0x63, 0x68, 0x69, // Username
-      0x00                                // Empty password
-  });
+  socket.fill({0x05, 0x01, 0x02, 0x01});
+  fillString(socket, cbegin(CREDENTIALS)->first);
+  socket.fill({0x00}); // Empty password
 
   BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
                         verifyException<PichiError::BAD_PROTO>);
@@ -198,11 +205,11 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Nonexisting_User)
   auto ingress = make_unique<Ingress>(CREDENTIALS, socket, true);
 
   socket.fill({
-      0x05, 0x01, 0x02,                  // Handshake
-      0x01,                              // VER
-      0x01, 0x50,                        // Username
-      0x05, 0x70, 0x69, 0x63, 0x68, 0x69 // Password
+      0x05, 0x01, 0x02, // Handshake
+      0x01,             // VER
+      0x01, 0x50        // Username
   });
+  fillString(socket, cbegin(CREDENTIALS)->second);
 
   BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception, verifyException<PichiError::MISC>);
 
@@ -218,12 +225,9 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Incorrect_Password)
   auto socket = Socket{};
   auto ingress = make_unique<Ingress>(CREDENTIALS, socket, true);
 
-  socket.fill({
-      0x05, 0x01, 0x02,                   // Handshake
-      0x01,                               // VER
-      0x05, 0x70, 0x69, 0x63, 0x68, 0x69, // Username
-      0x01, 0x50                          // Password
-  });
+  socket.fill({0x05, 0x01, 0x02, 0x01});
+  fillString(socket, cbegin(CREDENTIALS)->first);
+  socket.fill({0x01, 0x50});
 
   BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception, verifyException<PichiError::MISC>);
 
@@ -342,8 +346,8 @@ BOOST_AUTO_TEST_CASE(readRemote_With_Correct_Credential)
   auto ingress = make_unique<Ingress>(CREDENTIALS, socket, true);
 
   socket.fill({0x05, 0x01, 0x02, 0x01});
-  fillNameAndPass(socket, ConstBuffer<uint8_t>{cbegin(CREDENTIALS)->first},
-                  ConstBuffer<uint8_t>{cbegin(CREDENTIALS)->second});
+  fillString(socket, cbegin(CREDENTIALS)->first);
+  fillString(socket, cbegin(CREDENTIALS)->second);
   socket.fill({0x05, 0x01, 0x00});
 
   auto expect = net::makeEndpoint("::1"sv, "443"sv);
@@ -376,7 +380,8 @@ BOOST_AUTO_TEST_CASE(readRemote_With_Multiple_Credentials)
     auto ingress = make_unique<Ingress>(credentials, socket, true);
 
     socket.fill({0x05, 0x01, 0x02, 0x01});
-    fillNameAndPass(socket, ConstBuffer<uint8_t>{item.first}, ConstBuffer<uint8_t>{item.second});
+    fillString(socket, item.first);
+    fillString(socket, item.second);
     socket.fill({0x05, 0x01, 0x00});
 
     auto expect = net::makeEndpoint("::1"sv, "443"sv);
@@ -435,6 +440,75 @@ BOOST_AUTO_TEST_CASE(connect_Handshake_Without_Acceptable_Method)
     BOOST_CHECK_EQUAL(0x05, req[0]);
     BOOST_CHECK_EQUAL(0x01, req[1]);
     BOOST_CHECK_EQUAL(0x00, req[2]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(connect_Handshake_Without_Acceptable_Method_Credential)
+{
+  for (auto i = 0; i < 0x100; ++i) {
+    if (i == 2) continue;
+    auto socket = Socket{};
+    auto egress = make_unique<Egress>(CREDENTIAL, socket);
+
+    socket.fill({0x05, static_cast<uint8_t>(i)});
+    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, yield), Exception,
+                          verifyException<PichiError::BAD_PROTO>);
+
+    BOOST_CHECK_EQUAL(3_sz, socket.available());
+    auto req = array<uint8_t, 3>{};
+    socket.flush(req);
+    BOOST_CHECK_EQUAL(0x05, req[0]);
+    BOOST_CHECK_EQUAL(0x01, req[1]);
+    BOOST_CHECK_EQUAL(0x02, req[2]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(connect_Authentication_With_Invalid_Version)
+{
+  for (auto i = 0; i < 0x100; ++i) {
+    if (i == 1) continue;
+    auto socket = Socket{};
+    auto egress = make_unique<Egress>(CREDENTIAL, socket);
+
+    socket.fill({0x05, 0x02});
+    socket.fill({static_cast<uint8_t>(i), 0x00});
+
+    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, yield), Exception,
+                          verifyException<PichiError::BAD_PROTO>);
+    BOOST_CHECK_GE(socket.available(), 4_sz);
+    auto received = array<uint8_t, 4>{};
+    socket.flush(received);
+    BOOST_CHECK_EQUAL(0x05, received[0]);
+    BOOST_CHECK_EQUAL(0x01, received[1]);
+    BOOST_CHECK_EQUAL(0x02, received[2]);
+    BOOST_CHECK_EQUAL(0x01, received[3]);
+    verifyString(socket, CREDENTIAL.first);
+    verifyString(socket, CREDENTIAL.first);
+    BOOST_CHECK_EQUAL(0_sz, socket.available());
+  }
+}
+
+BOOST_AUTO_TEST_CASE(connect_Authentication_Failed)
+{
+  for (auto i = 1; i < 0x100; ++i) {
+    auto socket = Socket{};
+    auto egress = make_unique<Egress>(CREDENTIAL, socket);
+
+    socket.fill({0x05, 0x02});
+    socket.fill({0x01, static_cast<uint8_t>(i)});
+
+    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, yield), Exception,
+                          verifyException<PichiError::BAD_PROTO>);
+    BOOST_CHECK_GE(socket.available(), 4_sz);
+    auto received = array<uint8_t, 4>{};
+    socket.flush(received);
+    BOOST_CHECK_EQUAL(0x05, received[0]);
+    BOOST_CHECK_EQUAL(0x01, received[1]);
+    BOOST_CHECK_EQUAL(0x02, received[2]);
+    BOOST_CHECK_EQUAL(0x01, received[3]);
+    verifyString(socket, CREDENTIAL.first);
+    verifyString(socket, CREDENTIAL.first);
+    BOOST_CHECK_EQUAL(0_sz, socket.available());
   }
 }
 
@@ -564,7 +638,7 @@ BOOST_AUTO_TEST_CASE(confirm)
   auto len = socket.available();
   socket.flush({buf, len});
   net::parseEndpoint([src = ConstBuffer<uint8_t>{buf, len}, &consumed](auto dst) mutable {
-    BOOST_CHECK(src.size() >= dst.size());
+    BOOST_CHECK_GE(src.size(), dst.size());
     copy_n(cbegin(src), dst.size(), begin(dst));
     src += dst.size();
     consumed += dst.size();
@@ -589,7 +663,7 @@ BOOST_AUTO_TEST_CASE(disconnect)
   auto len = socket.available();
   socket.flush({buf, len});
   net::parseEndpoint([src = ConstBuffer<uint8_t>{buf, len}, &consumed](auto dst) mutable {
-    BOOST_CHECK(src.size() >= dst.size());
+    BOOST_CHECK_GE(src.size(), dst.size());
     copy_n(cbegin(src), dst.size(), begin(dst));
     src += dst.size();
     consumed += dst.size();
