@@ -55,8 +55,8 @@ template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
   auto pass = string{cbegin(buf), cbegin(buf) + len};
 
   // TODO reply 'failure' code to client if it's unauthorized.
-  auto it = credentials_.find(name);
-  assertFalse(it == cend(credentials_));
+  auto it = credentials_->find(name);
+  assertFalse(it == cend(*credentials_));
   assertTrue(it->second == pass);
 
   /*
@@ -106,7 +106,7 @@ template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yiel
   uint8_t len = buf[1];
   read(stream_, {buf, len}, yield);
 
-  auto needAuth = !credentials_.empty();
+  auto needAuth = credentials_.has_value();
   buf[1] = findMethod(needAuth, cbegin(buf), cbegin(buf) + len);
   buf[0] = 0x05;
   write(stream_, {buf, 2}, yield);
