@@ -73,6 +73,14 @@ if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
   endif (HAS_RETURN_STD_MOVE)
 endif (Boost_VERSION_STRING VERSION_LESS "1.69.0")
 
+if (Boost_VERSION_STRING VERSION_LESS "1.70.0")
+  set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR OFF)
+else (Boost_VERSION_STRING VERSION_LESS "1.70.0")
+  # From version 1.70.0, Boost.Asio changed the behaviour of resolver::resolver,
+  #   that it's supposed to be constructed from Executor instead of ExecutionContext.
+  set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR ON)
+endif (Boost_VERSION_STRING VERSION_LESS "1.70.0")
+
 if (BUILD_SERVER)
   include(CheckIncludeFiles)
   include(CheckFunctionExists)
