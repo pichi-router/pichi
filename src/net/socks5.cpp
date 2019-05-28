@@ -23,24 +23,74 @@ namespace pichi::net {
 
 template <typename T> using HeaderBuffer = array<T, 512>;
 
+template <typename InputIt> static uint8_t findMethod(bool needAuth, InputIt first, InputIt last)
+{
+  auto code = needAuth ? 0x02_u8 : 0x00_u8;
+  auto foundMethod = find(first, last, code) != last;
+  return foundMethod ? code : 0xff_u8;
+}
+
+template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
+{
+  auto buf = HeaderBuffer<uint8_t>{};
+
+  /*
+   * Request:
+   * +----+------+----------+------+----------+
+   * |VER | ULEN |  UNAME   | PLEN |  PASSWD  |
+   * +----+------+----------+------+----------+
+   * | 1  |  1   | 1 to 255 |  1   | 1 to 255 |
+   * +----+------+----------+------+----------+
+   */
+  read(stream_, {buf, 2}, yield);
+  assertTrue(buf.front() == 0x01_u8, PichiError::BAD_PROTO);
+
+  auto len = static_cast<size_t>(buf[1]);
+  assertFalse(len == 0, PichiError::BAD_PROTO);
+  read(stream_, {buf, len + 1}, yield);
+  auto name = string{cbegin(buf), cbegin(buf) + len};
+
+  len = static_cast<size_t>(buf[len]);
+  assertFalse(len == 0, PichiError::BAD_PROTO);
+  read(stream_, {buf, len}, yield);
+  auto pass = string{cbegin(buf), cbegin(buf) + len};
+
+  // TODO reply 'failure' code to client if it's unauthorized.
+  auto it = credentials_.find(name);
+  assertFalse(it == cend(credentials_));
+  assertTrue(it->second == pass);
+
+  /*
+   * Response:
+   * +----+--------+
+   * |VER | STATUS |
+   * +----+--------+
+   * | 1  |   1    |
+   * +----+--------+
+   */
+  buf[0] = 0x01_u8;
+  buf[1] = 0x00_u8;
+  write(stream_, {buf, 2}, yield);
+}
+
 template <typename Stream>
-size_t Socks5Adapter<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+size_t Socks5Ingress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
 {
   return readSome(stream_, buf, yield);
 }
 
-template <typename Stream> void Socks5Adapter<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> void Socks5Ingress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
 {
   write(stream_, buf, yield);
 }
 
-template <typename Stream> void Socks5Adapter<Stream>::close() { pichi::net::close(stream_); }
+template <typename Stream> void Socks5Ingress<Stream>::close() { pichi::net::close(stream_); }
 
-template <typename Stream> bool Socks5Adapter<Stream>::readable() const { return isOpen(stream_); }
+template <typename Stream> bool Socks5Ingress<Stream>::readable() const { return isOpen(stream_); }
 
-template <typename Stream> bool Socks5Adapter<Stream>::writable() const { return isOpen(stream_); }
+template <typename Stream> bool Socks5Ingress<Stream>::writable() const { return isOpen(stream_); }
 
-template <typename Stream> Endpoint Socks5Adapter<Stream>::readRemote(Yield yield)
+template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yield)
 {
 #ifdef ENABLE_TLS
   if constexpr (IsSslStreamV<Stream>) {
@@ -57,10 +107,12 @@ template <typename Stream> Endpoint Socks5Adapter<Stream>::readRemote(Yield yiel
   uint8_t len = buf[1];
   read(stream_, {buf, len}, yield);
 
-  uint8_t m = find(begin(buf), begin(buf) + len, 0x00) != begin(buf) + len ? 0x00 : 0xff;
+  auto needAuth = !credentials_.empty();
+  buf[1] = findMethod(needAuth, cbegin(buf), cbegin(buf) + len);
   buf[0] = 0x05;
-  buf[1] = m;
   write(stream_, {buf, 2}, yield);
+
+  if (needAuth) authenticate(yield);
 
   read(stream_, {buf, 3}, yield);
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
@@ -70,8 +122,49 @@ template <typename Stream> Endpoint Socks5Adapter<Stream>::readRemote(Yield yiel
   return parseEndpoint([this, yield](auto dst) { read(stream_, dst, yield); });
 }
 
+template <typename Stream> void Socks5Ingress<Stream>::confirm(Yield yield)
+{
+  static uint8_t const buf[] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  write(stream_, buf, yield);
+}
+
+template <typename Stream> void Socks5Ingress<Stream>::disconnect(Yield yield)
+{
+  // REP = 0x04(Host unreachable) according to RFC1928
+  static uint8_t const buf[] = {0x05, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  auto ec = sys::error_code{};
+  write(stream_, buf, yield[ec]);
+}
+
+template class Socks5Ingress<tcp::socket>;
+
+#ifdef ENABLE_TLS
+template class Socks5Ingress<ssl::stream<tcp::socket>>;
+#endif // ENABLE_TLS
+
+#ifdef BUILD_TEST
+template class Socks5Ingress<pichi::test::Stream>;
+#endif // BUILD_TEST
+
 template <typename Stream>
-void Socks5Adapter<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
+size_t Socks5Egress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+{
+  return readSome(stream_, buf, yield);
+}
+
+template <typename Stream> void Socks5Egress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+{
+  write(stream_, buf, yield);
+}
+
+template <typename Stream> void Socks5Egress<Stream>::close() { pichi::net::close(stream_); }
+
+template <typename Stream> bool Socks5Egress<Stream>::readable() const { return isOpen(stream_); }
+
+template <typename Stream> bool Socks5Egress<Stream>::writable() const { return isOpen(stream_); }
+
+template <typename Stream>
+void Socks5Egress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
   pichi::net::connect(next, stream_, yield);
 
@@ -98,28 +191,14 @@ void Socks5Adapter<Stream>::connect(Endpoint const& remote, Endpoint const& next
   parseEndpoint([this, yield](auto dst) { read(stream_, dst, yield); });
 }
 
-template <typename Stream> void Socks5Adapter<Stream>::confirm(Yield yield)
-{
-  static uint8_t const buf[] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  write(stream_, buf, yield);
-}
-
-template <typename Stream> void Socks5Adapter<Stream>::disconnect(Yield yield)
-{
-  // REP = 0x04(Host unreachable) according to RFC1928
-  static uint8_t const buf[] = {0x05, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  auto ec = sys::error_code{};
-  write(stream_, buf, yield[ec]);
-}
-
-template class Socks5Adapter<tcp::socket>;
+template class Socks5Egress<tcp::socket>;
 
 #ifdef ENABLE_TLS
-template class Socks5Adapter<ssl::stream<tcp::socket>>;
+template class Socks5Egress<ssl::stream<tcp::socket>>;
 #endif // ENABLE_TLS
 
 #ifdef BUILD_TEST
-template class Socks5Adapter<pichi::test::Stream>;
+template class Socks5Egress<pichi::test::Stream>;
 #endif // BUILD_TEST
 
 } // namespace pichi::net
