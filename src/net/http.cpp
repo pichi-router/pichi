@@ -248,7 +248,10 @@ template <typename Stream> bool HttpIngress<Stream>::writable() const { return i
 
 template <typename Stream> void HttpIngress<Stream>::confirm(Yield yield) { confirm_(yield); }
 
-template <typename Stream> void HttpIngress<Stream>::close() { pichi::net::close(stream_); }
+template <typename Stream> void HttpIngress<Stream>::close(Yield yield)
+{
+  pichi::net::close(stream_, yield);
+}
 
 template <typename Stream> void HttpIngress<Stream>::disconnect(Yield yield)
 {
@@ -355,7 +358,7 @@ void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Y
   };
   recv_ = [this](auto buf, auto yield) { return recvRaw(*stream_, respCache_, buf, yield); };
 
-  pichi::net::close(origin_);
+  pichi::net::close(origin_, yield);
   stream_ = addressof(backup_);
   pichi::net::connect(next, *stream_, yield);
 }
@@ -370,7 +373,10 @@ template <typename Stream> void HttpEgress<Stream>::send(ConstBuffer<uint8_t> bu
   send_(buf, yield);
 }
 
-template <typename Stream> void HttpEgress<Stream>::close() { pichi::net::close(*stream_); }
+template <typename Stream> void HttpEgress<Stream>::close(Yield yield)
+{
+  pichi::net::close(*stream_, yield);
+}
 
 template <typename Stream> bool HttpEgress<Stream>::readable() const
 {

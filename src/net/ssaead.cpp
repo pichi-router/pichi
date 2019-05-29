@@ -15,9 +15,10 @@ using asio::ip::tcp;
 
 namespace pichi::net {
 
-template <CryptoMethod method, typename Stream> void SSAeadAdapter<method, Stream>::close()
+template <CryptoMethod method, typename Stream>
+void SSAeadAdapter<method, Stream>::close(Yield yield)
 {
-  pichi::net::close(stream_);
+  pichi::net::close(stream_, yield);
 }
 
 template <CryptoMethod method, typename Stream> bool SSAeadAdapter<method, Stream>::readable() const

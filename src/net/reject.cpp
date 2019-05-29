@@ -35,7 +35,7 @@ RejectEgress::RejectEgress(asio::io_context& io, uint16_t delay) : t_{io}
   fail("RejectEgress::send shouldn't be invoked");
 }
 
-void RejectEgress::close() { t_.cancel(); }
+void RejectEgress::close(Yield) { t_.cancel(); }
 
 [[noreturn]] bool RejectEgress::readable() const
 {
