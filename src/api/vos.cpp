@@ -13,6 +13,7 @@ static decltype(auto) REJECT_TYPE = "reject";
 static decltype(auto) SOCKS5_TYPE = "socks5";
 static decltype(auto) HTTP_TYPE = "http";
 static decltype(auto) SS_TYPE = "ss";
+static decltype(auto) TUNNEL_TYPE = "tunnel";
 
 static decltype(auto) RC4_MD5_METHOD = "rc4-md5";
 static decltype(auto) BF_CFB_METHOD = "bf-cfb";
@@ -47,6 +48,8 @@ static decltype(auto) password_ = "password";
 static decltype(auto) tls_ = "tls";
 static decltype(auto) certFile_ = "cert_file";
 static decltype(auto) keyFile_ = "key_file";
+static decltype(auto) dstHost_ = "dst_host";
+static decltype(auto) dstPort_ = "dst_port";
 
 } // namespace IngressVOKey
 
@@ -112,6 +115,8 @@ static auto const MISSING_PW_FIELD = "Missing password field"sv;
 static auto const MISSING_DELAY_FIELD = "Missing delay field"sv;
 static auto const MISSING_CERT_FILE_FIELD = "Missing cert_file field"sv;
 static auto const MISSING_KEY_FILE_FIELD = "Missing key_file field"sv;
+static auto const MISSING_DST_HOST_FIELD = "Missiong dst_host field"sv;
+static auto const MISSING_DST_PORT_FIELD = "Missiong dst_port field"sv;
 
 } // namespace msg
 
@@ -133,6 +138,7 @@ static AdapterType parseAdapterType(json::Value const& v)
   if (str == SOCKS5_TYPE) return AdapterType::SOCKS5;
   if (str == HTTP_TYPE) return AdapterType::HTTP;
   if (str == SS_TYPE) return AdapterType::SS;
+  if (str == TUNNEL_TYPE) return AdapterType::TUNNEL;
   fail(PichiError::BAD_JSON, msg::AT_INVALID);
 }
 
@@ -290,7 +296,7 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
   auto ret = json::Value{};
   ret.SetObject();
   if (ingress.type_ == AdapterType::HTTP || ingress.type_ == AdapterType::SOCKS5 ||
-      ingress.type_ == AdapterType::SS) {
+      ingress.type_ == AdapterType::SS || ingress.type_ == AdapterType::TUNNEL) {
     assertFalse(ingress.bind_.empty(), PichiError::MISC);
     assertFalse(ingress.port_ == 0_u16, PichiError::MISC);
     ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
@@ -317,6 +323,13 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
       ret.AddMember(IngressVOKey::certFile_, toJson(*ingress.certFile_, alloc), alloc);
       ret.AddMember(IngressVOKey::keyFile_, toJson(*ingress.keyFile_, alloc), alloc);
     }
+    break;
+  case AdapterType::TUNNEL:
+    assertTrue(ingress.dstHost_.has_value());
+    assertTrue(ingress.dstPort_.has_value());
+    assertFalse(*ingress.dstPort_ == 0_u16);
+    ret.AddMember(IngressVOKey::dstHost_, toJson(*ingress.dstHost_, alloc), alloc);
+    ret.AddMember(IngressVOKey::dstPort_, json::Value{*ingress.dstPort_}, alloc);
     break;
   default:
     fail(PichiError::MISC);
@@ -443,7 +456,7 @@ template <> IngressVO parse(json::Value const& v)
 
   ivo.type_ = parseAdapterType(v[IngressVOKey::type_]);
   if (ivo.type_ == AdapterType::HTTP || ivo.type_ == AdapterType::SOCKS5 ||
-      ivo.type_ == AdapterType::SS) {
+      ivo.type_ == AdapterType::SS || ivo.type_ == AdapterType::TUNNEL) {
     assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
     assertTrue(v.HasMember(IngressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
     ivo.bind_ = parseString(v[IngressVOKey::bind_]);
@@ -468,6 +481,14 @@ template <> IngressVO parse(json::Value const& v)
       ivo.certFile_ = parseString(v[IngressVOKey::certFile_]);
       ivo.keyFile_ = parseString(v[IngressVOKey::keyFile_]);
     }
+    break;
+  case AdapterType::TUNNEL:
+    assertTrue(v.HasMember(IngressVOKey::dstHost_), PichiError::BAD_JSON,
+               msg::MISSING_DST_HOST_FIELD);
+    assertTrue(v.HasMember(IngressVOKey::dstPort_), PichiError::BAD_JSON,
+               msg::MISSING_DST_PORT_FIELD);
+    ivo.dstHost_ = parseString(v[IngressVOKey::dstHost_]);
+    ivo.dstPort_ = parsePort(v[IngressVOKey::dstPort_]);
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
