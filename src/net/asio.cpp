@@ -32,6 +32,7 @@
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
+#include <pichi/net/tunnel.hpp>
 #include <pichi/test/socket.hpp>
 
 #ifdef ENABLE_TLS
@@ -242,6 +243,9 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
     default:
       fail(PichiError::BAD_PROTO);
     }
+  case AdapterType::TUNNEL:
+    return make_unique<TunnelIngress<TcpSocket>>(makeEndpoint(*vo.dstHost_, *vo.dstPort_),
+                                                 forward<Socket>(s));
   default:
     fail(PichiError::BAD_PROTO);
   }
