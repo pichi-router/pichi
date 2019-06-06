@@ -26,6 +26,8 @@ struct IngressVO {
   std::optional<bool> tls_ = {};
   std::optional<std::string> certFile_ = {};
   std::optional<std::string> keyFile_ = {};
+  std::optional<std::string> dstHost_ = {};
+  std::optional<uint16_t> dstPort_ = {};
 };
 
 struct EgressVO {
