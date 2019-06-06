@@ -21,7 +21,7 @@ struct Adapter {
 
   virtual size_t recv(MutableBuffer<uint8_t>, Yield) = 0;
   virtual void send(ConstBuffer<uint8_t>, Yield) = 0;
-  virtual void close() = 0;
+  virtual void close(Yield) = 0;
   virtual bool readable() const = 0;
   virtual bool writable() const = 0;
 };

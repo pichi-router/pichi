@@ -47,9 +47,10 @@ void SSStreamAdapter<method, Stream>::send(ConstBuffer<uint8_t> plain, Yield yie
   }
 }
 
-template <CryptoMethod method, typename Stream> void SSStreamAdapter<method, Stream>::close()
+template <CryptoMethod method, typename Stream>
+void SSStreamAdapter<method, Stream>::close(Yield yield)
 {
-  pichi::net::close(stream_);
+  pichi::net::close(stream_, yield);
 }
 
 template <CryptoMethod method, typename Stream>

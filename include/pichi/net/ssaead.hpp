@@ -26,7 +26,7 @@ public:
 public:
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
   void send(ConstBuffer<uint8_t>, Yield) override;
-  void close() override;
+  void close(Yield) override;
   bool readable() const override;
   bool writable() const override;
   size_t readIV(MutableBuffer<uint8_t>, Yield) override;

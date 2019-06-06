@@ -31,7 +31,7 @@ private:
   using IngressPtr = std::unique_ptr<net::Ingress>;
   using EgressPtr = std::unique_ptr<net::Egress>;
 
-  void close();
+  template <typename Yield> void close(Yield);
 
 public:
   Session(Session const&) = delete;

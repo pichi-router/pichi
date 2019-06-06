@@ -34,7 +34,10 @@ template <typename Stream> void Socks5Adapter<Stream>::send(ConstBuffer<uint8_t>
   write(stream_, buf, yield);
 }
 
-template <typename Stream> void Socks5Adapter<Stream>::close() { pichi::net::close(stream_); }
+template <typename Stream> void Socks5Adapter<Stream>::close(Yield yield)
+{
+  pichi::net::close(stream_, yield);
+}
 
 template <typename Stream> bool Socks5Adapter<Stream>::readable() const { return isOpen(stream_); }
 

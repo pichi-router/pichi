@@ -138,15 +138,17 @@ void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
     asio::async_write(s, asio::buffer(buf), yield);
 }
 
-template <typename Socket> void close(Socket& s)
+template <typename Socket, typename Yield> void close(Socket& s, Yield yield)
 {
+  // This function is supposed to be 'noexcept' because it's always invoked in the desturctors.
+  // TODO log it
+  auto ec = sys::error_code{};
   if constexpr (IsSslStreamV<Socket>) {
-    auto ec = sys::error_code{};
-    s.shutdown(ec);
-    close(s.next_layer());
+    s.async_shutdown(yield[ec]);
+    close(s.next_layer(), yield);
   }
   else {
-    auto ec = sys::error_code{};
+    suppressC4100(yield);
     s.close(ec);
   }
 }
@@ -334,7 +336,7 @@ template void connect<>(Endpoint const&, TcpSocket&, Yield);
 template void read<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TcpSocket&, ConstBuffer<uint8_t>, Yield);
-template void close<>(TcpSocket&);
+template void close<>(TcpSocket&, Yield);
 template bool isOpen<>(TcpSocket const&);
 
 #ifdef ENABLE_TLS
@@ -342,7 +344,7 @@ template void connect<>(Endpoint const&, TlsSocket&, Yield);
 template void read<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TlsSocket&, ConstBuffer<uint8_t>, Yield);
-template void close<>(TlsSocket&);
+template void close<>(TlsSocket&, Yield);
 template bool isOpen<>(TlsSocket const&);
 #endif // ENABLE_TLS
 
@@ -351,7 +353,7 @@ template void connect<>(Endpoint const&, pichi::test::Stream&, Yield);
 template void read<>(pichi::test::Stream&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(pichi::test::Stream&, MutableBuffer<uint8_t>, Yield);
 template void write<>(pichi::test::Stream&, ConstBuffer<uint8_t>, Yield);
-template void close<>(pichi::test::Stream&);
+template void close<>(pichi::test::Stream&, Yield);
 template bool isOpen<>(pichi::test::Stream const&);
 #endif // BUILD_TEST
 

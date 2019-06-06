@@ -67,7 +67,7 @@ template <typename Socket, typename Yield> void connect(Endpoint const&, Socket&
 template <typename Socket, typename Yield> void read(Socket&, MutableBuffer<uint8_t>, Yield);
 template <typename Socket, typename Yield> size_t readSome(Socket&, MutableBuffer<uint8_t>, Yield);
 template <typename Socket, typename Yield> void write(Socket&, ConstBuffer<uint8_t>, Yield);
-template <typename Socket> void close(Socket&);
+template <typename Socket, typename Yield> void close(Socket&, Yield);
 template <typename Socket> bool isOpen(Socket const&);
 
 template <typename Socket> std::unique_ptr<Ingress> makeIngress(api::IngressVO const&, Socket&&);
