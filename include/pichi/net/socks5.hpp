@@ -17,7 +17,7 @@ private:
 
 public:
   template <typename... Args>
-  Socks5Ingress(std::optional<Credentials> credentials, Args&&... args)
+  Socks5Ingress(Credentials credentials, Args&&... args)
     : stream_{std::forward<Args>(args)...}, credentials_{std::move(credentials)}
   {
   }
@@ -33,7 +33,7 @@ public:
 
 private:
   Stream stream_;
-  std::optional<Credentials> credentials_;
+  Credentials credentials_;
 };
 
 template <typename Stream> class Socks5Egress : public Egress {

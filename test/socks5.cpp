@@ -22,7 +22,7 @@ using test::Socket;
 using Ingress = pichi::net::Socks5Ingress<test::Stream>;
 using Egress = pichi::net::Socks5Egress<test::Stream>;
 using Credentials = unordered_map<string, string>;
-using Credential = pair<string, string>;
+using Credential = optional<pair<string, string>>;
 
 static auto const CREDENTIALS = Credentials{{"pichi"s, "pichi"s}};
 static auto const CREDENTIAL = make_pair("pichi"s, "pichi"s);
@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Invalid_Version)
     if (i == 0x05) continue;
     auto ver = static_cast<uint8_t>(i);
     auto socket = Socket{};
-    auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
     socket.fill({ver, 0x01, 0x00});
     BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Invalid_Version)
 BOOST_AUTO_TEST_CASE(readRemote_Handshake_Zero_Nmethod)
 {
   auto socket = Socket{};
-  auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+  auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
   socket.fill({0x05, 0x00});
   BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Without_Acceptable_Method)
   for (auto i = 1; i < 0x100; ++i) {
     auto len = static_cast<uint8_t>(i);
     auto socket = Socket{};
-    auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
     socket.fill({0x05, len});
     for (auto j = 0; j < len; ++j) socket.fill({len});
@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_With_Acceptable_Method)
 {
   for (auto i = 1; i < 0x100; ++i) {
     auto socket = Socket{};
-    auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
     socket.fill({0x05, 0xff});
     for (auto j = 0; j < 0x100; ++j)
@@ -245,7 +245,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_Version)
   for (auto i = 0; i < 0x100; ++i) {
     if (i == 0x05) continue;
     auto socket = Socket{};
-    auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
     socket.fill({
         0x05, 0x01, 0x00,                        // Handshake
@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_CMD)
   for (auto i = 0; i < 0x100; ++i) {
     if (i == 0x01) continue;
     auto socket = Socket{};
-    auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
     socket.fill({
         0x05, 0x01, 0x00,                        // Handshake
@@ -296,7 +296,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_RSV)
 {
   for (auto i = 1; i < 0x100; ++i) {
     auto socket = Socket{};
-    auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
     socket.fill({
         0x05, 0x01, 0x00,                        // Handshake
@@ -323,7 +323,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Without_Authentication)
   auto otects = array<uint8_t, 19>{};
 
   auto socket = Socket{};
-  auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+  auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
   socket.fill({0x05, 0x01, 0x00, 0x05, 0x01, 0x00});
 
@@ -411,7 +411,7 @@ BOOST_AUTO_TEST_CASE(connect_Handshake_Invalid_Version)
   for (auto i = 0; i < 0x100; ++i) {
     if (i == 0x05) continue;
     auto socket = Socket{};
-    auto egress = make_unique<Egress>(optional<Credential>{}, socket);
+    auto egress = make_unique<Egress>(Credential{}, socket);
 
     socket.fill({static_cast<uint8_t>(i), 0x00});
     BOOST_CHECK_EXCEPTION(egress->connect({}, {}, yield), Exception,
@@ -430,7 +430,7 @@ BOOST_AUTO_TEST_CASE(connect_Handshake_Without_Acceptable_Method)
 {
   for (auto i = 1; i < 0x100; ++i) {
     auto socket = Socket{};
-    auto egress = make_unique<Egress>(optional<Credential>{}, socket);
+    auto egress = make_unique<Egress>(Credential{}, socket);
 
     socket.fill({0x05, static_cast<uint8_t>(i)});
     BOOST_CHECK_EXCEPTION(egress->connect({}, {}, yield), Exception,
@@ -523,7 +523,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_With_Invalid_Version)
   for (auto i = 0; i < 0x100; ++i) {
     if (i == 0x05) continue;
     auto socket = Socket{};
-    auto egress = make_unique<Egress>(optional<Credential>{}, socket);
+    auto egress = make_unique<Egress>(Credential{}, socket);
 
     socket.fill({0x05, 0x00});
     socket.fill({static_cast<uint8_t>(i), 0x00, 0x00});
@@ -545,7 +545,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Connection_Failure)
 
   for (auto i = 1; i < 0x100; ++i) {
     auto socket = Socket{};
-    auto egress = make_unique<Egress>(optional<Credential>{}, socket);
+    auto egress = make_unique<Egress>(Credential{}, socket);
 
     socket.fill({0x05, 0x00});
     socket.fill({0x05, static_cast<uint8_t>(i), 0x00});
@@ -567,7 +567,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_With_Invalid_RSV)
 
   for (auto i = 1; i < 0x100; ++i) {
     auto socket = Socket{};
-    auto egress = make_unique<Egress>(optional<Credential>{}, socket);
+    auto egress = make_unique<Egress>(Credential{}, socket);
 
     socket.fill({0x05, 0x00});
     socket.fill({0x05, 0x00, static_cast<uint8_t>(i)});
@@ -588,7 +588,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Invalid_Endpoint)
   net::serializeEndpoint(remote, MutableBuffer<uint8_t>{expect} + 6);
 
   auto socket = Socket{};
-  auto egress = make_unique<Egress>(optional<Credential>{}, socket);
+  auto egress = make_unique<Egress>(Credential{}, socket);
 
   socket.fill({0x05, 0x00});
   socket.fill({0x05, 0x00, 0x00});
@@ -609,7 +609,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Correct)
   net::serializeEndpoint(remote, MutableBuffer<uint8_t>{expect} + 6);
 
   auto socket = Socket{};
-  auto egress = make_unique<Egress>(optional<Credential>{}, socket);
+  auto egress = make_unique<Egress>(Credential{}, socket);
 
   socket.fill({0x05, 0x00});
   socket.fill({0x05, 0x00, 0x00});
@@ -626,7 +626,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Correct)
 BOOST_AUTO_TEST_CASE(confirm)
 {
   auto socket = Socket{};
-  auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+  auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
   ingress->confirm(yield);
 
@@ -651,7 +651,7 @@ BOOST_AUTO_TEST_CASE(confirm)
 BOOST_AUTO_TEST_CASE(disconnect)
 {
   auto socket = Socket{};
-  auto ingress = make_unique<Ingress>(optional<Credentials>{}, socket, true);
+  auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
   ingress->disconnect(yield);
 
