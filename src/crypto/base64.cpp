@@ -2,35 +2,14 @@
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
 #include <pichi/crypto/base64.hpp>
-#include <string_view>
 
 using namespace std;
 
 namespace pichi::crypto {
 
-static auto const OTECTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="sv;
+static auto const OTECTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"sv;
 
-static auto dp4n(uint8_t const* b, int bp) { return b[bp] >> 2; }
-
-static auto dp4n1(uint8_t const* b, int bp, int padding)
-{
-  auto r = (b[bp] & 0x03) << 4;
-  return padding < 2 ? r + ((b[bp + 1] & 0xf0) >> 4) : r;
-}
-
-static auto dp4n2(uint8_t const* b, int bp, int padding)
-{
-  if (padding == 2) return 64;
-  auto r = (b[bp + 1] & 0x0f) << 2;
-  return padding < 1 ? r + ((b[bp + 2] & 0xc0) >> 6) : r;
-}
-
-static auto dp4n3(uint8_t const* b, int bp, int padding)
-{
-  return padding == 0 ? b[bp + 2] & 0x3f : 64;
-}
-
-static int otect2offset(uint8_t otect)
+static char otect2offset(char otect)
 {
   if (otect >= 'A' && otect <= 'Z') {
     return otect - 'A';
@@ -51,53 +30,72 @@ static int otect2offset(uint8_t otect)
     fail();
 }
 
-size_t base64Encode(ConstBuffer<uint8_t> src, MutableBuffer<uint8_t> dst)
+string base64Encode(string_view text)
 {
-  auto len = src.size() / 3 * 4 + (src.size() % 3 == 0 ? 0 : 4);
-  assertTrue(dst.size() >= len);
-  auto d = dst.data();
-  auto b = src.data();
-  for (auto i = 0_sz; i < len; i += 4) {
+  auto padding = (3 - (text.size() % 3)) % 3;
+  auto len = (text.size() + padding) / 3 * 4;
+  auto base64 = string(len, '\0');
+  auto i = 0;
+  while (i + 4_sz < len) {
     auto j = i / 4 * 3;
-    auto padding = j + 3 > src.size() ? j + 3 - src.size() : 0;
-    d[i] = OTECTS[dp4n(b, j)];
-    d[i + 1] = OTECTS[dp4n1(b, j, padding)];
-    d[i + 2] = OTECTS[dp4n2(b, j, padding)];
-    d[i + 3] = OTECTS[dp4n3(b, j, padding)];
+    base64[i] = OTECTS[(text[j] >> 2) & 0x3f];
+    base64[i + 1] = OTECTS[((text[j] << 4) + ((text[j + 1] >> 4) & 0x0f)) & 0x3f];
+    base64[i + 2] = OTECTS[((text[j + 1] << 2) + ((text[j + 2] >> 6) & 0x03)) & 0x3f];
+    base64[i + 3] = OTECTS[text[j + 2] & 0x3f];
+    i += 4;
   }
-  return len;
+  auto j = i / 4 * 3;
+  base64[i] = OTECTS[(text[j] >> 2) & 0x3f];
+  switch (padding) {
+  case 0:
+    base64[i + 1] = OTECTS[((text[j] << 4) + ((text[j + 1] >> 4) & 0x0f)) & 0x3f];
+    base64[i + 2] = OTECTS[((text[j + 1] << 2) + ((text[j + 2] >> 6) & 0x03)) & 0x3f];
+    base64[i + 3] = OTECTS[text[j + 2] & 0x3f];
+    break;
+  case 1:
+    base64[i + 1] = OTECTS[((text[j] << 4) + ((text[j + 1] >> 4) & 0x0f)) & 0x3f];
+    base64[i + 2] = OTECTS[(text[j + 1] << 2) & 0x3c];
+    base64[i + 3] = '=';
+    break;
+  default:
+    base64[i + 1] = OTECTS[(text[j] << 4) & 0x30];
+    base64[i + 2] = '=';
+    base64[i + 3] = '=';
+    break;
+  }
+  return base64;
 }
 
-size_t base64Decode(ConstBuffer<uint8_t> src, MutableBuffer<uint8_t> dst)
+string base64Decode(string_view base64)
 {
-  if (src.size() == 0) return 0;
-  assertTrue(src.size() % 4 == 0);
-  auto b = src.data();
-  auto d = dst.data();
-  auto padding = 0_sz;
-  if (b[src.size() - 2] == '=') {
-    assertTrue(b[src.size() - 1] == '=');
-    padding = 2_sz;
-  }
-  else if (b[src.size() - 1] == '=')
-    padding = 1_sz;
-  auto len = src.size() / 4 * 3 - padding;
-  for (auto i = 0_sz; i < len; ++i) {
+  if (base64.empty()) return {};
+  assertTrue(base64.size() % 4 == 0);
+  auto padding = base64.find_last_not_of('=');
+  padding = padding == string_view::npos ? 0_sz : base64.size() - padding - 1_sz;
+  assertTrue(padding < 3);
+
+  auto text = string(base64.size() / 4 * 3 - padding, '\0');
+  auto i = 0;
+  while (i + 3_sz < text.size()) {
     auto j = i / 3 * 4;
-    switch (i % 3) {
-    case 0:
-      d[i] = static_cast<uint8_t>((otect2offset(b[j]) << 2) + (otect2offset(b[j + 1]) >> 4));
-      break;
-    case 1:
-      d[i] = static_cast<uint8_t>(((otect2offset(b[j + 1]) & 0x0f) << 4) +
-                                  (otect2offset(b[j + 2]) >> 2));
-      break;
-    default:
-      d[i] = static_cast<uint8_t>(((otect2offset(b[j + 2]) & 0x03) << 6) + otect2offset(b[j + 3]));
-      break;
-    }
+    text[i] = (otect2offset(base64[j]) << 2) + (otect2offset(base64[j + 1]) >> 4);
+    text[i + 1] = (otect2offset(base64[j + 1]) << 4) + (otect2offset(base64[j + 2]) >> 2);
+    text[i + 2] = (otect2offset(base64[j + 2]) << 6) + otect2offset(base64[j + 3]);
+    i += 3;
   }
-  return len;
+  auto j = i / 3 * 4;
+  switch (padding) {
+  case 0:
+    text[i + 2] = (otect2offset(base64[j + 2]) << 6) + otect2offset(base64[j + 3]);
+    // Don't break here
+  case 1:
+    text[i + 1] = (otect2offset(base64[j + 1]) << 4) + (otect2offset(base64[j + 2]) >> 2);
+    // Don't break here
+  default:
+    text[i] = (otect2offset(base64[j]) << 2) + (otect2offset(base64[j + 1]) >> 4);
+    break;
+  }
+  return text;
 }
 
 } // namespace pichi::crypto
