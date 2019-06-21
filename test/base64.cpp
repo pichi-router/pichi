@@ -26,15 +26,15 @@ BOOST_AUTO_TEST_SUITE(Base64)
 
 BOOST_AUTO_TEST_CASE(encode_RFC4648)
 {
-  auto expects = array<string_view, 7>{""sv,         "Zg=="sv,     "Zm8="sv,    "Zm9v"sv,
-                                       "Zm9vYg=="sv, "Zm9vYmE="sv, "Zm9vYmFy"sv};
-  auto b = array<uint8_t, 6>{'f', 'o', 'o', 'b', 'a', 'r'};
-  auto d = array<uint8_t, 8>{};
-  for (auto i = 0_sz; i < 7; ++i) {
-    auto expect = expects[i];
-    BOOST_CHECK_EQUAL(expect.size(), base64Encode({b, i}, d));
-    BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(d),
-                                  cbegin(d) + expect.size());
+  auto pairs = unordered_map<string_view, string_view>{{""sv, ""sv},
+                                                       {"f"sv, "Zg=="sv},
+                                                       {"fo"sv, "Zm8="sv},
+                                                       {"foo"sv, "Zm9v"sv},
+                                                       {"foob"sv, "Zm9vYg=="sv},
+                                                       {"fooba"sv, "Zm9vYmE="sv},
+                                                       {"foobar"sv, "Zm9vYmFy"sv}};
+  for (auto p : pairs) {
+    BOOST_CHECK_EQUAL(p.second, base64Encode(p.first));
   }
 }
 
@@ -47,12 +47,8 @@ BOOST_AUTO_TEST_CASE(decode_RFC4648)
                                                        {"Zm9vYg=="sv, "foob"sv},
                                                        {"Zm9vYmE="sv, "fooba"sv},
                                                        {"Zm9vYmFy"sv, "foobar"sv}};
-  auto container = array<uint8_t, 6>{};
   for (auto p : pairs) {
-    auto expect = p.second;
-    BOOST_CHECK_EQUAL(expect.size(), base64Decode(ConstBuffer<uint8_t>{p.first}, container));
-    BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(container),
-                                  cbegin(container) + expect.size());
+    BOOST_CHECK_EQUAL(p.second, base64Decode(p.first));
   }
 }
 

@@ -1,13 +1,14 @@
 #ifndef PICHI_CRYPTO_BASE64_HPP
 #define PICHI_CRYPTO_BASE64_HPP
 
-#include <pichi/buffer.hpp>
 #include <stdint.h>
+#include <string>
+#include <string_view>
 
 namespace pichi::crypto {
 
-extern size_t base64Encode(ConstBuffer<uint8_t>, MutableBuffer<uint8_t>);
-extern size_t base64Decode(ConstBuffer<uint8_t>, MutableBuffer<uint8_t>);
+extern std::string base64Encode(std::string_view);
+extern std::string base64Decode(std::string_view);
 
 } // namespace pichi::crypto
 
