@@ -166,11 +166,11 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
 #ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
-      return make_unique<HttpIngress<TlsSocket>>(forward<Socket>(s), ctx);
+      return make_unique<HttpIngress<TlsSocket>>(vo.credentials_, forward<Socket>(s), ctx);
     }
     else
 #endif // ENABLE_TLS
-      return make_unique<HttpIngress<TcpSocket>>(forward<Socket>(s));
+      return make_unique<HttpIngress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
     if (*vo.tls_) {
@@ -250,11 +250,11 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
 #ifdef ENABLE_TLS
     if (*vo.tls_) {
       auto ctx = createTlsContext(vo);
-      return make_unique<HttpEgress<TlsSocket>>(io, ctx);
+      return make_unique<HttpEgress<TlsSocket>>(vo.credential_, io, ctx);
     }
     else
 #endif // ENABLE_TLS
-      return make_unique<HttpEgress<TcpSocket>>(io);
+      return make_unique<HttpEgress<TcpSocket>>(vo.credential_, io);
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
     if (*vo.tls_) {

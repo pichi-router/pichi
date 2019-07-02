@@ -6,11 +6,13 @@
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
 #include <pichi/config.hpp>
+#include <pichi/crypto/base64.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/test/socket.hpp>
 #include <pichi/uri.hpp>
+#include <regex>
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/stream.hpp>
@@ -28,10 +30,10 @@ namespace pichi::net {
 
 namespace detail {
 
-template <bool isRequest> using Header = boost::beast::http::header<isRequest>;
-template <bool isRequest> using Message = boost::beast::http::message<isRequest, Body>;
-using Request = Message<true>;
-using Response = Message<false>;
+using OptCredential = optional<pair<string, string>>;
+
+static auto const BASIC_AUTH_PATTERN = regex{"^basic ([a-z0-9+/]+={1,2})", regex::icase};
+
 template <bool isRequest> using Serializer = boost::beast::http::serializer<isRequest, Body>;
 
 template <typename Stream, bool isRequest>
@@ -143,6 +145,13 @@ template <bool isRequest> static void addCloseHeader(Header<isRequest>& header)
   header.set(http::field::proxy_connection, "close"sv);
 }
 
+static void addAuthenticationHeader(Header<true>& req, OptCredential const& cred)
+{
+  if (cred.has_value())
+    req.set(http::field::proxy_authorization,
+            "Basic "s + crypto::base64Encode(""s + cred->first + ":" + cred->second));
+}
+
 template <typename Stream, typename Yield> static void tunnelConfirm(Stream& s, Yield yield)
 {
   auto rep = Response{};
@@ -154,7 +163,8 @@ template <typename Stream, typename Yield> static void tunnelConfirm(Stream& s, 
 }
 
 template <typename Stream, typename Yield>
-static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
+static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield,
+                          OptCredential const& cred = {})
 {
   auto host = remote.host_ + ":" + remote.port_;
   auto req = Request{};
@@ -162,6 +172,7 @@ static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield)
   req.target(host);
   req.set(http::field::host, host);
   addCloseHeader(req);
+  addAuthenticationHeader(req, cred);
   req.prepare_payload();
 
   writeHttp(s, req, yield);
@@ -209,14 +220,18 @@ static ConstBuffer<uint8_t> parseHeader(Parser<isRequest>& parser, DynamicBuffer
 
 template <bool isRequest, typename DynamicBuffer, typename Stream, typename Yield>
 static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
-                            ConstBuffer<uint8_t> buf, Stream& s, Yield yield)
+                            ConstBuffer<uint8_t> buf, Stream& s, Yield yield,
+                            OptCredential const& cred = {})
 {
   auto left = parseHeader(parser, cache, buf);
   if (!parser.is_header_done()) return false;
 
   auto m = parser.release();
   if (!parser.upgrade()) addCloseHeader(m);
-  if constexpr (isRequest) addHostToTarget(m);
+  if constexpr (isRequest) {
+    addHostToTarget(m);
+    addAuthenticationHeader(m, cred);
+  }
   writeHttpHeader(s, m, yield);
 
   write(s, left, yield);
@@ -269,8 +284,12 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 #endif // ENABLE_TLS
 
   readHttpHeader(stream_, reqCache_, reqParser_, yield);
-
   auto& req = reqParser_.get();
+  if (!credentials_.empty()) {
+    authenticate(req);
+    req.erase(http::field::proxy_authorization);
+  }
+
   if (req.method() == http::verb::connect) {
     send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
     recv_ = [this](auto buf, auto yield) {
@@ -338,11 +357,30 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
   }
 }
 
+template <typename Stream> void HttpIngress<Stream>::authenticate(Header<true> const& req)
+{
+  auto auth = req.find(http::field::proxy_authorization);
+  assertFalse(auth == cend(req), PichiError::BAD_PROTO);
+  auto m = cmatch{};
+  auto credential = auth->value();
+  assertTrue(regex_match(cbegin(credential), cend(credential), m, BASIC_AUTH_PATTERN));
+  assertTrue(2 == m.size() && m[1].matched);
+  auto plain = crypto::base64Decode({m[1].first, static_cast<size_t>(m[1].length())});
+  auto np = string_view{plain};
+  auto colon = np.find_first_of(':');
+  assertFalse(colon == string_view::npos);
+  assertFalse(cend(credentials_) ==
+              find_if(cbegin(credentials_), cend(credentials_),
+                      [name = np.substr(0, colon), pass = np.substr(colon + 1)](auto&& item) {
+                        return item.first == name && item.second == pass;
+                      }));
+}
+
 template <typename Stream>
 void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
   pichi::net::connect(next, *stream_, yield);
-  if (tunnelConnect(remote, *stream_, yield)) {
+  if (tunnelConnect(remote, *stream_, yield, credential_)) {
     send_ = [this](auto buf, auto yield) { write(*stream_, buf, yield); };
     recv_ = [this](auto buf, auto yield) { return readSome(*stream_, buf, yield); };
     return;
@@ -350,7 +388,7 @@ void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Y
 
   // Failed to make connection via HTTP CONNECT, so try HTTP relay again.
   send_ = [this](auto buf, auto yield) {
-    if (tryToSendHeader(reqParser_, reqCache_, buf, *stream_, yield))
+    if (tryToSendHeader(reqParser_, reqCache_, buf, *stream_, yield, credential_))
       send_ = [this](auto buf, auto yield) { write(*stream_, buf, yield); };
   };
   recv_ = [this](auto buf, auto yield) { return recvRaw(*stream_, respCache_, buf, yield); };
