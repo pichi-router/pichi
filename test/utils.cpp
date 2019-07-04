@@ -27,7 +27,7 @@ IngressVO defaultIngressVO(AdapterType type)
   switch (type) {
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return {type, ph, 1_u16, {}, {}, false};
+    return {type, ph, 1_u16, {}, {}, {}, false};
   case AdapterType::SS:
     return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
   default:
@@ -72,7 +72,7 @@ EgressVO defaultEgressVO(AdapterType type)
     return {AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return {type, ph, 1_u16, {}, {}, {}, {}, false};
+    return {type, ph, 1_u16, {}, {}, {}, {}, {}, false};
   case AdapterType::SS:
     return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
   default:

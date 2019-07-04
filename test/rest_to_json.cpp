@@ -151,6 +151,42 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_TLS_Additional_Fields)
   }
 }
 
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_With_Too_Long_Name)
+{
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultIngressVO(type);
+    vo.credentials_ = unordered_map<string, string>{{string(256_sz, 'n'), ph}};
+
+    BOOST_CHECK_EXCEPTION(toJson(vo, alloc), Exception, verifyException<PichiError::MISC>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_With_Too_Long_Password)
+{
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultIngressVO(type);
+    vo.credentials_ = unordered_map<string, string>{{ph, string(256_sz, 'n')}};
+
+    BOOST_CHECK_EXCEPTION(toJson(vo, alloc), Exception, verifyException<PichiError::MISC>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_With_Credentials)
+{
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
+    auto vo = defaultIngressVO(type);
+    vo.credentials_ = unordered_map<string, string>{{ph, ph}};
+
+    auto credentials = Value{};
+    credentials.SetObject();
+    credentials.AddMember(ph, ph, alloc);
+    auto json = defaultIngressJson(type);
+    json.AddMember("credentials", credentials, alloc);
+
+    BOOST_CHECK(json == toJson(vo, alloc));
+  }
+}
+
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Mandatory_Fields)
 {
   auto origin = defaultIngressVO(AdapterType::SS);
