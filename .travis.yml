@@ -28,9 +28,9 @@ cache:
 
 matrix:
   include:
-    - name: iPhone OS 12.1 / Xcode 10.1
+    - name: iPhone OS 12.1 / Xcode 11
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11
       addons:
         homebrew:
           packages:
@@ -66,9 +66,9 @@ matrix:
         - PLATFORM=alpine
         - PARALLEL="$(nproc)"
         - STATIC_LINK=OFF
-    - name: macOS 10.13 / Xcode 10.1 (static)
+    - name: macOS 10.14 / Xcode 11 (static)
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11
       addons:
         homebrew:
           packages:
@@ -82,9 +82,9 @@ matrix:
         - PLATFORM=osx
         - STATIC_LINK=ON
         - PARALLEL="$(sysctl -n hw.physicalcpu)"
-    - name: macOS 10.13 / Xcode 10.1 (shared)
+    - name: macOS 10.14 / Xcode 11 (shared)
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode11
       addons:
         homebrew:
           packages:
