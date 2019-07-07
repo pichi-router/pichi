@@ -609,7 +609,7 @@ BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
   expect.AddMember("rules", rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc),
                    alloc);
 
-  auto rvo = RouteVO{ph, {make_pair(ph, ph)}};
+  auto rvo = RouteVO{ph, {make_pair(vector<string>{ph}, ph)}};
   BOOST_CHECK(expect == toJson(rvo, alloc));
 }
 

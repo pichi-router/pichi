@@ -93,7 +93,8 @@ static string toString(RouteVO const& rvo)
   for_each(cbegin(rvo.rules_), cend(rvo.rules_), [&rules](auto&& rule) {
     auto vo = Value{};
     vo.SetArray();
-    vo.PushBack(toJson(rule.first, alloc), alloc);
+    for_each(cbegin(rule.first), cend(rule.first),
+             [&vo](auto&& item) { vo.PushBack(toJson(item, alloc), alloc); });
     vo.PushBack(toJson(rule.second, alloc), alloc);
     rules.PushBack(move(vo), alloc);
   });
@@ -839,8 +840,6 @@ BOOST_AUTO_TEST_CASE(parse_Route_Rules_Not_Pair)
                         verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(parse<RouteVO>("{\"rules\": [[\"a\"]]}"), Exception,
                         verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<RouteVO>("{\"rules\": [[\"a\",\"b\",\"c\"]]}"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route)
@@ -855,7 +854,7 @@ BOOST_AUTO_TEST_CASE(parse_Route)
   BOOST_CHECK(fact == expect);
 
   expect.default_.reset();
-  expect.rules_.emplace_back(make_pair(ph, ph));
+  expect.rules_.emplace_back(make_pair(vector<string>{ph}, ph));
   fact = parse<RouteVO>(toString(expect));
   BOOST_CHECK(fact == expect);
 

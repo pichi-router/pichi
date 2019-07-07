@@ -100,7 +100,8 @@ static auto const ARY_TYPE_ERROR = "JSON array required"sv;
 static auto const INT_TYPE_ERROR = "Integer required"sv;
 static auto const STR_TYPE_ERROR = "String required"sv;
 static auto const BOOL_TYPE_ERROR = "Boolean required"sv;
-static auto const PAIR_TYPE_ERROR = "Pair required"sv;
+static auto const PAIR_TYPE_ERROR = "Pair type required"sv;
+static auto const ARY_SIZE_ERROR = "Array size error"sv;
 static auto const AT_INVALID = "Invalid adapter type string"sv;
 static auto const CM_INVALID = "Invalid crypto method string"sv;
 static auto const PT_INVALID = "Port number must be in range (0, 65536)"sv;
@@ -440,7 +441,8 @@ json::Value toJson(RouteVO const& rvo, Allocator& alloc)
   for_each(cbegin(rvo.rules_), cend(rvo.rules_), [&](auto&& item) {
     auto rule = json::Value{};
     rule.SetArray();
-    rule.PushBack(toJson(item.first, alloc), alloc);
+    for_each(cbegin(item.first), cend(item.first),
+             [&](auto&& name) { rule.PushBack(toJson(name, alloc), alloc); });
     rule.PushBack(toJson(item.second, alloc), alloc);
     rules.PushBack(move(rule), alloc);
   });
@@ -601,8 +603,19 @@ template <> RouteVO parse(json::Value const& v)
 
   if (v.HasMember(RouteVOKey::default_)) rvo.default_.emplace(parseString(v[RouteVOKey::default_]));
 
-  parseArray(v, RouteVOKey::rules_, back_inserter(rvo.rules_),
-             [](auto&& v) { return parsePair(v, parseString); });
+  parseArray(v, RouteVOKey::rules_, back_inserter(rvo.rules_), [](auto&& v) {
+    assertTrue(v.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
+    auto array = v.GetArray();
+    assertTrue(array.Size() >= 2, PichiError::BAD_JSON, msg::ARY_SIZE_ERROR);
+    auto first = array.Begin();
+    auto last = first + (array.Size() - 1);
+    return make_pair(accumulate(first, last, vector<string>{},
+                                [](auto&& full, auto&& item) {
+                                  full.push_back(parseString(item));
+                                  return move(full);
+                                }),
+                     parseString(*last));
+  });
 
   return rvo;
 }

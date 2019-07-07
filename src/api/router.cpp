@@ -91,14 +91,18 @@ Router::Router(char const* fn) : geo_{fn} {}
 string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterType type,
                           ResolvedResult const& r) const
 {
-  auto it = find_if(cbegin(route_.rules_), cend(route_.rules_), [&, this](auto&& pair) {
-    auto it = rules_.find(pair.first);
-    assertFalse(it == cend(rules_), PichiError::MISC);
-    auto& matchers = as_const(it->second.second);
-    return any_of(cbegin(matchers), cend(matchers),
-                  [&](auto&& matcher) { return matcher(e, r, ingress, type); });
+  auto rule = "DEFAUTL rule"sv;
+  auto it = find_if(cbegin(route_.rules_), cend(route_.rules_), [&, this](auto&& rules) {
+    return any_of(cbegin(rules.first), cend(rules.first), [&, this](auto&& name) {
+      auto it = rules_.find(name);
+      assertFalse(it == cend(rules_));
+      auto& matchers = as_const(it->second.second);
+      auto b = any_of(cbegin(matchers), cend(matchers),
+                      [&](auto&& matcher) { return matcher(e, r, ingress, type); });
+      if (b) rule = name;
+      return b;
+    });
   });
-  auto rule = it != cend(route_.rules_) ? string_view{it->first} : "DEFAUTL rule"sv;
   auto egress = string_view{it != cend(route_.rules_) ? it->second : *route_.default_};
   cout << e.host_ << ":" << e.port_ << " -> " << egress << " (" << rule << ")" << endl;
   return egress;
@@ -165,7 +169,10 @@ void Router::update(string const& name, RuleVO rvo)
 void Router::erase(string_view name)
 {
   assertFalse(any_of(cbegin(route_.rules_), cend(route_.rules_),
-                     [name](auto&& rule) { return rule.first == name; }),
+                     [name](auto&& items) {
+                       return any_of(cbegin(items.first), cend(items.first),
+                                     [name](auto&& rule) { return rule == name; });
+                     }),
               PichiError::RES_IN_USE);
   auto it = rules_.find(name);
   if (it != std::end(rules_)) rules_.erase(it);
@@ -184,7 +191,7 @@ Router::ConstIterator Router::end() const noexcept
 bool Router::isUsed(string_view egress) const
 {
   return route_.default_ == egress || any_of(cbegin(route_.rules_), cend(route_.rules_),
-                                             [=](auto&& item) { return item.first == egress; });
+                                             [=](auto&& item) { return item.second == egress; });
 }
 
 bool Router::needResloving() const { return needResolving_; }
@@ -194,11 +201,15 @@ RouteVO Router::getRoute() const { return route_; }
 void Router::setRoute(RouteVO rvo)
 {
   needResolving_ = accumulate(
-      cbegin(rvo.rules_), cend(rvo.rules_), false, [this](auto needResolving, auto&& pair) {
-        auto it = rules_.find(pair.first);
-        assertFalse(it == cend(rules_), PichiError::SEMANTIC_ERROR, "Unknown rules"sv);
-        auto& rule = it->second.first;
-        return needResolving || !(rule.range_.empty() && rule.country_.empty());
+      cbegin(rvo.rules_), cend(rvo.rules_), false, [this](auto needResolving, auto&& item) {
+        return accumulate(cbegin(item.first), cend(item.first), needResolving,
+                          [this](auto needResolving, auto&& name) {
+                            auto it = rules_.find(name);
+                            assertFalse(it == cend(rules_), PichiError::SEMANTIC_ERROR,
+                                        "Unknown rules"sv);
+                            auto& rule = it->second.first;
+                            return needResolving || !(rule.range_.empty() && rule.country_.empty());
+                          });
       });
   route_.rules_ = move(rvo.rules_);
   if (rvo.default_.has_value()) route_.default_ = rvo.default_;

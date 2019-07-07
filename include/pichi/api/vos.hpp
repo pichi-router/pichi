@@ -55,7 +55,7 @@ struct RuleVO {
 
 struct RouteVO {
   std::optional<std::string> default_ = {};
-  std::vector<std::pair<std::string, std::string>> rules_ = {};
+  std::vector<std::pair<std::vector<std::string>, std::string>> rules_ = {};
 };
 
 struct ErrorVO {
