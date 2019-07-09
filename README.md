@@ -4,9 +4,9 @@ Pichi is a flexible rule-based proxy.
 
 ## Build Status
 
-| OS | macOS 10.13 | Alpine 3.9 | Windows 10 | iOS 12.1 | Android 9 |
+| OS | macOS 10.14 | Alpine 3.9 | Windows 10 | iOS 12.1 | Android 9 |
 |:----------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|
-| **Toolchain** | Xcode 10.1 | GCC 8.x | VC++2017 | Xcode 10.1 | NDK r18b |
+| **Toolchain** | Xcode 11 | GCC 8.x | VC++2017 | Xcode 11 | NDK r18b |
 | **Architecture** | x86_64 | x86_64 | x86_64 | arm64/arm64e | arm64 |
 | **Status** | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/5)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/3)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/project/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/1)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/2)](https://travis-ci.org/pichi-router/pichi) |
 
