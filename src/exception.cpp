@@ -28,6 +28,10 @@ char const* Exception::what() const noexcept
     return "Resource locked";
   case PichiError::CONN_FAILURE:
     return "Connection failure";
+  case PichiError::BAD_AUTH_METHOD:
+    return "Bad authentication method";
+  case PichiError::UNAUTHENTICATED:
+    return "Authentication failure";
   case PichiError::MISC:
     return "Misc error";
   default:
