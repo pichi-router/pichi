@@ -1,4 +1,6 @@
+#include <functional>
 #include <limits>
+#include <numeric>
 #include <pichi/api/vos.hpp>
 #include <pichi/common.hpp>
 
@@ -44,6 +46,7 @@ static decltype(auto) bind_ = "bind";
 static decltype(auto) port_ = "port";
 static decltype(auto) method_ = "method";
 static decltype(auto) password_ = "password";
+static decltype(auto) credentials_ = "credentials";
 static decltype(auto) tls_ = "tls";
 static decltype(auto) certFile_ = "cert_file";
 static decltype(auto) keyFile_ = "key_file";
@@ -59,6 +62,7 @@ static decltype(auto) method_ = "method";
 static decltype(auto) password_ = "password";
 static decltype(auto) mode_ = "mode";
 static decltype(auto) delay_ = "delay";
+static decltype(auto) credential_ = "credential";
 static decltype(auto) tls_ = "tls";
 static decltype(auto) insecure_ = "insecure";
 static decltype(auto) caFile_ = "ca_file";
@@ -103,6 +107,7 @@ static auto const PT_INVALID = "Port number must be in range (0, 65536)"sv;
 static auto const DM_INVALID = "Invalid delay mode type string"sv;
 static auto const DL_INVALID = "Delay time must be in range [0, 300]"sv;
 static auto const STR_EMPTY = "Empty string"sv;
+static auto const CRE_EMPTY = "Empty credentials"sv;
 static auto const MISSING_TYPE_FIELD = "Missing type field"sv;
 static auto const MISSING_HOST_FIELD = "Missing host field"sv;
 static auto const MISSING_BIND_FIELD = "Missing bind field"sv;
@@ -112,6 +117,7 @@ static auto const MISSING_PW_FIELD = "Missing password field"sv;
 static auto const MISSING_DELAY_FIELD = "Missing delay field"sv;
 static auto const MISSING_CERT_FILE_FIELD = "Missing cert_file field"sv;
 static auto const MISSING_KEY_FILE_FIELD = "Missing key_file field"sv;
+static auto const TOO_LONG_NAME_PASSWORD = "Name or password is too long"sv;
 
 } // namespace msg
 
@@ -185,12 +191,20 @@ static auto parseBoolean(json::Value const& v)
   return v.GetBool();
 }
 
-static pair<string, string> parseRule(json::Value const& v)
+static auto parseNameOrPassword(json::Value const& v)
+{
+  auto ret = parseString(v);
+  assertTrue(ret.size() < 256, PichiError::BAD_JSON, msg::TOO_LONG_NAME_PASSWORD);
+  return ret;
+}
+
+static pair<string, string> parsePair(json::Value const& v,
+                                      function<string(json::Value const&)> parse)
 {
   assertTrue(v.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
   auto array = v.GetArray();
   assertTrue(array.Size() == 2, PichiError::BAD_JSON, msg::PAIR_TYPE_ERROR);
-  return make_pair(parseString(array[0]), parseString(array[1]));
+  return make_pair(parse(array[0]), parse(array[1]));
 }
 
 template <typename OutputIt, typename T, typename Convert>
@@ -316,6 +330,19 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
       assertFalse(ingress.keyFile_->empty(), PichiError::MISC);
       ret.AddMember(IngressVOKey::certFile_, toJson(*ingress.certFile_, alloc), alloc);
       ret.AddMember(IngressVOKey::keyFile_, toJson(*ingress.keyFile_, alloc), alloc);
+    }
+    if (!ingress.credentials_.empty()) {
+      ret.AddMember(IngressVOKey::credentials_,
+                    accumulate(cbegin(ingress.credentials_), cend(ingress.credentials_),
+                               move(json::Value{}.SetObject()),
+                               [&alloc](auto&& s, auto&& i) {
+                                 assertTrue(i.first.size() < 256, msg::TOO_LONG_NAME_PASSWORD);
+                                 assertTrue(i.second.size() < 256, msg::TOO_LONG_NAME_PASSWORD);
+                                 s.AddMember(toJson(i.first, alloc), toJson(i.second, alloc),
+                                             alloc);
+                                 return move(s);
+                               }),
+                    alloc);
     }
     break;
   default:
@@ -468,6 +495,18 @@ template <> IngressVO parse(json::Value const& v)
       ivo.certFile_ = parseString(v[IngressVOKey::certFile_]);
       ivo.keyFile_ = parseString(v[IngressVOKey::keyFile_]);
     }
+    if (v.HasMember(IngressVOKey::credentials_)) {
+      auto& credentials = v[IngressVOKey::credentials_];
+      assertTrue(credentials.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
+      assertFalse(credentials.MemberCount() == 0, PichiError::BAD_JSON, msg::CRE_EMPTY);
+      ivo.credentials_ =
+          accumulate(credentials.MemberBegin(), credentials.MemberEnd(),
+                     unordered_map<string, string>{}, [](auto&& credentials, auto&& credential) {
+                       credentials.emplace(parseNameOrPassword(credential.name),
+                                           parseNameOrPassword(credential.value));
+                       return move(credentials);
+                     });
+    }
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
@@ -507,6 +546,9 @@ template <> EgressVO parse(json::Value const& v)
           v.HasMember(EgressVOKey::insecure_) && parseBoolean(v[EgressVOKey::insecure_]);
       if (!*evo.insecure_ && v.HasMember(EgressVOKey::caFile_))
         evo.caFile_ = parseString(v[EgressVOKey::caFile_]);
+    }
+    if (v.HasMember(EgressVOKey::credential_)) {
+      evo.credential_ = parsePair(v[EgressVOKey::credential_], parseNameOrPassword);
     }
     break;
   case AdapterType::REJECT:
@@ -559,7 +601,8 @@ template <> RouteVO parse(json::Value const& v)
 
   if (v.HasMember(RouteVOKey::default_)) rvo.default_.emplace(parseString(v[RouteVOKey::default_]));
 
-  parseArray(v, RouteVOKey::rules_, back_inserter(rvo.rules_), &parseRule);
+  parseArray(v, RouteVOKey::rules_, back_inserter(rvo.rules_),
+             [](auto&& v) { return parsePair(v, parseString); });
 
   return rvo;
 }

@@ -271,6 +271,77 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_TLS_Additional_Fields)
   }
 }
 
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_With_Incorrect_Type_Credentials)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto credentials = Value{};
+    credentials.SetArray();
+    auto json = defaultIngressJson(type);
+    json.AddMember("credentials", credentials, alloc);
+
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_With_Empty_Credentials)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto emptyCred = Value{};
+    emptyCred.SetObject();
+    auto json = defaultIngressJson(type);
+    json.AddMember("credentials", emptyCred, alloc);
+
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_With_Too_Long_Name)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto tooLongName = toJson(string(256_sz, 'n'), alloc);
+    auto credentials = Value{};
+    credentials.SetObject();
+    credentials.AddMember(tooLongName, ph, alloc);
+    auto json = defaultIngressJson(type);
+    json.AddMember("credentials", credentials, alloc);
+
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_With_Too_Long_Password)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto tooLongPassword = toJson(string(256_sz, 'p'), alloc);
+    auto credentials = Value{};
+    credentials.SetObject();
+    credentials.AddMember(ph, tooLongPassword, alloc);
+    auto json = defaultIngressJson(type);
+    json.AddMember("credentials", credentials, alloc);
+
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Credentials)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto credentials = Value{};
+    credentials.SetObject();
+    credentials.AddMember(ph, ph, alloc);
+
+    auto json = defaultIngressJson(type);
+    json.AddMember("credentials", credentials, alloc);
+
+    auto ivo = parse<IngressVO>(json);
+    BOOST_CHECK_EQUAL(1_sz, ivo.credentials_.size());
+    auto it = ivo.credentials_.find(ph);
+    BOOST_CHECK(it != cend(ivo.credentials_));
+    BOOST_CHECK_EQUAL(ph, it->first);
+    BOOST_CHECK_EQUAL(ph, it->second);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Additional_Fields)
 {
   auto json = defaultIngressJson(AdapterType::SS);
@@ -511,6 +582,59 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Secure_With_Empty_CA_Field)
     auto json = defaultEgressJson(type);
     json["tls"] = true;
     json.AddMember("ca_file", toJson("", alloc), alloc);
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Incorrect_Type_Credential)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto obj = Value{};
+    obj.SetObject();
+    auto json = defaultEgressJson(type);
+    json.AddMember("credential", obj, alloc);
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Incorrect_Credential_Pair)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    for (auto count = 0; count < 10; ++count) {
+      if (count == 2) continue;
+      auto ary = Value{};
+      ary.SetArray();
+      for (auto i = 0; i < count; ++i) ary.PushBack(ph, alloc);
+      auto json = defaultEgressJson(type);
+      json.AddMember("credential", ary, alloc);
+      BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception,
+                            verifyException<PichiError::BAD_JSON>);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Too_Long_Name)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto ary = Value{};
+    ary.SetArray();
+    ary.PushBack(toJson(string(256_sz, 'n'), alloc), alloc);
+    ary.PushBack(ph, alloc);
+    auto json = defaultEgressJson(type);
+    json.AddMember("credential", ary, alloc);
+    BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Too_Long_Password)
+{
+  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+    auto ary = Value{};
+    ary.SetArray();
+    ary.PushBack(ph, alloc);
+    ary.PushBack(toJson(string(256_sz, 'p'), alloc), alloc);
+    auto json = defaultEgressJson(type);
+    json.AddMember("credential", ary, alloc);
     BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
   }
 }
