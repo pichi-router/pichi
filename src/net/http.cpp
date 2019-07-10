@@ -223,6 +223,8 @@ static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
                             ConstBuffer<uint8_t> buf, Stream& s, Yield yield,
                             OptCredential const& cred = {})
 {
+  suppressC4100(cred);
+
   auto left = parseHeader(parser, cache, buf);
   if (!parser.is_header_done()) return false;
 

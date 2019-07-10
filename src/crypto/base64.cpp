@@ -84,6 +84,12 @@ string base64Decode(string_view base64)
     i += 3;
   }
   auto j = i / 3 * 4;
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif // __GNUC__
+
   switch (padding) {
   case 0:
     text[i + 2] = (otect2offset(base64[j + 2]) << 6) + otect2offset(base64[j + 3]);
@@ -95,6 +101,11 @@ string base64Decode(string_view base64)
     text[i] = (otect2offset(base64[j]) << 2) + (otect2offset(base64[j + 1]) >> 4);
     break;
   }
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif // __GNUC__
+
   return text;
 }
 
