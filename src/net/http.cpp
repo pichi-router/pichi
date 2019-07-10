@@ -270,7 +270,7 @@ template <typename Stream> void HttpIngress<Stream>::close(Yield yield)
   pichi::net::close(stream_, yield);
 }
 
-template <typename Stream> void HttpIngress<Stream>::disconnect(Yield yield)
+template <typename Stream> void HttpIngress<Stream>::disconnect(PichiError, Yield yield)
 {
   auto ec = sys::error_code{};
   auto rep = http::response<http::empty_body>{};

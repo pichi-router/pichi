@@ -130,7 +130,7 @@ template <typename Stream> void Socks5Ingress<Stream>::confirm(Yield yield)
   write(stream_, buf, yield);
 }
 
-template <typename Stream> void Socks5Ingress<Stream>::disconnect(Yield yield)
+template <typename Stream> void Socks5Ingress<Stream>::disconnect(PichiError, Yield yield)
 {
   // REP = 0x04(Host unreachable) according to RFC1928
   static uint8_t const buf[] = {0x05, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};

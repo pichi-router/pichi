@@ -653,7 +653,7 @@ BOOST_AUTO_TEST_CASE(disconnect)
   auto socket = Socket{};
   auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
-  ingress->disconnect(yield);
+  ingress->disconnect(PichiError::MISC, yield);
 
   auto buf = array<uint8_t, 512>{};
   socket.flush({buf, 3});
