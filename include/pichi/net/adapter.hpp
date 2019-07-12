@@ -3,6 +3,7 @@
 
 #include <boost/asio/spawn2.hpp>
 #include <pichi/buffer.hpp>
+#include <pichi/exception.hpp>
 #include <pichi/net/common.hpp>
 #include <stdint.h>
 
@@ -30,7 +31,7 @@ struct Ingress : public Adapter {
   virtual size_t readIV(MutableBuffer<uint8_t>, Yield) { return 0; };
   virtual Endpoint readRemote(Yield) = 0;
   virtual void confirm(Yield) = 0;
-  virtual void disconnect(Yield) = 0;
+  virtual void disconnect(PichiError, Yield) = 0;
 };
 
 struct Egress : public Adapter {

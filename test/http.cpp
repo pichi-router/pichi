@@ -507,7 +507,7 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_Tunnel)
   socket.fill({buf, serializeToBuffer(origin, buf)});
 
   ingress.readRemote(yield);
-  ingress.disconnect(yield);
+  ingress.disconnect(PichiError::MISC, yield);
 
   auto disconnected = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
   BOOST_CHECK_EQUAL(http::status::gateway_timeout, disconnected.result());
@@ -524,7 +524,7 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_Relay)
   socket.fill({buf, serializeToBuffer(origin, buf)});
 
   ingress.readRemote(yield);
-  ingress.disconnect(yield);
+  ingress.disconnect(PichiError::MISC, yield);
 
   auto disconnected = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
   BOOST_CHECK_EQUAL(http::status::gateway_timeout, disconnected.result());

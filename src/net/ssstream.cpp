@@ -87,7 +87,7 @@ template <CryptoMethod method, typename Stream> void SSStreamAdapter<method, Str
 }
 
 template <CryptoMethod method, typename Stream>
-void SSStreamAdapter<method, Stream>::disconnect(Yield)
+void SSStreamAdapter<method, Stream>::disconnect(PichiError, Yield)
 {
 }
 
