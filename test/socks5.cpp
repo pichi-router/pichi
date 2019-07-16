@@ -83,13 +83,8 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Without_Acceptable_Method)
 
     socket.fill({0x05, len});
     for (auto j = 0; j < len; ++j) socket.fill({len});
-    BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception, verifyException<PichiError::MISC>);
-
-    auto fact = array<uint8_t, 2>{};
-    BOOST_CHECK_EQUAL(2_sz, socket.available());
-    socket.flush(fact);
-    BOOST_CHECK_EQUAL(0x05, fact.front());
-    BOOST_CHECK_EQUAL(0xff, fact.back());
+    BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
+                          verifyException<PichiError::BAD_AUTH_METHOD>);
   }
 }
 
@@ -103,13 +98,8 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Without_Acceptable_Method_Credentials)
 
     socket.fill({0x05, len});
     for (auto j = 0; j < len; ++j) socket.fill({method});
-    BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception, verifyException<PichiError::MISC>);
-
-    auto fact = array<uint8_t, 2>{};
-    BOOST_CHECK_EQUAL(2_sz, socket.available());
-    socket.flush(fact);
-    BOOST_CHECK_EQUAL(0x05, fact.front());
-    BOOST_CHECK_EQUAL(0xff, fact.back());
+    BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
+                          verifyException<PichiError::BAD_AUTH_METHOD>);
   }
 }
 
@@ -213,7 +203,8 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Nonexisting_User)
   });
   fillString(socket, cbegin(CREDENTIALS)->second);
 
-  BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
+                        verifyException<PichiError::UNAUTHENTICATED>);
 
   BOOST_CHECK_EQUAL(2_sz, socket.available());
   auto received = array<uint8_t, 2>{};
@@ -231,7 +222,8 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Incorrect_Password)
   fillString(socket, cbegin(CREDENTIALS)->first);
   socket.fill({0x01, 0x50});
 
-  BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(ingress->readRemote(yield), Exception,
+                        verifyException<PichiError::UNAUTHENTICATED>);
 
   BOOST_CHECK_EQUAL(2_sz, socket.available());
   auto received = array<uint8_t, 2>{};
@@ -648,29 +640,38 @@ BOOST_AUTO_TEST_CASE(confirm)
   BOOST_CHECK_EQUAL(len, consumed);
 }
 
-BOOST_AUTO_TEST_CASE(disconnect)
+BOOST_AUTO_TEST_CASE(disconnect_For_Named_Failures)
 {
-  auto socket = Socket{};
-  auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
+  auto const FAILURE_MAP = unordered_map<PichiError, vector<uint8_t>>{
+      {PichiError::CONN_FAILURE,
+       {0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+      {PichiError::BAD_AUTH_METHOD, {0x05_u8, 0xff_u8}},
+      {PichiError::UNAUTHENTICATED, {0x01_u8, 0xff_u8}}};
+  for (auto&& p : FAILURE_MAP) {
+    auto&& [e, expect] = p;
+    auto socket = Socket{};
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
+    ingress->disconnect(e, yield);
 
-  ingress->disconnect(PichiError::MISC, yield);
+    auto fact = vector<uint8_t>(expect.size(), 0x00_u8);
 
-  auto buf = array<uint8_t, 512>{};
-  socket.flush({buf, 3});
-  BOOST_CHECK_EQUAL(0x05, buf[0]);
-  BOOST_CHECK_EQUAL(0x04, buf[1]);
-  BOOST_CHECK_EQUAL(0x00, buf[2]);
+    BOOST_CHECK_EQUAL(fact.size(), socket.available());
 
-  auto consumed = 0_sz;
-  auto len = socket.available();
-  socket.flush({buf, len});
-  net::parseEndpoint([src = ConstBuffer<uint8_t>{buf, len}, &consumed](auto dst) mutable {
-    BOOST_CHECK_GE(src.size(), dst.size());
-    copy_n(cbegin(src), dst.size(), begin(dst));
-    src += dst.size();
-    consumed += dst.size();
-  });
-  BOOST_CHECK_EQUAL(len, consumed);
+    socket.flush(fact);
+    BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(disconnect_For_Unnamed_Failures)
+{
+  for (auto e : {PichiError::OK, PichiError::BAD_PROTO, PichiError::CRYPTO_ERROR,
+                 PichiError::BUFFER_OVERFLOW, PichiError::BAD_JSON, PichiError::SEMANTIC_ERROR,
+                 PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
+    auto socket = Socket{};
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
+    ingress->disconnect(e, yield);
+    BOOST_CHECK_EQUAL(0_sz, socket.available());
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
