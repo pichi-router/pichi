@@ -38,6 +38,10 @@ static string toString(IngressVO const& ingress)
     v.AddMember("cert_file", toJson(*ingress.certFile_, alloc), alloc);
   if (ingress.keyFile_.has_value())
     v.AddMember("key_file", toJson(*ingress.keyFile_, alloc), alloc);
+  if (!ingress.destinations_.empty())
+    v.AddMember("destinations",
+                toJson(begin(ingress.destinations_), end(ingress.destinations_), alloc), alloc);
+  if (ingress.balance_.has_value()) v.AddMember("balance", toJson(*ingress.balance_, alloc), alloc);
 
   return toString(v);
 }
@@ -102,11 +106,19 @@ static string toString(RouteVO const& rvo)
   return toString(v);
 }
 
+static bool operator==(net::Endpoint const lhs, net::Endpoint const& rhs)
+{
+  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_;
+}
+
 static bool operator==(IngressVO const& lhs, IngressVO const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.bind_ == rhs.bind_ && lhs.port_ == rhs.port_ &&
          lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.tls_ == rhs.tls_ &&
-         lhs.certFile_ == rhs.certFile_ && lhs.keyFile_ == rhs.keyFile_;
+         lhs.certFile_ == rhs.certFile_ && lhs.keyFile_ == rhs.keyFile_ &&
+         equal(cbegin(lhs.destinations_), cend(lhs.destinations_), cbegin(rhs.destinations_),
+               cend(rhs.destinations_), [](auto&& l, auto&& r) { return l == r; }) &&
+         lhs.balance_ == rhs.balance_;
 }
 
 static bool operator==(EgressVO const& lhs, EgressVO const& rhs)
@@ -155,7 +167,7 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Type)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Default_Ones)
 {
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS}) {
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL}) {
     BOOST_CHECK(defaultIngressVO(type) == parse<IngressVO>(toString(defaultIngressJson(type))));
   }
 }
@@ -309,6 +321,168 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
   emptyPassword.password_->clear();
   BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(emptyPassword)), Exception,
                         verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Mandatory_Fields)
+{
+  auto noType = defaultIngressJson(AdapterType::TUNNEL);
+  noType.RemoveMember("type");
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noType)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto noBind = defaultIngressJson(AdapterType::TUNNEL);
+  noBind.RemoveMember("bind");
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noBind)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto noPort = defaultIngressJson(AdapterType::TUNNEL);
+  noPort.RemoveMember("port");
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noPort)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto noDest = defaultIngressJson(AdapterType::TUNNEL);
+  noDest.RemoveMember("destinations");
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noDest)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto noBalance = defaultIngressJson(AdapterType::TUNNEL);
+  noBalance.RemoveMember("balance");
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(noBalance)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Empty_Destinations)
+{
+  auto json = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(json.HasMember("destinations"));
+  json["destinations"].RemoveAllMembers();
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(json)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Destinations_Empty_Host)
+{
+  auto json = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(json.HasMember("destinations"));
+  json["destinations"].AddMember("", 1, alloc);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(json)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Destinations_Non_Integer_Value)
+{
+  auto host = "localhost";
+
+  auto bValue = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(bValue.HasMember("destinations"));
+  bValue["destinations"][host] = true;
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(bValue)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto sValue = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(sValue.HasMember("destinations"));
+  sValue["destinations"][host] = ph;
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(sValue)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto dValue = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(dValue.HasMember("destinations"));
+  dValue["destinations"][host] = 0.0;
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(dValue)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto oValue = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(oValue.HasMember("destinations"));
+  oValue["destinations"][host] = Value{}.SetObject();
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(oValue)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto aValue = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(aValue.HasMember("destinations"));
+  aValue["destinations"][host] = Value{}.SetArray();
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(aValue)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Destinations_Invalid_Port)
+{
+  auto negative = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(negative.HasMember("destinations"));
+  negative["destinations"].AddMember(ph, -1, alloc);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(negative)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto huge = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(huge.HasMember("destinations"));
+  huge["destinations"].AddMember(ph, 65536, alloc);
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(huge)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Invalid_Balance_Type)
+{
+  auto b = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(b.HasMember("balance"));
+  b["balance"] = true;
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(b)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto i = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(b.HasMember("balance"));
+  i["balance"] = 0;
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(i)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto d = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(d.HasMember("balance"));
+  d["balance"] = 0.0;
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(d)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto o = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(o.HasMember("balance"));
+  o["balance"] = Value{}.SetObject();
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(o)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto a = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(a.HasMember("balance"));
+  a["balance"] = Value{}.SetArray();
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(a)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Invalid_Balance_String)
+{
+  auto empty = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(empty.HasMember("balance"));
+  empty["balance"] = "";
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(empty)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+
+  auto invalid = defaultIngressJson(AdapterType::TUNNEL);
+  BOOST_CHECK(invalid.HasMember("balance"));
+  invalid["balance"] = "invalid balance";
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(toString(invalid)), Exception,
+                        verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Balance)
+{
+  for (auto p : {make_pair("random", BalanceType::RANDOM),
+                 make_pair("round_robin", BalanceType::ROUND_ROBIN),
+                 make_pair("least_conn", BalanceType::LEAST_CONN)}) {
+    auto&& [s, v] = p;
+
+    auto json = defaultIngressJson(AdapterType::TUNNEL);
+    BOOST_CHECK(json.HasMember("balance"));
+    json["balance"].SetString(s, alloc);
+
+    auto vo = defaultIngressVO(AdapterType::TUNNEL);
+    vo.balance_ = v;
+
+    BOOST_CHECK(vo == parse<IngressVO>(toString(json)));
+  }
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Port)

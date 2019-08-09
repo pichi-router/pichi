@@ -30,6 +30,17 @@ IngressVO defaultIngressVO(AdapterType type)
     return {type, ph, 1_u16, {}, {}, false};
   case AdapterType::SS:
     return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
+  case AdapterType::TUNNEL:
+    return {AdapterType::TUNNEL,
+            ph,
+            1_u16,
+            {},
+            {},
+            {},
+            {},
+            {},
+            {{net::Endpoint::Type::DOMAIN_NAME, "localhost", "80"}},
+            BalanceType::RANDOM};
   default:
     BOOST_ERROR("Invalid type");
     return {};
@@ -38,6 +49,9 @@ IngressVO defaultIngressVO(AdapterType type)
 
 Value defaultIngressJson(AdapterType type)
 {
+  auto dst = Value{};
+  dst.SetObject();
+  dst.AddMember("localhost", 80, alloc);
   auto v = Value{};
   v.SetObject();
   v.AddMember("bind", ph, alloc);
@@ -55,6 +69,11 @@ Value defaultIngressJson(AdapterType type)
     v.AddMember("type", "ss", alloc);
     v.AddMember("method", "rc4-md5", alloc);
     v.AddMember("password", ph, alloc);
+    break;
+  case AdapterType::TUNNEL:
+    v.AddMember("type", "tunnel", alloc);
+    v.AddMember("destinations", dst, alloc);
+    v.AddMember("balance", "random", alloc);
     break;
   default:
     BOOST_ERROR("Invalid type");

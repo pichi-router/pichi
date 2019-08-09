@@ -244,8 +244,7 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
       fail(PichiError::BAD_PROTO);
     }
   case AdapterType::TUNNEL:
-    return make_unique<TunnelIngress<TcpSocket>>(makeEndpoint(*vo.dstHost_, *vo.dstPort_),
-                                                 forward<Socket>(s));
+    return nullptr;
   default:
     fail(PichiError::BAD_PROTO);
   }
