@@ -1,6 +1,6 @@
-#include <limits>
 #include <pichi/api/vos.hpp>
 #include <pichi/common.hpp>
+#include <pichi/net/helpers.hpp>
 
 using namespace std;
 namespace json = rapidjson;
@@ -38,6 +38,10 @@ static decltype(auto) XCHACHA20_IETF_POLY1305_METHOD = "xchacha20-ietf-poly1305"
 static decltype(auto) RANDOM_DELAY_MODE = "random";
 static decltype(auto) FIXED_DELAY_MODE = "fixed";
 
+static decltype(auto) BALANCE_RANDOM = "random";
+static decltype(auto) BALANCE_ROUND_ROBIN = "round_robin";
+static decltype(auto) BALANCE_LEAST_CONN = "least_conn";
+
 namespace IngressVOKey {
 
 static decltype(auto) type_ = "type";
@@ -48,8 +52,8 @@ static decltype(auto) password_ = "password";
 static decltype(auto) tls_ = "tls";
 static decltype(auto) certFile_ = "cert_file";
 static decltype(auto) keyFile_ = "key_file";
-static decltype(auto) dstHost_ = "dst_host";
-static decltype(auto) dstPort_ = "dst_port";
+static decltype(auto) destinations_ = "destinations";
+static decltype(auto) balance_ = "balance";
 
 } // namespace IngressVOKey
 
@@ -105,6 +109,7 @@ static auto const CM_INVALID = "Invalid crypto method string"sv;
 static auto const PT_INVALID = "Port number must be in range (0, 65536)"sv;
 static auto const DM_INVALID = "Invalid delay mode type string"sv;
 static auto const DL_INVALID = "Delay time must be in range [0, 300]"sv;
+static auto const BA_INVALID = "Invalid balance string"sv;
 static auto const STR_EMPTY = "Empty string"sv;
 static auto const MISSING_TYPE_FIELD = "Missing type field"sv;
 static auto const MISSING_HOST_FIELD = "Missing host field"sv;
@@ -115,8 +120,8 @@ static auto const MISSING_PW_FIELD = "Missing password field"sv;
 static auto const MISSING_DELAY_FIELD = "Missing delay field"sv;
 static auto const MISSING_CERT_FILE_FIELD = "Missing cert_file field"sv;
 static auto const MISSING_KEY_FILE_FIELD = "Missing key_file field"sv;
-static auto const MISSING_DST_HOST_FIELD = "Missiong dst_host field"sv;
-static auto const MISSING_DST_PORT_FIELD = "Missiong dst_port field"sv;
+static auto const MISSING_DESTINATIONS_FIELD = "Missiong destinations field"sv;
+static auto const MISSING_BALANCE_FIELD = "Missiong balance field"sv;
 
 } // namespace msg
 
@@ -199,6 +204,28 @@ static pair<string, string> parseRule(json::Value const& v)
   return make_pair(parseString(array[0]), parseString(array[1]));
 }
 
+static auto parseDestinantions(json::Value const& v)
+{
+  assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
+  assertFalse(v.MemberCount() == 0, PichiError::BAD_JSON);
+
+  auto ret = vector<net::Endpoint>{};
+  transform(v.MemberBegin(), v.MemberEnd(), back_inserter(ret), [](auto&& item) {
+    return net::makeEndpoint(parseString(item.name), parsePort(item.value));
+  });
+  return ret;
+}
+
+static BalanceType parseBalanceType(json::Value const& v)
+{
+  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
+  auto str = string_view{v.GetString()};
+  if (str == BALANCE_RANDOM) return BalanceType::RANDOM;
+  if (str == BALANCE_ROUND_ROBIN) return BalanceType::ROUND_ROBIN;
+  if (str == BALANCE_LEAST_CONN) return BalanceType::LEAST_CONN;
+  fail(PichiError::BAD_JSON, msg::BA_INVALID);
+}
+
 template <typename OutputIt, typename T, typename Convert>
 void parseArray(json::Value const& root, T const& key, OutputIt out, Convert&& convert)
 {
@@ -240,6 +267,8 @@ json::Value toJson(AdapterType type, Allocator& alloc)
     return toJson(HTTP_TYPE, alloc);
   case AdapterType::SS:
     return toJson(SS_TYPE, alloc);
+  case AdapterType::TUNNEL:
+    return toJson(TUNNEL_TYPE, alloc);
   default:
     fail(PichiError::MISC);
   }
@@ -291,6 +320,20 @@ json::Value toJson(CryptoMethod method, Allocator& alloc)
   }
 }
 
+json::Value toJson(BalanceType selector, Allocator& alloc)
+{
+  switch (selector) {
+  case BalanceType::RANDOM:
+    return toJson(BALANCE_RANDOM, alloc);
+  case BalanceType::ROUND_ROBIN:
+    return toJson(BALANCE_ROUND_ROBIN, alloc);
+  case BalanceType::LEAST_CONN:
+    return toJson(BALANCE_LEAST_CONN, alloc);
+  default:
+    fail();
+  }
+}
+
 json::Value toJson(IngressVO const& ingress, Allocator& alloc)
 {
   auto ret = json::Value{};
@@ -325,11 +368,11 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
     }
     break;
   case AdapterType::TUNNEL:
-    assertTrue(ingress.dstHost_.has_value());
-    assertTrue(ingress.dstPort_.has_value());
-    assertFalse(*ingress.dstPort_ == 0_u16);
-    ret.AddMember(IngressVOKey::dstHost_, toJson(*ingress.dstHost_, alloc), alloc);
-    ret.AddMember(IngressVOKey::dstPort_, json::Value{*ingress.dstPort_}, alloc);
+    assertFalse(ingress.destinations_.empty());
+    assertTrue(ingress.balance_.has_value());
+    ret.AddMember(IngressVOKey::destinations_,
+                  toJson(cbegin(ingress.destinations_), cend(ingress.destinations_), alloc), alloc);
+    ret.AddMember(IngressVOKey::balance_, toJson(*ingress.balance_, alloc), alloc);
     break;
   default:
     fail(PichiError::MISC);
@@ -483,12 +526,12 @@ template <> IngressVO parse(json::Value const& v)
     }
     break;
   case AdapterType::TUNNEL:
-    assertTrue(v.HasMember(IngressVOKey::dstHost_), PichiError::BAD_JSON,
-               msg::MISSING_DST_HOST_FIELD);
-    assertTrue(v.HasMember(IngressVOKey::dstPort_), PichiError::BAD_JSON,
-               msg::MISSING_DST_PORT_FIELD);
-    ivo.dstHost_ = parseString(v[IngressVOKey::dstHost_]);
-    ivo.dstPort_ = parsePort(v[IngressVOKey::dstPort_]);
+    assertTrue(v.HasMember(IngressVOKey::destinations_), PichiError::BAD_JSON,
+               msg::MISSING_DESTINATIONS_FIELD);
+    assertTrue(v.HasMember(IngressVOKey::balance_), PichiError::BAD_JSON,
+               msg::MISSING_BALANCE_FIELD);
+    ivo.destinations_ = parseDestinantions(v[IngressVOKey::destinations_]);
+    ivo.balance_ = parseBalanceType(v[IngressVOKey::balance_]);
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
