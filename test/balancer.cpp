@@ -5,6 +5,7 @@
 #include <boost/test/unit_test.hpp>
 #include <cmath>
 #include <pichi/api/balancer.hpp>
+#include <pichi/common.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
