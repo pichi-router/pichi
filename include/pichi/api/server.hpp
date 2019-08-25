@@ -18,10 +18,10 @@ namespace pichi::api {
 
 class Server {
 private:
-  using Acceptor = boost::asio::basic_socket_acceptor<boost::asio::ip::tcp>;
   using ResolveResult = boost::asio::ip::tcp::resolver::results_type;
+  using IngressHolder = IngressManager::IngressHolder;
 
-  template <typename Yield> void listen(Acceptor&, std::string_view, IngressVO const&, Yield);
+  template <typename Yield> void listen(std::string_view, IngressHolder&, Yield yield);
   template <typename ExceptionPtr> void removeIngress(ExceptionPtr, std::string_view);
   EgressVO const& route(net::Endpoint const&, std::string_view ingress, AdapterType,
                         ResolveResult const&);
@@ -37,7 +37,7 @@ public:
   ~Server() = default;
 
   void listen(std::string_view, uint16_t);
-  void startIngress(Acceptor&, std::string_view, IngressVO const&);
+  void startIngress(std::string_view, IngressHolder&);
 
 private:
   boost::asio::io_context::strand strand_;

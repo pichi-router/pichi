@@ -60,11 +60,10 @@ static auto visitingSelf(tcp::resolver::results_type const& r, string_view bind,
 }
 
 Server::Server(asio::io_context& io, char const* fn)
-  : strand_{io}, router_{fn}, egresses_{}, ingresses_{io,
-                                                      [this](auto&& a, auto in, auto& vo) {
-                                                        startIngress(a, in, vo);
-                                                      }},
-    rest_{ingresses_, egresses_, router_}
+  : strand_{io}, router_{fn}, egresses_{},
+    ingresses_{io, [this](auto in, auto&& holder) { startIngress(in, holder); }}, rest_{ingresses_,
+                                                                                        egresses_,
+                                                                                        router_}
 {
 }
 
@@ -96,13 +95,14 @@ void Server::listen(string_view address, uint16_t port)
   });
 }
 
-template <typename Yield>
-void Server::listen(Acceptor& acceptor, string_view iname, IngressVO const& vo, Yield yield)
+template <typename Yield> void Server::listen(string_view iname, IngressHolder& holder, Yield yield)
 {
-  while (acceptor.is_open()) {
-    net::spawn(strand_, [s = acceptor.async_accept(yield), &vo, iname, this](auto yield) mutable {
+  while (holder.acceptor_.is_open()) {
+    net::spawn(strand_, [s = holder.acceptor_.async_accept(yield), &holder, iname,
+                         this](auto yield) mutable {
       auto& io = strand_.context();
-      auto ingress = net::makeIngress(vo, move(s));
+      auto& vo = holder.vo_;
+      auto ingress = net::makeIngress(holder, move(s));
       auto iv = array<uint8_t, 32>{};
       if (isDuplicated({iv, ingress->readIV(iv, yield)})) {
         make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_REJECTOR, io))->start();
@@ -164,14 +164,14 @@ EgressVO const& Server::route(net::Endpoint const& remote, string_view iname, Ad
   return it->second;
 }
 
-void Server::startIngress(Acceptor& acceptor, string_view iname, IngressVO const& vo)
+void Server::startIngress(string_view iname, IngressHolder& holder)
 {
   /*
    * IngressVO named `iname` has already been inserted into `ingresses_`.
    * It should be removed if exception occurs.
    */
   net::spawn(
-      strand_, [this, &acceptor, iname, &vo](auto yield) { listen(acceptor, iname, vo, yield); },
+      strand_, [this, iname, &holder](auto yield) { listen(iname, holder, yield); },
       [ this, iname ](auto eptr, auto) noexcept { removeIngress(eptr, iname); });
 }
 

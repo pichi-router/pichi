@@ -5,6 +5,7 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <pichi/api/vos.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
 #include <random>
@@ -14,6 +15,7 @@
 namespace pichi::api {
 
 template <typename ForwardIt> struct Balancer {
+  using Iterator = ForwardIt;
   virtual ForwardIt select() = 0;
   virtual void release(ForwardIt) = 0;
   virtual ~Balancer() = default;
