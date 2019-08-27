@@ -18,6 +18,7 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/spawn2.hpp>
 #include <boost/asio/write.hpp>
+#include <pichi/api/balancer.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
@@ -164,10 +165,12 @@ template <typename Socket> bool isOpen(Socket const& s)
   }
 }
 
-template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const& vo, Socket&& s)
+template <typename Socket>
+unique_ptr<Ingress> makeIngress(api::detail::IngressHolder& holder, Socket&& s)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
+  auto& vo = holder.vo_;
   switch (vo.type_) {
   case AdapterType::HTTP:
 #ifdef ENABLE_TLS
@@ -244,7 +247,8 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressVO const&
       fail(PichiError::BAD_PROTO);
     }
   case AdapterType::TUNNEL:
-    return nullptr;
+    return make_unique<TunnelIngress<api::detail::IngressHolder::Iterator, Socket>>(
+        *holder.balancer_, forward<Socket>(s));
   default:
     fail(PichiError::BAD_PROTO);
   }
@@ -360,6 +364,6 @@ template void close<>(pichi::test::Stream&, Yield);
 template bool isOpen<>(pichi::test::Stream const&);
 #endif // BUILD_TEST
 
-template unique_ptr<Ingress> makeIngress<>(api::IngressVO const&, TcpSocket&&);
+template unique_ptr<Ingress> makeIngress<>(api::detail::IngressHolder&, TcpSocket&&);
 
 } // namespace pichi::net

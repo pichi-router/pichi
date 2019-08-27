@@ -5,23 +5,48 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <functional>
 #include <map>
+#include <memory>
+#include <pichi/api/balancer.hpp>
 #include <pichi/api/iterator.hpp>
 #include <pichi/api/vos.hpp>
 #include <utility>
 
 namespace pichi::api {
 
+namespace detail {
+
+struct IngressHolder {
+  using Acceptor = boost::asio::ip::tcp::acceptor;
+  using Iterator = decltype(IngressVO::destinations_)::const_iterator;
+
+  explicit IngressHolder(boost::asio::io_context&, IngressVO&&);
+  ~IngressHolder() = default;
+
+  IngressHolder(IngressHolder const&) = delete;
+  IngressHolder(IngressHolder&&) = delete;
+  IngressHolder& operator=(IngressHolder const&) = delete;
+  IngressHolder& operator=(IngressHolder&&) = delete;
+
+  void reset(boost::asio::io_context&, IngressVO&&);
+
+  IngressVO vo_;
+  std::unique_ptr<Balancer<Iterator>> balancer_;
+  Acceptor acceptor_;
+};
+
+} // namespace detail
+
 class IngressManager {
 public:
   using VO = IngressVO;
+  using IngressHolder = detail::IngressHolder;
 
 private:
-  using Acceptor = boost::asio::ip::tcp::acceptor;
-  using Container = std::map<std::string, std::pair<IngressVO, Acceptor>, std::less<>>;
+  using Container = std::map<std::string, IngressHolder, std::less<>>;
   using DelegateIterator = typename Container::const_iterator;
   using ValueType = std::pair<std::string_view, IngressVO const&>;
   using ConstIterator = Iterator<DelegateIterator, ValueType>;
-  using Handler = std::function<void(Acceptor&, std::string_view, IngressVO const&)>;
+  using Handler = std::function<void(std::string_view, IngressHolder&)>;
 
   static ValueType generatePair(DelegateIterator);
 
