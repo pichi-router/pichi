@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  version: "1.2"
+  version: "1.3"
   title: 'Pichi API'
   description: 'RESTful API for pichi server'
 tags:
@@ -399,10 +399,9 @@ components:
           items:
             type: array
             minLength: 2
-            maxLength: 2
             items:
               type: string
-            example: ['rule_0', 'egress_0']
+            example: ['rule_0', 'rule_1', 'egress_0']
     Host:
       description: "IP(v4/v6) address or domain name"
       type: string
@@ -432,7 +431,46 @@ components:
       required:
         - host
         - port
-    TlsIngress:
+    Credentials:
+      description: "Username and password pairs"
+      type: object
+      additionalProperties:
+        type: string
+        description: "Password"
+    Credential:
+      description: "Username and password pair"
+      type: array
+      minLength: 2
+      maxLength: 2
+      items:
+        type: string
+        example: "username / password"
+    TunnelIngress:
+      description: "Tunnel ingress"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - tunnel
+        destinations:
+          description: "Destination endpoints"
+          example: {"dst_0":80,"dst_1":80}
+          type: object
+          additionalProperties:
+            type: integer
+          minProperties: 1
+        balance:
+          type: string
+          enum:
+            - random
+            - round_robin
+            - least_conn
+      required:
+        - type
+        - destinations
+        - balance
+    HttpOrSocks5Ingress:
       description: "HTTP(s) or Socks5(s) ingress"
       type: object
       properties:
@@ -441,6 +479,8 @@ components:
           enum:
             - http
             - socks5
+        credentials:
+          $ref: "#/components/schemas/Credentials"
         tls:
           type: boolean
           description: "Whether TLS is enabled"
@@ -457,7 +497,7 @@ components:
       required:
         - type
         - tls
-    TlsEgress:
+    HttpOrSocks5Egress:
       description: "HTTP(s) or Socks5(s) egress"
       type: object
       properties:
@@ -466,6 +506,8 @@ components:
           enum:
             - http
             - socks5
+        credential:
+          $ref: "#/components/schemas/Credential"
         tls:
           type: boolean
           description: "Whether TLS is enabled"
@@ -486,7 +528,7 @@ components:
     SSAdapter:
       description: "Shadowsocks adapter"
       type: object
-      properties:
+      properties: 
         type:
           type: string
           enum:
@@ -540,7 +582,8 @@ components:
       allOf:
         - $ref: "#/components/schemas/LocalEndpoint"
         - oneOf:
-          - $ref: "#/components/schemas/TlsIngress"
+          - $ref: "#/components/schemas/TunnelIngress"
+          - $ref: "#/components/schemas/HttpOrSocks5Ingress"
           - $ref: "#/components/schemas/SSAdapter"
     Egress:
       oneOf:
@@ -549,5 +592,5 @@ components:
         - allOf:
           - $ref: "#/components/schemas/RemoteEndpoint"
           - oneOf:
-            - $ref: "#/components/schemas/TlsEgress"
+            - $ref: "#/components/schemas/HttpOrSocks5Egress"
             - $ref: "#/components/schemas/SSAdapter"
