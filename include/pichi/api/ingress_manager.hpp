@@ -1,10 +1,10 @@
 #ifndef PICHI_API_INGRESS_MANAGER_HPP
 #define PICHI_API_INGRESS_MANAGER_HPP
 
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <functional>
 #include <map>
+#include <pichi/api/balancer.hpp>
+#include <pichi/api/ingress_holder.hpp>
 #include <pichi/api/iterator.hpp>
 #include <pichi/api/vos.hpp>
 #include <utility>
@@ -16,12 +16,11 @@ public:
   using VO = IngressVO;
 
 private:
-  using Acceptor = boost::asio::ip::tcp::acceptor;
-  using Container = std::map<std::string, std::pair<IngressVO, Acceptor>, std::less<>>;
+  using Container = std::map<std::string, IngressHolder, std::less<>>;
   using DelegateIterator = typename Container::const_iterator;
   using ValueType = std::pair<std::string_view, IngressVO const&>;
   using ConstIterator = Iterator<DelegateIterator, ValueType>;
-  using Handler = std::function<void(Acceptor&, std::string_view, IngressVO const&)>;
+  using Handler = std::function<void(std::string_view, IngressHolder&)>;
 
   static ValueType generatePair(DelegateIterator);
 

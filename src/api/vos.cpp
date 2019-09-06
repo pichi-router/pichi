@@ -1,8 +1,7 @@
-#include <functional>
-#include <limits>
 #include <numeric>
 #include <pichi/api/vos.hpp>
 #include <pichi/common.hpp>
+#include <pichi/net/helpers.hpp>
 
 using namespace std;
 namespace json = rapidjson;
@@ -15,6 +14,7 @@ static decltype(auto) REJECT_TYPE = "reject";
 static decltype(auto) SOCKS5_TYPE = "socks5";
 static decltype(auto) HTTP_TYPE = "http";
 static decltype(auto) SS_TYPE = "ss";
+static decltype(auto) TUNNEL_TYPE = "tunnel";
 
 static decltype(auto) RC4_MD5_METHOD = "rc4-md5";
 static decltype(auto) BF_CFB_METHOD = "bf-cfb";
@@ -39,6 +39,10 @@ static decltype(auto) XCHACHA20_IETF_POLY1305_METHOD = "xchacha20-ietf-poly1305"
 static decltype(auto) RANDOM_DELAY_MODE = "random";
 static decltype(auto) FIXED_DELAY_MODE = "fixed";
 
+static decltype(auto) BALANCE_RANDOM = "random";
+static decltype(auto) BALANCE_ROUND_ROBIN = "round_robin";
+static decltype(auto) BALANCE_LEAST_CONN = "least_conn";
+
 namespace IngressVOKey {
 
 static decltype(auto) type_ = "type";
@@ -50,6 +54,8 @@ static decltype(auto) credentials_ = "credentials";
 static decltype(auto) tls_ = "tls";
 static decltype(auto) certFile_ = "cert_file";
 static decltype(auto) keyFile_ = "key_file";
+static decltype(auto) destinations_ = "destinations";
+static decltype(auto) balance_ = "balance";
 
 } // namespace IngressVOKey
 
@@ -107,6 +113,7 @@ static auto const CM_INVALID = "Invalid crypto method string"sv;
 static auto const PT_INVALID = "Port number must be in range (0, 65536)"sv;
 static auto const DM_INVALID = "Invalid delay mode type string"sv;
 static auto const DL_INVALID = "Delay time must be in range [0, 300]"sv;
+static auto const BA_INVALID = "Invalid balance string"sv;
 static auto const STR_EMPTY = "Empty string"sv;
 static auto const CRE_EMPTY = "Empty credentials"sv;
 static auto const MISSING_TYPE_FIELD = "Missing type field"sv;
@@ -119,6 +126,8 @@ static auto const MISSING_DELAY_FIELD = "Missing delay field"sv;
 static auto const MISSING_CERT_FILE_FIELD = "Missing cert_file field"sv;
 static auto const MISSING_KEY_FILE_FIELD = "Missing key_file field"sv;
 static auto const TOO_LONG_NAME_PASSWORD = "Name or password is too long"sv;
+static auto const MISSING_DESTINATIONS_FIELD = "Missiong destinations field"sv;
+static auto const MISSING_BALANCE_FIELD = "Missiong balance field"sv;
 
 } // namespace msg
 
@@ -140,6 +149,7 @@ static AdapterType parseAdapterType(json::Value const& v)
   if (str == SOCKS5_TYPE) return AdapterType::SOCKS5;
   if (str == HTTP_TYPE) return AdapterType::HTTP;
   if (str == SS_TYPE) return AdapterType::SS;
+  if (str == TUNNEL_TYPE) return AdapterType::TUNNEL;
   fail(PichiError::BAD_JSON, msg::AT_INVALID);
 }
 
@@ -208,6 +218,28 @@ static pair<string, string> parsePair(json::Value const& v,
   return make_pair(parse(array[0]), parse(array[1]));
 }
 
+static auto parseDestinantions(json::Value const& v)
+{
+  assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
+  assertFalse(v.MemberCount() == 0, PichiError::BAD_JSON);
+
+  auto ret = vector<net::Endpoint>{};
+  transform(v.MemberBegin(), v.MemberEnd(), back_inserter(ret), [](auto&& item) {
+    return net::makeEndpoint(parseString(item.name), parsePort(item.value));
+  });
+  return ret;
+}
+
+static BalanceType parseBalanceType(json::Value const& v)
+{
+  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
+  auto str = string_view{v.GetString()};
+  if (str == BALANCE_RANDOM) return BalanceType::RANDOM;
+  if (str == BALANCE_ROUND_ROBIN) return BalanceType::ROUND_ROBIN;
+  if (str == BALANCE_LEAST_CONN) return BalanceType::LEAST_CONN;
+  fail(PichiError::BAD_JSON, msg::BA_INVALID);
+}
+
 template <typename OutputIt, typename T, typename Convert>
 void parseArray(json::Value const& root, T const& key, OutputIt out, Convert&& convert)
 {
@@ -249,6 +281,8 @@ json::Value toJson(AdapterType type, Allocator& alloc)
     return toJson(HTTP_TYPE, alloc);
   case AdapterType::SS:
     return toJson(SS_TYPE, alloc);
+  case AdapterType::TUNNEL:
+    return toJson(TUNNEL_TYPE, alloc);
   default:
     fail(PichiError::MISC);
   }
@@ -300,12 +334,26 @@ json::Value toJson(CryptoMethod method, Allocator& alloc)
   }
 }
 
+json::Value toJson(BalanceType selector, Allocator& alloc)
+{
+  switch (selector) {
+  case BalanceType::RANDOM:
+    return toJson(BALANCE_RANDOM, alloc);
+  case BalanceType::ROUND_ROBIN:
+    return toJson(BALANCE_ROUND_ROBIN, alloc);
+  case BalanceType::LEAST_CONN:
+    return toJson(BALANCE_LEAST_CONN, alloc);
+  default:
+    fail();
+  }
+}
+
 json::Value toJson(IngressVO const& ingress, Allocator& alloc)
 {
   auto ret = json::Value{};
   ret.SetObject();
   if (ingress.type_ == AdapterType::HTTP || ingress.type_ == AdapterType::SOCKS5 ||
-      ingress.type_ == AdapterType::SS) {
+      ingress.type_ == AdapterType::SS || ingress.type_ == AdapterType::TUNNEL) {
     assertFalse(ingress.bind_.empty(), PichiError::MISC);
     assertFalse(ingress.port_ == 0_u16, PichiError::MISC);
     ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
@@ -345,6 +393,13 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
                                }),
                     alloc);
     }
+    break;
+  case AdapterType::TUNNEL:
+    assertFalse(ingress.destinations_.empty());
+    assertTrue(ingress.balance_.has_value());
+    ret.AddMember(IngressVOKey::destinations_,
+                  toJson(cbegin(ingress.destinations_), cend(ingress.destinations_), alloc), alloc);
+    ret.AddMember(IngressVOKey::balance_, toJson(*ingress.balance_, alloc), alloc);
     break;
   default:
     fail(PichiError::MISC);
@@ -472,7 +527,7 @@ template <> IngressVO parse(json::Value const& v)
 
   ivo.type_ = parseAdapterType(v[IngressVOKey::type_]);
   if (ivo.type_ == AdapterType::HTTP || ivo.type_ == AdapterType::SOCKS5 ||
-      ivo.type_ == AdapterType::SS) {
+      ivo.type_ == AdapterType::SS || ivo.type_ == AdapterType::TUNNEL) {
     assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
     assertTrue(v.HasMember(IngressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
     ivo.bind_ = parseString(v[IngressVOKey::bind_]);
@@ -509,6 +564,14 @@ template <> IngressVO parse(json::Value const& v)
                        return move(credentials);
                      });
     }
+    break;
+  case AdapterType::TUNNEL:
+    assertTrue(v.HasMember(IngressVOKey::destinations_), PichiError::BAD_JSON,
+               msg::MISSING_DESTINATIONS_FIELD);
+    assertTrue(v.HasMember(IngressVOKey::balance_), PichiError::BAD_JSON,
+               msg::MISSING_BALANCE_FIELD);
+    ivo.destinations_ = parseDestinantions(v[IngressVOKey::destinations_]);
+    ivo.balance_ = parseBalanceType(v[IngressVOKey::balance_]);
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
