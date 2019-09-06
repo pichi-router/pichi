@@ -47,12 +47,18 @@ Pichi is an alternative choice for this situation. It separates routing rules fr
 
 ![Use Case 0](images/use_case_0.png)
 
-#### Unified proxy configuration
+#### Unify proxy configuration
 
 If the configuration for remote proxies is volatile, such as changing IP/Port periodically, it's a nightmare that lots of clients are using it.
 Pichi can centralize the varies, rather than editing the configuration client by client.
 
 ![Use Case 1](images/use_case_1.png)
+
+#### Trasparent proxy for DNS
+
+Transparent proxy is very useful if you want to use some DNS servers which might be already poisoned or blocked. Pichi provides *tunnel* ingress to act as a transparent proxy. Furthermore, the outgoing egress for each destination will be chosen by following the user-defined rules.
+
+![Use Case 2](images/use_case_2.png)
 
 ### Supported protocols
 
@@ -62,6 +68,7 @@ Pichi can centralize the varies, rather than editing the configuration client by
 * HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
 * SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
 * Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
+* Tunnel: TCP tunnel to multiple destinations to be chosen by pre-defined load balance algorithms
 
 #### Egress protocols
 
@@ -151,7 +158,7 @@ Furthermore, Pichi server reloads JSON configuration on `SIGHUP` received if OS 
 
 ### API Specification
 
-[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.2)
+[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.3)
 
 ### Examples
 
@@ -225,6 +232,17 @@ $ curl -i -X PUT -d '{"type":"socks5","bind":"::1","port":1080, \
       "key_file": "/etc/letsencrypt/live/example.com/privkey.pem", \
       "cert_file": "/etc/letsencrypt/live/example.com/fullchain.pem" \
     }' http://pichi-router:port/ingresses/socks5s
+HTTP/1.1 204 No Content
+
+```
+
+#### DNS proxy
+
+```
+$ curl -i -X PUT -d '{"type":"tunnel","bind":"::1","port":53, \
+      "destinations":{"1.1.1.1":53,"1.0.0.1":53}, \
+      "balance":"random" \
+    }' http://pichi-router:port/ingresses/cloudflare
 HTTP/1.1 204 No Content
 
 ```
