@@ -16,10 +16,11 @@
 
 namespace pichi::api {
 
+struct IngressHolder;
+
 class Server {
 private:
   using ResolveResult = boost::asio::ip::tcp::resolver::results_type;
-  using IngressHolder = IngressManager::IngressHolder;
 
   template <typename Yield> void listen(std::string_view, IngressHolder&, Yield yield);
   template <typename ExceptionPtr> void removeIngress(ExceptionPtr, std::string_view);

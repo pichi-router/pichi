@@ -2,6 +2,7 @@
 #include <iterator>
 #include <map>
 #include <pichi/api/balancer.hpp>
+#include <pichi/api/ingress_holder.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
 #include <pichi/config.hpp>
@@ -212,9 +213,8 @@ unique_ptr<Balancer<ForwardIt>> makeBalancer(BalanceType type, ForwardIt first, 
   }
 }
 
-using IteratorForIngress = decltype(IngressVO::destinations_)::const_iterator;
-template unique_ptr<Balancer<IteratorForIngress>> makeBalancer<>(BalanceType, IteratorForIngress,
-                                                                 IteratorForIngress);
+template unique_ptr<Balancer<IngressIterator>> makeBalancer<>(BalanceType, IngressIterator,
+                                                              IngressIterator);
 
 #ifdef BUILD_TEST
 template unique_ptr<Balancer<int*>> makeBalancer<>(BalanceType, int*, int*);
