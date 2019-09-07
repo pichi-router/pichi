@@ -90,8 +90,8 @@ Transparent proxy is very useful if you want to use some DNS servers which might
 Please use [Docker](https://www.docker.com):
 
 ```
-$ docker pull pichi/pichi:1.2.0
-$ docker run --rm pichi/pichi:1.2.0 pichi <options>
+$ docker pull pichi/pichi:1.3.0-rc
+$ docker run --rm pichi/pichi:1.3.0-rc pichi <options>
 ```
 
 #### macOS
