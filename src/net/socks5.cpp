@@ -22,13 +22,6 @@ namespace pichi::net {
 
 template <typename T> using HeaderBuffer = array<T, 512>;
 
-template <typename InputIt> static uint8_t findMethod(bool needAuth, InputIt first, InputIt last)
-{
-  auto code = needAuth ? 0x02_u8 : 0x00_u8;
-  auto foundMethod = find(first, last, code) != last;
-  return foundMethod ? code : 0xff_u8;
-}
-
 template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
 {
   auto buf = HeaderBuffer<uint8_t>{};
@@ -54,10 +47,9 @@ template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
   read(stream_, {buf, len}, yield);
   auto pass = string{cbegin(buf), cbegin(buf) + len};
 
-  // TODO reply 'failure' code to client if it's unauthorized.
   auto it = credentials_.find(name);
-  assertFalse(it == cend(credentials_));
-  assertTrue(it->second == pass);
+  assertFalse(it == cend(credentials_), PichiError::UNAUTHENTICATED);
+  assertTrue(it->second == pass, PichiError::UNAUTHENTICATED);
 
   /*
    * Response:
@@ -110,8 +102,11 @@ template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yiel
   read(stream_, {buf, len}, yield);
 
   auto needAuth = !credentials_.empty();
-  buf[1] = findMethod(needAuth, cbegin(buf), cbegin(buf) + len);
-  buf[0] = 0x05;
+  auto m = needAuth ? 0x02_u8 : 0x00_u8;
+  assertFalse(find(cbegin(buf), cbegin(buf) + len, m) == cbegin(buf) + len,
+              PichiError::BAD_AUTH_METHOD);
+  buf[0] = 0x05_u8;
+  buf[1] = m;
   write(stream_, {buf, 2}, yield);
 
   if (needAuth) authenticate(yield);
@@ -130,12 +125,27 @@ template <typename Stream> void Socks5Ingress<Stream>::confirm(Yield yield)
   write(stream_, buf, yield);
 }
 
-template <typename Stream> void Socks5Ingress<Stream>::disconnect(Yield yield)
+template <typename Stream> void Socks5Ingress<Stream>::disconnect(PichiError e, Yield yield)
 {
-  // REP = 0x04(Host unreachable) according to RFC1928
-  static uint8_t const buf[] = {0x05, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  static auto const HANDSHAKE_FAILURE = array{0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8,
+                                              0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
+  static auto const AUTH_FAILURE = array{0x01_u8, 0xff_u8};
+  static auto const METHOD_FAILURE = array{0x05_u8, 0xff_u8};
+
   auto ec = sys::error_code{};
-  write(stream_, buf, yield[ec]);
+  switch (e) {
+  case PichiError::CONN_FAILURE:
+    write(stream_, HANDSHAKE_FAILURE, yield[ec]);
+    break;
+  case PichiError::BAD_AUTH_METHOD:
+    write(stream_, METHOD_FAILURE, yield[ec]);
+    break;
+  case PichiError::UNAUTHENTICATED:
+    write(stream_, AUTH_FAILURE, yield[ec]);
+    break;
+  default:
+    break;
+  }
 }
 
 template class Socks5Ingress<tcp::socket>;

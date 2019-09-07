@@ -17,6 +17,8 @@ enum class PichiError {
   RES_IN_USE,
   RES_LOCKED,
   CONN_FAILURE,
+  BAD_AUTH_METHOD,
+  UNAUTHENTICATED,
   MISC
 };
 

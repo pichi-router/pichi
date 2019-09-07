@@ -60,7 +60,7 @@ template <typename Iterator, typename Socket> void TunnelIngress<Iterator, Socke
 }
 
 template <typename Iterator, typename Socket>
-void TunnelIngress<Iterator, Socket>::disconnect(Yield)
+void TunnelIngress<Iterator, Socket>::disconnect(PichiError, Yield)
 {
 }
 
