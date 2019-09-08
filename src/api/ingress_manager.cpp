@@ -17,7 +17,7 @@ IngressManager::IngressManager(boost::asio::io_context& io, Handler onChange)
 
 IngressManager::ValueType IngressManager::generatePair(DelegateIterator it)
 {
-  return make_pair(cref(it->first), cref(it->second.first));
+  return make_pair(cref(it->first), cref(it->second.vo_));
 }
 
 IngressManager::ConstIterator IngressManager::begin() const noexcept
@@ -40,17 +40,15 @@ void IngressManager::update(string const& name, IngressVO ivo)
 
   auto it = c_.find(name);
   if (it == std::end(c_)) {
-    auto p = c_.try_emplace(
-        name, make_pair(move(ivo), Acceptor{io_, {ip::make_address(ivo.bind_), ivo.port_}}));
-    assertTrue(p.second, PichiError::MISC);
-    it = p.first;
+    auto [nit, inserted] = c_.try_emplace(name, io_, move(ivo));
+    assertTrue(inserted, PichiError::MISC);
+    it = nit;
   }
   else {
-    it->second = make_pair(move(ivo), Acceptor{io_, {ip::make_address(ivo.bind_), ivo.port_}});
+    it->second.reset(io_, move(ivo));
   }
-  auto&& [iname, v] = *it;
-  auto&& [vo, acceptor] = v;
-  invoke(onChange_, acceptor, iname, vo);
+  auto&& [iname, holder] = *it;
+  invoke(onChange_, iname, holder);
 }
 
 void IngressManager::erase(string_view name)

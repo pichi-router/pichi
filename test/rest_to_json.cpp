@@ -59,6 +59,18 @@ BOOST_AUTO_TEST_CASE(toJson_CryptoMethod)
   });
 }
 
+BOOST_AUTO_TEST_CASE(toJson_Balance)
+{
+  for (auto p : {make_pair(BalanceType::RANDOM, "random"),
+                 make_pair(BalanceType::ROUND_ROBIN, "round_robin"),
+                 make_pair(BalanceType::LEAST_CONN, "least_conn")}) {
+    auto&& [v, expect] = p;
+    auto fact = toJson(v, alloc);
+    BOOST_CHECK(fact.IsString());
+    BOOST_CHECK_EQUAL(expect, fact.GetString());
+  }
+}
+
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Invalid_Type)
 {
   for (auto t : {AdapterType::DIRECT, AdapterType::REJECT})
@@ -68,8 +80,9 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Invalid_Type)
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Default_Ones)
 {
-  for (auto t : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS})
-    BOOST_CHECK(defaultEgressJson(t) == toJson(defaultEgressVO(t), alloc));
+  for (auto t : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL}) {
+    BOOST_CHECK(defaultIngressJson(t) == toJson(defaultIngressVO(t), alloc));
+  }
 }
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_Mandatory_Fields)
@@ -220,6 +233,28 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Additional_Fields)
   vo.certFile_ = ph;
   vo.keyFile_ = ph;
   BOOST_CHECK(defaultIngressJson(AdapterType::SS) == toJson(vo, alloc));
+}
+
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_TUNNEL_Mandatory_Fields)
+{
+  auto origin = defaultIngressVO(AdapterType::TUNNEL);
+  toJson(origin, alloc);
+
+  auto noBind = origin;
+  noBind.bind_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noPort = origin;
+  noPort.port_ = 0;
+  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noDest = origin;
+  noDest.destinations_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(noDest, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noBalance = origin;
+  noBalance.balance_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noBalance, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Empty_Pack)

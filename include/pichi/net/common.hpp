@@ -6,7 +6,7 @@
 namespace pichi {
 namespace net {
 
-enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS };
+enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS, TUNNEL };
 
 struct Endpoint {
   enum class Type { DOMAIN_NAME, IPV4, IPV6 } type_;
