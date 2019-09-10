@@ -71,8 +71,7 @@ template <typename Socket, typename Yield> void write(Socket&, ConstBuffer<uint8
 template <typename Socket, typename Yield> void close(Socket&, Yield);
 template <typename Socket> bool isOpen(Socket const&);
 
-template <typename Socket>
-std::unique_ptr<Ingress> makeIngress(api::detail::IngressHolder&, Socket&&);
+template <typename Socket> std::unique_ptr<Ingress> makeIngress(api::IngressHolder&, Socket&&);
 std::unique_ptr<Egress> makeEgress(api::EgressVO const&, boost::asio::io_context&);
 
 } // namespace pichi::net

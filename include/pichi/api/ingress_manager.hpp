@@ -1,45 +1,19 @@
 #ifndef PICHI_API_INGRESS_MANAGER_HPP
 #define PICHI_API_INGRESS_MANAGER_HPP
 
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <functional>
 #include <map>
-#include <memory>
 #include <pichi/api/balancer.hpp>
+#include <pichi/api/ingress_holder.hpp>
 #include <pichi/api/iterator.hpp>
 #include <pichi/api/vos.hpp>
 #include <utility>
 
 namespace pichi::api {
 
-namespace detail {
-
-struct IngressHolder {
-  using Acceptor = boost::asio::ip::tcp::acceptor;
-  using Iterator = decltype(IngressVO::destinations_)::const_iterator;
-
-  explicit IngressHolder(boost::asio::io_context&, IngressVO&&);
-  ~IngressHolder() = default;
-
-  IngressHolder(IngressHolder const&) = delete;
-  IngressHolder(IngressHolder&&) = delete;
-  IngressHolder& operator=(IngressHolder const&) = delete;
-  IngressHolder& operator=(IngressHolder&&) = delete;
-
-  void reset(boost::asio::io_context&, IngressVO&&);
-
-  IngressVO vo_;
-  std::unique_ptr<Balancer<Iterator>> balancer_;
-  Acceptor acceptor_;
-};
-
-} // namespace detail
-
 class IngressManager {
 public:
   using VO = IngressVO;
-  using IngressHolder = detail::IngressHolder;
 
 private:
   using Container = std::map<std::string, IngressHolder, std::less<>>;

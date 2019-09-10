@@ -165,8 +165,7 @@ template <typename Socket> bool isOpen(Socket const& s)
   }
 }
 
-template <typename Socket>
-unique_ptr<Ingress> makeIngress(api::detail::IngressHolder& holder, Socket&& s)
+template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, Socket&& s)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
@@ -247,8 +246,8 @@ unique_ptr<Ingress> makeIngress(api::detail::IngressHolder& holder, Socket&& s)
       fail(PichiError::BAD_PROTO);
     }
   case AdapterType::TUNNEL:
-    return make_unique<TunnelIngress<api::detail::IngressHolder::Iterator, Socket>>(
-        *holder.balancer_, forward<Socket>(s));
+    return make_unique<TunnelIngress<api::IngressIterator, Socket>>(*holder.balancer_,
+                                                                    forward<Socket>(s));
   default:
     fail(PichiError::BAD_PROTO);
   }
@@ -364,6 +363,6 @@ template void close<>(pichi::test::Stream&, Yield);
 template bool isOpen<>(pichi::test::Stream const&);
 #endif // BUILD_TEST
 
-template unique_ptr<Ingress> makeIngress<>(api::detail::IngressHolder&, TcpSocket&&);
+template unique_ptr<Ingress> makeIngress<>(api::IngressHolder&, TcpSocket&&);
 
 } // namespace pichi::net
