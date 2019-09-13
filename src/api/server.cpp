@@ -98,31 +98,46 @@ void Server::listen(string_view address, uint16_t port)
 template <typename Yield> void Server::listen(string_view iname, IngressHolder& holder, Yield yield)
 {
   while (holder.acceptor_.is_open()) {
-    net::spawn(strand_, [s = holder.acceptor_.async_accept(yield), &holder, iname,
-                         this](auto yield) mutable {
-      auto& io = strand_.context();
-      auto& vo = holder.vo_;
-      auto ingress = net::makeIngress(holder, move(s));
-      auto iv = array<uint8_t, 32>{};
-      if (isDuplicated({iv, ingress->readIV(iv, yield)})) {
-        make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_REJECTOR, io))->start();
-      }
-      else {
-        auto remote = ingress->readRemote(yield);
+    auto ingress = net::makeIngress(holder, holder.acceptor_.async_accept(yield));
+    auto p = ingress.get();
+    // FIXME Not copying for ingress because net::spawn ensures that
+    //   Function and ExceptionHandler share the same scope.
+    net::spawn(
+        strand_,
+        [ingress = move(ingress), &holder, iname, this](auto yield) mutable {
+          auto& io = strand_.context();
+          auto& vo = holder.vo_;
+          auto iv = array<uint8_t, 32>{};
+          if (isDuplicated({iv, ingress->readIV(iv, yield)})) {
+            make_shared<Session>(io, move(ingress), net::makeEgress(RANDOM_REJECTOR, io))->start();
+          }
+          else {
+            auto remote = ingress->readRemote(yield);
 
-        // Refuse connection to the server itself via ingresses.
-        // TODO it might be a rule rather than hardcode.
-        auto r = resolve(remote, io, yield);
-        auto&& evo =
-            visitingSelf(r, bind_, port_) ? IMMEDIATE_REJECTOR : route(remote, iname, vo.type_, r);
+            // Refuse connection to the server itself via ingresses.
+            // TODO it might be a rule rather than hardcode.
+            auto r = resolve(remote, io, yield);
+            auto&& evo = visitingSelf(r, bind_, port_) ? IMMEDIATE_REJECTOR :
+                                                         route(remote, iname, vo.type_, r);
 
-        auto session = make_shared<Session>(io, move(ingress), net::makeEgress(evo, io));
-        if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
-          session->start(remote);
-        else
-          session->start(remote, net::makeEndpoint(*evo.host_, *evo.port_));
-      }
-    });
+            auto session = make_shared<Session>(io, move(ingress), net::makeEgress(evo, io));
+            if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
+              session->start(remote);
+            else
+              session->start(remote, net::makeEndpoint(*evo.host_, *evo.port_));
+          }
+        },
+        [ingress = p](auto eptr, auto yield) noexcept {
+          try {
+            if (eptr) rethrow_exception(eptr);
+          }
+          catch (Exception const& e) {
+            ingress->disconnect(e.error(), yield);
+          }
+          catch (...) {
+            ingress->disconnect(PichiError::MISC, yield);
+          }
+        });
   }
 }
 

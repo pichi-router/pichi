@@ -9,7 +9,7 @@ namespace pichi::crypto {
 
 static auto const OTECTS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"sv;
 
-static char otect2offset(char otect)
+static char otect2offset(char otect, PichiError e)
 {
   if (otect >= 'A' && otect <= 'Z') {
     return otect - 'A';
@@ -27,7 +27,7 @@ static char otect2offset(char otect)
     return 63;
   }
   else
-    fail();
+    fail(e);
 }
 
 string base64Encode(string_view text)
@@ -66,21 +66,21 @@ string base64Encode(string_view text)
   return base64;
 }
 
-string base64Decode(string_view base64)
+string base64Decode(string_view base64, PichiError e)
 {
   if (base64.empty()) return {};
-  assertTrue(base64.size() % 4 == 0);
+  assertTrue(base64.size() % 4 == 0, e);
   auto padding = base64.find_last_not_of('=');
   padding = padding == string_view::npos ? 0_sz : base64.size() - padding - 1_sz;
-  assertTrue(padding < 3);
+  assertTrue(padding < 3, e);
 
   auto text = string(base64.size() / 4 * 3 - padding, '\0');
   auto i = 0;
   while (i + 3_sz < text.size()) {
     auto j = i / 3 * 4;
-    text[i] = (otect2offset(base64[j]) << 2) + (otect2offset(base64[j + 1]) >> 4);
-    text[i + 1] = (otect2offset(base64[j + 1]) << 4) + (otect2offset(base64[j + 2]) >> 2);
-    text[i + 2] = (otect2offset(base64[j + 2]) << 6) + otect2offset(base64[j + 3]);
+    text[i] = (otect2offset(base64[j], e) << 2) + (otect2offset(base64[j + 1], e) >> 4);
+    text[i + 1] = (otect2offset(base64[j + 1], e) << 4) + (otect2offset(base64[j + 2], e) >> 2);
+    text[i + 2] = (otect2offset(base64[j + 2], e) << 6) + otect2offset(base64[j + 3], e);
     i += 3;
   }
   auto j = i / 3 * 4;
@@ -92,13 +92,13 @@ string base64Decode(string_view base64)
 
   switch (padding) {
   case 0:
-    text[i + 2] = (otect2offset(base64[j + 2]) << 6) + otect2offset(base64[j + 3]);
+    text[i + 2] = (otect2offset(base64[j + 2], e) << 6) + otect2offset(base64[j + 3], e);
     // Don't break here
   case 1:
-    text[i + 1] = (otect2offset(base64[j + 1]) << 4) + (otect2offset(base64[j + 2]) >> 2);
+    text[i + 1] = (otect2offset(base64[j + 1], e) << 4) + (otect2offset(base64[j + 2], e) >> 2);
     // Don't break here
   default:
-    text[i] = (otect2offset(base64[j]) << 2) + (otect2offset(base64[j + 1]) >> 4);
+    text[i] = (otect2offset(base64[j], e) << 2) + (otect2offset(base64[j + 1], e) >> 4);
     break;
   }
 

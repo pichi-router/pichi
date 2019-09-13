@@ -102,7 +102,7 @@ template <CryptoMethod method, typename Stream> void SSAeadAdapter<method, Strea
 }
 
 template <CryptoMethod method, typename Stream>
-void SSAeadAdapter<method, Stream>::disconnect(Yield)
+void SSAeadAdapter<method, Stream>::disconnect(PichiError, Yield)
 {
 }
 

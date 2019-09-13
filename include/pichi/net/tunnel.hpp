@@ -34,7 +34,7 @@ public:
   bool writable() const override;
   Endpoint readRemote(Yield) override;
   void confirm(Yield) override;
-  void disconnect(Yield) override;
+  void disconnect(PichiError, Yield) override;
 
 private:
   Balancer& balancer_;

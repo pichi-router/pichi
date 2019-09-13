@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(disconnect, Ingress, Adapters)
   auto socket = Socket{};
   auto ingress = Ingress{psk, socket, true};
 
-  ingress.disconnect(yield);
+  ingress.disconnect(PichiError::MISC, yield);
   BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 

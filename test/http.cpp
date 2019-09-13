@@ -143,22 +143,18 @@ BOOST_AUTO_TEST_CASE(readRemote_Tunnel_Authentication_Without_Header)
 
   socket.fill({buf, serializeToBuffer(req, buf)});
   BOOST_CHECK_EXCEPTION(ingress.readRemote(yield), Exception,
-                        verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EQUAL(0_sz, socket.available());
+                        verifyException<PichiError::BAD_AUTH_METHOD>);
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Authentication_Invalid_Headers)
+BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Header)
 {
   for (auto&& h : {
            ""s,                                           // Empty header
            "Token XXXXX"s,                                // Not basic
            "Basic "s,                                     // Empty Credential
-           "Basic "s + "not invalid BASE64 code",         // Bad BASE64
-           "Basic "s + crypto::base64Encode(":bar"sv),    // Empty username
-           "Basic "s + crypto::base64Encode("foo:"sv),    // Empty password
-           "Basic "s + crypto::base64Encode(":"sv),       // Empty u&p
+           "Basic invalid BASE64 code"s,                  // Bad BASE64 sequence
+           "Basic invalidBASE64code"s,                    // Bad BASE64
            "Basic "s + crypto::base64Encode("nocolon"sv), // No colon
-           "Basic "s + crypto::base64Encode("f:b"sv),     // Invalid u&p
        }) {
     for (auto&& generator :
          {function<http::request<http::empty_body>()>{genTunnelReq},
@@ -173,8 +169,33 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Invalid_Headers)
       socket.fill({buf, serializeToBuffer(req, buf)});
 
       BOOST_CHECK_EXCEPTION(ingress.readRemote(yield), Exception,
-                            verifyException<PichiError::MISC>);
-      BOOST_CHECK_EQUAL(0_sz, socket.available());
+                            verifyException<PichiError::BAD_AUTH_METHOD>);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Credential)
+{
+  for (auto&& h : {
+           "Basic "s + crypto::base64Encode(":bar"sv), // Empty username
+           "Basic "s + crypto::base64Encode("foo:"sv), // Empty password
+           "Basic "s + crypto::base64Encode(":"sv),    // Empty u&p
+           "Basic "s + crypto::base64Encode("f:b"sv),  // Invalid u&p
+       }) {
+    for (auto&& generator :
+         {function<http::request<http::empty_body>()>{genTunnelReq},
+          function<http::request<http::empty_body>()>{[]() { return genRelayReq("/"s); }}}) {
+      auto req = generator();
+      req.set(http::field::proxy_authorization, h);
+
+      auto socket = Socket{};
+      auto ingress = HttpIngress{{{"foo"s, "bar"s}}, socket, true};
+
+      auto buf = array<uint8_t, 1024>{};
+      socket.fill({buf, serializeToBuffer(req, buf)});
+
+      BOOST_CHECK_EXCEPTION(ingress.readRemote(yield), Exception,
+                            verifyException<PichiError::UNAUTHENTICATED>);
     }
   }
 }
@@ -496,38 +517,47 @@ BOOST_AUTO_TEST_CASE(Ingress_confirm_Relay)
   BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
-BOOST_AUTO_TEST_CASE(Ingress_disconnect_Tunnel)
+BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Named_Failures)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genTunnelReq();
+  auto verifyResp = [](PichiError e, auto&& resp) {
+    switch (e) {
+    case PichiError::CONN_FAILURE:
+      BOOST_CHECK_EQUAL(http::status::gateway_timeout, resp.result());
+      break;
+    case PichiError::BAD_AUTH_METHOD:
+      BOOST_CHECK_EQUAL(http::status::proxy_authentication_required, resp.result());
+      BOOST_CHECK_EQUAL("Basic", resp[http::field::proxy_authenticate]);
+      break;
+    case PichiError::UNAUTHENTICATED:
+      BOOST_CHECK_EQUAL(http::status::forbidden, resp.result());
+      break;
+    default:
+      BOOST_ERROR("Invalid PichiError value");
+      break;
+    }
+  };
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+  for (auto e :
+       {PichiError::CONN_FAILURE, PichiError::BAD_AUTH_METHOD, PichiError::UNAUTHENTICATED}) {
+    auto socket = Socket{};
+    auto ingress = HttpIngress{{}, socket, true};
+    ingress.disconnect(e, yield);
 
-  socket.fill({buf, serializeToBuffer(origin, buf)});
-
-  ingress.readRemote(yield);
-  ingress.disconnect(yield);
-
-  auto disconnected = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
-  BOOST_CHECK_EQUAL(http::status::gateway_timeout, disconnected.result());
+    auto buf = array<uint8_t, 1024>{};
+    verifyResp(e, parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)}));
+  }
 }
 
-BOOST_AUTO_TEST_CASE(Ingress_disconnect_Relay)
+BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Unnamed_Failures)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReq("http://localhost/"s);
-
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
-
-  socket.fill({buf, serializeToBuffer(origin, buf)});
-
-  ingress.readRemote(yield);
-  ingress.disconnect(yield);
-
-  auto disconnected = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
-  BOOST_CHECK_EQUAL(http::status::gateway_timeout, disconnected.result());
+  for (auto e : {PichiError::OK, PichiError::BAD_PROTO, PichiError::CRYPTO_ERROR,
+                 PichiError::BUFFER_OVERFLOW, PichiError::BAD_JSON, PichiError::SEMANTIC_ERROR,
+                 PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
+    auto socket = Socket{};
+    auto ingress = HttpIngress{{}, socket, true};
+    ingress.disconnect(e, yield);
+    BOOST_CHECK_EQUAL(0_sz, socket.available());
+  }
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_send_Tunnel)
