@@ -104,7 +104,15 @@ $ brew install pichi
 $ pichi <options>
 ```
 
-#### Windows, FreeBSD or others
+#### FreeBSD
+
+Please use [FreeBSD ports](https://ports.freebsd.org).
+
+```
+$ pkg install pichi
+```
+
+#### Windows or others
 
 Please refer to **Build** section.
 
