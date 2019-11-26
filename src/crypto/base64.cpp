@@ -32,6 +32,8 @@ static char otect2offset(char otect, PichiError e)
 
 string base64Encode(string_view text)
 {
+  if (text.empty()) return ""s;
+
   auto padding = (3 - (text.size() % 3)) % 3;
   auto len = (text.size() + padding) / 3 * 4;
   auto base64 = string(len, '\0');

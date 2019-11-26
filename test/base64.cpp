@@ -13,6 +13,16 @@ using namespace pichi::crypto;
 
 BOOST_AUTO_TEST_SUITE(Base64)
 
+BOOST_AUTO_TEST_CASE(encode_Empty_String_View)
+{
+  BOOST_CHECK_EQUAL(""sv, base64Encode(string_view{nullptr, 0}));
+}
+
+BOOST_AUTO_TEST_CASE(decode_Empty_String_View)
+{
+  BOOST_CHECK_EQUAL(""sv, base64Decode(string_view{nullptr, 0}, PichiError::MISC));
+}
+
 /*
  * According to RFC 4648 10
  * BASE64("") = ""
