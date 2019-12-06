@@ -1,12 +1,5 @@
 #include <pichi/config.hpp>
-
-#if defined(DISABLE_C4702_FOR_BEAST_FIELDS) && defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4702)
-#include <boost/beast/http/fields.hpp>
-#pragma warning(pop)
-#endif // defined(DISABLE_C4702_FOR_BEAST_FIELDS) && defined(_MSC_VER)
-
+// Include config.hpp first
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/http/read.hpp>

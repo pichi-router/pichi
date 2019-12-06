@@ -43,15 +43,6 @@ if (MSVC)
   if (MSVC_VERSION VERSION_LESS "1920")
     add_compile_definitions(_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
   endif (MSVC_VERSION VERSION_LESS "1920")
-
-  # From Boost-Beast 1.70.0, MSVC generates warning C4702(unreachable code) when including
-  #   boost/beast/http/fields.hpp. Plz refer to https://github.com/boostorg/beast/issues/1582 .
-  # Disable this warning if 1.70.0 or later version are going to be used.
-  if (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
-    set(DISABLE_C4702_FOR_BEAST_FIELDS ON)
-  else (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
-    set(DISABLE_C4702_FOR_BEAST_FIELDS OFF)
-  endif (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
 endif (MSVC)
 
 if (WIN32 AND CMAKE_SYSTEM_VERSION)
@@ -81,6 +72,15 @@ if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
     set(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO ON)
   endif (HAS_RETURN_STD_MOVE)
 endif (Boost_VERSION_STRING VERSION_LESS "1.69.0")
+
+# From Boost-Beast 1.70.0, MSVC generates warning C4702(unreachable code) when including
+#   boost/beast/http/fields.hpp. Plz refer to https://github.com/boostorg/beast/issues/1582 .
+# Disable this warning if 1.70.0 or later version are going to be used.
+if (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
+  set(DISABLE_C4702_FOR_BEAST_FIELDS ON)
+else (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
+  set(DISABLE_C4702_FOR_BEAST_FIELDS OFF)
+endif (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
 
 if (Boost_VERSION_STRING VERSION_LESS "1.70.0")
   set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR OFF)
