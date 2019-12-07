@@ -1,3 +1,12 @@
+#include <pichi/config.hpp>
+
+#if defined(DISABLE_C4702_FOR_BEAST_FIELDS) && defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4702)
+#include <boost/beast/http/fields.hpp>
+#pragma warning(pop)
+#endif // defined(DISABLE_C4702_FOR_BEAST_FIELDS) && defined(_MSC_VER)
+
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/http/read.hpp>
@@ -5,7 +14,6 @@
 #include <boost/beast/http/write.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
-#include <pichi/config.hpp>
 #include <pichi/crypto/base64.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
@@ -17,6 +25,11 @@
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/stream.hpp>
 #endif // ENABLE_TLS
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4702)
+#endif // _MSC_VER
 
 using namespace std;
 namespace asio = boost::asio;
@@ -459,3 +472,7 @@ template class HttpEgress<pichi::test::Stream>;
 #endif // BUILD_TEST
 
 } // namespace pichi::net
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif // _MSC_VER
