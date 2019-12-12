@@ -1,16 +1,5 @@
 #include <pichi/config.hpp>
-
-#ifdef NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-std-move"
-#endif // __clang__
-#include <boost/asio/ip/basic_resolver.hpp>
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif // __clang__
-#endif // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
-
+// Include config.hpp first
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/system_timer.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
@@ -187,7 +176,7 @@ void Server::startIngress(string_view iname, IngressHolder& holder)
    */
   net::spawn(
       strand_, [this, iname, &holder](auto yield) { listen(iname, holder, yield); },
-      [ this, iname ](auto eptr, auto) noexcept { removeIngress(eptr, iname); });
+      [this, iname](auto eptr, auto) noexcept { removeIngress(eptr, iname); });
 }
 
 } // namespace pichi::api
