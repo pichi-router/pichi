@@ -121,16 +121,28 @@ template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yiel
 
 template <typename Stream> void Socks5Ingress<Stream>::confirm(Yield yield)
 {
-  static uint8_t const buf[] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  write(stream_, buf, yield);
+#ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+  static auto const CONFIRM = array{0x05_u8, 0x00_u8, 0x00_u8, 0x01_u8, 0x00_u8,
+                                    0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
+#else  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+  static uint8_t const CONFIRM[] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+#endif // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+  write(stream_, CONFIRM, yield);
 }
 
 template <typename Stream> void Socks5Ingress<Stream>::disconnect(PichiError e, Yield yield)
 {
+#ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   static auto const HANDSHAKE_FAILURE = array{0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8,
                                               0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
   static auto const AUTH_FAILURE = array{0x01_u8, 0xff_u8};
   static auto const METHOD_FAILURE = array{0x05_u8, 0xff_u8};
+#else  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+  static uint8_t const HANDSHAKE_FAILURE[] = {0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8,
+                                              0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
+  static uint8_t const AUTH_FAILURE[] = {0x01_u8, 0xff_u8};
+  static uint8_t const METHOD_FAILURE[] = {0x05_u8, 0xff_u8};
+#endif // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 
   auto ec = sys::error_code{};
   switch (e) {

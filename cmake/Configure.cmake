@@ -1,6 +1,17 @@
 # C/C++ Macros
 add_compile_definitions(BOOST_ASIO_NO_DEPRECATED)
 
+# Find out whether class template argument deduction is supported for std::array
+message(STATUS "Checking P0702R1 feature")
+try_compile(HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+  ${CMAKE_BINARY_DIR}/cmake
+  ${CMAKE_SOURCE_DIR}/cmake/test/P0702R1.cpp)
+if (HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION)
+  message(STATUS "Checking P0702R1 feature - yes")
+else (HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION)
+  message(STATUS "Checking P0702R1 feature - no")
+endif (HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION)
+
 # Enable complaining all warnings as errors
 if (MSVC)
   add_compile_options(/W4 /WX)
