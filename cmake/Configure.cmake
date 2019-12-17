@@ -31,9 +31,7 @@ if (MSVC)
   add_compile_options(/EHs)
 
   # Avoid C1128 error
-  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options(/bigobj)
-  endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_compile_options(/bigobj)
 
   # Avoid warning STL4015, caused by rapidjson
   add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
