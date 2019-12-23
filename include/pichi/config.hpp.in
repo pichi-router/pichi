@@ -1,6 +1,8 @@
 #ifndef PICHI_CONFIG_H
 #define PICHI_CONFIG_H
 
+#cmakedefine HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+
 #cmakedefine HAS_UNISTD_H
 #cmakedefine HAS_SIGNAL_H
 #cmakedefine HAS_PWD_H

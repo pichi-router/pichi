@@ -149,7 +149,7 @@ template <typename ForwardIt>
 auto LeastConnBalancer<ForwardIt>::remove(Item item,
                                           typename unordered_set<Difference>::iterator it)
 {
-  auto&& [conn, its] = *item;
+  auto& its = item->second;
   assertFalse(it == end(its));
   auto ret = *it;
   its.erase(it);
