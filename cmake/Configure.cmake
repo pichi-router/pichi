@@ -64,6 +64,7 @@ if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
   # Before BOOST 1.69.0, Clang might complain '-Wreturn-std-move' warning
   #   when dereferencing resolver_results::iterator,
   #   which should be treated as NRVO after C++17.
+  # TODO check_cxx_compiler_flag command always gets failed when generating for iOS
   set(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO ON)
 endif (Boost_VERSION_STRING VERSION_LESS "1.69.0")
 
@@ -83,6 +84,11 @@ else (Boost_VERSION_STRING VERSION_LESS "1.70.0")
   #   that it's supposed to be constructed from Executor instead of ExecutionContext.
   set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR ON)
 endif (Boost_VERSION_STRING VERSION_LESS "1.70.0")
+
+# TODO check_cxx_compiler_flag command always gets failed when generating for iOS
+if (IOS)
+  set(DISABLE_SHORTEN_64_TO_32_WARNING ON)
+endif (IOS)
 
 if (BUILD_SERVER)
   include(CheckIncludeFiles)

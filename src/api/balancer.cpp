@@ -1,3 +1,5 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <cassert>
 #include <iterator>
 #include <map>

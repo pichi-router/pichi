@@ -14,13 +14,21 @@
 #cmakedefine HAS_CLOSE
 
 #cmakedefine NO_IGNORED_ATTRIBUTES_FOR_SODIUM
-#cmakedefine NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
-
 #cmakedefine RESOLVER_CONSTRUCTED_FROM_EXECUTOR
+
+#cmakedefine NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
 #if defined(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO) && defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-std-move"
 #include <boost/asio/ip/basic_resolver.hpp>
+#pragma clang diagnostic pop
+#endif // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO && __clang__
+
+#cmakedefine DISABLE_SHORTEN_64_TO_32_WARNING
+#if defined(DISABLE_SHORTEN_64_TO_32_WARNING) && defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#include <boost/asio/basic_socket.hpp>
 #pragma clang diagnostic pop
 #endif // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO && __clang__
 

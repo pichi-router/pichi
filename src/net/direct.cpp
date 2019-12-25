@@ -1,3 +1,5 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <pichi/net/asio.hpp>
 #include <pichi/net/common.hpp>
 #include <pichi/net/direct.hpp>
