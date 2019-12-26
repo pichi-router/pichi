@@ -24,28 +24,28 @@ vector<uint8_t> hex2bin(string_view hex)
 
 IngressVO defaultIngressVO(AdapterType type)
 {
+  auto vo = IngressVO{};
+  vo.type_ = type;
+  vo.bind_ = ph;
+  vo.port_ = 1_u8;
   switch (type) {
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return {type, ph, 1_u16, {}, {}, {}, false};
+    vo.tls_ = false;
+    break;
   case AdapterType::SS:
-    return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
+    vo.method_ = CryptoMethod::RC4_MD5;
+    vo.password_ = ph;
+    break;
   case AdapterType::TUNNEL:
-    return {AdapterType::TUNNEL,
-            ph,
-            1_u16,
-            {},
-            {},
-            {},
-            {},
-            {},
-            {},
-            {{net::Endpoint::Type::DOMAIN_NAME, "localhost", "80"}},
-            BalanceType::RANDOM};
+    vo.destinations_ = {{net::Endpoint::Type::DOMAIN_NAME, "localhost", "80"}};
+    vo.balance_ = BalanceType::RANDOM;
+    break;
   default:
     BOOST_ERROR("Invalid type");
-    return {};
+    break;
   }
+  return vo;
 }
 
 Value defaultIngressJson(AdapterType type)
@@ -85,20 +85,32 @@ Value defaultIngressJson(AdapterType type)
 
 EgressVO defaultEgressVO(AdapterType type)
 {
+  auto vo = EgressVO{};
+  vo.type_ = type;
   switch (type) {
   case AdapterType::DIRECT:
-    return {AdapterType::DIRECT};
+    break;
   case AdapterType::REJECT:
-    return {AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
+    vo.mode_ = DelayMode::FIXED;
+    vo.delay_ = 0_u16;
+    break;
+  case AdapterType::SS:
+    vo.method_ = CryptoMethod::RC4_MD5;
+    vo.password_ = ph;
+    vo.host_ = ph;
+    vo.port_ = 1_u8;
+    break;
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return {type, ph, 1_u16, {}, {}, {}, {}, {}, false};
-  case AdapterType::SS:
-    return {AdapterType::SS, ph, 1_u16, CryptoMethod::RC4_MD5, ph};
+    vo.host_ = ph;
+    vo.port_ = 1_u8;
+    vo.tls_ = false;
+    break;
   default:
     BOOST_ERROR("Invalid type");
-    return {};
+    break;
   }
+  return vo;
 }
 
 Value defaultEgressJson(AdapterType type)
