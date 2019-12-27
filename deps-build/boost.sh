@@ -95,18 +95,23 @@ EOF
 
 function build_for_android()
 {
-  # ANDROID_ROOT is generated via ${NDK_ROOT}/build/tools/make_standalone_toolchain.py
-  [ -d "${ANDROID_ROOT}" ] || (echo "ANDROID_ROOT is unavailable" && exit 1)
+  case "${ARCH}" in
+    "x86") ADDRESS_MODEL=32;;
+    "x86_64") ADDRESS_MODEL=64; ARCH=x86;;
+    "arm") ADDRESS_MODEL=32;;
+    "arm64") ADDRESS_MODEL=64; ARCH=arm;;
+    *) echo "ARCH is unrecognized"; exit 1;;
+  esac
 
   cat > project-config.jam <<EOF
 using clang :
-: ${ANDROID_ROOT}/bin/clang++ -std=c++17
+: ${CXX} -std=c++17
 ;
 
 EOF
 
-  ./b2 -d0 -j "${PARALLEL}" --prefix="${ANDROID_ROOT}/sysroot" --with-context --with-system \
-    architecture=arm address-model="${ADDRESS_MODEL}" \
+  ./b2 -d0 -j "${PARALLEL}" --prefix="${SYSROOT}" --with-context --with-system \
+    architecture=${ARCH} address-model="${ADDRESS_MODEL}" \
     target-os=android abi=aapcs variant=release link=static install
 }
 
@@ -116,6 +121,7 @@ set -o errexit
 [ $# -ge 1 ] || (echo "Usage: boost.sh <src path>" && exit 1)
 : ${PARALLEL:=4}
 : ${ADDRESS_MODEL:=64}
+: ${CXX:=clang++}
 [ "${ADDRESS_MODEL}" -eq 64 ] || [ "${ADDRESS_MODEL}" -eq 32 ] || unknown_address_model
 
 cd "$1"
@@ -126,17 +132,7 @@ case "${PLATFORM}" in
   "iphonesimulator") build_for_ios;;
   "appletvos") build_for_ios;;
   "appletvsimulator") build_for_ios;;
-  "android-16") build_for_android;;
-  "android-17") build_for_android;;
-  "android-18") build_for_android;;
-  "android-19") build_for_android;;
-  "android-21") build_for_android;;
-  "android-22") build_for_android;;
-  "android-23") build_for_android;;
-  "android-24") build_for_android;;
-  "android-26") build_for_android;;
-  "android-27") build_for_android;;
-  "android-28") build_for_android;;
+  android-*) build_for_android;;
   *) unknown_platform;;
 esac
 
