@@ -21,6 +21,7 @@ if (STATIC_LINK)
   else ()
     set(CMAKE_FIND_LIBRARY_SUFFIXES .lib)
   endif ()
+  set(Boost_USE_STATIC_LIBS ON)
 endif ()
 
 # Using rpath for dynamic linking
