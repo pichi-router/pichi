@@ -64,11 +64,7 @@ if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
   # Before BOOST 1.69.0, Clang might complain '-Wreturn-std-move' warning
   #   when dereferencing resolver_results::iterator,
   #   which should be treated as NRVO after C++17.
-  include(CheckCXXCompilerFlag)
-  check_cxx_compiler_flag("-Wreturn-std-move" HAS_RETURN_STD_MOVE)
-  if (HAS_RETURN_STD_MOVE)
-    set(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO ON)
-  endif (HAS_RETURN_STD_MOVE)
+  set(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO ON)
 endif (Boost_VERSION_STRING VERSION_LESS "1.69.0")
 
 # From Boost-Beast 1.70.0, MSVC generates warning C4702(unreachable code) when including

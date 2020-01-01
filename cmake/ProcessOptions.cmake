@@ -1,18 +1,8 @@
-# Force to use static linking for iOS
-if (IOS)
-  if (NOT STATIC_LINK)
-    message(WARNING "Force to use static linking on iOS")
-    set(STATIC_LINK ON)
-  endif (NOT STATIC_LINK)
-  if (BUILD_SERVER OR BUILD_TEST)
-    message(WARNING "Executable file is prohibited on iOS")
-    set(BUILD_SERVER OFF)
-    set(BUILD_TEST OFF)
-  endif (BUILD_SERVER OR BUILD_TEST)
-  if ("armv7" IN_LIST ARCHS OR "armv7s" IN_LIST ARCHS)
-    add_compile_options(-faligned-allocation)
-  endif ("armv7" IN_LIST ARCHS OR "armv7s" IN_LIST ARCHS)
-endif (IOS)
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "tvOS")
+  set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+  set(CMAKE_USE_PTHREADS_INIT "YES")
+  add_compile_options(-Wno-shorten-64-to-32)
+endif ("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "tvOS")
 
 # Setting library suffix for linking
 if (STATIC_LINK)
@@ -21,6 +11,7 @@ if (STATIC_LINK)
   else (UNIX)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .lib)
   endif (UNIX)
+  set(Boost_USE_STATIC_LIBS ON)
 endif (STATIC_LINK)
 
 # Using rpath for dynamic linking
