@@ -10,8 +10,8 @@ if (MbedTLS_INCLUDE_DIRS)
     string(REGEX REPLACE "^#define[\t ]+MBEDTLS_VERSION_STRING[\t ]+\"(.*)\""
             "\\1" MbedTLS_VERSION_STRING "${version_line}")
     unset(version_line)
-  endif (version_line)
-endif (MbedTLS_INCLUDE_DIRS)
+  endif ()
+endif ()
 
 set(MbedTLS_LIBRARIES ${MbedTLS_LIBRARY} ${MbedTLS_CRYPTO_LIBRARY})
 include(FindPackageHandleStandardArgs)

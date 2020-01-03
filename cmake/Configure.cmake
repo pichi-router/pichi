@@ -4,9 +4,9 @@ add_compile_definitions(BOOST_ASIO_NO_DEPRECATED)
 # Enable complaining all warnings as errors
 if (MSVC)
   add_compile_options(/W4 /WX)
-else (MSVC)
+else ()
   add_compile_options(-Wall -Wextra -pedantic -Werror)
-endif (MSVC)
+endif ()
 
 # Options for Microsoft C++
 if (MSVC)
@@ -15,12 +15,12 @@ if (MSVC)
   set(CRT_FLAG "/M")
   if (STATIC_LINK)
     set(CRT_FLAG "${CRT_FLAG}T")
-  else (STATIC_LINK)
+  else ()
     set(CRT_FLAG "${CRT_FLAG}D")
-  endif (STATIC_LINK)
+  endif ()
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CRT_FLAG "${CRT_FLAG}d")
-  endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  endif ()
   add_compile_options(${CRT_FLAG})
 
   # In MSVC, the default Exception Handling option is /EHsc, Which wouldn't catch exceptions
@@ -33,7 +33,7 @@ if (MSVC)
   # Avoid C1128 error
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(/bigobj)
-  endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  endif ()
 
   # Avoid warning STL4015, caused by rapidjson
   add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
@@ -42,15 +42,15 @@ if (MSVC)
   #  https://github.com/chriskohlhoff/asio/issues/290
   if (MSVC_VERSION VERSION_LESS "1920")
     add_compile_definitions(_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
-  endif (MSVC_VERSION VERSION_LESS "1920")
-endif (MSVC)
+  endif ()
+endif ()
 
 if (WIN32 AND CMAKE_SYSTEM_VERSION)
   string(REGEX REPLACE "^([0-9]+)\.[0-9]+\.[0-9]+$" "\\1" major ${CMAKE_SYSTEM_VERSION})
   string(REGEX REPLACE "^[0-9]+\.([0-9]+)\.[0-9]+$" "\\1" minor ${CMAKE_SYSTEM_VERSION})
   math(EXPR win32_version "(${major} << 8) + ${minor}" OUTPUT_FORMAT HEXADECIMAL)
   add_compile_definitions(_WIN32_WINNT=${win32_version})
-endif (WIN32 AND CMAKE_SYSTEM_VERSION)
+endif ()
 
 # Generating config.hpp
 message(STATUS "Generating config.hpp")
@@ -60,7 +60,7 @@ if (Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
   #   '__attribute__ ((nonnull))', which might let GCC cause '-Wignored-attributes' warning
   #   if using std::is_same to detect function signature equation.
   set(NO_IGNORED_ATTRIBUTES_FOR_SODIUM ON)
-endif (Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
+endif ()
 
 if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
   # Before BOOST 1.69.0, Clang might complain '-Wreturn-std-move' warning
@@ -70,16 +70,16 @@ if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
   check_cxx_compiler_flag("-Wreturn-std-move" HAS_RETURN_STD_MOVE)
   if (HAS_RETURN_STD_MOVE)
     set(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO ON)
-  endif (HAS_RETURN_STD_MOVE)
-endif (Boost_VERSION_STRING VERSION_LESS "1.69.0")
+  endif ()
+endif ()
 
 if (Boost_VERSION_STRING VERSION_LESS "1.70.0")
   set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR OFF)
-else (Boost_VERSION_STRING VERSION_LESS "1.70.0")
+else ()
   # From version 1.70.0, Boost.Asio changed the behaviour of resolver::resolver,
   #   that it's supposed to be constructed from Executor instead of ExecutionContext.
   set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR ON)
-endif (Boost_VERSION_STRING VERSION_LESS "1.70.0")
+endif ()
 
 if (BUILD_SERVER)
   include(CheckIncludeFiles)
@@ -95,7 +95,7 @@ if (BUILD_SERVER)
   check_function_exists("fork" HAS_FORK)
   check_function_exists("setsid" HAS_SETSID)
   check_function_exists("close" HAS_CLOSE)
-endif (BUILD_SERVER)
+endif ()
 
 configure_file(${CMAKE_SOURCE_DIR}/include/pichi/config.hpp.in ${CMAKE_BINARY_DIR}/include/pichi/config.hpp)
 

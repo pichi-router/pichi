@@ -22,7 +22,7 @@ if (ENABLE_TLS)
   find_package(OpenSSL REQUIRED)
   include_directories(${OPENSSL_INCLUDE_DIR})
   link_libraries(${OPENSSL_LIBRARIES})
-endif (ENABLE_TLS)
+endif ()
 
 include(Configure)
 
@@ -49,9 +49,9 @@ link_libraries(${PICHI_LIBRARY})
 
 if (BUILD_SERVER)
   add_subdirectory(server)
-endif (BUILD_SERVER)
+endif ()
 
 if (BUILD_TEST)
   enable_testing()
   add_subdirectory(test)
-endif (BUILD_TEST)
+endif ()
