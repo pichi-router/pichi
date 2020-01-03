@@ -4,7 +4,7 @@ project(pichi LANGUAGES CXX)
 option(BUILD_SERVER "Build pichi application" ON)
 option(BUILD_TEST "Build unit test cases" ON)
 option(STATIC_LINK "Static linking" ON)
-option(INSTALL_HEADERS "Install header files" OFF)
+option(INSTALL_DEVEL "Install files for development" OFF)
 option(ENABLE_TLS "Enable TLS adapters" ON)
 
 set(PICHI_LIBRARY pichi_lib)
