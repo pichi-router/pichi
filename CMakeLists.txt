@@ -21,7 +21,7 @@ find_package(Threads REQUIRED)
 if (ENABLE_TLS)
   find_package(OpenSSL REQUIRED)
   include_directories(${OPENSSL_INCLUDE_DIR})
-  link_libraries(${OPENSSL_LIBRARIES})
+  link_libraries(${OPENSSL_LIBRARIES} ${CMAKE_DL_LIBS})
 endif (ENABLE_TLS)
 
 include(Configure)

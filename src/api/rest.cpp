@@ -1,3 +1,5 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <pichi/api/egress_manager.hpp>
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/rest.hpp>

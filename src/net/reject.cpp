@@ -1,3 +1,5 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <chrono>
 #include <pichi/asserts.hpp>
 #include <pichi/net/reject.hpp>

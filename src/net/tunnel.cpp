@@ -1,3 +1,5 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <boost/asio/ip/tcp.hpp>
 #include <cassert>
 #include <pichi/net/asio.hpp>

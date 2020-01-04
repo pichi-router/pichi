@@ -1,3 +1,5 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <boost/asio/io_context.hpp>
 #include <pichi/api/ingress_holder.hpp>
 #include <utility>

@@ -1,3 +1,5 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <array>
 #include <boost/asio/ip/address.hpp>
 #include <limits>

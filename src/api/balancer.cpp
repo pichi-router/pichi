@@ -1,3 +1,5 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <cassert>
 #include <iterator>
 #include <map>
@@ -98,7 +100,6 @@ template <typename ForwardIt>
 RandomBalancer<ForwardIt>::RandomBalancer(ForwardIt first, ForwardIt last)
   : first_{first}, g_{random_device{}()}, rand_{0, distance(first, last) - 1}
 {
-  assertTrue(rand_.b() >= rand_.a());
 }
 
 template <typename ForwardIt> ForwardIt RandomBalancer<ForwardIt>::select()
@@ -114,7 +115,6 @@ template <typename ForwardIt>
 RoundRobinBalancer<ForwardIt>::RoundRobinBalancer(ForwardIt first, ForwardIt last)
   : first_{first}, last_{last}, current_{first}
 {
-  assertTrue(distance(first, last) > 0);
 }
 
 template <typename ForwardIt> ForwardIt RoundRobinBalancer<ForwardIt>::select()
@@ -129,7 +129,6 @@ template <typename ForwardIt> void RoundRobinBalancer<ForwardIt>::release(Forwar
 template <typename ForwardIt>
 auto LeastConnBalancer<ForwardIt>::initialize(ForwardIt first, ForwardIt last)
 {
-  assertTrue(distance(first, last) > 0);
   auto ret = unordered_set<Difference>{};
   for (auto it = first; it != last; ++it) ret.insert(distance(first, it));
   return ret;
@@ -201,6 +200,7 @@ template <typename ForwardIt> void LeastConnBalancer<ForwardIt>::release(Forward
 template <typename ForwardIt>
 unique_ptr<Balancer<ForwardIt>> makeBalancer(BalanceType type, ForwardIt first, ForwardIt last)
 {
+  assertTrue(distance(first, last) > 0);
   switch (type) {
   case BalanceType::RANDOM:
     return make_unique<RandomBalancer<ForwardIt>>(first, last);
