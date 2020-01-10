@@ -4,11 +4,26 @@ Pichi is a flexible rule-based proxy.
 
 ## Build Status
 
-| OS | macOS 10.14 | Alpine 3.9 | Windows 10 | iOS 12.1 | Android 9 |
-|:----------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|
-| **Toolchain** | Xcode 11 | GCC 8.x | VC++2017 | Xcode 11 | NDK r18b |
-| **Architecture** | x86_64 | x86_64 | x86_64 | arm64/arm64e | arm64 |
-| **Status** | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/5)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/3)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://ci.appveyor.com/api/projects/status/github/pichi-router/pichi?branch=appveyor&svg=true)](https://ci.appveyor.com/project/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/1)](https://travis-ci.org/pichi-router/pichi) | [![Build Status](https://travis-matrix-badges.herokuapp.com/repos/pichi-router/pichi/branches/master/2)](https://travis-ci.org/pichi-router/pichi) |
+### Unix-like
+
+| OS | macOS 10.14 | macOS 10.13 | Alpine 3.9 |
+|:----------------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| **Toolchain** | Xcode 11.1 | Xcode 10.1 | GCC 8.3 |
+| **Status** | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/3?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=3&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/4?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=4&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/5?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=5&branchName=master) |
+
+### Windows
+
+| OS | Windows Server 2019 | Windows Server 2016 |
+|:-------------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| **Toolchain** | Visual Studio 2019 | Visual Studio 2017 |
+| **Status** | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/1?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=1&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/2?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=2&branchName=master) |
+
+### Mobile
+
+| OS | iOS/tvOS | Android |
+|:-------------:|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| **Toolchain** | Xcode 11.1 | NDK r20b |
+| **Status** | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/8?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=8&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/7?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=7&branchName=master) |
 
 ## Overview
 
@@ -317,29 +332,29 @@ Pichi is designed to run or be embedded into some APPs on iOS/Android. `deps-bui
 
 #### iOS
 
-It's very simple to build a C/C++ project managed by CMake, if `CMAKE_TOOLCHAIN_FILE` is set to [ios.toolchain.cmake](https://github.com/leetal/ios-cmake/blob/3.0.1/ios.toolchain.cmake).
+CMake provides the [detailed documents](https://cmake.org/cmake/help/v3.16/manual/cmake-toolchains.7.html#cross-compiling-for-ios-tvos-or-watchos) for iOS/tvOS/watchOS cross compiling. Let's follow it.
 
 ```
-$ cmake -D CMAKE_TOOLCHAIN_FILE=/path/to/ios.toolchain.cmake \
->   -D IOS_PLATFORM=OS -D IOS_ARCH=arm64 [other options] /path/to/project
+$ cmake -G Xcode -D CMAKE_SYSTEM_NAME=iOS -D CMAKE_OSX_DEPLOYMENT_TARGET=8.0 \
+>   -D CMAKE_INSTALL_PREFIX=/path/to/sysroot [other options] /path/to/project
+$ cmake --build . --config Release -- -sdk iphoneos            # Build for iPhone
+$ cmake --build . --config Release -- -sdk iphonesimulator     # Build for iPhone simulator
 ```
 
-On the other hand, `deps-build/boost.sh` can generate libraries for iOS if below environment variables are set:
+On the other hand, `deps-build/boost.sh` can generate libraries for iOS/tvOS if below environment variables are set:
 
-* **PLATFORM**: to specify target OS(*iphoneos, iphonesimulator, appletvos, appletvsimulator*);
-* **IOS_ROOT**: to specify root install directory of headers/libraries;
-* **ADDRESS_MODEL**: to specify address bits of target CPU(64 or 32).
+* **PLATFORM**: to specify target OS(*iOS, tvOS*);
+* **ARCH**: to specify the target CPU architecture(it has to be corresponding to PLATFORM);
+* **SYSROOT**: to specify root install directory of headers/libraries.
 
 For example:
 
 ```
-$ # In macOS with Xcode 10.0 or above
-$ export PLATFORM=iphoneos
-$ export IOS_ROOT=/path/to/ios/root
-$ export ADDRESS_MODEL=64
-$ bash deps-build/boost.sh
-Usage: boost.sh <src path>
-$ bash deps-build/boost.sh /path/to/boost
+$ # Build for iOS simulator
+$ export PLATFORM=iOS
+$ export ARCH=x86_64
+$ export SYSROOT=/path/to/ios/sysroot
+$ bash deps-build/boost.sh /path/to/boost/source
 ...
 ```
 
@@ -348,36 +363,41 @@ $ bash deps-build/boost.sh /path/to/boost
 The usage of `deps-build/boost.sh` is very similar to iOS one, except environment variables:
 
 * **PLATFORM**: *android-\<API\>s* are available;
-* **ANDROID_ROOT**: to specify root install directory of headers/libraries;
-* **ADDRESS_MODEL**: to specify address bits of target CPU(64 or 32).
+* **ARCH**: to specify target CPU architecture(*arm, arm64, i386, x86_64*);
+* **SYSROOT**: to specify root install directory of headers/libraries.
 
 Android NDK kindly provides `build/tools/make_standalone_toolchain.py` script to generate a cross-compiling toolchain for any version of Android.
 
 ```
-$ export NDK_ROOT=/path/to/ndk
-$ export TOOLCHAIN_ROOT=/path/to/toolchain
-$ export ADDRESS_MODEL=64
+$ # Generate standalone toolchain
+$ export NDK_ROOT=/path/to/android/ndk
+$ export TOOLCHAIN_ROOT=/path/to/standalone/toolchain
 $
 $ # Create cross toolchain
-$ python ${NDK_ROOT}/build/tools/make_standalone_toolchain.py --arch arm64 --api 28 \
->   --stl libc++ --install-dir ${TOOLCHAIN_ROOT}
+$ python ${NDK_ROOT}/build/tools/make_standalone_toolchain.py --arch arm64 --api 29 \
+>   --install-dir ${TOOLCHAIN_ROOT}
+$
+$ # Build for android-29/arm64
+$ export PLATFORM=android-29
+$ export ARCH=64
+$ export SYSROOT=${TOOLCHAIN_ROOT}/sysroot
 $
 $ # Build boost
-$ bash deps-build/boost.sh /path/to/boost
+$ bash deps-build/boost.sh /path/to/boost/source
 $
 $ # Build other dependent libraries
-$ cmake -D CMAKE_SYSROOT=${TOOLCHAIN_ROOT}/sysroot \
->   -D CMAKE_INSTALL_PREFIX=${TOOLCHAIN_ROOT}/sysroot \
+$ cmake -D CMAKE_SYSROOT=${SYSROOT} -D CMAKE_INSTALL_PREFIX=${SYSROOT} \
 >   -D CMAKE_C_COMPILER=${TOOLCHAIN_ROOT}/bin/clang \
->   [other options] -B build /path/to/other/libraries
-$ cmake --build build --target install
+>   -D CMAKE_CXX_COMPILER=${TOOLCHAIN_ROOT}/bin/clang++ \
+>   [other options] /path/to/other/libraries
+$ cmake --build . --target install
 $
 $ # Build pichi
-$ cmake -D CMAKE_SYSROOT=${TOOLCHAIN_ROOT}/sysroot \
->   -D CMAKE_INSTALL_PREFIX=${TOOLCHAIN_ROOT}/sysroot \
+$ cmake -D CMAKE_SYSROOT=${SYSROOT} -D CMAKE_INSTALL_PREFIX=${SYSROOT} \
+>   -D CMAKE_C_COMPILER=${TOOLCHAIN_ROOT}/bin/clang \
 >   -D CMAKE_CXX_COMPILER=${TOOLCHAIN_ROOT}/bin/clang++ \
->   [other options] -B build .
-$ cmake --build build --target install
+>   [other options] /path/to/pichi/source
+$ cmake --build . --target install
 ```
 
 #### Cross-Compiling for other architecture
