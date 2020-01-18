@@ -18,7 +18,7 @@ set(BALANCER_TESTS balancer)
 
 if (NOT STATIC_LINK)
   add_definitions(-DBOOST_TEST_DYN_LINK)
-endif (NOT STATIC_LINK)
+endif ()
 link_libraries(${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_CONTEXT_LIBRARY})
 
 configure_file(geo.mmdb ${CMAKE_CURRENT_BINARY_DIR}/geo.mmdb COPYONLY)

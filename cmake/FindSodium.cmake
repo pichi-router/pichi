@@ -9,8 +9,8 @@ if (Sodium_INCLUDE_DIRS)
     string(REGEX REPLACE "^#define[\t ]+SODIUM_VERSION_STRING[\t ]+\"(.*)\""
             "\\1" Sodium_VERSION_STRING "${version_line}")
     unset(version_line)
-  endif (version_line)
-endif (Sodium_INCLUDE_DIRS)
+  endif ()
+endif ()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Sodium

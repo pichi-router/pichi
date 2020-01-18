@@ -8,16 +8,16 @@ try_compile(HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   ${CMAKE_SOURCE_DIR}/cmake/test/P0702R1.cpp)
 if (HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION)
   message(STATUS "Checking P0702R1 feature - yes")
-else (HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION)
+else ()
   message(STATUS "Checking P0702R1 feature - no")
-endif (HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION)
+endif ()
 
 # Enable complaining all warnings as errors
 if (MSVC)
   add_compile_options(/W4 /WX)
-else (MSVC)
+else ()
   add_compile_options(-Wall -Wextra -pedantic -Werror)
-endif (MSVC)
+endif ()
 
 # Options for Microsoft C++
 if (MSVC)
@@ -26,12 +26,12 @@ if (MSVC)
   set(CRT_FLAG "/M")
   if (STATIC_LINK)
     set(CRT_FLAG "${CRT_FLAG}T")
-  else (STATIC_LINK)
+  else ()
     set(CRT_FLAG "${CRT_FLAG}D")
-  endif (STATIC_LINK)
+  endif ()
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CRT_FLAG "${CRT_FLAG}d")
-  endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  endif ()
   add_compile_options(${CRT_FLAG})
 
   # In MSVC, the default Exception Handling option is /EHsc, Which wouldn't catch exceptions
@@ -51,15 +51,15 @@ if (MSVC)
   #  https://github.com/chriskohlhoff/asio/issues/290
   if (MSVC_VERSION VERSION_LESS "1920")
     add_compile_definitions(_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
-  endif (MSVC_VERSION VERSION_LESS "1920")
-endif (MSVC)
+  endif ()
+endif ()
 
 if (WIN32 AND CMAKE_SYSTEM_VERSION)
   string(REGEX REPLACE "^([0-9]+)\.[0-9]+\.[0-9]+$" "\\1" major ${CMAKE_SYSTEM_VERSION})
   string(REGEX REPLACE "^[0-9]+\.([0-9]+)\.[0-9]+$" "\\1" minor ${CMAKE_SYSTEM_VERSION})
   math(EXPR win32_version "(${major} << 8) + ${minor}" OUTPUT_FORMAT HEXADECIMAL)
   add_compile_definitions(_WIN32_WINNT=${win32_version})
-endif (WIN32 AND CMAKE_SYSTEM_VERSION)
+endif ()
 
 # Generating config.hpp
 message(STATUS "Generating config.hpp")
@@ -69,7 +69,7 @@ if (Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
   #   '__attribute__ ((nonnull))', which might let GCC cause '-Wignored-attributes' warning
   #   if using std::is_same to detect function signature equation.
   set(NO_IGNORED_ATTRIBUTES_FOR_SODIUM ON)
-endif (Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
+endif ()
 
 if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
   # Before BOOST 1.69.0, Clang might complain '-Wreturn-std-move' warning
@@ -77,29 +77,29 @@ if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
   #   which should be treated as NRVO after C++17.
   # TODO check_cxx_compiler_flag command always gets failed when generating for iOS
   set(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO ON)
-endif (Boost_VERSION_STRING VERSION_LESS "1.69.0")
+endif ()
 
 # From Boost-Beast 1.70.0, MSVC generates warning C4702(unreachable code) when including
 #   boost/beast/http/fields.hpp. Plz refer to https://github.com/boostorg/beast/issues/1582 .
 # Disable this warning if 1.70.0 or later version are going to be used.
 if (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
   set(DISABLE_C4702_FOR_BEAST_FIELDS ON)
-else (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
+else ()
   set(DISABLE_C4702_FOR_BEAST_FIELDS OFF)
-endif (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
+endif ()
 
 if (Boost_VERSION_STRING VERSION_LESS "1.70.0")
   set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR OFF)
-else (Boost_VERSION_STRING VERSION_LESS "1.70.0")
+else ()
   # From version 1.70.0, Boost.Asio changed the behaviour of resolver::resolver,
   #   that it's supposed to be constructed from Executor instead of ExecutionContext.
   set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR ON)
-endif (Boost_VERSION_STRING VERSION_LESS "1.70.0")
+endif ()
 
 # TODO check_cxx_compiler_flag command always gets failed when generating for iOS
 if (IOS)
   set(DISABLE_SHORTEN_64_TO_32_WARNING ON)
-endif (IOS)
+endif ()
 
 if (BUILD_SERVER)
   include(CheckIncludeFiles)
@@ -115,7 +115,7 @@ if (BUILD_SERVER)
   check_function_exists("fork" HAS_FORK)
   check_function_exists("setsid" HAS_SETSID)
   check_function_exists("close" HAS_CLOSE)
-endif (BUILD_SERVER)
+endif ()
 
 configure_file(${CMAKE_SOURCE_DIR}/include/pichi/config.hpp.in ${CMAKE_BINARY_DIR}/include/pichi/config.hpp)
 

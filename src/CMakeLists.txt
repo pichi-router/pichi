@@ -1,8 +1,11 @@
 file(GLOB_RECURSE SRCS *.cpp)
+
 if (STATIC_LINK)
   add_library(${PICHI_LIBRARY} STATIC ${SRCS})
-  install(TARGETS ${PICHI_LIBRARY} ARCHIVE DESTINATION lib)
-else (STATIC_LINK)
+  if (INSTALL_DEVEL)
+    install(TARGETS ${PICHI_LIBRARY} ARCHIVE DESTINATION lib)
+  endif ()
+else ()
   add_library(${PICHI_LIBRARY} SHARED ${SRCS})
   target_link_libraries(${PICHI_LIBRARY} PRIVATE
     ${Boost_CONTEXT_LIBRARY}
@@ -12,18 +15,21 @@ else (STATIC_LINK)
   if (WIN32)
     target_link_libraries(${PICHI_LIBRARY} PRIVATE ${Boost_DATE_TIME_LIBRARY})
     set_target_properties(${PICHI_LIBRARY} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  endif (WIN32)
+  endif ()
   if (VERSION)
     set_target_properties(${PICHI_LIBRARY} PROPERTIES VERSION ${VERSION})
-  endif(VERSION)
+  endif()
   install(TARGETS ${PICHI_LIBRARY} LIBRARY DESTINATION lib RUNTIME DESTINATION bin)
-endif (STATIC_LINK)
+endif ()
 set_target_properties(${PICHI_LIBRARY} PROPERTIES OUTPUT_NAME pichi)
 
-if (INSTALL_HEADERS)
-  install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/pichi DESTINATION include)
+if (INSTALL_DEVEL)
+  install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/pichi DESTINATION include
+    FILES_MATCHING PATTERN "*.hpp")
   install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/boost DESTINATION include)
-  install(DIRECTORY ${CMAKE_BINARY_DIR}/include/pichi DESTINATION include)
-endif (INSTALL_HEADERS)
+  install(FILES ${CMAKE_SOURCE_DIR}/include/pichi.h DESTINATION include)
+  install(DIRECTORY ${CMAKE_BINARY_DIR}/include/pichi DESTINATION include
+    FILES_MATCHING PATTERN "*.hpp")
+endif ()
 
 target_include_directories(${PICHI_LIBRARY} PRIVATE ${CMAKE_BINARY_DIR}/src)
