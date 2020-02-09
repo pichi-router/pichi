@@ -8,7 +8,6 @@
 #include <numeric>
 #include <pichi/api/router.hpp>
 #include <pichi/asserts.hpp>
-#include <pichi/scope_guard.hpp>
 #include <regex>
 
 using namespace std;
@@ -99,13 +98,9 @@ string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterTy
 
 void Router::update(string const& name, RuleVO rvo)
 {
-  rules_[name] = make_pair(move(rvo), vector<Matcher>{});
-  auto it = rules_.find(name);
-  auto guard = makeScopeGuard([it, this]() { rules_.erase(it); });
-  auto& vo = as_const(it->second.first);
-  auto& matchers = it->second.second;
+  auto matchers = vector<Matcher>{};
 
-  transform(cbegin(vo.range_), cend(vo.range_), back_inserter(matchers),
+  transform(cbegin(rvo.range_), cend(rvo.range_), back_inserter(matchers),
             [](auto&& range) -> Matcher {
               auto ec = sys::error_code{};
               auto n4 = ip::make_network_v4(range, ec);
@@ -127,24 +122,24 @@ void Router::update(string const& name, RuleVO rvo)
                   });
                 };
             });
-  transform(cbegin(vo.ingress_), cend(vo.ingress_), back_inserter(matchers), [](auto&& i) {
+  transform(cbegin(rvo.ingress_), cend(rvo.ingress_), back_inserter(matchers), [](auto&& i) {
     return [&i](auto&&, auto&&, auto ingress, auto) { return i == ingress; };
   });
-  transform(cbegin(vo.type_), cend(vo.type_), back_inserter(matchers), [](auto t) {
+  transform(cbegin(rvo.type_), cend(rvo.type_), back_inserter(matchers), [](auto t) {
     // ingress type shouldn't be DIRECT or REJECT
     assertFalse(t == AdapterType::DIRECT, PichiError::SEMANTIC_ERROR, msg::AT_INVALID);
     assertFalse(t == AdapterType::REJECT, PichiError::SEMANTIC_ERROR, msg::AT_INVALID);
     return [t](auto&&, auto&&, auto, auto type) { return t == type; };
   });
-  transform(cbegin(vo.pattern_), cend(vo.pattern_), back_inserter(matchers), [](auto&& pattern) {
+  transform(cbegin(rvo.pattern_), cend(rvo.pattern_), back_inserter(matchers), [](auto&& pattern) {
     return [&pattern](auto&& e, auto&&, auto, auto) { return matchPattern(e.host_, pattern); };
   });
-  transform(cbegin(vo.domain_), cend(vo.domain_), back_inserter(matchers), [](auto&& domain) {
+  transform(cbegin(rvo.domain_), cend(rvo.domain_), back_inserter(matchers), [](auto&& domain) {
     return [&domain](auto&& e, auto&&, auto, auto) {
       return e.type_ == net::Endpoint::Type::DOMAIN_NAME && matchDomain(e.host_, domain);
     };
   });
-  transform(cbegin(vo.country_), cend(vo.country_), back_inserter(matchers),
+  transform(cbegin(rvo.country_), cend(rvo.country_), back_inserter(matchers),
             [& geo = as_const(geo_)](auto&& country) {
               return [&country, &geo](auto&&, auto&& r, auto, auto) {
                 return any_of(cbegin(r), cend(r), [&geo, &country](auto&& entry) {
@@ -152,7 +147,8 @@ void Router::update(string const& name, RuleVO rvo)
                 });
               };
             });
-  guard.disable();
+
+  rules_.insert_or_assign(name, pair(move(rvo), move(matchers)));
 }
 
 void Router::erase(string_view name)
