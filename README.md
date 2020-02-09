@@ -7,21 +7,21 @@ Pichi is a flexible rule-based proxy.
 ### Unix-like
 
 | OS | macOS 10.14 | macOS 10.13 | Alpine 3.9 |
-|:----------------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+|:----------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | **Toolchain** | Xcode 11.1 | Xcode 10.1 | GCC 8.3 |
 | **Status** | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/3?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=3&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/4?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=4&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/5?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=5&branchName=master) |
 
 ### Windows
 
 | OS | Windows Server 2019 | Windows Server 2016 |
-|:-------------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+|:-------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | **Toolchain** | Visual Studio 2019 | Visual Studio 2017 |
 | **Status** | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/1?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=1&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/2?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=2&branchName=master) |
 
 ### Mobile
 
 | OS | iOS/tvOS | Android |
-|:-------------:|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+|:-------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | **Toolchain** | Xcode 11.1 | NDK r20b |
 | **Status** | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/8?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=8&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/7?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=7&branchName=master) |
 
@@ -105,8 +105,8 @@ Transparent proxy is very useful if you want to use some DNS servers which might
 Please use [Docker](https://www.docker.com):
 
 ```
-$ docker pull pichi/pichi:1.3.0-rc
-$ docker run --rm pichi/pichi:1.3.0-rc pichi <options>
+$ docker pull pichi/pichi:1.3.0
+$ docker run --rm pichi/pichi:1.3.0 pichi <options>
 ```
 
 #### macOS
@@ -287,7 +287,7 @@ HTTP/1.1 204 No Content
 * `BUILD_SERVER`: Build pichi application, the default is **ON**.
 * `BUILD_TEST`: Build unit test cases, the default is **ON**.
 * `STATIC_LINK`: Generate static library, the default is **ON**.
-* `INSTALL_HEADERS`: Install header files, the default is **OFF**.
+* `INSTALL_DEVEL`: Install development files, the default is **OFF**.
 * `ENABLE_TLS`: Provide TLS support, the default is **ON**.
 
 ### Build and run tests
@@ -295,18 +295,18 @@ HTTP/1.1 204 No Content
 Build and run on Unix-like:
 
 ```
-$ cmake -B build .
-$ cmake --build build
-$ cmake --build build --target test
+$ cmake -B /path/to/build /path/to/pichi
+$ cmake --build /path/to/build
+$ cmake --build /path/to/build --target test
 ```
 
 Build and run on Windows with [Vcpkg](https://github.com/Microsoft/vcpkg):
 
 ```
-PS C:\pichi> cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
->> -DVCPKG_TARGET_TRIPLET="x64-windows-static" -DCMAKE_BUILD_TYPE=MinSizeRel -B build .
-PS C:\pichi> cmake --build build --config MinSizeRel
-PS C:\pichi> cmake --build build --config MinSizeRel --target test
+PS C:\pichi> cmake -D CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+>> -D VCPKG_TARGET_TRIPLET="x64-windows-static" -D CMAKE_BUILD_TYPE=MinSizeRel -B build .
+PS C:\pichi> cmake --build build --config Release
+PS C:\pichi> cmake --build build --config Release --target test
 ```
 
 ### Docker
@@ -336,9 +336,10 @@ CMake provides the [detailed documents](https://cmake.org/cmake/help/v3.16/manua
 
 ```
 $ cmake -G Xcode -D CMAKE_SYSTEM_NAME=iOS -D CMAKE_OSX_DEPLOYMENT_TARGET=8.0 \
->   -D CMAKE_INSTALL_PREFIX=/path/to/sysroot [other options] /path/to/project
-$ cmake --build . --config Release -- -sdk iphoneos            # Build for iPhone
-$ cmake --build . --config Release -- -sdk iphonesimulator     # Build for iPhone simulator
+>   -D CMAKE_INSTALL_PREFIX=/path/to/sysroot [other options] \
+>   -B /path/to/build /path/to/pichi
+$ cmake --build /path/to/build --config Release -- -sdk iphoneos            # Build for iPhone
+$ cmake --build /path/to/build --config Release -- -sdk iphonesimulator     # Build for iPhone simulator
 ```
 
 On the other hand, `deps-build/boost.sh` can generate libraries for iOS/tvOS if below environment variables are set:
@@ -389,15 +390,15 @@ $ # Build other dependent libraries
 $ cmake -D CMAKE_SYSROOT=${SYSROOT} -D CMAKE_INSTALL_PREFIX=${SYSROOT} \
 >   -D CMAKE_C_COMPILER=${TOOLCHAIN_ROOT}/bin/clang \
 >   -D CMAKE_CXX_COMPILER=${TOOLCHAIN_ROOT}/bin/clang++ \
->   [other options] /path/to/other/libraries
-$ cmake --build . --target install
+>   [other options] -B /path/to/build/library /path/to/other/library
+$ cmake --build /path/to/build/libraries --target install
 $
 $ # Build pichi
 $ cmake -D CMAKE_SYSROOT=${SYSROOT} -D CMAKE_INSTALL_PREFIX=${SYSROOT} \
 >   -D CMAKE_C_COMPILER=${TOOLCHAIN_ROOT}/bin/clang \
 >   -D CMAKE_CXX_COMPILER=${TOOLCHAIN_ROOT}/bin/clang++ \
->   [other options] /path/to/pichi/source
-$ cmake --build . --target install
+>   [other options] -B /path/to/build /path/to/pichi
+$ cmake --build /path/to/build --target install
 ```
 
 #### Cross-Compiling for other architecture
@@ -428,14 +429,15 @@ $ ./b2 --with-context --with-filesystem --with-program_options --with-system \
 $
 $ # Build other libraries
 $ cmake -D CMAKE_C_COMPILER=clang -D CMAKE_C_FLAGS="${CROSS_FLAGS}" \
-    -D CMAKE_INSTALL_PREFIX=${AARCH64_SYSROOT} -B build /path/to/library
-$ cmake --build build --target install
+    -D CMAKE_INSTALL_PREFIX=${AARCH64_SYSROOT} \
+    -B /path/to/build/library /path/to/library
+$ cmake --build /path/to/build --target install
 $
 $ # Build pichi
 $ cmake -D CMAKE_CXX_COMPILER=clang++ -D CMAKE_CXX_FLAGS="${CROSS_FLAGS}" \
-    -D CMAKE_INSTALL_PREFIX=${AARCH64_SYSROOT} -B build .
-$ cmake --build build
-$ file build/server/pichi
+    -D CMAKE_INSTALL_PREFIX=${AARCH64_SYSROOT} -B /path/to/build /path/to/pichi
+$ cmake --build /path/to/build
+$ file /path/to/build/server/pichi
 build/server/pichi: ELF 64-bit LSB executable, ARM aarch64, version 1 (FreeBSD),
 dynamically linked, interpreter /libexec/ld-elf.so.1, for FreeBSD 12.0 (1200086),
 FreeBSD-style, with debug_info, not stripped
