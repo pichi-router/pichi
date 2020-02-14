@@ -276,30 +276,6 @@ template <typename Stream> void HttpIngress<Stream>::close(Yield yield)
   pichi::net::close(stream_, yield);
 }
 
-template <typename Stream> void HttpIngress<Stream>::disconnect(PichiError e, Yield yield)
-{
-  auto rep = http::response<http::empty_body>{};
-  rep.version(11);
-  rep.set(http::field::connection, "Close");
-  switch (e) {
-  case PichiError::CONN_FAILURE:
-    rep.result(http::status::gateway_timeout);
-    break;
-  case PichiError::BAD_AUTH_METHOD:
-    rep.result(http::status::proxy_authentication_required);
-    rep.set(http::field::proxy_authenticate, "Basic");
-    break;
-  case PichiError::UNAUTHENTICATED:
-    rep.result(http::status::forbidden);
-    break;
-  default:
-    return;
-  }
-  auto ec = sys::error_code{};
-  // Ignoring all errors here
-  writeHttp(stream_, rep, yield[ec]);
-}
-
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 {
 #ifdef ENABLE_TLS
@@ -329,7 +305,6 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
       tunnelConfirm(stream_, yield);
       reqParser_.release();
     };
-
     /*
      * HTTP CONNECT @RFC2616
      *   Don't validate whether the HOST field exists or not here.

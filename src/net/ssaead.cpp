@@ -103,11 +103,6 @@ template <CryptoMethod method, typename Stream> void SSAeadAdapter<method, Strea
 }
 
 template <CryptoMethod method, typename Stream>
-void SSAeadAdapter<method, Stream>::disconnect(PichiError, Yield)
-{
-}
-
-template <CryptoMethod method, typename Stream>
 MutableBuffer<uint8_t> SSAeadAdapter<method, Stream>::prepare(size_t n,
                                                               MutableBuffer<uint8_t> provided)
 {

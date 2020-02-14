@@ -88,11 +88,6 @@ template <CryptoMethod method, typename Stream> void SSStreamAdapter<method, Str
 }
 
 template <CryptoMethod method, typename Stream>
-void SSStreamAdapter<method, Stream>::disconnect(PichiError, Yield)
-{
-}
-
-template <CryptoMethod method, typename Stream>
 void SSStreamAdapter<method, Stream>::connect(Endpoint const& remote, Endpoint const& server,
                                               Yield yield)
 {

@@ -33,7 +33,6 @@ public:
   Endpoint readRemote(Yield) override;
   void connect(Endpoint const& remote, Endpoint const& next, Yield) override;
   void confirm(Yield) override;
-  void disconnect(PichiError, Yield) override;
 
 private:
   MutableBuffer<uint8_t> prepare(size_t n, MutableBuffer<uint8_t> provided);

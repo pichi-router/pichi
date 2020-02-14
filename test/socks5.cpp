@@ -651,7 +651,7 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Named_Failures)
     auto&& [e, expect] = p;
     auto socket = Socket{};
     auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
-    ingress->disconnect(e, yield);
+    ingress->disconnect(make_exception_ptr(Exception{e}), yield);
 
     auto fact = vector<uint8_t>(expect.size(), 0x00_u8);
 
@@ -669,7 +669,7 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Unnamed_Failures)
                  PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
     auto socket = Socket{};
     auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
-    ingress->disconnect(e, yield);
+    ingress->disconnect(make_exception_ptr(Exception{e}), yield);
     BOOST_CHECK_EQUAL(0_sz, socket.available());
   }
 }

@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Named_Failures)
        {PichiError::CONN_FAILURE, PichiError::BAD_AUTH_METHOD, PichiError::UNAUTHENTICATED}) {
     auto socket = Socket{};
     auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(e, yield);
+    ingress.disconnect(make_exception_ptr(Exception{e}), yield);
 
     auto buf = array<uint8_t, 1024>{};
     verifyResp(e, parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)}));
@@ -556,8 +556,9 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Unnamed_Failures)
                  PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
     auto socket = Socket{};
     auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(e, yield);
+    ingress.disconnect(make_exception_ptr(Exception{e}), yield);
     BOOST_CHECK_EQUAL(0_sz, socket.available());
+    (void)e;
   }
 }
 
