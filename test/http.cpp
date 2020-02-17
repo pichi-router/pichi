@@ -122,6 +122,25 @@ static void verifyField(http::header<isRequest> const& h, http::field field, str
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(h[field]), cend(h[field]));
 }
 
+static void verifyDisconnectResponse(PichiError e, http::response<http::empty_body> const& resp)
+{
+  switch (e) {
+  case PichiError::CONN_FAILURE:
+    BOOST_CHECK_EQUAL(http::status::gateway_timeout, resp.result());
+    break;
+  case PichiError::BAD_AUTH_METHOD:
+    BOOST_CHECK_EQUAL(http::status::proxy_authentication_required, resp.result());
+    BOOST_CHECK_EQUAL("Basic", resp[http::field::proxy_authenticate]);
+    break;
+  case PichiError::UNAUTHENTICATED:
+    BOOST_CHECK_EQUAL(http::status::forbidden, resp.result());
+    break;
+  default:
+    BOOST_CHECK_EQUAL(http::status::internal_server_error, resp.result());
+    break;
+  }
+}
+
 BOOST_AUTO_TEST_SUITE(HTTP)
 
 BOOST_AUTO_TEST_CASE(readRemote_Invalid_HTTP_Header)
@@ -518,48 +537,96 @@ BOOST_AUTO_TEST_CASE(Ingress_confirm_Relay)
   BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
-BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Named_Failures)
+BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_PichiError)
 {
-  auto verifyResp = [](PichiError e, auto&& resp) {
-    switch (e) {
-    case PichiError::CONN_FAILURE:
-      BOOST_CHECK_EQUAL(http::status::gateway_timeout, resp.result());
-      break;
-    case PichiError::BAD_AUTH_METHOD:
-      BOOST_CHECK_EQUAL(http::status::proxy_authentication_required, resp.result());
-      BOOST_CHECK_EQUAL("Basic", resp[http::field::proxy_authenticate]);
-      break;
-    case PichiError::UNAUTHENTICATED:
-      BOOST_CHECK_EQUAL(http::status::forbidden, resp.result());
-      break;
-    default:
-      BOOST_ERROR("Invalid PichiError value");
-      break;
-    }
-  };
-
-  for (auto e :
-       {PichiError::CONN_FAILURE, PichiError::BAD_AUTH_METHOD, PichiError::UNAUTHENTICATED}) {
-    auto socket = Socket{};
-    auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(Exception{e}), yield);
-
-    auto buf = array<uint8_t, 1024>{};
-    verifyResp(e, parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)}));
-  }
-}
-
-BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Unnamed_Failures)
-{
-  for (auto e : {PichiError::OK, PichiError::BAD_PROTO, PichiError::CRYPTO_ERROR,
+  for (auto e : {PichiError::CONN_FAILURE, PichiError::BAD_AUTH_METHOD, PichiError::UNAUTHENTICATED,
+                 PichiError::OK, PichiError::BAD_PROTO, PichiError::CRYPTO_ERROR,
                  PichiError::BUFFER_OVERFLOW, PichiError::BAD_JSON, PichiError::SEMANTIC_ERROR,
                  PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
     auto socket = Socket{};
     auto ingress = HttpIngress{{}, socket, true};
     ingress.disconnect(make_exception_ptr(Exception{e}), yield);
-    BOOST_CHECK_EQUAL(0_sz, socket.available());
-    (void)e;
+
+    auto buf = array<uint8_t, 1024>{};
+    verifyDisconnectResponse(e, parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)}));
   }
+}
+
+BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_HTTP_Errors)
+{
+  static auto const ECS = vector<sys::error_code>{
+      http::error::bad_alloc,       http::error::bad_chunk,    http::error::bad_content_length,
+      http::error::bad_method,      http::error::bad_obs_fold, http::error::bad_reason,
+      http::error::bad_status,      http::error::bad_target,   http::error::bad_transfer_encoding,
+      http::error::bad_value,       http::error::bad_version,  http::error::body_limit,
+      http::error::buffer_overflow, http::error::end_of_chunk, http::error::end_of_stream,
+      http::error::header_limit,    http::error::need_buffer,  http::error::need_more,
+      http::error::partial_message, http::error::stale_parser, http::error::unexpected_body,
+  };
+  for_each(cbegin(ECS), cend(ECS), [](auto&& ec) {
+    auto socket = Socket{};
+    auto ingress = HttpIngress{{}, socket, true};
+    ingress.disconnect(make_exception_ptr(sys::system_error{ec}), yield);
+
+    auto buf = array<uint8_t, 1024>{};
+    auto resp = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
+    BOOST_CHECK_EQUAL(http::status::bad_request, resp.result());
+  });
+}
+
+BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Network_Errors)
+{
+  auto const ECS = vector<sys::error_code>{
+      asio::error::access_denied,
+      asio::error::address_family_not_supported,
+      asio::error::address_in_use,
+      asio::error::already_connected,
+      asio::error::bad_descriptor,
+      asio::error::broken_pipe,
+      asio::error::connection_aborted,
+      asio::error::connection_refused,
+      asio::error::connection_reset,
+      asio::error::eof,
+      asio::error::fault,
+      asio::error::fd_set_failure,
+      asio::error::host_not_found,
+      asio::error::host_not_found_try_again,
+      asio::error::host_unreachable,
+      asio::error::in_progress,
+      asio::error::interrupted,
+      asio::error::invalid_argument,
+      asio::error::message_size,
+      asio::error::network_down,
+      asio::error::network_reset,
+      asio::error::network_unreachable,
+      asio::error::no_buffer_space,
+      asio::error::no_data,
+      asio::error::no_descriptors,
+      asio::error::no_memory,
+      asio::error::no_permission,
+      asio::error::no_protocol_option,
+      asio::error::no_recovery,
+      asio::error::no_such_device,
+      asio::error::not_connected,
+      asio::error::not_found,
+      asio::error::not_socket,
+      asio::error::operation_aborted,
+      asio::error::operation_not_supported,
+      asio::error::service_not_found,
+      asio::error::shut_down,
+      asio::error::socket_type_not_supported,
+      asio::error::try_again,
+      asio::error::would_block,
+  };
+  for_each(cbegin(ECS), cend(ECS), [](auto&& ec) {
+    auto socket = Socket{};
+    auto ingress = HttpIngress{{}, socket, true};
+    ingress.disconnect(make_exception_ptr(sys::system_error{ec}), yield);
+
+    auto buf = array<uint8_t, 1024>{};
+    auto resp = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
+    BOOST_CHECK_EQUAL(http::status::gateway_timeout, resp.result());
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_send_Tunnel)

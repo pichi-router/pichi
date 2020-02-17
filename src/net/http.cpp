@@ -276,6 +276,43 @@ template <typename Stream> void HttpIngress<Stream>::close(Yield yield)
   pichi::net::close(stream_, yield);
 }
 
+template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr eptr, Yield yield)
+{
+  auto rep = http::response<http::empty_body>{};
+  rep.version(11);
+  rep.set(http::field::connection, "Close");
+  try {
+    rethrow_exception(eptr);
+  }
+  catch (Exception const& e) {
+    switch (e.error()) {
+    case PichiError::CONN_FAILURE:
+      rep.result(http::status::gateway_timeout);
+      break;
+    case PichiError::BAD_AUTH_METHOD:
+      rep.result(http::status::proxy_authentication_required);
+      rep.set(http::field::proxy_authenticate, "Basic");
+      break;
+    case PichiError::UNAUTHENTICATED:
+      rep.result(http::status::forbidden);
+      break;
+    default:
+      rep.result(http::status::internal_server_error);
+      break;
+    }
+  }
+  catch (sys::system_error const& e) {
+    // TODO classify these errors
+    static auto const& HTTP_ERROR_CATEGORY =
+        http::make_error_code(http::error::end_of_stream).category();
+    rep.result(e.code().category() == HTTP_ERROR_CATEGORY ? http::status::bad_request :
+                                                            http::status::gateway_timeout);
+  }
+  auto ec = sys::error_code{};
+  // Ignoring all errors here
+  writeHttp(stream_, rep, yield[ec]);
+}
+
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 {
 #ifdef ENABLE_TLS
