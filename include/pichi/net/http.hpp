@@ -70,7 +70,7 @@ public:
   bool readable() const override;
   bool writable() const override;
   void confirm(Yield yield) override;
-  void disconnect(PichiError, Yield) override;
+  void disconnect(std::exception_ptr, Yield) override;
   Endpoint readRemote(Yield) override;
 
 private:

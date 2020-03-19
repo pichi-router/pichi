@@ -2,8 +2,8 @@
 #define PICHI_NET_ADAPTER_HPP
 
 #include <boost/asio/spawn2.hpp>
+#include <exception>
 #include <pichi/buffer.hpp>
-#include <pichi/exception.hpp>
 #include <pichi/net/common.hpp>
 #include <stdint.h>
 
@@ -31,7 +31,7 @@ struct Ingress : public Adapter {
   virtual size_t readIV(MutableBuffer<uint8_t>, Yield) { return 0; };
   virtual Endpoint readRemote(Yield) = 0;
   virtual void confirm(Yield) = 0;
-  virtual void disconnect(PichiError, Yield) = 0;
+  virtual void disconnect(std::exception_ptr, Yield) {}
 };
 
 struct Egress : public Adapter {

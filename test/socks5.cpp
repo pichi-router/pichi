@@ -651,7 +651,7 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Named_Failures)
     auto&& [e, expect] = p;
     auto socket = Socket{};
     auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
-    ingress->disconnect(e, yield);
+    ingress->disconnect(make_exception_ptr(Exception{e}), yield);
 
     auto fact = vector<uint8_t>(expect.size(), 0x00_u8);
 
@@ -669,9 +669,87 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Unnamed_Failures)
                  PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
     auto socket = Socket{};
     auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
-    ingress->disconnect(e, yield);
+    ingress->disconnect(make_exception_ptr(Exception{e}), yield);
     BOOST_CHECK_EQUAL(0_sz, socket.available());
   }
+}
+
+BOOST_AUTO_TEST_CASE(disconnect_For_Specific_system_error)
+{
+  static auto const TABLE = vector<pair<sys::error_code, vector<uint8_t>>>{
+      {asio::error::address_family_not_supported,
+       {0x05_u8, 0x08_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+      {asio::error::connection_refused,
+       {0x05_u8, 0x05_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+      {asio::error::connection_reset,
+       {0x05_u8, 0x05_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+      {asio::error::host_not_found,
+       {0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+      {asio::error::host_unreachable,
+       {0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+      {asio::error::network_down,
+       {0x05_u8, 0x03_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+      {asio::error::network_unreachable,
+       {0x05_u8, 0x03_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+      {asio::error::timed_out,
+       {0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8}},
+  };
+  for_each(cbegin(TABLE), cend(TABLE), [](auto&& item) {
+    auto&& [ec, expect] = item;
+    auto socket = Socket{};
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
+    ingress->disconnect(make_exception_ptr(sys::system_error{ec}), yield);
+
+    auto fact = vector<uint8_t>(expect.size(), 0x00_u8);
+    BOOST_CHECK_EQUAL(fact.size(), socket.available());
+
+    socket.flush(fact);
+    BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
+  });
+}
+
+BOOST_AUTO_TEST_CASE(disconnect_For_Unused_system_error)
+{
+  auto const ECS = vector<sys::error_code>{
+      asio::error::access_denied,
+      asio::error::address_in_use,
+      asio::error::already_connected,
+      asio::error::bad_descriptor,
+      asio::error::broken_pipe,
+      asio::error::connection_aborted,
+      asio::error::eof,
+      asio::error::fault,
+      asio::error::fd_set_failure,
+      asio::error::host_not_found_try_again,
+      asio::error::in_progress,
+      asio::error::interrupted,
+      asio::error::invalid_argument,
+      asio::error::message_size,
+      asio::error::no_buffer_space,
+      asio::error::no_data,
+      asio::error::no_descriptors,
+      asio::error::no_memory,
+      asio::error::no_permission,
+      asio::error::no_protocol_option,
+      asio::error::no_recovery,
+      asio::error::no_such_device,
+      asio::error::not_connected,
+      asio::error::not_found,
+      asio::error::not_socket,
+      asio::error::operation_aborted,
+      asio::error::operation_not_supported,
+      asio::error::service_not_found,
+      asio::error::shut_down,
+      asio::error::socket_type_not_supported,
+      asio::error::try_again,
+      asio::error::would_block,
+  };
+  for_each(cbegin(ECS), cend(ECS), [](auto&& ec) {
+    auto socket = Socket{};
+    auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
+    ingress->disconnect(make_exception_ptr(sys::system_error{ec}), yield);
+    BOOST_CHECK_EQUAL(0_sz, socket.available());
+  });
 }
 
 BOOST_AUTO_TEST_SUITE_END()

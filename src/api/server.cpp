@@ -116,17 +116,7 @@ template <typename Yield> void Server::listen(string_view iname, IngressHolder& 
               session->start(remote, net::makeEndpoint(*evo.host_, *evo.port_));
           }
         },
-        [ingress = p](auto eptr, auto yield) noexcept {
-          try {
-            if (eptr) rethrow_exception(eptr);
-          }
-          catch (Exception const& e) {
-            ingress->disconnect(e.error(), yield);
-          }
-          catch (...) {
-            ingress->disconnect(PichiError::MISC, yield);
-          }
-        });
+        [ingress = p](auto eptr, auto yield) noexcept { ingress->disconnect(eptr, yield); });
   }
 }
 

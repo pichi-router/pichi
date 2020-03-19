@@ -61,11 +61,6 @@ template <typename Iterator, typename Socket> void TunnelIngress<Iterator, Socke
 {
 }
 
-template <typename Iterator, typename Socket>
-void TunnelIngress<Iterator, Socket>::disconnect(PichiError, Yield)
-{
-}
-
 template class TunnelIngress<vector<Endpoint>::const_iterator, boost::asio::ip::tcp::socket>;
 
 } // namespace pichi::net

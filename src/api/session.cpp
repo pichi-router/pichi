@@ -41,17 +41,7 @@ void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
             strand_, [self, this](auto yield) { bridge(*egress_, *ingress_, yield); },
             [this](auto, auto yield) noexcept { this->close(yield); });
       },
-      [this](auto eptr, auto yield) noexcept {
-        try {
-          if (eptr) rethrow_exception(eptr);
-        }
-        catch (Exception const& e) {
-          ingress_->disconnect(e.error(), yield);
-        }
-        catch (...) {
-          ingress_->disconnect(PichiError::MISC, yield);
-        }
-      });
+      [this](auto eptr, auto yield) noexcept { ingress_->disconnect(eptr, yield); });
 }
 
 void Session::start(net::Endpoint const& remote) { start(remote, remote); }
