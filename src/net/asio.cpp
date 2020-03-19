@@ -38,6 +38,7 @@
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/rfc2818_verification.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #endif // ENABLE_TLS
 
@@ -67,11 +68,15 @@ static auto createTlsContext(api::EgressVO const& vo)
   auto ctx = ssl::context{ssl::context::tls_client};
   if (*vo.insecure_) {
     ctx.set_verify_mode(ssl::context::verify_none);
+    return ctx;
   }
+
+  ctx.set_verify_mode(ssl::context::verify_peer);
+  if (vo.caFile_.has_value())
+    ctx.load_verify_file(*vo.caFile_);
   else {
-    ctx.set_verify_mode(ssl::context::verify_peer);
     ctx.set_default_verify_paths();
-    if (vo.caFile_.has_value()) ctx.load_verify_file(*vo.caFile_);
+    ctx.set_verify_callback(ssl::rfc2818_verification{*vo.host_});
   }
   return ctx;
 }
