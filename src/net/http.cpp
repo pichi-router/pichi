@@ -304,10 +304,20 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr ep
   }
   catch (sys::system_error const& e) {
     // TODO classify these errors
-    static auto const& HTTP_ERROR_CATEGORY =
-        http::make_error_code(http::error::end_of_stream).category();
-    rep.result(e.code().category() == HTTP_ERROR_CATEGORY ? http::status::bad_request :
-                                                            http::status::gateway_timeout);
+
+    /* TODO It's not clear that http::make_error_code() will return error codes with different
+     *   categories when its invoker are located in the different DLLs. As the result,
+     *   the pre-defined category will never equal to what comes from Boost.Test.
+     *   The downcasting at runtime has to be used to detect the equation here.
+     *
+     * The original code:
+     * static auto const& HTTP_ERROR_CATEGORY =
+     *   http::make_error_code(http::error::end_of_stream).category();
+     */
+
+    using CategoryPtr = http::detail::http_error_category const*;
+    auto pCat = dynamic_cast<CategoryPtr>(&e.code().category());
+    rep.result(pCat ? http::status::bad_request : http::status::gateway_timeout);
   }
   auto ec = sys::error_code{};
   // Ignoring all errors here
