@@ -6,6 +6,8 @@
 #include <boost/beast/http/error.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/exception.hpp>
+#include <rapidjson/document.h>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -41,6 +43,16 @@ extern api::EgressVO defaultEgressVO(api::AdapterType);
 extern rapidjson::Value defaultEgressJson(api::AdapterType);
 
 extern bool operator==(net::Endpoint const& lhs, net::Endpoint const& rhs);
+extern bool operator==(api::IngressVO const& lhs, api::IngressVO const& rhs);
+extern bool operator==(api::EgressVO const& lhs, api::EgressVO const& rhs);
+extern bool operator==(api::RuleVO const& lhs, api::RuleVO const& rhs);
+extern bool operator==(api::RouteVO const& lhs, api::RouteVO const& rhs);
+
+extern std::string toString(rapidjson::Value const&);
+extern std::string toString(api::IngressVO const&);
+extern std::string toString(api::EgressVO const&);
+extern std::string toString(api::RuleVO const&);
+extern std::string toString(api::RouteVO const&);
 
 extern boost::asio::yield_context gYield;
 

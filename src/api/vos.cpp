@@ -629,6 +629,7 @@ template <> IngressVO parse(json::Value const& v)
     ivo.keyFile_ = parseString(v[IngressVOKey::keyFile_]);
     parseArray(v, IngressVOKey::passwords_, inserter(ivo.passwords_, end(ivo.passwords_)),
                &parseString);
+    assertFalse(ivo.passwords_.empty(), PichiError::BAD_JSON);
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
@@ -677,7 +678,7 @@ template <> EgressVO parse(json::Value const& v)
     evo.insecure_ = v.HasMember(EgressVOKey::insecure_) && parseBoolean(v[EgressVOKey::insecure_]);
     if (!*evo.insecure_ && v.HasMember(EgressVOKey::caFile_))
       evo.caFile_ = parseString(v[EgressVOKey::caFile_]);
-    assertTrue(v.HasMember(EgressVOKey::password_));
+    assertTrue(v.HasMember(EgressVOKey::password_), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
     evo.password_ = parseString(v[EgressVOKey::password_]);
     break;
   case AdapterType::REJECT:

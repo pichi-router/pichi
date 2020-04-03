@@ -5,143 +5,12 @@
 #include <boost/test/unit_test.hpp>
 #include <pichi/common.hpp>
 #include <pichi/exception.hpp>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 #include <string_view>
 
 using namespace std;
 using namespace rapidjson;
 using namespace pichi;
 using namespace pichi::api;
-
-using pichi::net::AdapterType;
-
-static string toString(Value const& v)
-{
-  auto buf = StringBuffer{};
-  auto writer = Writer<StringBuffer>{buf};
-  v.Accept(writer);
-  return buf.GetString();
-}
-
-static string toString(IngressVO const& ingress)
-{
-  auto v = Value{};
-  v.SetObject();
-
-  v.AddMember("type", toJson(ingress.type_, alloc), alloc);
-  v.AddMember("bind", toJson(ingress.bind_, alloc), alloc);
-  v.AddMember("port", ingress.port_, alloc);
-  if (ingress.method_.has_value()) v.AddMember("method", toJson(*ingress.method_, alloc), alloc);
-  if (ingress.password_.has_value())
-    v.AddMember("password", toJson(*ingress.password_, alloc), alloc);
-  if (ingress.tls_.has_value()) v.AddMember("tls", *ingress.tls_, alloc);
-  if (ingress.certFile_.has_value())
-    v.AddMember("cert_file", toJson(*ingress.certFile_, alloc), alloc);
-  if (ingress.keyFile_.has_value())
-    v.AddMember("key_file", toJson(*ingress.keyFile_, alloc), alloc);
-  if (!ingress.destinations_.empty())
-    v.AddMember("destinations",
-                toJson(begin(ingress.destinations_), end(ingress.destinations_), alloc), alloc);
-  if (ingress.balance_.has_value()) v.AddMember("balance", toJson(*ingress.balance_, alloc), alloc);
-
-  return toString(v);
-}
-
-static string toString(EgressVO const& evo)
-{
-  auto v = Value{};
-  v.SetObject();
-
-  v.AddMember("type", toJson(evo.type_, alloc), alloc);
-  if (evo.host_) v.AddMember("host", toJson(*evo.host_, alloc), alloc);
-  if (evo.port_) v.AddMember("port", *evo.port_, alloc);
-  if (evo.method_) v.AddMember("method", toJson(*evo.method_, alloc), alloc);
-  if (evo.password_) v.AddMember("password", toJson(*evo.password_, alloc), alloc);
-  if (evo.mode_) v.AddMember("mode", toJson(*evo.mode_, alloc), alloc);
-  if (evo.delay_) v.AddMember("delay", *evo.delay_, alloc);
-  if (evo.tls_) v.AddMember("tls", *evo.tls_, alloc);
-  if (evo.insecure_) v.AddMember("insecure", *evo.insecure_, alloc);
-  if (evo.caFile_) v.AddMember("ca_file", toJson(*evo.caFile_, alloc), alloc);
-
-  return toString(v);
-}
-
-static string toString(RuleVO const& rvo)
-{
-  auto v = Value{};
-  v.SetObject();
-
-  if (!rvo.range_.empty())
-    v.AddMember("range", toJson(begin(rvo.range_), end(rvo.range_), alloc), alloc);
-  if (!rvo.ingress_.empty())
-    v.AddMember("ingress_name", toJson(begin(rvo.ingress_), end(rvo.ingress_), alloc), alloc);
-  if (!rvo.type_.empty())
-    v.AddMember("ingress_type", toJson(begin(rvo.type_), end(rvo.type_), alloc), alloc);
-  if (!rvo.pattern_.empty())
-    v.AddMember("pattern", toJson(begin(rvo.pattern_), end(rvo.pattern_), alloc), alloc);
-  if (!rvo.domain_.empty())
-    v.AddMember("domain", toJson(begin(rvo.domain_), end(rvo.domain_), alloc), alloc);
-  if (!rvo.country_.empty())
-    v.AddMember("country", toJson(begin(rvo.country_), end(rvo.country_), alloc), alloc);
-
-  return toString(v);
-}
-
-static string toString(RouteVO const& rvo)
-{
-  auto v = Value{};
-  v.SetObject();
-
-  if (rvo.default_) v.AddMember("default", toJson(*rvo.default_, alloc), alloc);
-  auto rules = Value{};
-  rules.SetArray();
-  for_each(cbegin(rvo.rules_), cend(rvo.rules_), [&rules](auto&& rule) {
-    auto vo = Value{};
-    vo.SetArray();
-    for_each(cbegin(rule.first), cend(rule.first),
-             [&vo](auto&& item) { vo.PushBack(toJson(item, alloc), alloc); });
-    vo.PushBack(toJson(rule.second, alloc), alloc);
-    rules.PushBack(move(vo), alloc);
-  });
-  v.AddMember("rules", rules, alloc);
-
-  return toString(v);
-}
-
-static bool operator==(IngressVO const& lhs, IngressVO const& rhs)
-{
-  return lhs.type_ == rhs.type_ && lhs.bind_ == rhs.bind_ && lhs.port_ == rhs.port_ &&
-         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.tls_ == rhs.tls_ &&
-         lhs.certFile_ == rhs.certFile_ && lhs.keyFile_ == rhs.keyFile_ &&
-         equal(cbegin(lhs.destinations_), cend(lhs.destinations_), cbegin(rhs.destinations_),
-               cend(rhs.destinations_), [](auto&& l, auto&& r) { return l == r; }) &&
-         lhs.balance_ == rhs.balance_;
-}
-
-static bool operator==(EgressVO const& lhs, EgressVO const& rhs)
-{
-  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_ &&
-         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.mode_ == rhs.mode_ &&
-         lhs.delay_ == rhs.delay_ && lhs.tls_ == rhs.tls_ && lhs.insecure_ == rhs.insecure_ &&
-         lhs.caFile_ == rhs.caFile_;
-}
-
-static bool operator==(RuleVO const& lhs, RuleVO const& rhs)
-{
-  return equal(begin(lhs.range_), end(lhs.range_), begin(rhs.range_), end(rhs.range_)) &&
-         equal(begin(lhs.ingress_), end(lhs.ingress_), begin(rhs.ingress_), end(rhs.ingress_)) &&
-         equal(begin(lhs.type_), end(lhs.type_), begin(rhs.type_), end(rhs.type_)) &&
-         equal(begin(lhs.pattern_), end(lhs.pattern_), begin(rhs.pattern_), end(rhs.pattern_)) &&
-         equal(begin(lhs.domain_), end(lhs.domain_), begin(rhs.domain_), end(rhs.domain_)) &&
-         equal(begin(lhs.country_), end(lhs.country_), begin(rhs.country_), end(rhs.country_));
-}
-
-static bool operator==(RouteVO const& lhs, RouteVO const& rhs)
-{
-  return lhs.default_ == rhs.default_ &&
-         equal(begin(lhs.rules_), end(lhs.rules_), begin(rhs.rules_), end(rhs.rules_));
-}
 
 BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
@@ -165,7 +34,8 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Type)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Default_Ones)
 {
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL}) {
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL,
+                    AdapterType::TROJAN}) {
     BOOST_CHECK(defaultIngressVO(type) == parse<IngressVO>(toString(defaultIngressJson(type))));
   }
 }
@@ -392,6 +262,35 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
                         verifyException<PichiError::BAD_JSON>);
 }
 
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Mandatory_Field)
+{
+  for (auto k : {"type", "bind", "port", "passwords", "remote_host", "remote_port", "cert_file",
+                 "key_file"}) {
+    auto json = defaultIngressJson(AdapterType::TROJAN);
+    json.RemoveMember(k);
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Non_Empty_Field)
+{
+  for (auto k : {"bind", "remote_host", "cert_file", "key_file"}) {
+    auto json = defaultIngressJson(AdapterType::TROJAN);
+    json[k].SetString("");
+    BOOST_CHECK_EXCEPTION(parse<IngressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  }
+  auto json = defaultIngressJson(AdapterType::TROJAN);
+  for (auto&& pwd : json["passwords"].GetArray()) pwd.SetString("");
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Non_Empty_Passwords)
+{
+  auto json = defaultIngressJson(AdapterType::TROJAN);
+  json["passwords"].Clear();
+  BOOST_CHECK_EXCEPTION(parse<IngressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
 BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Mandatory_Fields)
 {
   auto noType = defaultIngressJson(AdapterType::TUNNEL);
@@ -575,7 +474,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
 BOOST_AUTO_TEST_CASE(parse_Egress_Default_Ones)
 {
   for (auto type : {AdapterType::DIRECT, AdapterType::HTTP, AdapterType::REJECT,
-                    AdapterType::SOCKS5, AdapterType::SS}) {
+                    AdapterType::SOCKS5, AdapterType::SS, AdapterType::TROJAN}) {
     BOOST_CHECK(defaultEgressVO(type) == parse<EgressVO>(toString(defaultEgressJson(type))));
   }
 }
@@ -861,6 +760,39 @@ BOOST_AUTO_TEST_CASE(parse_Egress_SS_Additional_Fields)
   json.AddMember("insecure", true, alloc);
   json.AddMember("ca_file", toJson(ph, alloc), alloc);
   BOOST_CHECK(defaultEgressVO(AdapterType::SS) == parse<EgressVO>(json));
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_TROJAN_Mandatory_Fields)
+{
+  auto json = defaultEgressJson(AdapterType::TROJAN);
+  json.RemoveMember("password");
+  BOOST_CHECK_EXCEPTION(parse<EgressVO>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_TROJAN_Default_Value_Of_Insecure_Field)
+{
+  auto json = defaultEgressJson(AdapterType::TROJAN);
+  json.RemoveMember("insecure");
+  BOOST_CHECK(defaultEgressVO(AdapterType::TROJAN) == parse<EgressVO>(json));
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_TROJAN_CA_File_Field_While_Insecure_Is_False)
+{
+  auto json = defaultEgressJson(AdapterType::TROJAN);
+  json.AddMember("insecure", false, alloc);
+  json.AddMember("ca_file", ph, alloc);
+  auto vo = parse<EgressVO>(json);
+  BOOST_CHECK(vo.caFile_.has_value());
+  BOOST_CHECK_EQUAL(*vo.caFile_, ph);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_TROJAN_CA_File_Field_While_Insecure_Is_True)
+{
+  auto json = defaultEgressJson(AdapterType::TROJAN);
+  json.AddMember("insecure", true, alloc);
+  json.AddMember("ca_file", ph, alloc);
+  auto vo = parse<EgressVO>(json);
+  BOOST_CHECK(!vo.caFile_.has_value());
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
