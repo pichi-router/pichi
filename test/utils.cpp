@@ -2,6 +2,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/common.hpp>
+#include <pichi/net/helpers.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <sodium/utils.h>
@@ -50,12 +51,12 @@ IngressVO defaultIngressVO(AdapterType type)
     vo.password_ = ph;
     break;
   case AdapterType::TUNNEL:
-    vo.destinations_ = {{net::Endpoint::Type::DOMAIN_NAME, "localhost", "80"}};
+    vo.destinations_ = {net::makeEndpoint("localhost", 80)};
     vo.balance_ = BalanceType::RANDOM;
     break;
   case AdapterType::TROJAN:
     vo.passwords_ = {ph};
-    vo.remote_ = {{net::Endpoint::Type::DOMAIN_NAME, "localhost", "80"}};
+    vo.remote_ = net::makeEndpoint("localhost", 80);
     vo.certFile_ = ph;
     vo.keyFile_ = ph;
     break;

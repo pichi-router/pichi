@@ -82,7 +82,8 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Invalid_Type)
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Default_Ones)
 {
-  for (auto t : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL}) {
+  for (auto t : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL,
+                 AdapterType::TROJAN}) {
     BOOST_CHECK(defaultIngressJson(t) == toJson(defaultIngressVO(t), alloc));
   }
 }
@@ -235,6 +236,48 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Additional_Fields)
   vo.certFile_ = ph;
   vo.keyFile_ = ph;
   BOOST_CHECK(defaultIngressJson(AdapterType::SS) == toJson(vo, alloc));
+}
+
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_TROJAN_Mandatory_Fields)
+{
+  auto origin = defaultIngressVO(AdapterType::TROJAN);
+  toJson(origin, alloc);
+
+  auto noRemote = origin;
+  noRemote.remote_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noRemote, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noRemoteHost = origin;
+  noRemoteHost.remote_->host_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(noRemoteHost, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noRemotePort = origin;
+  noRemotePort.remote_->port_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(noRemotePort, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noPasswords = origin;
+  noPasswords.passwords_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(noPasswords, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyPassword = origin;
+  emptyPassword.passwords_.insert(""s);
+  BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noCertFile = origin;
+  noCertFile.certFile_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noCertFile, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyCertFile = origin;
+  emptyCertFile.certFile_->clear();
+  BOOST_CHECK_EXCEPTION(toJson(emptyCertFile, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noKeyFile = origin;
+  noKeyFile.keyFile_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noKeyFile, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyKeyFile = origin;
+  emptyKeyFile.keyFile_->clear();
+  BOOST_CHECK_EXCEPTION(toJson(emptyKeyFile, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_TUNNEL_Mandatory_Fields)
@@ -501,6 +544,37 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_SS_Missing_Fields)
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
   BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_TROJAN_Mandatory_Fields)
+{
+  auto origin = defaultEgressVO(AdapterType::TROJAN);
+  toJson(origin, alloc);
+
+  auto noPassword = origin;
+  noPassword.password_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noPassword, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyPassword = origin;
+  emptyPassword.password_->clear();
+  BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noInsecure = origin;
+  noInsecure.insecure_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noInsecure, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyCaFile = origin;
+  emptyCaFile.caFile_ = ""s;
+  BOOST_CHECK_EXCEPTION(toJson(emptyCaFile, alloc), Exception, verifyException<PichiError::MISC>);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_TROJAN_CA_File_Ignored_When_Insecure)
+{
+  auto vo = defaultEgressVO(AdapterType::TROJAN);
+  vo.insecure_ = true;
+  vo.caFile_ = ph;
+  auto json = toJson(vo, alloc);
+  BOOST_CHECK(!json.HasMember("ca_file"));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_Empty_Pack)

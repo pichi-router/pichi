@@ -200,7 +200,10 @@ private:
 public:
   template <typename MutableBufferSequence> auto read(MutableBufferSequence const& buf)
   {
-    return read(rBuf_, boost::asio::buffers_begin(buf), boost::asio::buffer_size(buf));
+    assertFalse(rBufs_.empty());
+    auto ret = read(rBufs_.front(), boost::asio::buffers_begin(buf), boost::asio::buffer_size(buf));
+    if (rBufs_.front().size() == 0) rBufs_.pop_front();
+    return ret;
   }
 
   template <typename ConstBufferSequence> auto write(ConstBufferSequence const& buf)
@@ -208,16 +211,24 @@ public:
     return write(wBuf_, boost::asio::buffers_begin(buf), boost::asio::buffer_size(buf));
   }
 
-  auto fill(std::initializer_list<uint8_t> l) { return write(rBuf_, std::cbegin(l), l.size()); }
+  auto fill(std::initializer_list<uint8_t> l)
+  {
+    rBufs_.emplace_back();
+    return write(rBufs_.back(), std::cbegin(l), l.size());
+  }
 
-  auto fill(ConstBuffer<uint8_t> buf) { return write(rBuf_, std::cbegin(buf), buf.size()); }
+  auto fill(ConstBuffer<uint8_t> buf)
+  {
+    rBufs_.emplace_back();
+    return write(rBufs_.back(), std::cbegin(buf), buf.size());
+  }
 
   auto flush(MutableBuffer<uint8_t> buf) { return read(wBuf_, std::cbegin(buf), buf.size()); }
 
   auto available() const { return wBuf_.size(); }
 
 private:
-  Buffer rBuf_;
+  std::deque<Buffer> rBufs_;
   Buffer wBuf_;
 };
 

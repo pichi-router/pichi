@@ -257,6 +257,13 @@ void parseArray(json::Value const& root, T const& key, OutputIt out, Convert&& c
   transform(begin(array), end(array), out, forward<Convert>(convert));
 }
 
+json::Value portToJson(string const& port)
+{
+  auto p = stoi(port);
+  assertTrue(p > 0 && p <= std::numeric_limits<uint16_t>::max());
+  return json::Value{p};
+}
+
 json::Value toJson(string_view str, Allocator& alloc)
 {
   auto ret = json::Value{};
@@ -425,7 +432,7 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
     for_each(cbegin(ingress.passwords_), cend(ingress.passwords_),
              [](auto&& pwd) { assertFalse(pwd.empty()); });
     ret.AddMember(IngressVOKey::remoteHost_, toJson(ingress.remote_->host_, alloc), alloc);
-    ret.AddMember(IngressVOKey::remotePort_, toJson(ingress.remote_->port_, alloc), alloc);
+    ret.AddMember(IngressVOKey::remotePort_, portToJson(ingress.remote_->port_), alloc);
     ret.AddMember(IngressVOKey::passwords_,
                   toJson(cbegin(ingress.passwords_), cend(ingress.passwords_), alloc), alloc);
     ret.AddMember(IngressVOKey::certFile_, toJson(*ingress.certFile_, alloc), alloc);
@@ -473,6 +480,7 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
     break;
   case AdapterType::TROJAN:
     assertTrue(evo.password_.has_value());
+    assertFalse(evo.password_->empty());
     egress_.AddMember(EgressVOKey::password_, toJson(*evo.password_, alloc), alloc);
     assertTrue(evo.insecure_.has_value());
     egress_.AddMember(EgressVOKey::insecure_, *evo.insecure_, alloc);
