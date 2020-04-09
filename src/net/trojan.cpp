@@ -95,7 +95,7 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
     auto first = received_.data() + PWD_LEN;
     assertTrue(*first++ == '\r', PichiError::BAD_PROTO);
     assertTrue(*first++ == '\n', PichiError::BAD_PROTO);
-    assertTrue(*first++ == 0x01_u8, PichiError::BAD_PROTO);
+    assertTrue(*first++ == 1_u8, PichiError::BAD_PROTO);
 
     /*
      * Parsing the trojan request section:
@@ -141,10 +141,60 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
   }
 }
 
+template <typename Stream>
+size_t TrojanEgress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+{
+  return readSome(stream_, buf, yield);
+}
+
+template <typename Stream> void TrojanEgress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+{
+  write(stream_, buf, yield);
+}
+
+template <typename Stream> void TrojanEgress<Stream>::close(Yield yield)
+{
+  pichi::net::close(stream_, yield);
+}
+
+template <typename Stream> bool TrojanEgress<Stream>::readable() const { return stream_.is_open(); }
+
+template <typename Stream> bool TrojanEgress<Stream>::writable() const { return stream_.is_open(); }
+
+template <typename Stream>
+void TrojanEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
+{
+  pichi::net::connect(next, stream_, yield);
+
+  auto buf = array<uint8_t, 512>{};
+  auto written = [&](auto p) -> size_t { return distance(buf.data(), p); };
+
+  /*
+   * Here's the trojan protocol specification(https://trojan-gfw.github.io/trojan/protocol):
+   *   +-----------------------+---------+-----+------+----------+----------+---------+
+   *   | hex(SHA224(password)) |  CRLF   | CMD | ATYP | DST.ADDR | DST.PORT |  CRLF   |
+   *   +-----------------------+---------+-----+------+----------+----------+---------+
+   *   |          56           | X'0D0A' |  1  |  1   | Variable |    2     | X'0D0A' |
+   *   +-----------------------+---------+-----+------+----------+----------+---------+
+   */
+
+  copy(cbegin(password_), cend(password_), begin(buf));
+  auto p = buf.data() + password_.size();
+  *p++ = '\r';
+  *p++ = '\n';
+  *p++ = 1_u8;
+  p += serializeEndpoint(remote, {p, 512 - written(p)});
+  *p++ = '\r';
+  *p++ = '\n';
+  write(stream_, {buf.data(), written(p)}, yield);
+}
+
 template class TrojanIngress<TlsStream<tcp::socket>>;
+template class TrojanEgress<TlsStream<tcp::socket>>;
 
 #ifdef BUILD_TEST
 template class TrojanIngress<TestStream>;
+template class TrojanEgress<TestStream>;
 #endif // BUILD_TEST
 
 } // namespace pichi::net

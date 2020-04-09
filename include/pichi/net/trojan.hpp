@@ -37,6 +37,26 @@ private:
   std::vector<uint8_t> received_;
 };
 
+template <typename Stream> class TrojanEgress : public Egress {
+public:
+  template <typename... Args>
+  TrojanEgress(std::string_view password, Args&&... args)
+    : stream_{std::forward<Args>(args)...}, password_{sha224(password)}
+  {
+  }
+
+  size_t recv(MutableBuffer<uint8_t>, Yield) override;
+  void send(ConstBuffer<uint8_t>, Yield) override;
+  void close(Yield) override;
+  bool readable() const override;
+  bool writable() const override;
+  void connect(Endpoint const& remote, Endpoint const& next, Yield) override;
+
+private:
+  Stream stream_;
+  std::string password_;
+};
+
 } // namespace pichi::net
 
 #endif // PICHI_NET_TROJAN_HPP

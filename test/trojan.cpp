@@ -9,8 +9,8 @@
 #include <pichi/config.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
+#include <pichi/net/stream.hpp>
 #include <pichi/net/trojan.hpp>
-#include <pichi/test/socket.hpp>
 #include <vector>
 
 using namespace std;
@@ -18,25 +18,22 @@ using namespace pichi;
 namespace asio = boost::asio;
 namespace sys = boost::system;
 
-using test::Socket;
-using Ingress = net::TrojanIngress<test::Stream>;
+using Socket = net::TestSocket;
+using Ingress = net::TrojanIngress<net::TestStream>;
+using Egress = net::TrojanEgress<net::TestStream>;
 
-static asio::detail::Pull* pPull = nullptr;
-static asio::detail::Push* pPush = nullptr;
-static asio::yield_context yield = {*pPush, *pPull};
-
-static auto const CREDENTIALS = vector{"pichi"s};
-static auto const HASHED_CREDENTIALS = []() {
+static auto const PASSWORDS = vector{"pichi"s};
+static auto const HASHED_PASSWORDS = []() {
   auto ret = vector<string>{};
-  transform(cbegin(CREDENTIALS), cend(CREDENTIALS), back_inserter(ret), &net::sha224);
+  transform(cbegin(PASSWORDS), cend(PASSWORDS), back_inserter(ret), &net::sha224);
   return ret;
 }();
-static auto const PWD_LENGTH = HASHED_CREDENTIALS.front().size();
+static auto const PWD_LENGTH = HASHED_PASSWORDS.front().size();
 
 static auto FALIED_EP = net::Endpoint{net::Endpoint::Type::DOMAIN_NAME, "localhost", "80"};
 static auto CORRECT_EP = net::Endpoint{net::Endpoint::Type::IPV4, "127.0.0.1", "80"};
 static auto CORRECT_DATA = []() {
-  auto ret = vector<uint8_t>{cbegin(HASHED_CREDENTIALS.front()), cend(HASHED_CREDENTIALS.front())};
+  auto ret = vector<uint8_t>{cbegin(HASHED_PASSWORDS.front()), cend(HASHED_PASSWORDS.front())};
   auto ep = array<uint8_t, 512>{};
   ret.push_back('\r');
   ret.push_back('\n');
@@ -49,7 +46,7 @@ static auto CORRECT_DATA = []() {
 
 static auto createIngress(Socket& socket)
 {
-  return make_unique<Ingress>(FALIED_EP, cbegin(CREDENTIALS), cend(CREDENTIALS), socket, true);
+  return make_unique<Ingress>(FALIED_EP, cbegin(PASSWORDS), cend(PASSWORDS), socket, true);
 }
 
 static void verifyFailedRequest(Ingress& ingress, ConstBuffer<uint8_t> expect)
@@ -57,7 +54,7 @@ static void verifyFailedRequest(Ingress& ingress, ConstBuffer<uint8_t> expect)
   BOOST_CHECK(ingress.readable());
 
   auto fact = vector(expect.size() + 1, 0_u8);
-  fact.resize(ingress.recv(fact, yield));
+  fact.resize(ingress.recv(fact, gYield));
   BOOST_CHECK_EQUAL(fact.size(), expect.size());
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(fact), cend(fact), cbegin(expect), cend(expect));
 }
@@ -69,9 +66,9 @@ BOOST_AUTO_TEST_CASE(readRemote_Correct_Stream)
   auto socket = Socket{};
   auto ingress = createIngress(socket);
   socket.fill(CORRECT_DATA);
-  BOOST_CHECK(CORRECT_EP == ingress->readRemote(yield));
+  BOOST_CHECK(CORRECT_EP == ingress->readRemote(gYield));
   BOOST_CHECK(ingress->readable());
-  BOOST_CHECK_EXCEPTION(ingress->recv({}, yield), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(ingress->recv({}, gYield), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(readRemote_Simulate_HTTP_Server)
@@ -86,7 +83,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Simulate_HTTP_Server)
     data += i;
     socket.fill(data);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(yield));
+    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
     verifyFailedRequest(*ingress, {CORRECT_DATA, i});
   }
 }
@@ -100,7 +97,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Unauthenticated)
 
   socket.fill(data);
 
-  BOOST_CHECK(FALIED_EP == ingress->readRemote(yield));
+  BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
   verifyFailedRequest(*ingress, data);
 }
 
@@ -116,7 +113,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Invalid_Char_For_The_First_CR)
 
     socket.fill(data);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(yield));
+    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
     verifyFailedRequest(*ingress, data);
   }
 }
@@ -133,7 +130,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Invalid_Char_For_The_Second_CR)
 
     socket.fill(data);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(yield));
+    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
     verifyFailedRequest(*ingress, data);
   }
 }
@@ -150,7 +147,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Invalid_Char_For_The_First_LF)
 
     socket.fill(data);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(yield));
+    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
     verifyFailedRequest(*ingress, data);
   }
 }
@@ -167,7 +164,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Invalid_Char_For_The_Second_LF)
 
     socket.fill(data);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(yield));
+    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
     verifyFailedRequest(*ingress, data);
   }
 }
@@ -184,7 +181,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Invalid_CMD)
 
     socket.fill(data);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(yield));
+    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
     verifyFailedRequest(*ingress, data);
   }
 }
@@ -200,8 +197,22 @@ BOOST_AUTO_TEST_CASE(readRemote_Stream_Separated_From_Trojan_Request)
     buf += i;
     socket.fill(buf);
 
-    BOOST_CHECK(CORRECT_EP == ingress->readRemote(yield));
+    BOOST_CHECK(CORRECT_EP == ingress->readRemote(gYield));
   }
+}
+
+BOOST_AUTO_TEST_CASE(connect_Correct_Request)
+{
+  auto received = vector(CORRECT_DATA.size(), 0_u8);
+  auto socket = Socket{};
+  auto egress = make_unique<Egress>(PASSWORDS.front(), socket);
+
+  egress->connect(CORRECT_EP, {}, gYield);
+
+  BOOST_CHECK_EQUAL(CORRECT_DATA.size(), socket.available());
+  socket.flush(received);
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(received), cend(received), cbegin(CORRECT_DATA),
+                                cend(CORRECT_DATA));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
