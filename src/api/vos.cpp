@@ -15,6 +15,7 @@ static decltype(auto) SOCKS5_TYPE = "socks5";
 static decltype(auto) HTTP_TYPE = "http";
 static decltype(auto) SS_TYPE = "ss";
 static decltype(auto) TUNNEL_TYPE = "tunnel";
+static decltype(auto) TROJAN_TYPE = "trojan";
 
 static decltype(auto) RC4_MD5_METHOD = "rc4-md5";
 static decltype(auto) BF_CFB_METHOD = "bf-cfb";
@@ -56,6 +57,9 @@ static decltype(auto) certFile_ = "cert_file";
 static decltype(auto) keyFile_ = "key_file";
 static decltype(auto) destinations_ = "destinations";
 static decltype(auto) balance_ = "balance";
+static decltype(auto) remoteHost_ = "remote_host";
+static decltype(auto) remotePort_ = "remote_port";
+static decltype(auto) passwords_ = "passwords";
 
 } // namespace IngressVOKey
 
@@ -126,8 +130,11 @@ static auto const MISSING_DELAY_FIELD = "Missing delay field"sv;
 static auto const MISSING_CERT_FILE_FIELD = "Missing cert_file field"sv;
 static auto const MISSING_KEY_FILE_FIELD = "Missing key_file field"sv;
 static auto const TOO_LONG_NAME_PASSWORD = "Name or password is too long"sv;
-static auto const MISSING_DESTINATIONS_FIELD = "Missiong destinations field"sv;
-static auto const MISSING_BALANCE_FIELD = "Missiong balance field"sv;
+static auto const MISSING_DESTINATIONS_FIELD = "Missing destinations field"sv;
+static auto const MISSING_BALANCE_FIELD = "Missing balance field"sv;
+static auto const MISSING_REMOTE_HOST_FIELD = "Missing remote_host field"sv;
+static auto const MISSING_REMOTE_PORT_FIELD = "Missing remote_port field"sv;
+static auto const MISSING_PASSWORDS_FIELD = "MIssing passwords field"sv;
 
 } // namespace msg
 
@@ -150,6 +157,7 @@ static AdapterType parseAdapterType(json::Value const& v)
   if (str == HTTP_TYPE) return AdapterType::HTTP;
   if (str == SS_TYPE) return AdapterType::SS;
   if (str == TUNNEL_TYPE) return AdapterType::TUNNEL;
+  if (str == TROJAN_TYPE) return AdapterType::TROJAN;
   fail(PichiError::BAD_JSON, msg::AT_INVALID);
 }
 
@@ -283,6 +291,8 @@ json::Value toJson(AdapterType type, Allocator& alloc)
     return toJson(SS_TYPE, alloc);
   case AdapterType::TUNNEL:
     return toJson(TUNNEL_TYPE, alloc);
+  case AdapterType::TROJAN:
+    return toJson(TROJAN_TYPE, alloc);
   default:
     fail(PichiError::MISC);
   }
@@ -350,16 +360,18 @@ json::Value toJson(BalanceType selector, Allocator& alloc)
 
 json::Value toJson(IngressVO const& ingress, Allocator& alloc)
 {
+  assertFalse(ingress.type_ == AdapterType::DIRECT);
+  assertFalse(ingress.type_ == AdapterType::REJECT);
+
   auto ret = json::Value{};
   ret.SetObject();
-  if (ingress.type_ == AdapterType::HTTP || ingress.type_ == AdapterType::SOCKS5 ||
-      ingress.type_ == AdapterType::SS || ingress.type_ == AdapterType::TUNNEL) {
-    assertFalse(ingress.bind_.empty(), PichiError::MISC);
-    assertFalse(ingress.port_ == 0_u16, PichiError::MISC);
-    ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
-    ret.AddMember(IngressVOKey::port_, json::Value{ingress.port_}, alloc);
-    ret.AddMember(IngressVOKey::type_, toJson(ingress.type_, alloc), alloc);
-  }
+
+  assertFalse(ingress.bind_.empty());
+  assertFalse(ingress.port_ == 0_u16);
+  ret.AddMember(IngressVOKey::bind_, toJson(ingress.bind_, alloc), alloc);
+  ret.AddMember(IngressVOKey::port_, json::Value{ingress.port_}, alloc);
+  ret.AddMember(IngressVOKey::type_, toJson(ingress.type_, alloc), alloc);
+
   switch (ingress.type_) {
   case AdapterType::SS:
     assertTrue(ingress.method_.has_value(), PichiError::MISC);
@@ -401,8 +413,26 @@ json::Value toJson(IngressVO const& ingress, Allocator& alloc)
                   toJson(cbegin(ingress.destinations_), cend(ingress.destinations_), alloc), alloc);
     ret.AddMember(IngressVOKey::balance_, toJson(*ingress.balance_, alloc), alloc);
     break;
+  case AdapterType::TROJAN:
+    assertTrue(ingress.remote_.has_value());
+    assertFalse(ingress.remote_->host_.empty());
+    assertFalse(ingress.remote_->port_.empty());
+    assertFalse(ingress.passwords_.empty());
+    assertTrue(ingress.certFile_.has_value());
+    assertFalse(ingress.certFile_->empty());
+    assertTrue(ingress.keyFile_.has_value());
+    assertFalse(ingress.keyFile_->empty());
+    for_each(cbegin(ingress.passwords_), cend(ingress.passwords_),
+             [](auto&& pwd) { assertFalse(pwd.empty()); });
+    ret.AddMember(IngressVOKey::remoteHost_, toJson(ingress.remote_->host_, alloc), alloc);
+    ret.AddMember(IngressVOKey::remotePort_, toJson(ingress.remote_->port_, alloc), alloc);
+    ret.AddMember(IngressVOKey::passwords_,
+                  toJson(cbegin(ingress.passwords_), cend(ingress.passwords_), alloc), alloc);
+    ret.AddMember(IngressVOKey::certFile_, toJson(*ingress.certFile_, alloc), alloc);
+    ret.AddMember(IngressVOKey::keyFile_, toJson(*ingress.keyFile_, alloc), alloc);
+    break;
   default:
-    fail(PichiError::MISC);
+    fail();
   }
   return ret;
 }
@@ -439,6 +469,16 @@ json::Value toJson(EgressVO const& evo, Allocator& alloc)
         assertFalse(evo.caFile_->empty());
         egress_.AddMember(EgressVOKey::caFile_, toJson(*evo.caFile_, alloc), alloc);
       }
+    }
+    break;
+  case AdapterType::TROJAN:
+    assertTrue(evo.password_.has_value());
+    egress_.AddMember(EgressVOKey::password_, toJson(*evo.password_, alloc), alloc);
+    assertTrue(evo.insecure_.has_value());
+    egress_.AddMember(EgressVOKey::insecure_, *evo.insecure_, alloc);
+    if (!*evo.insecure_ && evo.caFile_.has_value()) {
+      assertFalse(evo.caFile_->empty());
+      egress_.AddMember(EgressVOKey::caFile_, toJson(*evo.caFile_, alloc), alloc);
     }
     break;
   case AdapterType::REJECT:
@@ -526,13 +566,12 @@ template <> IngressVO parse(json::Value const& v)
   auto ivo = IngressVO{};
 
   ivo.type_ = parseAdapterType(v[IngressVOKey::type_]);
-  if (ivo.type_ == AdapterType::HTTP || ivo.type_ == AdapterType::SOCKS5 ||
-      ivo.type_ == AdapterType::SS || ivo.type_ == AdapterType::TUNNEL) {
-    assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
-    assertTrue(v.HasMember(IngressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-    ivo.bind_ = parseString(v[IngressVOKey::bind_]);
-    ivo.port_ = parsePort(v[IngressVOKey::port_]);
-  }
+  assertFalse(ivo.type_ == AdapterType::DIRECT, PichiError::BAD_JSON, msg::AT_INVALID);
+  assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::BAD_JSON, msg::AT_INVALID);
+  assertTrue(v.HasMember(IngressVOKey::bind_), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
+  assertTrue(v.HasMember(IngressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
+  ivo.bind_ = parseString(v[IngressVOKey::bind_]);
+  ivo.port_ = parsePort(v[IngressVOKey::port_]);
 
   switch (ivo.type_) {
   case AdapterType::SS:
@@ -573,6 +612,24 @@ template <> IngressVO parse(json::Value const& v)
     ivo.destinations_ = parseDestinantions(v[IngressVOKey::destinations_]);
     ivo.balance_ = parseBalanceType(v[IngressVOKey::balance_]);
     break;
+  case AdapterType::TROJAN:
+    assertTrue(v.HasMember(IngressVOKey::remoteHost_), PichiError::BAD_JSON,
+               msg::MISSING_REMOTE_HOST_FIELD);
+    assertTrue(v.HasMember(IngressVOKey::remotePort_), PichiError::BAD_JSON,
+               msg::MISSING_REMOTE_PORT_FIELD);
+    assertTrue(v.HasMember(IngressVOKey::passwords_), PichiError::BAD_JSON,
+               msg::MISSING_PASSWORDS_FIELD);
+    assertTrue(v.HasMember(IngressVOKey::keyFile_), PichiError::BAD_JSON,
+               msg::MISSING_KEY_FILE_FIELD);
+    assertTrue(v.HasMember(IngressVOKey::certFile_), PichiError::BAD_JSON,
+               msg::MISSING_CERT_FILE_FIELD);
+    ivo.remote_ = net::makeEndpoint(parseString(v[IngressVOKey::remoteHost_]),
+                                    parsePort(v[IngressVOKey::remotePort_]));
+    ivo.certFile_ = parseString(v[IngressVOKey::certFile_]);
+    ivo.keyFile_ = parseString(v[IngressVOKey::keyFile_]);
+    parseArray(v, IngressVOKey::passwords_, inserter(ivo.passwords_, end(ivo.passwords_)),
+               &parseString);
+    break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
   }
@@ -589,7 +646,7 @@ template <> EgressVO parse(json::Value const& v)
   evo.type_ = parseAdapterType(v[EgressVOKey::type_]);
 
   if (evo.type_ == AdapterType::HTTP || evo.type_ == AdapterType::SOCKS5 ||
-      evo.type_ == AdapterType::SS) {
+      evo.type_ == AdapterType::SS || evo.type_ == AdapterType::TROJAN) {
     assertTrue(v.HasMember(EgressVOKey::host_), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
     assertTrue(v.HasMember(EgressVOKey::port_), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
     evo.host_ = parseString(v[EgressVOKey::host_]);
@@ -615,6 +672,13 @@ template <> EgressVO parse(json::Value const& v)
     if (v.HasMember(EgressVOKey::credential_)) {
       evo.credential_ = parsePair(v[EgressVOKey::credential_], parseNameOrPassword);
     }
+    break;
+  case AdapterType::TROJAN:
+    evo.insecure_ = v.HasMember(EgressVOKey::insecure_) && parseBoolean(v[EgressVOKey::insecure_]);
+    if (!*evo.insecure_ && v.HasMember(EgressVOKey::caFile_))
+      evo.caFile_ = parseString(v[EgressVOKey::caFile_]);
+    assertTrue(v.HasMember(EgressVOKey::password_));
+    evo.password_ = parseString(v[EgressVOKey::password_]);
     break;
   case AdapterType::REJECT:
     if (v.HasMember(EgressVOKey::mode_)) {

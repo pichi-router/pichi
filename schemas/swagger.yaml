@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  version: "1.3"
+  version: "1.4"
   title: 'Pichi API'
   description: 'RESTful API for pichi server'
 tags:
@@ -325,6 +325,8 @@ components:
         - http
         - socks5
         - ss
+        - tunnel
+        - trojan
     CryptoMethod:
       description: 'SS method'
       type: string
@@ -445,6 +447,31 @@ components:
       items:
         type: string
         example: "username / password"
+    TLSIngress:
+      description: "Base data structure for HTTPS/Socks5s/Trojan ingress"
+      type: object
+      properties:
+        cert_file:
+          description: "TLS certification file path"
+          type: string
+          example: "/etc/cert/cert.pem"
+        key_file:
+          description: "TLS private key file path"
+          type: string
+          example: "/etc/cert/privkey.pem"
+    TLSEgress:
+      description: "Base data structure for HTTPS/Socks5s/Trojan egress"
+      type: object
+      properties:
+        insecure:
+          description: "Whether to verify the peer certificate"
+          type: boolean
+          default: true
+          example: true
+        ca_file:
+          description: "CA file path"
+          type: string
+          example: "/etc/cert/ca.pem"
     TunnelIngress:
       description: "Tunnel ingress"
       type: object
@@ -472,59 +499,46 @@ components:
         - balance
     HttpOrSocks5Ingress:
       description: "HTTP(s) or Socks5(s) ingress"
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - http
-            - socks5
-        credentials:
-          $ref: "#/components/schemas/Credentials"
-        tls:
-          type: boolean
-          description: "Whether TLS is enabled"
-          default: false
-          example: false
-        cert_file:
-          description: "TLS certification file path"
-          type: string
-          example: "/etc/cert/cert.pem"
-        key_file:
-          description: "TLS private key file path"
-          type: string
-          example: "/etc/cert/privkey.pem"
-      required:
-        - type
-        - tls
+      allOf:
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - http
+                - socks5
+            credentials:
+              $ref: "#/components/schemas/Credentials"
+            tls:
+              type: boolean
+              description: "Whether TLS is enabled"
+              default: false
+              example: false
+          required:
+            - type
+            - tls
+        - $ref: "#/components/schemas/TLSIngress"
     HttpOrSocks5Egress:
       description: "HTTP(s) or Socks5(s) egress"
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - http
-            - socks5
-        credential:
-          $ref: "#/components/schemas/Credential"
-        tls:
-          type: boolean
-          description: "Whether TLS is enabled"
-          default: false
-          example: false
-        insecure:
-          description: "Whether to verify the peer certificate"
-          type: boolean
-          default: true
-          example: true
-        ca_file:
-          description: "CA file path"
-          type: string
-          example: "/etc/cert/ca.pem"
-      required:
-        - type
-        - tls
+      allOf:
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - http
+                - socks5
+            credential:
+              $ref: "#/components/schemas/Credential"
+            tls:
+              type: boolean
+              description: "Whether TLS is enabled"
+              default: false
+              example: false
+          required:
+            - type
+            - tls
+        - $ref: "#/components/schemas/TLSEgress"
     SSAdapter:
       description: "Shadowsocks adapter"
       type: object
@@ -543,6 +557,48 @@ components:
         - type
         - method
         - password
+    TrojanIngress:
+      description: "Trojan Ingress"
+      allOf:
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - trojan
+            remote_host:
+              description: "The HTTP server address when trojan verification failed"
+              $ref: "#/components/schemas/Host"
+            remote_port:
+              description: "The HTTP server port when trojan verification failed"
+              $ref: "#/components/schemas/Port"
+            passwords:
+              type: array
+              items:
+                type: string
+                example: 'some password'
+          required:
+            - type
+            - remote_host
+            - remote_port
+            - passwords
+        - $ref: "#/components/schemas/TLSIngress"
+    TrojanEgress:
+      description: "Trojan Egress"
+      allOf:
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - trojan
+            password:
+              type: string
+              example: 'some password'
+          required:
+            - type
+            - password
+        - $ref: "#/components/schemas/TLSEgress"
     RejectEgress:
       description: "Reject egress"
       type: object
@@ -585,6 +641,7 @@ components:
           - $ref: "#/components/schemas/TunnelIngress"
           - $ref: "#/components/schemas/HttpOrSocks5Ingress"
           - $ref: "#/components/schemas/SSAdapter"
+          - $ref: "#/components/schemas/TrojanIngress"
     Egress:
       oneOf:
         - $ref: "#/components/schemas/DirectEgress"
@@ -594,3 +651,4 @@ components:
           - oneOf:
             - $ref: "#/components/schemas/HttpOrSocks5Egress"
             - $ref: "#/components/schemas/SSAdapter"
+            - $ref: "#/components/schemas/TrojanEgress"

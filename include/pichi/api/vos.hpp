@@ -10,6 +10,7 @@
 #include <rapidjson/document.h>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace pichi::api {
@@ -32,6 +33,8 @@ struct IngressVO {
   std::optional<std::string> keyFile_ = {};
   std::vector<pichi::net::Endpoint> destinations_ = {};
   std::optional<BalanceType> balance_ = {};
+  std::optional<pichi::net::Endpoint> remote_ = {};
+  std::unordered_set<std::string> passwords_ = {};
 };
 
 struct EgressVO {
