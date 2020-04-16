@@ -7,8 +7,8 @@
 #include <pichi/asserts.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
+#include <pichi/net/stream.hpp>
 #include <pichi/net/trojan.hpp>
-#include <pichi/test/socket.hpp>
 #include <utility>
 
 using namespace std;
@@ -48,16 +48,20 @@ template <typename Stream> void TrojanIngress<Stream>::close(Yield yield)
 
 template <typename Stream> bool TrojanIngress<Stream>::readable() const
 {
-  return !received_.empty() || isOpen(stream_);
+  return !received_.empty() || stream_.is_open();
 }
 
-template <typename Stream> bool TrojanIngress<Stream>::writable() const { return isOpen(stream_); }
+template <typename Stream> bool TrojanIngress<Stream>::writable() const
+{
+  return stream_.is_open();
+}
 
 template <typename Stream> void TrojanIngress<Stream>::confirm(Yield) {}
 
 template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yield)
 {
-  stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
+  if constexpr (IsTlsStreamV<Stream>)
+    stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
 
   received_.resize(readSome(stream_, received_, yield));
 
@@ -120,10 +124,10 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
   }
 }
 
-template class TrojanIngress<ssl::stream<tcp::socket>>;
+template class TrojanIngress<TlsStream<tcp::socket>>;
 
 #ifdef BUILD_TEST
-template class TrojanIngress<pichi::test::Stream>;
+template class TrojanIngress<TestStream>;
 #endif // BUILD_TEST
 
 } // namespace pichi::net

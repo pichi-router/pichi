@@ -40,6 +40,8 @@ extern rapidjson::Value defaultIngressJson(api::AdapterType);
 extern api::EgressVO defaultEgressVO(api::AdapterType);
 extern rapidjson::Value defaultEgressJson(api::AdapterType);
 
+extern bool operator==(net::Endpoint const& lhs, net::Endpoint const& rhs);
+
 extern boost::asio::yield_context gYield;
 
 } // namespace pichi

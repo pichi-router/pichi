@@ -7,6 +7,7 @@
 
 using namespace std;
 using namespace pichi::api;
+using namespace pichi::net;
 using namespace rapidjson;
 
 using pichi::net::AdapterType;
@@ -157,6 +158,11 @@ Value defaultEgressJson(AdapterType type)
     break;
   }
   return v;
+}
+
+bool operator==(Endpoint const& lhs, Endpoint const& rhs)
+{
+  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_;
 }
 
 } // namespace pichi
