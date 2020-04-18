@@ -6,6 +6,7 @@
 #include <mbedtls/sha256.h>
 #include <mbedtls/sha512.h>
 #include <pichi/buffer.hpp>
+#include <string>
 
 namespace pichi::crypto {
 
@@ -156,6 +157,8 @@ private:
 template <HashAlgorithm algorithm>
 void hkdf(MutableBuffer<uint8_t> okm, ConstBuffer<uint8_t> ikm, ConstBuffer<uint8_t> salt,
           ConstBuffer<uint8_t> info = {(uint8_t const*)"ss-subkey", 9});
+
+std::string bin2hex(ConstBuffer<uint8_t> bin);
 
 } // namespace pichi::crypto
 
