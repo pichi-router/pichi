@@ -5,6 +5,7 @@
 #include <boost/asio/ssl/stream.hpp>
 #include <iostream>
 #include <pichi/asserts.hpp>
+#include <pichi/crypto/hash.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/stream.hpp>
@@ -19,12 +20,22 @@ using tcp = asio::ip::tcp;
 
 namespace pichi::net {
 
-size_t copyToBuffer(ConstBuffer<uint8_t> src, MutableBuffer<uint8_t> dst)
+static constexpr size_t PWD_LEN = crypto::HashTraits<crypto::HashAlgorithm::SHA224>::length * 2;
+
+static size_t copyToBuffer(ConstBuffer<uint8_t> src, MutableBuffer<uint8_t> dst)
 {
   if (src.size() == 0 || dst.size() == 0) return 0;
   auto copied = min(src.size(), dst.size());
   copy_n(cbegin(src), copied, begin(dst));
   return copied;
+}
+
+string sha224(string_view pwd)
+{
+  auto bin = vector(PWD_LEN / 2, 0_u8);
+  auto sha224 = crypto::Hash<crypto::HashAlgorithm::SHA224>{};
+  sha224.hash(ConstBuffer<uint8_t>{pwd}, bin);
+  return crypto::bin2hex(bin);
 }
 
 template <typename Stream>
@@ -79,7 +90,7 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
      */
     auto pwd = string{cbegin(received_), cbegin(received_) + PWD_LEN};
     assertTrue(received_.size() > PWD_LEN + 2, PichiError::BAD_PROTO);
-    assertTrue(credentials_.find(pwd) != cend(credentials_), PichiError::UNAUTHENTICATED);
+    assertTrue(passwords_.find(pwd) != cend(passwords_), PichiError::UNAUTHENTICATED);
 
     auto first = received_.data() + PWD_LEN;
     assertTrue(*first++ == '\r', PichiError::BAD_PROTO);
@@ -110,10 +121,16 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
       }
     });
 
-    if (left < 2) read(stream_, {first, 2 - left}, yield);
+    if (left < 2) {
+      received_.resize(received_.size() + 2 - left);
+      first = received_.data() + received_.size() - 2;
+      read(stream_, {first + left, 2 - left}, yield);
+      left = 0;
+    }
+    else
+      left -= 2;
     assertTrue(*first++ == '\r', PichiError::BAD_PROTO);
     assertTrue(*first++ == '\n', PichiError::BAD_PROTO);
-    left -= 2;
 
     received_.erase(cbegin(received_), cend(received_) - left);
     return ret;
