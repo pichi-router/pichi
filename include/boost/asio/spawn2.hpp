@@ -8,6 +8,7 @@
 #include <boost/asio/post.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/coroutine2/coroutine.hpp>
+#include <boost/scope_exit.hpp>
 #include <cassert>
 #include <functional>
 #include <memory>
@@ -100,23 +101,29 @@ template <typename Executor, typename Function, typename StackAllocator>
 class SpawnContext
   : public std::enable_shared_from_this<SpawnContext<Executor, Function, StackAllocator>> {
 public:
+  SpawnContext(SpawnContext const&) = delete;
+  SpawnContext(SpawnContext&&) = delete;
+  SpawnContext& operator=(SpawnContext const&) = delete;
+  SpawnContext& operator=(SpawnContext&&) = delete;
+
   SpawnContext(strand<Executor> const& s, Function&& f, StackAllocator&& alloc)
     : ex_{s}, f_{std::forward<Function>(f)}, alloc_{std::forward<StackAllocator>(alloc)}
   {
   }
-  // Copy/Move constructors and assignments are implicitly deleted
-  ~SpawnContext()
-  {
-    // The stack memory corresponding to pPush_ will not be really deallocated,
-    //   even if (*pPush_) is destructed, unless (*pPush_) is moved out of
-    //   its own stack and destructed outside.
-    post(ex_, [push = std::move(*push_)]() {});
-  }
+
+  ~SpawnContext() = default;
 
   void start()
   {
     assert(!push_.has_value());
     push_ = std::make_optional<Push>(alloc_, [self = this->shared_from_this(), this](auto&& pull) {
+      BOOST_SCOPE_EXIT_ALL(self = std::move(self), this)
+      {
+        // The stack memory corresponding to SpawnContext will not be really deallocated, even if
+        //   the destructor is triggered, unless SpawnContext is moved out of its own stack
+        //   and then destructed outside.
+        post(ex_, [self = std::move(self)]() {});
+      };
       f_(YieldContext{ex_, state_, *push_, pull});
     });
     (*push_)();
