@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_With_Acceptable_Method)
     auto ingress = make_unique<Ingress>(Credentials{}, socket, true);
 
     socket.fill({0x05, 0xff});
-    for (auto j = 0; j < 0x100; ++j)
+    for (auto j = 0; j < 0xff; ++j)
       if (j == i - 1)
         socket.fill({0x00});
       else
