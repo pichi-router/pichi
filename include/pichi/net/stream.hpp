@@ -97,6 +97,11 @@ void tryToConnect(Stream& stream, Iterator it, ConnectHandler&& handler)
 
 } // namespace detail
 
+template <typename T> struct IsTlsStream : public std::false_type {
+};
+
+template <typename T> inline constexpr bool IsTlsStreamV = IsTlsStream<T>::value;
+
 #ifdef ENABLE_TLS
 
 /*
@@ -165,13 +170,8 @@ private:
   Stream stream_;
 };
 
-template <typename T> struct IsTlsStream : public std::false_type {
-};
-
 template <typename T> struct IsTlsStream<TlsStream<T>> : public std::true_type {
 };
-
-template <typename T> inline constexpr bool IsTlsStreamV = IsTlsStream<T>::value;
 
 #endif // ENABLE_TLS
 

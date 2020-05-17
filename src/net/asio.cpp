@@ -43,14 +43,14 @@ namespace sys = boost::system;
 using ip::tcp;
 using pichi::crypto::CryptoMethod;
 using TcpSocket = tcp::socket;
-using TlsSocket = pichi::net::TlsStream<TcpSocket>;
-using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
 namespace pichi::net {
 
 #ifdef ENABLE_TLS
 
 namespace ssl = asio::ssl;
+
+using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
 static auto createTlsContext(api::IngressVO const& vo)
 {
@@ -151,14 +151,18 @@ template <typename Stream, typename Yield> void close(Stream& s, Yield yield)
   // This function is supposed to be 'noexcept' because it's always invoked in the desturctors.
   // TODO log it
   auto ec = sys::error_code{};
+#ifdef ENABLE_TLS
   if constexpr (IsTlsStreamV<Stream>) {
     s.async_shutdown(yield[ec]);
     s.close(ec);
   }
   else {
+#endif // ENABLE_TLS
     suppressC4100(yield);
     s.close(ec);
+#ifdef ENABLE_TLS
   }
+#endif // ENABLE_TLS
 }
 
 template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, Socket&& s)

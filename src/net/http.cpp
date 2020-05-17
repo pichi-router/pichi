@@ -466,12 +466,12 @@ template <typename Stream> bool HttpEgress<Stream>::readable() const
 template <typename Stream> bool HttpEgress<Stream>::writable() const { return stream_.is_open(); }
 
 using TcpSocket = tcp::socket;
-using TLSStream = TlsStream<TcpSocket>;
 
 template class HttpIngress<TcpSocket>;
 template class HttpEgress<TcpSocket>;
 
 #ifdef ENABLE_TLS
+using TLSStream = TlsStream<TcpSocket>;
 template class HttpIngress<TLSStream>;
 template class HttpEgress<TLSStream>;
 #endif // ENABLE_TLS
