@@ -1,6 +1,8 @@
 #ifndef PICHI_TEST_UTILS_HPP
 #define PICHI_TEST_UTILS_HPP
 
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <boost/asio/error.hpp>
 #include <boost/beast/http/error.hpp>
 #include <pichi/api/vos.hpp>
