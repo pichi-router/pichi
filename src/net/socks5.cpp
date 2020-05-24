@@ -6,7 +6,7 @@
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>
-#include <pichi/test/socket.hpp>
+#include <pichi/net/stream.hpp>
 #include <utility>
 
 #ifdef ENABLE_TLS
@@ -15,7 +15,6 @@
 
 using namespace std;
 namespace asio = boost::asio;
-namespace ssl = asio::ssl;
 namespace sys = boost::system;
 using tcp = asio::ip::tcp;
 
@@ -132,15 +131,21 @@ template <typename Stream> void Socks5Ingress<Stream>::close(Yield yield)
   pichi::net::close(stream_, yield);
 }
 
-template <typename Stream> bool Socks5Ingress<Stream>::readable() const { return isOpen(stream_); }
+template <typename Stream> bool Socks5Ingress<Stream>::readable() const
+{
+  return stream_.is_open();
+}
 
-template <typename Stream> bool Socks5Ingress<Stream>::writable() const { return isOpen(stream_); }
+template <typename Stream> bool Socks5Ingress<Stream>::writable() const
+{
+  return stream_.is_open();
+}
 
 template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yield)
 {
 #ifdef ENABLE_TLS
-  if constexpr (IsSslStreamV<Stream>) {
-    stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
+  if constexpr (IsTlsStreamV<Stream>) {
+    stream_.async_handshake(asio::ssl::stream_base::server, yield);
   }
 #endif // ENABLE_TLS
 
@@ -202,11 +207,11 @@ template <typename Stream> void Socks5Ingress<Stream>::disconnect(exception_ptr 
 template class Socks5Ingress<tcp::socket>;
 
 #ifdef ENABLE_TLS
-template class Socks5Ingress<ssl::stream<tcp::socket>>;
+template class Socks5Ingress<TlsStream<tcp::socket>>;
 #endif // ENABLE_TLS
 
 #ifdef BUILD_TEST
-template class Socks5Ingress<pichi::test::Stream>;
+template class Socks5Ingress<TestStream>;
 #endif // BUILD_TEST
 
 template <typename Stream>
@@ -247,9 +252,9 @@ template <typename Stream> void Socks5Egress<Stream>::close(Yield yield)
   pichi::net::close(stream_, yield);
 }
 
-template <typename Stream> bool Socks5Egress<Stream>::readable() const { return isOpen(stream_); }
+template <typename Stream> bool Socks5Egress<Stream>::readable() const { return stream_.is_open(); }
 
-template <typename Stream> bool Socks5Egress<Stream>::writable() const { return isOpen(stream_); }
+template <typename Stream> bool Socks5Egress<Stream>::writable() const { return stream_.is_open(); }
 
 template <typename Stream>
 void Socks5Egress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
@@ -285,11 +290,11 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, Endpoint const& next,
 template class Socks5Egress<tcp::socket>;
 
 #ifdef ENABLE_TLS
-template class Socks5Egress<ssl::stream<tcp::socket>>;
+template class Socks5Egress<TlsStream<tcp::socket>>;
 #endif // ENABLE_TLS
 
 #ifdef BUILD_TEST
-template class Socks5Egress<pichi::test::Stream>;
+template class Socks5Egress<TestStream>;
 #endif // BUILD_TEST
 
 } // namespace pichi::net

@@ -14,6 +14,8 @@ using namespace rapidjson;
 using namespace pichi;
 using namespace pichi::api;
 
+using pichi::net::AdapterType;
+
 static string toString(Value const& v)
 {
   auto buf = StringBuffer{};

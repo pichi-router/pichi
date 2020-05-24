@@ -4,6 +4,7 @@
 #include <pichi/config.hpp>
 // Include config.hpp first
 #include <boost/asio/error.hpp>
+#include <boost/asio/spawn2.hpp>
 #include <boost/beast/http/error.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/exception.hpp>
@@ -40,6 +41,8 @@ extern api::IngressVO defaultIngressVO(api::AdapterType);
 extern rapidjson::Value defaultIngressJson(api::AdapterType);
 extern api::EgressVO defaultEgressVO(api::AdapterType);
 extern rapidjson::Value defaultEgressJson(api::AdapterType);
+
+extern boost::asio::yield_context gYield;
 
 } // namespace pichi
 

@@ -96,6 +96,14 @@ else ()
   set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR ON)
 endif ()
 
+if (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.73.0")
+  # From version 1.73.0, boost::asio::ssl::rfc2818_verification is deprecated,
+  #   and boost::asio::ssl::host_name_verification takes its place.
+  set(DEPRECATED_RFC2818_CLASS ON)
+else ()
+  set(DEPRECATED_RFC2818_CLASS OFF)
+endif ()
+
 # TODO check_cxx_compiler_flag command always gets failed when generating for iOS
 if (IOS)
   set(DISABLE_SHORTEN_64_TO_32_WARNING ON)

@@ -21,9 +21,9 @@ void DirectAdapter::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_,
 
 void DirectAdapter::close(Yield yield) { pichi::net::close(socket_, yield); }
 
-bool DirectAdapter::readable() const { return isOpen(socket_); }
+bool DirectAdapter::readable() const { return socket_.is_open(); }
 
-bool DirectAdapter::writable() const { return isOpen(socket_); }
+bool DirectAdapter::writable() const { return socket_.is_open(); }
 
 void DirectAdapter::connect(Endpoint const&, Endpoint const& server, Yield yield)
 {

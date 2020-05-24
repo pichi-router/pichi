@@ -107,6 +107,8 @@ using darwin :
 
 EOF
 
+  # FIXME this option causes building failure, so remove it.
+  sed -i "" 's/-fcoalesce-templates//' tools/build/src/tools/darwin.jam
   ./b2 -d0 -j "${PARALLEL}" --prefix="${SYSROOT}" --with-context --with-system \
     architecture="${arch}" macosx-version="${mac}" address-model="${address_model}" \
     target-os="${os}" abi="${abi}" variant=release link=static install
