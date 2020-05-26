@@ -11,13 +11,9 @@
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
-#include <pichi/test/socket.hpp>
+#include <pichi/net/stream.hpp>
 #include <pichi/uri.hpp>
 #include <regex>
-
-#ifdef ENABLE_TLS
-#include <boost/asio/ssl/stream.hpp>
-#endif // ENABLE_TLS
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -28,7 +24,6 @@ using namespace std;
 namespace asio = boost::asio;
 namespace beast = boost::beast;
 namespace http = beast::http;
-namespace ssl = asio::ssl;
 namespace sys = boost::system;
 using tcp = asio::ip::tcp;
 
@@ -47,7 +42,7 @@ static auto writeHttp(Stream& s, Message<isRequest>& m, asio::yield_context yiel
 {
   suppressC4100(yield);
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Stream, pichi::test::Stream>)
+  if constexpr (is_same_v<Stream, TestStream>)
     return http::write(s, m);
   else
 #endif // BUILD_TEST
@@ -60,7 +55,7 @@ static auto writeHttpHeader(Stream& s, Message<isRequest>& m, asio::yield_contex
   suppressC4100(yield);
   auto sr = Serializer<isRequest>{m};
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Stream, pichi::test::Stream>)
+  if constexpr (is_same_v<Stream, TestStream>)
     return http::write_header(s, sr);
   else
 #endif // BUILD_TEST
@@ -73,7 +68,7 @@ static auto readHttpHeader(Stream& s, DynamicBuffer& buffer, Parser<isRequest>& 
 {
   suppressC4100(yield);
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Stream, pichi::test::Stream>)
+  if constexpr (is_same_v<Stream, TestStream>)
     return http::read_header(s, buffer, parser);
   else
 #endif // BUILD_TEST
@@ -265,10 +260,10 @@ template <typename Stream> void HttpIngress<Stream>::send(ConstBuffer<uint8_t> b
 
 template <typename Stream> bool HttpIngress<Stream>::readable() const
 {
-  return isOpen(stream_) || reqCache_.size() > 0;
+  return stream_.is_open() || reqCache_.size() > 0;
 }
 
-template <typename Stream> bool HttpIngress<Stream>::writable() const { return isOpen(stream_); }
+template <typename Stream> bool HttpIngress<Stream>::writable() const { return stream_.is_open(); }
 
 template <typename Stream> void HttpIngress<Stream>::confirm(Yield yield) { confirm_(yield); }
 
@@ -327,8 +322,8 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr ep
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 {
 #ifdef ENABLE_TLS
-  if constexpr (IsSslStreamV<Stream>) {
-    stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
+  if constexpr (IsTlsStreamV<Stream>) {
+    stream_.async_handshake(asio::ssl::stream_base::server, yield);
   }
 #endif // ENABLE_TLS
 
@@ -466,25 +461,25 @@ template <typename Stream> void HttpEgress<Stream>::close(Yield yield)
 
 template <typename Stream> bool HttpEgress<Stream>::readable() const
 {
-  return isOpen(*stream_) || respCache_.size() > 0;
+  return stream_->is_open() || respCache_.size() > 0;
 }
 
-template <typename Stream> bool HttpEgress<Stream>::writable() const { return isOpen(*stream_); }
+template <typename Stream> bool HttpEgress<Stream>::writable() const { return stream_->is_open(); }
 
 using TcpSocket = tcp::socket;
-using TlsSocket = ssl::stream<TcpSocket>;
+using TLSStream = TlsStream<TcpSocket>;
 
 template class HttpIngress<TcpSocket>;
 template class HttpEgress<TcpSocket>;
 
 #ifdef ENABLE_TLS
-template class HttpIngress<TlsSocket>;
-template class HttpEgress<TlsSocket>;
+template class HttpIngress<TLSStream>;
+template class HttpEgress<TLSStream>;
 #endif // ENABLE_TLS
 
 #ifdef BUILD_TEST
-template class HttpIngress<pichi::test::Stream>;
-template class HttpEgress<pichi::test::Stream>;
+template class HttpIngress<TestStream>;
+template class HttpEgress<TestStream>;
 #endif // BUILD_TEST
 
 } // namespace pichi::net

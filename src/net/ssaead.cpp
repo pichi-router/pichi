@@ -6,7 +6,7 @@
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/ssaead.hpp>
-#include <pichi/test/socket.hpp>
+#include <pichi/net/stream.hpp>
 #include <utility>
 
 using namespace std;
@@ -24,12 +24,12 @@ void SSAeadAdapter<method, Stream>::close(Yield yield)
 
 template <CryptoMethod method, typename Stream> bool SSAeadAdapter<method, Stream>::readable() const
 {
-  return cache_.size() > 0 || isOpen(stream_);
+  return cache_.size() > 0 || stream_.is_open();
 }
 
 template <CryptoMethod method, typename Stream> bool SSAeadAdapter<method, Stream>::writable() const
 {
-  return isOpen(stream_);
+  return stream_.is_open();
 }
 
 template <CryptoMethod method, typename Stream>
@@ -169,11 +169,11 @@ template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, tcp::socket>;
 template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, tcp::socket>;
 
 #ifdef BUILD_TEST
-template class SSAeadAdapter<CryptoMethod::AES_128_GCM, test::Stream>;
-template class SSAeadAdapter<CryptoMethod::AES_192_GCM, test::Stream>;
-template class SSAeadAdapter<CryptoMethod::AES_256_GCM, test::Stream>;
-template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, test::Stream>;
-template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, test::Stream>;
+template class SSAeadAdapter<CryptoMethod::AES_128_GCM, TestStream>;
+template class SSAeadAdapter<CryptoMethod::AES_192_GCM, TestStream>;
+template class SSAeadAdapter<CryptoMethod::AES_256_GCM, TestStream>;
+template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, TestStream>;
+template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, TestStream>;
 #endif // BUILD_TEST
 
 } // namespace pichi::net

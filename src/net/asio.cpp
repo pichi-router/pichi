@@ -8,6 +8,7 @@
 #include <boost/asio/spawn2.hpp>
 #include <boost/asio/write.hpp>
 #include <pichi/api/balancer.hpp>
+#include <pichi/api/ingress_holder.hpp>
 #include <pichi/api/vos.hpp>
 #include <pichi/asserts.hpp>
 #include <pichi/common.hpp>
@@ -22,8 +23,8 @@
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
+#include <pichi/net/stream.hpp>
 #include <pichi/net/tunnel.hpp>
-#include <pichi/test/socket.hpp>
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/context.hpp>
@@ -34,16 +35,19 @@
 using namespace std;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
-namespace ssl = asio::ssl;
 namespace sys = boost::system;
 using ip::tcp;
 using pichi::crypto::CryptoMethod;
 using TcpSocket = tcp::socket;
-using TlsSocket = ssl::stream<TcpSocket>;
+using TlsSocket = pichi::net::TlsStream<TcpSocket>;
+using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
 namespace pichi::net {
 
 #ifdef ENABLE_TLS
+
+namespace ssl = asio::ssl;
+
 static auto createTlsContext(api::IngressVO const& vo)
 {
   auto ctx = ssl::context{ssl::context::tls_server};
@@ -69,93 +73,83 @@ static auto createTlsContext(api::EgressVO const& vo)
   }
   return ctx;
 }
+
 #endif // ENABLE_TLS
 
-template <typename Socket, typename Yield>
-void connect(Endpoint const& endpoint, Socket& s, Yield yield)
+template <typename Stream, typename Yield>
+void connect(Endpoint const& endpoint, Stream& s, Yield yield)
 {
-  suppressC4100(yield);
-#ifdef ENABLE_TLS
-  if constexpr (IsSslStreamV<Socket>) {
-    connect(endpoint, s.next_layer(), yield);
-    s.async_handshake(ssl::stream_base::handshake_type::client, yield);
-  }
-  else
-#endif // ENABLE_TLS
 #ifdef BUILD_TEST
-      if constexpr (is_same_v<Socket, pichi::test::Stream>) {
+  if constexpr (is_same_v<Stream, TestStream>) {
+    suppressC4100(endpoint);
+    suppressC4100(yield);
     s.connect();
+    return;
   }
-  else
+  else {
 #endif // BUILD_TEST
-    asio::async_connect(s,
-                        tcp::resolver{s.get_executor()
+    auto resolver = tcp::resolver{s.get_executor()
 #ifndef RESOLVER_CONSTRUCTED_FROM_EXECUTOR
-                                          .context()
+                                      .context()
 #endif // RESOLVER_CONSTRUCTED_FROM_EXECUTOR
-                        }
-                            .async_resolve(endpoint.host_, endpoint.port_, yield),
-                        yield);
+    };
+    asyncConnect(s, resolver.async_resolve(endpoint.host_, endpoint.port_, yield), yield);
+#ifdef BUILD_TEST
+  }
+#endif // BUILD_TEST
+#ifdef ENABLE_TLS
+  if constexpr (IsTlsStreamV<Stream>) {
+    s.async_handshake(ssl::stream_base::client, yield);
+  }
+#endif // ENABLE_TLS
 }
 
-template <typename Socket, typename Yield>
-void read(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream, typename Yield>
+void read(Stream& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
-  suppressC4100(yield);
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Socket, pichi::test::Stream>)
+  if constexpr (is_same_v<Stream, TestStream>)
     asio::read(s, asio::buffer(buf));
   else
 #endif // BUILD_TEST
     asio::async_read(s, asio::buffer(buf), yield);
 }
 
-template <typename Socket, typename Yield>
-size_t readSome(Socket& s, MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream, typename Yield>
+size_t readSome(Stream& s, MutableBuffer<uint8_t> buf, Yield yield)
 {
-  suppressC4100(yield);
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Socket, pichi::test::Stream>)
+  if constexpr (is_same_v<Stream, TestStream>) {
     return s.read_some(asio::buffer(buf));
+  }
   else
 #endif // BUILD_TEST
     return s.async_read_some(asio::buffer(buf), yield);
 }
 
-template <typename Socket, typename Yield>
-void write(Socket& s, ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream, typename Yield>
+void write(Stream& s, ConstBuffer<uint8_t> buf, Yield yield)
 {
-  suppressC4100(yield);
 #ifdef BUILD_TEST
-  if constexpr (is_same_v<Socket, pichi::test::Stream>)
+  if constexpr (is_same_v<Stream, TestStream>)
     asio::write(s, asio::buffer(buf));
   else
 #endif // BUILD_TEST
     asio::async_write(s, asio::buffer(buf), yield);
 }
 
-template <typename Socket, typename Yield> void close(Socket& s, Yield yield)
+template <typename Stream, typename Yield> void close(Stream& s, Yield yield)
 {
   // This function is supposed to be 'noexcept' because it's always invoked in the desturctors.
   // TODO log it
   auto ec = sys::error_code{};
-  if constexpr (IsSslStreamV<Socket>) {
+  if constexpr (IsTlsStreamV<Stream>) {
     s.async_shutdown(yield[ec]);
-    close(s.next_layer(), yield);
+    s.close(ec);
   }
   else {
     suppressC4100(yield);
     s.close(ec);
-  }
-}
-
-template <typename Socket> bool isOpen(Socket const& s)
-{
-  if constexpr (IsSslStreamV<Socket>) {
-    return isOpen(s.next_layer());
-  }
-  else {
-    return s.is_open();
   }
 }
 
@@ -167,19 +161,17 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
   switch (vo.type_) {
   case AdapterType::HTTP:
 #ifdef ENABLE_TLS
-    if (*vo.tls_) {
-      auto ctx = createTlsContext(vo);
-      return make_unique<HttpIngress<TlsSocket>>(vo.credentials_, forward<Socket>(s), ctx);
-    }
+    if (*vo.tls_)
+      return make_unique<HttpIngress<TLSStream>>(vo.credentials_, createTlsContext(vo),
+                                                 forward<Socket>(s));
     else
 #endif // ENABLE_TLS
       return make_unique<HttpIngress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
-    if (*vo.tls_) {
-      auto ctx = createTlsContext(vo);
-      return make_unique<Socks5Ingress<TlsSocket>>(vo.credentials_, forward<Socket>(s), ctx);
-    }
+    if (*vo.tls_)
+      return make_unique<Socks5Ingress<TLSStream>>(vo.credentials_, createTlsContext(vo),
+                                                   forward<Socket>(s));
     else
 #endif // ENABLE_TLS
       return make_unique<Socks5Ingress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
@@ -254,19 +246,15 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
   switch (vo.type_) {
   case AdapterType::HTTP:
 #ifdef ENABLE_TLS
-    if (*vo.tls_) {
-      auto ctx = createTlsContext(vo);
-      return make_unique<HttpEgress<TlsSocket>>(vo.credential_, io, ctx);
-    }
+    if (*vo.tls_)
+      return make_unique<HttpEgress<TLSStream>>(vo.credential_, createTlsContext(vo), io);
     else
 #endif // ENABLE_TLS
       return make_unique<HttpEgress<TcpSocket>>(vo.credential_, io);
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
-    if (*vo.tls_) {
-      auto ctx = createTlsContext(vo);
-      return make_unique<Socks5Egress<ssl::stream<tcp::socket>>>(vo.credential_, io, ctx);
-    }
+    if (*vo.tls_)
+      return make_unique<Socks5Egress<TLSStream>>(vo.credential_, createTlsContext(vo), io);
     else
 #endif // ENABLE_TLS
       return make_unique<Socks5Egress<tcp::socket>>(vo.credential_, io);
@@ -337,24 +325,21 @@ template void read<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TcpSocket&, ConstBuffer<uint8_t>, Yield);
 template void close<>(TcpSocket&, Yield);
-template bool isOpen<>(TcpSocket const&);
 
 #ifdef ENABLE_TLS
-template void connect<>(Endpoint const&, TlsSocket&, Yield);
-template void read<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
-template size_t readSome<>(TlsSocket&, MutableBuffer<uint8_t>, Yield);
-template void write<>(TlsSocket&, ConstBuffer<uint8_t>, Yield);
-template void close<>(TlsSocket&, Yield);
-template bool isOpen<>(TlsSocket const&);
+template void connect<>(Endpoint const&, TLSStream&, Yield);
+template void read<>(TLSStream&, MutableBuffer<uint8_t>, Yield);
+template size_t readSome<>(TLSStream&, MutableBuffer<uint8_t>, Yield);
+template void write<>(TLSStream&, ConstBuffer<uint8_t>, Yield);
+template void close<>(TLSStream&, Yield);
 #endif // ENABLE_TLS
 
 #ifdef BUILD_TEST
-template void connect<>(Endpoint const&, pichi::test::Stream&, Yield);
-template void read<>(pichi::test::Stream&, MutableBuffer<uint8_t>, Yield);
-template size_t readSome<>(pichi::test::Stream&, MutableBuffer<uint8_t>, Yield);
-template void write<>(pichi::test::Stream&, ConstBuffer<uint8_t>, Yield);
-template void close<>(pichi::test::Stream&, Yield);
-template bool isOpen<>(pichi::test::Stream const&);
+template void connect<>(Endpoint const&, TestStream&, Yield);
+template void read<>(TestStream&, MutableBuffer<uint8_t>, Yield);
+template size_t readSome<>(TestStream&, MutableBuffer<uint8_t>, Yield);
+template void write<>(TestStream&, ConstBuffer<uint8_t>, Yield);
+template void close<>(TestStream&, Yield);
 #endif // BUILD_TEST
 
 template unique_ptr<Ingress> makeIngress<>(api::IngressHolder&, TcpSocket&&);

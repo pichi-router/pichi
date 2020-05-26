@@ -6,7 +6,7 @@
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/ssstream.hpp>
-#include <pichi/test/socket.hpp>
+#include <pichi/net/stream.hpp>
 #include <utility>
 
 using namespace std;
@@ -57,13 +57,13 @@ void SSStreamAdapter<method, Stream>::close(Yield yield)
 template <CryptoMethod method, typename Stream>
 bool SSStreamAdapter<method, Stream>::readable() const
 {
-  return isOpen(stream_);
+  return stream_.is_open();
 }
 
 template <CryptoMethod method, typename Stream>
 bool SSStreamAdapter<method, Stream>::writable() const
 {
-  return isOpen(stream_);
+  return stream_.is_open();
 }
 
 template <CryptoMethod method, typename Stream>
@@ -115,20 +115,20 @@ template class SSStreamAdapter<CryptoMethod::SALSA20, tcp::socket>;
 template class SSStreamAdapter<CryptoMethod::CHACHA20_IETF, tcp::socket>;
 
 #ifdef BUILD_TEST
-template class SSStreamAdapter<CryptoMethod::RC4_MD5, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::BF_CFB, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::AES_128_CTR, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::AES_192_CTR, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::AES_256_CTR, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::AES_128_CFB, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::AES_192_CFB, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::AES_256_CFB, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::CHACHA20, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::SALSA20, test::Stream>;
-template class SSStreamAdapter<CryptoMethod::CHACHA20_IETF, test::Stream>;
+template class SSStreamAdapter<CryptoMethod::RC4_MD5, TestStream>;
+template class SSStreamAdapter<CryptoMethod::BF_CFB, TestStream>;
+template class SSStreamAdapter<CryptoMethod::AES_128_CTR, TestStream>;
+template class SSStreamAdapter<CryptoMethod::AES_192_CTR, TestStream>;
+template class SSStreamAdapter<CryptoMethod::AES_256_CTR, TestStream>;
+template class SSStreamAdapter<CryptoMethod::AES_128_CFB, TestStream>;
+template class SSStreamAdapter<CryptoMethod::AES_192_CFB, TestStream>;
+template class SSStreamAdapter<CryptoMethod::AES_256_CFB, TestStream>;
+template class SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB, TestStream>;
+template class SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB, TestStream>;
+template class SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB, TestStream>;
+template class SSStreamAdapter<CryptoMethod::CHACHA20, TestStream>;
+template class SSStreamAdapter<CryptoMethod::SALSA20, TestStream>;
+template class SSStreamAdapter<CryptoMethod::CHACHA20_IETF, TestStream>;
 #endif // BUILD_TEST
 
 } // namespace pichi::net

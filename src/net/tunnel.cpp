@@ -42,12 +42,12 @@ void TunnelIngress<Iterator, Socket>::close(Yield yield)
 
 template <typename Iterator, typename Socket> bool TunnelIngress<Iterator, Socket>::readable() const
 {
-  return isOpen(socket_);
+  return socket_.is_open();
 }
 
 template <typename Iterator, typename Socket> bool TunnelIngress<Iterator, Socket>::writable() const
 {
-  return isOpen(socket_);
+  return socket_.is_open();
 }
 
 template <typename Iterator, typename Socket>
