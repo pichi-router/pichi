@@ -13,6 +13,8 @@ using namespace rapidjson;
 using namespace pichi;
 using namespace pichi::api;
 
+using pichi::net::AdapterType;
+
 BOOST_AUTO_TEST_SUITE(REST_TO_JSON)
 
 BOOST_AUTO_TEST_CASE(toJson_AdapterType)
