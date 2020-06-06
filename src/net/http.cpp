@@ -425,23 +425,22 @@ template <typename Stream> void HttpIngress<Stream>::authenticate(Header<true> c
 template <typename Stream>
 void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
 {
-  pichi::net::connect(next, *stream_, yield);
-  if (tunnelConnect(remote, *stream_, yield, credential_)) {
-    send_ = [this](auto buf, auto yield) { write(*stream_, buf, yield); };
-    recv_ = [this](auto buf, auto yield) { return readSome(*stream_, buf, yield); };
+  pichi::net::connect(next, stream_, yield);
+  if (tunnelConnect(remote, stream_, yield, credential_)) {
+    send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
+    recv_ = [this](auto buf, auto yield) { return readSome(stream_, buf, yield); };
     return;
   }
 
   // Failed to make connection via HTTP CONNECT, so try HTTP relay again.
   send_ = [this](auto buf, auto yield) {
-    if (tryToSendHeader(reqParser_, reqCache_, buf, *stream_, yield, credential_))
-      send_ = [this](auto buf, auto yield) { write(*stream_, buf, yield); };
+    if (tryToSendHeader(reqParser_, reqCache_, buf, stream_, yield, credential_))
+      send_ = [this](auto buf, auto yield) { write(stream_, buf, yield); };
   };
-  recv_ = [this](auto buf, auto yield) { return recvRaw(*stream_, respCache_, buf, yield); };
+  recv_ = [this](auto buf, auto yield) { return recvRaw(stream_, respCache_, buf, yield); };
 
-  pichi::net::close(origin_, yield);
-  stream_ = addressof(backup_);
-  pichi::net::connect(next, *stream_, yield);
+  pichi::net::close(stream_, yield);
+  pichi::net::connect(next, stream_, yield);
 }
 
 template <typename Stream> size_t HttpEgress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
@@ -456,15 +455,15 @@ template <typename Stream> void HttpEgress<Stream>::send(ConstBuffer<uint8_t> bu
 
 template <typename Stream> void HttpEgress<Stream>::close(Yield yield)
 {
-  pichi::net::close(*stream_, yield);
+  pichi::net::close(stream_, yield);
 }
 
 template <typename Stream> bool HttpEgress<Stream>::readable() const
 {
-  return stream_->is_open() || respCache_.size() > 0;
+  return stream_.is_open() || respCache_.size() > 0;
 }
 
-template <typename Stream> bool HttpEgress<Stream>::writable() const { return stream_->is_open(); }
+template <typename Stream> bool HttpEgress<Stream>::writable() const { return stream_.is_open(); }
 
 using TcpSocket = tcp::socket;
 using TLSStream = TlsStream<TcpSocket>;

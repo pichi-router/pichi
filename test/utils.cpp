@@ -1,5 +1,5 @@
 #include "utils.hpp"
-#include <boost/asio/system_executor.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/common.hpp>
 #include <sodium/utils.h>
@@ -9,15 +9,18 @@ using namespace std;
 using namespace pichi::api;
 using namespace rapidjson;
 
+using pichi::net::AdapterType;
+
 namespace pichi {
 
 static auto doc = Document{};
 Document::AllocatorType& alloc = doc.GetAllocator();
 
+static boost::asio::io_context io;
 static boost::asio::detail::Pull* pPull = nullptr;
 static boost::asio::detail::Push* pPush = nullptr;
 static boost::asio::detail::YieldState* pState = nullptr;
-boost::asio::yield_context gYield = {boost::asio::system_executor{}, *pState, *pPush, *pPull};
+boost::asio::yield_context gYield = {io.get_executor(), *pState, *pPush, *pPull};
 
 vector<uint8_t> str2vec(string_view s) { return {cbegin(s), cend(s)}; }
 

@@ -12,7 +12,6 @@
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/common.hpp>
 #include <string_view>
-#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -92,8 +91,7 @@ private:
 public:
   template <typename... Args>
   HttpEgress(std::optional<Credential> credential, Args&&... args)
-    : origin_{std::forward<Args>(args)...}, backup_{std::forward<Args>(args)...},
-      stream_{std::addressof(origin_)},
+    : stream_{std::forward<Args>(args)...},
       send_(detail::badInvoking<void, ConstBuffer<uint8_t>, Yield>),
       recv_(detail::badInvoking<size_t, MutableBuffer<uint8_t>, Yield>), credential_{
                                                                              std::move(credential)}
@@ -114,9 +112,7 @@ public:
   void connect(Endpoint const&, Endpoint const&, Yield) override;
 
 private:
-  Stream origin_;
-  Stream backup_;
-  std::add_pointer_t<Stream> stream_;
+  Stream stream_;
   std::function<void(ConstBuffer<uint8_t>, Yield)> send_;
   std::function<size_t(MutableBuffer<uint8_t>, Yield)> recv_;
   detail::RequestParser reqParser_;
