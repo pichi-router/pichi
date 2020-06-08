@@ -25,9 +25,9 @@ bool DirectAdapter::readable() const { return socket_.is_open(); }
 
 bool DirectAdapter::writable() const { return socket_.is_open(); }
 
-void DirectAdapter::connect(Endpoint const&, Endpoint const& server, Yield yield)
+void DirectAdapter::connect(Endpoint const&, ResolveResults next, Yield yield)
 {
-  pichi::net::connect(server, socket_, yield);
+  pichi::net::connect(next, socket_, yield);
 }
 
 } // namespace pichi::net

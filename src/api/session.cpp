@@ -1,4 +1,7 @@
+#include <pichi/config.hpp>
+// Include config.hpp first
 #include <array>
+#include <boost/asio/ip/tcp.hpp>
 #include <iostream>
 #include <pichi/api/session.hpp>
 #include <pichi/exception.hpp>
@@ -9,6 +12,8 @@
 using namespace std;
 namespace asio = boost::asio;
 namespace sys = boost::system;
+
+using asio::ip::tcp;
 
 namespace pichi::api {
 
@@ -32,7 +37,8 @@ void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
   net::spawn(
       strand_,
       [=, self = shared_from_this()](auto yield) {
-        egress_->connect(remote, next, yield);
+        auto resolver = tcp::resolver{strand_.context()};
+        egress_->connect(remote, resolver.async_resolve(next.host_, next.port_, yield), yield);
         ingress_->confirm(yield);
         net::spawn(
             strand_, [self, this](auto yield) { bridge(*ingress_, *egress_, yield); },
@@ -44,7 +50,7 @@ void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
       [this](auto eptr, auto yield) noexcept { ingress_->disconnect(eptr, yield); });
 }
 
-void Session::start(net::Endpoint const& remote) { start(remote, remote); }
+void Session::start(net::Endpoint const& peer) { start(peer, peer); }
 
 template <typename Yield> void Session::close(Yield yield)
 {

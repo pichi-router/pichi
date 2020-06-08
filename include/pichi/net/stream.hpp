@@ -8,6 +8,7 @@
 #include <functional>
 #include <pichi/asserts.hpp>
 #include <pichi/buffer.hpp>
+#include <pichi/net/adapter.hpp>
 #include <type_traits>
 #include <utility>
 
@@ -283,9 +284,12 @@ private:
  *  boost::asio::async_connect only supports basic_socket, so asyncConnect is intended to
  *  support all the stream classes with async_connect member function template.
  */
-template <typename Stream, typename ResolveResults, typename ConnectHandler>
+template <typename Stream, typename ConnectHandler>
 auto asyncConnect(Stream& stream, ResolveResults results, ConnectHandler&& handler)
 {
+  // FIXME the life term of results should be extended until all of the async-ops are accomplished,
+  //   but according to the implementation of ResolveResults::iterator, the iterator will
+  //   fulfill the extension. So, keep it this way here.
   return detail::asyncInitiate<void(boost::system::error_code)>(
       [](auto&& h, auto& stream, auto first) {
         static_assert(std::is_invocable_v<decltype(h), boost::system::error_code const&>);

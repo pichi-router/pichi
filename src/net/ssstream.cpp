@@ -88,10 +88,10 @@ template <CryptoMethod method, typename Stream> void SSStreamAdapter<method, Str
 }
 
 template <CryptoMethod method, typename Stream>
-void SSStreamAdapter<method, Stream>::connect(Endpoint const& remote, Endpoint const& server,
+void SSStreamAdapter<method, Stream>::connect(Endpoint const& remote, ResolveResults next,
                                               Yield yield)
 {
-  pichi::net::connect(server, stream_, yield);
+  pichi::net::connect(next, stream_, yield);
 
   auto plain = HeaderBuffer<uint8_t>{};
   auto plen = serializeEndpoint(remote, plain);

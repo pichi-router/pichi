@@ -1,5 +1,6 @@
 #include <pichi/config.hpp>
 // Include config.hpp first
+#include <boost/asio/ip/tcp.hpp>
 #include <chrono>
 #include <pichi/asserts.hpp>
 #include <pichi/net/reject.hpp>
@@ -52,7 +53,7 @@ void RejectEgress::close(Yield) { t_.cancel(); }
 #pragma warning(pop)
 #endif // _MSC_VER
 
-void RejectEgress::connect(Endpoint const&, Endpoint const&, Yield yield)
+void RejectEgress::connect(Endpoint const&, ResolveResults, Yield yield)
 {
   auto ec = sys::error_code{};
   t_.async_wait(yield[ec]);

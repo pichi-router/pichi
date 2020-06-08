@@ -54,7 +54,7 @@ public:
   void close(Yield) override;
   bool readable() const override;
   bool writable() const override;
-  void connect(Endpoint const& remote, Endpoint const& next, Yield) override;
+  void connect(Endpoint const& remote, ResolveResults next, Yield) override;
 
 private:
   Stream stream_;

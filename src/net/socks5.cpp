@@ -257,7 +257,7 @@ template <typename Stream> bool Socks5Egress<Stream>::readable() const { return 
 template <typename Stream> bool Socks5Egress<Stream>::writable() const { return stream_.is_open(); }
 
 template <typename Stream>
-void Socks5Egress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
+void Socks5Egress<Stream>::connect(Endpoint const& remote, ResolveResults next, Yield yield)
 {
   pichi::net::connect(next, stream_, yield);
 

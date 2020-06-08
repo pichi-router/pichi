@@ -7,7 +7,16 @@
 #include <pichi/net/common.hpp>
 #include <stdint.h>
 
+namespace boost::asio::ip {
+
+class tcp;
+template <typename InternetProtocol> class basic_resolver_results;
+
+} // namespace boost::asio::ip
+
 namespace pichi::net {
+
+using ResolveResults = boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp>;
 
 struct Adapter {
   using Yield = boost::asio::yield_context;
@@ -35,7 +44,7 @@ struct Ingress : public Adapter {
 };
 
 struct Egress : public Adapter {
-  virtual void connect(Endpoint const& remote, Endpoint const& server, Yield) = 0;
+  virtual void connect(Endpoint const& remote, ResolveResults next, Yield) = 0;
 };
 
 } // namespace pichi::net

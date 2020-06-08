@@ -4,6 +4,7 @@
 #include <boost/asio/buffer.hpp>
 #include <memory>
 #include <pichi/buffer.hpp>
+#include <pichi/net/adapter.hpp>
 
 namespace boost::asio {
 
@@ -49,7 +50,7 @@ struct Endpoint;
 struct Ingress;
 struct Egress;
 
-template <typename Socket, typename Yield> void connect(Endpoint const&, Socket&, Yield);
+template <typename Socket, typename Yield> void connect(ResolveResults, Socket&, Yield);
 template <typename Socket, typename Yield> void read(Socket&, MutableBuffer<uint8_t>, Yield);
 template <typename Socket, typename Yield> size_t readSome(Socket&, MutableBuffer<uint8_t>, Yield);
 template <typename Socket, typename Yield> void write(Socket&, ConstBuffer<uint8_t>, Yield);

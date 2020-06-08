@@ -423,7 +423,7 @@ template <typename Stream> void HttpIngress<Stream>::authenticate(Header<true> c
 }
 
 template <typename Stream>
-void HttpEgress<Stream>::connect(Endpoint const& remote, Endpoint const& next, Yield yield)
+void HttpEgress<Stream>::connect(Endpoint const& remote, ResolveResults next, Yield yield)
 {
   pichi::net::connect(next, stream_, yield);
   if (tunnelConnect(remote, stream_, yield, credential_)) {

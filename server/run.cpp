@@ -56,19 +56,19 @@ static json::Document parseJson(char const* str)
 
 class HttpHelper {
 public:
-  HttpHelper(string const& host, uint16_t port, asio::yield_context yield);
+  HttpHelper(net::ResolveResults&& endpoint, asio::yield_context yield);
 
   vector<string> get(string const& target);
   void put(string const& target, string const& body);
   void del(string const& target);
 
 private:
-  net::Endpoint endpoint_;
+  net::ResolveResults endpoint_;
   asio::yield_context yield_;
 };
 
-HttpHelper::HttpHelper(string const& host, uint16_t port, asio::yield_context yield)
-  : endpoint_{net::makeEndpoint(host, port)}, yield_{yield}
+HttpHelper::HttpHelper(net::ResolveResults&& endpoint, asio::yield_context yield)
+  : endpoint_{move(endpoint)}, yield_{yield}
 {
 }
 
@@ -205,7 +205,8 @@ void run(string const& bind, uint16_t port, string const& fn, string const& mmdb
   net::spawn(
       io,
       [=](auto yield) {
-        auto helper = HttpHelper{bind, port, yield};
+        auto resolver = tcp::resolver{io};
+        auto helper = HttpHelper{resolver.async_resolve(bind, to_string(port), yield), yield};
         load(helper, fn);
 
 #if defined(HAS_SIGNAL_H) && defined(SIGHUP)

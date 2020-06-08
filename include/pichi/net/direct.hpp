@@ -20,7 +20,7 @@ public:
   void close(Yield) override;
   bool readable() const override;
   bool writable() const override;
-  void connect(Endpoint const&, Endpoint const&, Yield) override;
+  void connect(Endpoint const&, ResolveResults, Yield) override;
 
 private:
   Socket socket_;

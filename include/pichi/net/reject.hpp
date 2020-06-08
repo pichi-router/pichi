@@ -20,7 +20,7 @@ public:
   void close(Yield) override;
   [[noreturn]] bool readable() const override;
   [[noreturn]] bool writable() const override;
-  void connect(Endpoint const& remote, Endpoint const& next, Yield) override;
+  void connect(Endpoint const& remote, ResolveResults next, Yield) override;
 
 private:
   Timer t_;

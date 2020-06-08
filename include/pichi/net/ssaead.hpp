@@ -31,7 +31,7 @@ public:
   bool writable() const override;
   size_t readIV(MutableBuffer<uint8_t>, Yield) override;
   Endpoint readRemote(Yield) override;
-  void connect(Endpoint const& remote, Endpoint const& next, Yield) override;
+  void connect(Endpoint const& remote, ResolveResults next, Yield) override;
   void confirm(Yield) override;
 
 private:

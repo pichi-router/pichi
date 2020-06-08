@@ -84,24 +84,18 @@ static auto createTlsContext(api::EgressVO const& vo)
 
 #endif // ENABLE_TLS
 
-template <typename Stream, typename Yield>
-void connect(Endpoint const& endpoint, Stream& s, Yield yield)
+template <typename Stream, typename Yield> void connect(ResolveResults next, Stream& s, Yield yield)
 {
 #ifdef BUILD_TEST
   if constexpr (is_same_v<Stream, TestStream>) {
-    suppressC4100(endpoint);
+    suppressC4100(next);
     suppressC4100(yield);
     s.connect();
     return;
   }
   else {
 #endif // BUILD_TEST
-    auto resolver = tcp::resolver{s.get_executor()
-#ifndef RESOLVER_CONSTRUCTED_FROM_EXECUTOR
-                                      .context()
-#endif // RESOLVER_CONSTRUCTED_FROM_EXECUTOR
-    };
-    asyncConnect(s, resolver.async_resolve(endpoint.host_, endpoint.port_, yield), yield);
+    asyncConnect(s, next, yield);
 #ifdef BUILD_TEST
   }
 #endif // BUILD_TEST
@@ -332,14 +326,14 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
 
 using Yield = asio::yield_context;
 
-template void connect<>(Endpoint const&, TcpSocket&, Yield);
+template void connect<>(ResolveResults, TcpSocket&, Yield);
 template void read<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TcpSocket&, ConstBuffer<uint8_t>, Yield);
 template void close<>(TcpSocket&, Yield);
 
 #ifdef ENABLE_TLS
-template void connect<>(Endpoint const&, TLSStream&, Yield);
+template void connect<>(ResolveResults, TLSStream&, Yield);
 template void read<>(TLSStream&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TLSStream&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TLSStream&, ConstBuffer<uint8_t>, Yield);
@@ -347,7 +341,7 @@ template void close<>(TLSStream&, Yield);
 #endif // ENABLE_TLS
 
 #ifdef BUILD_TEST
-template void connect<>(Endpoint const&, TestStream&, Yield);
+template void connect<>(ResolveResults, TestStream&, Yield);
 template void read<>(TestStream&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TestStream&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TestStream&, ConstBuffer<uint8_t>, Yield);

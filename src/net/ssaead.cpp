@@ -67,10 +67,10 @@ void SSAeadAdapter<method, Stream>::send(ConstBuffer<uint8_t> plain, Yield yield
 }
 
 template <CryptoMethod method, typename Stream>
-void SSAeadAdapter<method, Stream>::connect(Endpoint const& remote, Endpoint const& server,
+void SSAeadAdapter<method, Stream>::connect(Endpoint const& remote, ResolveResults next,
                                             Yield yield)
 {
-  pichi::net::connect(server, stream_, yield);
+  pichi::net::connect(next, stream_, yield);
 
   auto plain = array<uint8_t, 512>{};
   auto plen = serializeEndpoint(remote, plain);

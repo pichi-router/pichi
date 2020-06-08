@@ -2,6 +2,7 @@
 
 #include "utils.hpp"
 #include <array>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/test/unit_test.hpp>
 #include <initializer_list>
 #include <memory>
