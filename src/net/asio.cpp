@@ -28,8 +28,12 @@
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/ssl/rfc2818_verification.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#ifdef DEPRECATED_RFC2818_CLASS
+#include <boost/asio/ssl/host_name_verification.hpp>
+#else // DEPRECATED_RFC2818_CLASS
+#include <boost/asio/ssl/rfc2818_verification.hpp>
+#endif // DEPRECATED_RFC2818_CLASS
 #endif // ENABLE_TLS
 
 using namespace std;
@@ -69,7 +73,11 @@ static auto createTlsContext(api::EgressVO const& vo)
     ctx.load_verify_file(*vo.caFile_);
   else {
     ctx.set_default_verify_paths();
+#ifdef DEPRECATED_RFC2818_CLASS
+    ctx.set_verify_callback(ssl::host_name_verification{*vo.host_});
+#else  // DEPRECATED_RFC2818_CLASS
     ctx.set_verify_callback(ssl::rfc2818_verification{*vo.host_});
+#endif // DEPRECATED_RFC2818_CLASS
   }
   return ctx;
 }
