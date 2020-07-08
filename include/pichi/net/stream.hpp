@@ -53,9 +53,6 @@ auto asyncInitiate(Initiation&& initiation, CompletionToken&& token, Args&&... a
 }
 
 template <typename Stream, typename Iterator, typename ConnectHandler>
-void tryToConnect(Stream&, Iterator, ConnectHandler&&);
-
-template <typename Stream, typename Iterator, typename ConnectHandler>
 struct IteratorConnectOperator {
   IteratorConnectOperator(Stream& s, Iterator it, ConnectHandler const& h) : s_{s}, it_{it}, h_{h}
   {
@@ -68,33 +65,19 @@ struct IteratorConnectOperator {
                         [h = h_, ec]() mutable { std::invoke(h, ec); });
       return;
     }
-    if (it_ == Iterator{}) {
+    if (++it_ == Iterator{}) {
       boost::asio::post(boost::asio::get_associated_executor(h_),
                         [h = h_, ec]() mutable { std::invoke(h, ec); });
       return;
     }
     s_.close(ec);
-    tryToConnect(s_, ++it_, h_);
+    s_.async_connect(*it_, IteratorConnectOperator(s_, it_, h_));
   }
 
   Stream& s_;
   Iterator it_;
   ConnectHandler h_;
 };
-
-template <typename Stream, typename Iterator, typename ConnectHandler>
-void tryToConnect(Stream& stream, Iterator it, ConnectHandler&& handler)
-{
-  if (it == Iterator{}) {
-    boost::asio::post(boost::asio::get_associated_executor(handler),
-                      [h = std::forward<ConnectHandler>(handler)]() mutable {
-                        std::invoke(h, boost::asio::error::host_not_found);
-                      });
-  }
-  else {
-    stream.async_connect(*it, IteratorConnectOperator{stream, it, handler});
-  }
-}
 
 } // namespace detail
 
@@ -291,11 +274,20 @@ auto asyncConnect(Stream& stream, ResolveResults results, ConnectHandler&& handl
   //   but according to the implementation of ResolveResults::iterator, the iterator will
   //   fulfill the extension. So, keep it this way here.
   return detail::asyncInitiate<void(boost::system::error_code)>(
-      [](auto&& h, auto& stream, auto first) {
-        static_assert(std::is_invocable_v<decltype(h), boost::system::error_code const&>);
-        detail::tryToConnect(stream, first, std::move(h));
+      [](auto&& h, auto& stream, auto results) {
+        using Handler = decltype(h);
+        static_assert(std::is_invocable_v<Handler, boost::system::error_code const&>);
+        if (results.empty()) {
+          boost::asio::post(boost::asio::get_associated_executor(h),
+                            [h = std::forward<Handler>(h)]() mutable {
+                              std::invoke(h, boost::asio::error::host_not_found);
+                            });
+          return;
+        }
+        auto first = std::cbegin(results);
+        stream.async_connect(*first, detail::IteratorConnectOperator{stream, first, h});
       },
-      std::forward<ConnectHandler>(handler), stream, std::cbegin(results));
+      std::forward<ConnectHandler>(handler), stream, std::move(results));
 }
 
 } // namespace pichi::net
