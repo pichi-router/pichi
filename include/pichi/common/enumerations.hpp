@@ -1,5 +1,5 @@
-#ifndef PICHI_COMMON_ENUMS_HPP
-#define PICHI_COMMON_ENUMS_HPP
+#ifndef PICHI_COMMON_ENUMERATIONS_HPP
+#define PICHI_COMMON_ENUMERATIONS_HPP
 
 namespace pichi {
 
@@ -63,4 +63,4 @@ enum class PichiError {
 
 }  // namespace pichi
 
-#endif  // PICHI_COMMON_ENUMS_HPP
+#endif  // PICHI_COMMON_ENUMERATIONS_HPP

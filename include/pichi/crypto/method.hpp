@@ -1,7 +1,7 @@
 #ifndef PICHI_CRYPTO_METHOD_HPP
 #define PICHI_CRYPTO_METHOD_HPP
 
-#include <pichi/common/enums.hpp>
+#include <pichi/common/enumerations.hpp>
 #include <stddef.h>
 #include <type_traits>
 

@@ -3,6 +3,7 @@
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/constants.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/ssstream.hpp>

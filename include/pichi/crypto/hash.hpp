@@ -6,7 +6,7 @@
 #include <mbedtls/sha256.h>
 #include <mbedtls/sha512.h>
 #include <pichi/common/buffer.hpp>
-#include <pichi/common/enums.hpp>
+#include <pichi/common/enumerations.hpp>
 
 namespace pichi::crypto {
 

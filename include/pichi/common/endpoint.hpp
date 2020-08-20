@@ -23,8 +23,6 @@ struct Endpoint {
   std::string port_;
 };
 
-size_t const MAX_FRAME_SIZE = 0x3fff;
-
 template <typename Int> void hton(Int src, MutableBuffer<uint8_t> dst)
 {
   static_assert(std::is_integral_v<Int>, "input type must be integral.");

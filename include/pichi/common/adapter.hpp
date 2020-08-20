@@ -5,7 +5,7 @@
 #include <exception>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/common/enums.hpp>
+#include <pichi/common/enumerations.hpp>
 #include <stdint.h>
 
 namespace boost::asio::ip {

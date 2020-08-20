@@ -2,7 +2,7 @@
 #define PICHI_COMMON_EXCEPTION_HPP
 
 #include <exception>
-#include <pichi/common/enums.hpp>
+#include <pichi/common/enumerations.hpp>
 #include <string>
 #include <string_view>
 
