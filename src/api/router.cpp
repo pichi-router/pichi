@@ -29,7 +29,8 @@ static auto const AT_INVALID = "Invalid adapter type string"sv;
 static string toLowerCase(string_view orig)
 {
   auto lower = string(orig.size(), '\0');
-  transform(cbegin(orig), cend(orig), begin(lower), [](auto c) { return tolower(c); });
+  transform(cbegin(orig), cend(orig), begin(lower),
+            [](auto c) { return static_cast<char>(tolower(c)); });
   return lower;
 }
 
@@ -149,7 +150,7 @@ void Router::update(string const& name, RuleVO rvo)
     };
   });
   transform(cbegin(rvo.country_), cend(rvo.country_), back_inserter(matchers),
-            [& geo = as_const(geo_)](auto&& country) {
+            [&geo = as_const(geo_)](auto&& country) {
               return [&country, &geo](auto&&, auto&& r, auto, auto) {
                 return any_of(cbegin(r), cend(r), [&geo, &country](auto&& entry) {
                   return geo.match(entry.endpoint(), country);
