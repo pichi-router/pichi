@@ -1,30 +1,19 @@
-#define BOOST_TEST_MODULE pichi rest_parse test
+#define BOOST_TEST_MODULE pichi vo_route test
 
 #include "utils.hpp"
-#include <algorithm>
 #include <boost/test/unit_test.hpp>
-#include <pichi/common/exception.hpp>
-#include <pichi/common/literals.hpp>
-#include <pichi/vo/egress.hpp>
-#include <pichi/vo/ingress.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/route.hpp>
-#include <pichi/vo/rule.hpp>
 #include <pichi/vo/to_json.hpp>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
-#include <string_view>
 
 using namespace std;
-using namespace rapidjson;
 using namespace pichi;
+using namespace rapidjson;
 
 using vo::parse;
 using vo::toJson;
 using vo::toString;
-
-using pichi::AdapterType;
 
 static string toString(vo::Route const& rvo)
 {
@@ -119,6 +108,46 @@ BOOST_AUTO_TEST_CASE(parse_Route)
   expect.rules_.clear();
   fact = parse<vo::Route>(toString(expect));
   BOOST_CHECK(fact == expect);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Route_Empty)
+{
+  auto rvo = vo::Route{};
+  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), Exception, verifyException<PichiError::MISC>);
+
+  rvo.default_ = "";
+  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), Exception, verifyException<PichiError::MISC>);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
+{
+  auto expect = Value{};
+  auto array = Value{};
+
+  expect.SetObject();
+  array.SetArray();
+  expect.AddMember(vo::route::DEFAULT, ph, alloc);
+  expect.AddMember(vo::route::RULES, array, alloc);
+
+  auto rvo = vo::Route{ph};
+  BOOST_CHECK(expect == toJson(rvo, alloc));
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
+{
+  auto expect = Value{};
+  auto rules = Value{};
+  auto rule = Value{};
+
+  expect.SetObject();
+  rules.SetArray();
+  rule.SetArray();
+  expect.AddMember(vo::route::DEFAULT, ph, alloc);
+  expect.AddMember(vo::route::RULES,
+                   rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc), alloc);
+
+  auto rvo = vo::Route{ph, {make_pair(vector<string>{ph}, ph)}};
+  BOOST_CHECK(expect == toJson(rvo, alloc));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

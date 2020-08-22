@@ -7,7 +7,6 @@
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
-#include <rapidjson/document.h>
 
 using namespace std;
 using namespace pichi;

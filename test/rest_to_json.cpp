@@ -78,44 +78,4 @@ BOOST_AUTO_TEST_CASE(toJson_Balance)
   }
 }
 
-BOOST_AUTO_TEST_CASE(toJson_Route_Empty)
-{
-  auto rvo = vo::Route{};
-  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), Exception, verifyException<PichiError::MISC>);
-
-  rvo.default_ = "";
-  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), Exception, verifyException<PichiError::MISC>);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
-{
-  auto expect = Value{};
-  auto array = Value{};
-
-  expect.SetObject();
-  array.SetArray();
-  expect.AddMember(vo::route::DEFAULT, ph, alloc);
-  expect.AddMember(vo::route::RULES, array, alloc);
-
-  auto rvo = vo::Route{ph};
-  BOOST_CHECK(expect == toJson(rvo, alloc));
-}
-
-BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
-{
-  auto expect = Value{};
-  auto rules = Value{};
-  auto rule = Value{};
-
-  expect.SetObject();
-  rules.SetArray();
-  rule.SetArray();
-  expect.AddMember(vo::route::DEFAULT, ph, alloc);
-  expect.AddMember(vo::route::RULES,
-                   rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc), alloc);
-
-  auto rvo = vo::Route{ph, {make_pair(vector<string>{ph}, ph)}};
-  BOOST_CHECK(expect == toJson(rvo, alloc));
-}
-
 BOOST_AUTO_TEST_SUITE_END()

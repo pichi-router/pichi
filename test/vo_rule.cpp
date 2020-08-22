@@ -2,12 +2,10 @@
 
 #include "utils.hpp"
 #include <boost/test/unit_test.hpp>
-#include <pichi/common/literals.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/rule.hpp>
 #include <pichi/vo/to_json.hpp>
-#include <rapidjson/document.h>
 #include <unordered_map>
 
 using namespace std;
