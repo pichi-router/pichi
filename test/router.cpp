@@ -69,6 +69,16 @@ BOOST_AUTO_TEST_CASE(matchDomain_Same)
   BOOST_CHECK(matchDomain("foo.example.com", "foo.example.com"));
 }
 
+BOOST_AUTO_TEST_CASE(matchDomain_Case_Insensitive_Matching)
+{
+  BOOST_CHECK(matchDomain("EXAMPLE.COM", "com"));
+  BOOST_CHECK(matchDomain("example.com", "COM"));
+  BOOST_CHECK(matchDomain("Example.com", "Com"));
+  BOOST_CHECK(matchDomain("EXAMPLE.COM", "example.com"));
+  BOOST_CHECK(matchDomain("example.com", "EXAMPLE.COM"));
+  BOOST_CHECK(matchDomain("Example.com", "example.Com"));
+}
+
 BOOST_AUTO_TEST_CASE(Router_Empty_Rules)
 {
   auto router = Router{fn};
