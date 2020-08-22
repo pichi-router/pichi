@@ -1,4 +1,4 @@
-FROM alpine:3.11
+FROM alpine:3
 
 ENV SRC_DIR /tmp/src
 ENV BUILD_DIR /tmp/build
