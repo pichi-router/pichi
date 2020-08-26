@@ -5,6 +5,7 @@
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/exception.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/vo/to_json.hpp>
 #include <string_view>
 #include <unordered_map>
 

@@ -5,6 +5,7 @@
 #include <pichi/api/rest.hpp>
 #include <pichi/api/router.hpp>
 #include <pichi/vo/parse.hpp>
+#include <pichi/vo/to_json.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <sstream>
