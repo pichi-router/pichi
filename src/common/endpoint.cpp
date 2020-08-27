@@ -155,4 +155,9 @@ Endpoint makeEndpoint(string_view host, string_view port)
   return {detectHostType(host), to_string(host), to_string(port)};
 }
 
+bool operator==(Endpoint const& lhs, Endpoint const& rhs)
+{
+  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_;
+}
+
 }  // namespace pichi

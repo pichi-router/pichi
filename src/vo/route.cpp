@@ -64,4 +64,10 @@ template <> Route parse(json::Value const& v)
   return rvo;
 }
 
+bool operator==(Route const& lhs, Route const& rhs)
+{
+  return lhs.default_ == rhs.default_ &&
+         equal(begin(lhs.rules_), end(lhs.rules_), begin(rhs.rules_), end(rhs.rules_));
+}
+
 }  // namespace pichi::vo

@@ -19,6 +19,8 @@ struct Rule {
 
 extern rapidjson::Value toJson(Rule const&, rapidjson::Document::AllocatorType&);
 
+extern bool operator==(Rule const&, Rule const&);
+
 }  // namespace pichi::vo
 
 #endif  // PICHI_VO_RULE_HPP

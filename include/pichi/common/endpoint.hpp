@@ -48,6 +48,8 @@ extern EndpointType detectHostType(std::string_view);
 extern Endpoint makeEndpoint(std::string_view, uint16_t);
 extern Endpoint makeEndpoint(std::string_view, std::string_view);
 
+extern bool operator==(Endpoint const&, Endpoint const&);
+
 }  // namespace pichi
 
 #endif  // PICHI_COMMON_ENDPOINT_HPP

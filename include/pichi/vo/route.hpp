@@ -16,6 +16,8 @@ struct Route {
 
 extern rapidjson::Value toJson(Route const&, rapidjson::Document::AllocatorType&);
 
+extern bool operator==(Route const&, Route const&);
+
 }  // namespace pichi::vo
 
 #endif  // PICHI_VO_ROUTE_HPP

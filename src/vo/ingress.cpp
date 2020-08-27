@@ -130,4 +130,14 @@ template <> Ingress parse(json::Value const& v)
   return ivo;
 }
 
+bool operator==(Ingress const& lhs, Ingress const& rhs)
+{
+  return lhs.type_ == rhs.type_ && lhs.bind_ == rhs.bind_ && lhs.port_ == rhs.port_ &&
+         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.tls_ == rhs.tls_ &&
+         lhs.certFile_ == rhs.certFile_ && lhs.keyFile_ == rhs.keyFile_ &&
+         equal(cbegin(lhs.destinations_), cend(lhs.destinations_), cbegin(rhs.destinations_),
+               cend(rhs.destinations_), [](auto&& l, auto&& r) { return l == r; }) &&
+         lhs.balance_ == rhs.balance_;
+}
+
 }  // namespace pichi::vo

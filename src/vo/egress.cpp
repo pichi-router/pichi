@@ -124,4 +124,12 @@ template <> Egress parse(json::Value const& v)
   return evo;
 }
 
+bool operator==(Egress const& lhs, Egress const& rhs)
+{
+  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_ &&
+         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.mode_ == rhs.mode_ &&
+         lhs.delay_ == rhs.delay_ && lhs.tls_ == rhs.tls_ && lhs.insecure_ == rhs.insecure_ &&
+         lhs.caFile_ == rhs.caFile_;
+}
+
 }  // namespace pichi::vo

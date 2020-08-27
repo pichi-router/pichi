@@ -113,40 +113,6 @@ static string toString(vo::Route const& rvo)
   return toString(v);
 }
 
-static bool operator==(vo::Ingress const& lhs, vo::Ingress const& rhs)
-{
-  return lhs.type_ == rhs.type_ && lhs.bind_ == rhs.bind_ && lhs.port_ == rhs.port_ &&
-         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.tls_ == rhs.tls_ &&
-         lhs.certFile_ == rhs.certFile_ && lhs.keyFile_ == rhs.keyFile_ &&
-         equal(cbegin(lhs.destinations_), cend(lhs.destinations_), cbegin(rhs.destinations_),
-               cend(rhs.destinations_), [](auto&& l, auto&& r) { return l == r; }) &&
-         lhs.balance_ == rhs.balance_;
-}
-
-static bool operator==(vo::Egress const& lhs, vo::Egress const& rhs)
-{
-  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_ &&
-         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.mode_ == rhs.mode_ &&
-         lhs.delay_ == rhs.delay_ && lhs.tls_ == rhs.tls_ && lhs.insecure_ == rhs.insecure_ &&
-         lhs.caFile_ == rhs.caFile_;
-}
-
-static bool operator==(vo::Rule const& lhs, vo::Rule const& rhs)
-{
-  return equal(begin(lhs.range_), end(lhs.range_), begin(rhs.range_), end(rhs.range_)) &&
-         equal(begin(lhs.ingress_), end(lhs.ingress_), begin(rhs.ingress_), end(rhs.ingress_)) &&
-         equal(begin(lhs.type_), end(lhs.type_), begin(rhs.type_), end(rhs.type_)) &&
-         equal(begin(lhs.pattern_), end(lhs.pattern_), begin(rhs.pattern_), end(rhs.pattern_)) &&
-         equal(begin(lhs.domain_), end(lhs.domain_), begin(rhs.domain_), end(rhs.domain_)) &&
-         equal(begin(lhs.country_), end(lhs.country_), begin(rhs.country_), end(rhs.country_));
-}
-
-static bool operator==(vo::Route const& lhs, vo::Route const& rhs)
-{
-  return lhs.default_ == rhs.default_ &&
-         equal(begin(lhs.rules_), end(lhs.rules_), begin(rhs.rules_), end(rhs.rules_));
-}
-
 BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Str)

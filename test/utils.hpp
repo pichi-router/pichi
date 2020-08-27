@@ -13,8 +13,6 @@
 
 namespace pichi {
 
-struct Endpoint;
-
 namespace vo {
 
 struct Ingress;
@@ -52,8 +50,6 @@ extern vo::Egress defaultEgressVO(AdapterType);
 extern rapidjson::Value defaultEgressJson(AdapterType);
 
 extern boost::asio::yield_context gYield;
-
-extern bool operator==(Endpoint const&, Endpoint const&);
 
 }  // namespace pichi
 

@@ -47,4 +47,14 @@ template <> Rule parse(json::Value const& v)
   return rvo;
 }
 
+bool operator==(Rule const& lhs, Rule const& rhs)
+{
+  return equal(begin(lhs.range_), end(lhs.range_), begin(rhs.range_), end(rhs.range_)) &&
+         equal(begin(lhs.ingress_), end(lhs.ingress_), begin(rhs.ingress_), end(rhs.ingress_)) &&
+         equal(begin(lhs.type_), end(lhs.type_), begin(rhs.type_), end(rhs.type_)) &&
+         equal(begin(lhs.pattern_), end(lhs.pattern_), begin(rhs.pattern_), end(rhs.pattern_)) &&
+         equal(begin(lhs.domain_), end(lhs.domain_), begin(rhs.domain_), end(rhs.domain_)) &&
+         equal(begin(lhs.country_), end(lhs.country_), begin(rhs.country_), end(rhs.country_));
+}
+
 }  // namespace pichi::vo

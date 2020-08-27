@@ -26,6 +26,8 @@ struct Egress {
 
 extern rapidjson::Value toJson(Egress const&, rapidjson::Document::AllocatorType&);
 
+extern bool operator==(Egress const&, Egress const&);
+
 }  // namespace pichi::vo
 
 #endif  // PICHI_VO_EGRESS_HPP

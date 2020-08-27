@@ -28,6 +28,8 @@ struct Ingress {
 
 extern rapidjson::Value toJson(Ingress const&, rapidjson::Document::AllocatorType&);
 
+extern bool operator==(Ingress const&, Ingress const&);
+
 }  // namespace pichi::vo
 
 #endif  // PICHI_VO_INGRESS_HPP
