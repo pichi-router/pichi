@@ -36,7 +36,7 @@ using Adapters = mpl::list<
 
 template <CryptoMethod method> static constexpr size_t cipherLength(size_t plainLength)
 {
-  if constexpr (helpers::isStream<method>())
+  if constexpr (detail::isStream<method>())
     return plainLength;
   else
     return plainLength + TAG_SIZE<method> * 2 + 2;
@@ -47,7 +47,7 @@ static size_t encrypt(Encryptor<method>& encryptor, ConstBuffer<uint8_t> plain,
                       MutableBuffer<uint8_t> cipher)
 {
   BOOST_REQUIRE_GE(cipher.size(), cipherLength<method>(plain.size()));
-  if constexpr (helpers::isStream<method>()) {
+  if constexpr (detail::isStream<method>()) {
     encryptor.encrypt(plain, cipher);
   }
   else {

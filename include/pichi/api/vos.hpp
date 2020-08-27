@@ -14,8 +14,6 @@
 
 namespace pichi::api {
 
-using CryptoMethod = crypto::CryptoMethod;
-
 enum class DelayMode { RANDOM, FIXED };
 enum class BalanceType { RANDOM, ROUND_ROBIN, LEAST_CONN };
 

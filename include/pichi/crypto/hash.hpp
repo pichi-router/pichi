@@ -6,10 +6,9 @@
 #include <mbedtls/sha256.h>
 #include <mbedtls/sha512.h>
 #include <pichi/common/buffer.hpp>
+#include <pichi/common/enums.hpp>
 
 namespace pichi::crypto {
-
-enum class HashAlgorithm { MD5, SHA1, SHA224, SHA256, SHA384, SHA512 };
 
 // TODO use lambda if compiler supports
 struct StartFunctions {

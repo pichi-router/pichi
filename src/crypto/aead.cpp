@@ -19,7 +19,7 @@ static void initialize(AeadContext<method>& ctx, ConstBuffer<uint8_t> ikm,
   suppressC4100(ctx);
   assertTrue(ikm.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(salt.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
-  if constexpr (helpers::isGcm<method>()) {
+  if constexpr (detail::isGcm<method>()) {
     auto skey = array<uint8_t, KEY_SIZE<method>>{};
     hkdf<HashAlgorithm::SHA1>(skey, ikm, salt);
     mbedtls_gcm_init(&ctx);
@@ -27,20 +27,20 @@ static void initialize(AeadContext<method>& ctx, ConstBuffer<uint8_t> ikm,
                                   static_cast<unsigned int>(skey.size() * 8)) == 0,
                PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isSodiumAead<method>()) {
+  else if constexpr (detail::isSodiumAead<method>()) {
     hkdf<HashAlgorithm::SHA1>(ctx, ikm, salt);
   }
   else
-    static_assert(helpers::DependentFalse<method>::value);
+    static_assert(detail::DependentFalse<method>::value);
 }
 
 template <CryptoMethod method> static void release(AeadContext<method>& ctx)
 {
   suppressC4100(ctx);
-  if constexpr (helpers::isGcm<method>())
+  if constexpr (detail::isGcm<method>())
     mbedtls_gcm_free(&ctx);
   else
-    static_assert(helpers::isSodiumAead<method>());
+    static_assert(detail::isSodiumAead<method>());
 }
 
 template <CryptoMethod method>
@@ -50,7 +50,7 @@ static void encrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
   suppressC4100(ctx);
   assertTrue(nonce.size() == NONCE_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(cipher.size() >= plain.size() + TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
-  if constexpr (helpers::isGcm<method>()) {
+  if constexpr (detail::isGcm<method>()) {
     assertTrue(mbedtls_gcm_crypt_and_tag(&ctx, MBEDTLS_GCM_ENCRYPT, plain.size(), nonce.data(),
                                          nonce.size(), nullptr, 0, plain.data(), cipher.data(),
                                          TAG_SIZE<method>, cipher.data() + plain.size()) == 0,
@@ -71,7 +71,7 @@ static void encrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
                PichiError::CRYPTO_ERROR);
   }
   else
-    static_assert(helpers::DependentFalse<method>::value);
+    static_assert(detail::DependentFalse<method>::value);
 }
 
 template <CryptoMethod method>
@@ -81,7 +81,7 @@ static void decrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
   suppressC4100(ctx);
   assertTrue(nonce.size() == NONCE_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(plain.size() + TAG_SIZE<method> >= cipher.size(), PichiError::CRYPTO_ERROR);
-  if constexpr (helpers::isGcm<method>()) {
+  if constexpr (detail::isGcm<method>()) {
     assertTrue(mbedtls_gcm_auth_decrypt(&ctx, cipher.size() - TAG_SIZE<method>, nonce.data(),
                                         nonce.size(), nullptr, 0,
                                         cipher.data() + cipher.size() - TAG_SIZE<method>,
@@ -103,7 +103,7 @@ static void decrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
                PichiError::CRYPTO_ERROR);
   }
   else
-    static_assert(helpers::DependentFalse<method>::value);
+    static_assert(detail::DependentFalse<method>::value);
 }
 
 template <CryptoMethod method>

@@ -64,7 +64,7 @@ static void initialize(StreamContext<method>& ctx, ConstBuffer<uint8_t> key,
   suppressC4100(ctx);
   assertTrue(key.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(iv.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
-  if constexpr (helpers::isArc<method>()) {
+  if constexpr (detail::isArc<method>()) {
     auto md5 = Hash<HashAlgorithm::MD5>{};
     md5.append(key);
     md5.append(iv);
@@ -74,47 +74,47 @@ static void initialize(StreamContext<method>& ctx, ConstBuffer<uint8_t> key,
     mbedtls_arc4_init(&ctx);
     mbedtls_arc4_setup(&ctx, skey.data(), static_cast<unsigned int>(skey.size()));
   }
-  else if constexpr (helpers::isBlowfish<method>()) {
+  else if constexpr (detail::isBlowfish<method>()) {
     mbedtls_blowfish_init(&ctx);
     assertTrue(
         mbedtls_blowfish_setkey(&ctx, key.data(), static_cast<unsigned int>(key.size() * 8)) == 0,
         PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isAesCfb<method>() || helpers::isAesCtr<method>()) {
+  else if constexpr (detail::isAesCfb<method>() || detail::isAesCtr<method>()) {
     mbedtls_aes_init(&ctx);
     assertTrue(
         mbedtls_aes_setkey_enc(&ctx, key.data(), static_cast<unsigned int>(key.size() * 8)) == 0,
         PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isCamellia<method>()) {
+  else if constexpr (detail::isCamellia<method>()) {
     mbedtls_camellia_init(&ctx);
     assertTrue(mbedtls_camellia_setkey_enc(&ctx, key.data(),
                                            static_cast<unsigned int>(key.size() * 8)) == 0,
                PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isSodiumStream<method>()) {
+  else if constexpr (detail::isSodiumStream<method>()) {
     copy(cbegin(key), cend(key), begin(ctx));
   }
   else
-    static_assert(helpers::DependentFalse<method>::value);
+    static_assert(detail::DependentFalse<method>::value);
 }
 
 template <CryptoMethod method> static void release(StreamContext<method>& ctx)
 {
   suppressC4100(ctx);
-  if constexpr (helpers::isArc<method>())
+  if constexpr (detail::isArc<method>())
     mbedtls_arc4_free(&ctx);
-  else if constexpr (helpers::isBlowfish<method>())
+  else if constexpr (detail::isBlowfish<method>())
     mbedtls_blowfish_free(&ctx);
-  else if constexpr (helpers::isAesCtr<method>() || helpers::isAesCfb<method>())
+  else if constexpr (detail::isAesCtr<method>() || detail::isAesCfb<method>())
     mbedtls_aes_free(&ctx);
-  else if constexpr (helpers::isCamellia<method>())
+  else if constexpr (detail::isCamellia<method>())
     mbedtls_camellia_free(&ctx);
-  else if constexpr (helpers::isSodiumStream<method>()) {
+  else if constexpr (detail::isSodiumStream<method>()) {
     // ignore
   }
   else
-    static_assert(helpers::DependentFalse<method>::value);
+    static_assert(detail::DependentFalse<method>::value);
 }
 
 template <CryptoMethod method>
@@ -124,27 +124,27 @@ static size_t encrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
   suppressC4100(ctx);
   assertTrue(plain.size() <= cipher.size(), PichiError::CRYPTO_ERROR);
   assertTrue(iv.size() >= IV_SIZE<method> + BLK_SIZE<method>, PichiError::CRYPTO_ERROR);
-  if constexpr (helpers::isArc<method>()) {
+  if constexpr (detail::isArc<method>()) {
     assertTrue(mbedtls_arc4_crypt(&ctx, plain.size(), plain.data(), cipher.data()) == 0,
                PichiError::CRYPTO_ERROR);
     offset += plain.size();
   }
-  else if constexpr (helpers::isBlowfish<method>()) {
+  else if constexpr (detail::isBlowfish<method>()) {
     assertTrue(mbedtls_blowfish_crypt_cfb64(&ctx, MBEDTLS_BLOWFISH_ENCRYPT, plain.size(), &offset,
                                             iv.data(), plain.data(), cipher.data()) == 0,
                PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isAesCtr<method>()) {
+  else if constexpr (detail::isAesCtr<method>()) {
     assertTrue(mbedtls_aes_crypt_ctr(&ctx, plain.size(), &offset, iv.data(),
                                      iv.data() + IV_SIZE<method>, plain.data(), cipher.data()) == 0,
                PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isAesCfb<method>()) {
+  else if constexpr (detail::isAesCfb<method>()) {
     assertTrue(mbedtls_aes_crypt_cfb128(&ctx, MBEDTLS_AES_ENCRYPT, plain.size(), &offset, iv.data(),
                                         plain.data(), cipher.data()) == 0,
                PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isCamellia<method>()) {
+  else if constexpr (detail::isCamellia<method>()) {
     assertTrue(mbedtls_camellia_crypt_cfb128(&ctx, MBEDTLS_CAMELLIA_ENCRYPT, plain.size(), &offset,
                                              iv.data(), plain.data(), cipher.data()) == 0,
                PichiError::CRYPTO_ERROR);
@@ -159,7 +159,7 @@ static size_t encrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
     offset = sodiumHelper(crypto_stream_chacha20_ietf_xor_ic, ctx, offset, plain, iv, cipher);
   }
   else
-    static_assert(helpers::DependentFalse<method>::value);
+    static_assert(detail::DependentFalse<method>::value);
   return offset;
 }
 
@@ -170,27 +170,27 @@ static size_t decrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
   suppressC4100(ctx);
   assertTrue(plain.size() >= cipher.size(), PichiError::CRYPTO_ERROR);
   assertTrue(iv.size() >= IV_SIZE<method> + BLK_SIZE<method>, PichiError::CRYPTO_ERROR);
-  if constexpr (helpers::isArc<method>()) {
+  if constexpr (detail::isArc<method>()) {
     assertTrue(mbedtls_arc4_crypt(&ctx, cipher.size(), cipher.data(), plain.data()) == 0,
                PichiError::CRYPTO_ERROR);
     offset += cipher.size();
   }
-  else if constexpr (helpers::isBlowfish<method>()) {
+  else if constexpr (detail::isBlowfish<method>()) {
     assertTrue(mbedtls_blowfish_crypt_cfb64(&ctx, MBEDTLS_BLOWFISH_DECRYPT, cipher.size(), &offset,
                                             iv.data(), cipher.data(), plain.data()) == 0,
                PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isAesCtr<method>()) {
+  else if constexpr (detail::isAesCtr<method>()) {
     assertTrue(mbedtls_aes_crypt_ctr(&ctx, cipher.size(), &offset, iv.data(),
                                      iv.data() + IV_SIZE<method>, cipher.data(), plain.data()) == 0,
                PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isAesCfb<method>()) {
+  else if constexpr (detail::isAesCfb<method>()) {
     assertTrue(mbedtls_aes_crypt_cfb128(&ctx, MBEDTLS_AES_DECRYPT, cipher.size(), &offset,
                                         iv.data(), cipher.data(), plain.data()) == 0,
                PichiError::CRYPTO_ERROR);
   }
-  else if constexpr (helpers::isCamellia<method>()) {
+  else if constexpr (detail::isCamellia<method>()) {
     assertTrue(mbedtls_camellia_crypt_cfb128(&ctx, MBEDTLS_CAMELLIA_DECRYPT, cipher.size(), &offset,
                                              iv.data(), cipher.data(), plain.data()) == 0,
                PichiError::CRYPTO_ERROR);
@@ -205,7 +205,7 @@ static size_t decrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
     offset = sodiumHelper(crypto_stream_chacha20_ietf_xor_ic, ctx, offset, cipher, iv, plain);
   }
   else
-    static_assert(helpers::DependentFalse<method>::value);
+    static_assert(detail::DependentFalse<method>::value);
   return offset;
 }
 

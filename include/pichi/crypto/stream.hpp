@@ -15,21 +15,21 @@ namespace pichi::crypto {
 
 template <CryptoMethod method>
 using StreamContext = std::conditional_t<
-    helpers::isArc<method>(), mbedtls_arc4_context,
+    detail::isArc<method>(), mbedtls_arc4_context,
     std::conditional_t<
-        helpers::isBlowfish<method>(), mbedtls_blowfish_context,
+        detail::isBlowfish<method>(), mbedtls_blowfish_context,
         std::conditional_t<
-            helpers::isAesCtr<method>() || helpers::isAesCfb<method>(), mbedtls_aes_context,
-            std::conditional_t<helpers::isCamellia<method>(), mbedtls_camellia_context,
-                               std::conditional_t<helpers::isSodiumStream<method>(),
+            detail::isAesCtr<method>() || detail::isAesCfb<method>(), mbedtls_aes_context,
+            std::conditional_t<detail::isCamellia<method>(), mbedtls_camellia_context,
+                               std::conditional_t<detail::isSodiumStream<method>(),
                                                   std::array<uint8_t, KEY_SIZE<method>>, void>>>>>;
 
 template <CryptoMethod method>
-inline constexpr size_t BLK_SIZE = helpers::isAesCtr<method>() ? 16 : 0;
+inline constexpr size_t BLK_SIZE = detail::isAesCtr<method>() ? 16 : 0;
 
 template <CryptoMethod method> class StreamEncryptor {
 public:
-  static_assert(helpers::isStream<method>(), "Not a stream crypto method");
+  static_assert(detail::isStream<method>(), "Not a stream crypto method");
 
   StreamEncryptor(StreamEncryptor const&) = delete;
   StreamEncryptor(StreamEncryptor&&) = delete;
@@ -51,7 +51,7 @@ private:
 
 template <CryptoMethod method> class StreamDecryptor {
 public:
-  static_assert(helpers::isStream<method>(), "Not a stream crypto method");
+  static_assert(detail::isStream<method>(), "Not a stream crypto method");
 
   StreamDecryptor(StreamDecryptor const&) = delete;
   StreamDecryptor(StreamDecryptor&&) = delete;

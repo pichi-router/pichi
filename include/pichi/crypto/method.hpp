@@ -1,51 +1,13 @@
 #ifndef PICHI_CRYPTO_METHOD_HPP
 #define PICHI_CRYPTO_METHOD_HPP
 
+#include <pichi/common/enums.hpp>
 #include <stddef.h>
 #include <type_traits>
 
 namespace pichi::crypto {
 
-enum class CryptoMethod {
-  // Stream Crypto Method begin
-  // Misc methods
-  RC4_MD5,
-  BF_CFB,
-
-  // AES-CTR methods
-  AES_128_CTR,
-  AES_192_CTR,
-  AES_256_CTR,
-
-  // AES-CFB methods
-  AES_128_CFB,
-  AES_192_CFB,
-  AES_256_CFB,
-
-  // CAMELLIA-CFB methods
-  CAMELLIA_128_CFB,
-  CAMELLIA_192_CFB,
-  CAMELLIA_256_CFB,
-
-  // CHACHA & SALSA methods
-  CHACHA20,
-  SALSA20,
-  CHACHA20_IETF,
-  // Stream Crypto Method end
-
-  // AEAD Crypto Method begin
-  // AES-GCM methods
-  AES_128_GCM,
-  AES_192_GCM,
-  AES_256_GCM,
-
-  // CHACHA20 methods
-  CHACHA20_IETF_POLY1305,
-  XCHACHA20_IETF_POLY1305
-  // AEAD Crypto Method end
-};
-
-namespace helpers {
+namespace detail {
 
 template <CryptoMethod method> constexpr bool isArc() { return method == CryptoMethod::RC4_MD5; }
 
@@ -182,38 +144,37 @@ template <CryptoMethod method> constexpr size_t calcIvSize()
 
 template <CryptoMethod method> constexpr size_t calcNonceSize()
 {
-  static_assert(helpers::isAead<method>());
+  static_assert(isAead<method>());
   return method == CryptoMethod::XCHACHA20_IETF_POLY1305 ? 24 : 12;
 }
 
 template <CryptoMethod method> constexpr size_t calcTagSize()
 {
-  static_assert(helpers::isAead<method>());
+  static_assert(isAead<method>());
   return 16;
 }
 
-} // namespace helpers
+}  // namespace detail
 
 template <CryptoMethod method> class StreamEncryptor;
 template <CryptoMethod method> class AeadEncryptor;
 template <CryptoMethod method>
 using Encryptor =
-    std::conditional_t<helpers::isStream<method>(), StreamEncryptor<method>,
-                       std::conditional_t<helpers::isAead<method>(), AeadEncryptor<method>, void>>;
+    std::conditional_t<detail::isStream<method>(), StreamEncryptor<method>,
+                       std::conditional_t<detail::isAead<method>(), AeadEncryptor<method>, void>>;
 
 template <CryptoMethod method> class StreamDecryptor;
 template <CryptoMethod method> class AeadDecryptor;
 template <CryptoMethod method>
 using Decryptor =
-    std::conditional_t<helpers::isStream<method>(), StreamDecryptor<method>,
-                       std::conditional_t<helpers::isAead<method>(), AeadDecryptor<method>, void>>;
+    std::conditional_t<detail::isStream<method>(), StreamDecryptor<method>,
+                       std::conditional_t<detail::isAead<method>(), AeadDecryptor<method>, void>>;
 
-template <CryptoMethod method> inline constexpr size_t KEY_SIZE = helpers::calcKeySize<method>();
-template <CryptoMethod method> inline constexpr size_t IV_SIZE = helpers::calcIvSize<method>();
-template <CryptoMethod method>
-inline constexpr size_t NONCE_SIZE = helpers::calcNonceSize<method>();
-template <CryptoMethod method> inline constexpr size_t TAG_SIZE = helpers::calcTagSize<method>();
+template <CryptoMethod method> inline constexpr size_t KEY_SIZE = detail::calcKeySize<method>();
+template <CryptoMethod method> inline constexpr size_t IV_SIZE = detail::calcIvSize<method>();
+template <CryptoMethod method> inline constexpr size_t NONCE_SIZE = detail::calcNonceSize<method>();
+template <CryptoMethod method> inline constexpr size_t TAG_SIZE = detail::calcTagSize<method>();
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto
 
 #endif

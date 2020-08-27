@@ -14,13 +14,13 @@ namespace pichi::crypto {
  */
 template <CryptoMethod method>
 using AeadContext =
-    std::conditional_t<helpers::isGcm<method>(), mbedtls_gcm_context,
-                       std::conditional_t<helpers::isSodiumAead<method>(),
+    std::conditional_t<detail::isGcm<method>(), mbedtls_gcm_context,
+                       std::conditional_t<detail::isSodiumAead<method>(),
                                           std::array<uint8_t, KEY_SIZE<method>>, void>>;
 
 template <CryptoMethod method> class AeadEncryptor {
 public:
-  static_assert(helpers::isAead<method>(), "Not an AEAD crypto method");
+  static_assert(detail::isAead<method>(), "Not an AEAD crypto method");
 
   AeadEncryptor(AeadEncryptor const&) = delete;
   AeadEncryptor(AeadEncryptor&&) = delete;
@@ -42,7 +42,7 @@ private:
 
 template <CryptoMethod method> class AeadDecryptor {
 public:
-  static_assert(helpers::isAead<method>(), "Not an AEAD crypto method");
+  static_assert(detail::isAead<method>(), "Not an AEAD crypto method");
 
   AeadDecryptor(AeadDecryptor const&) = delete;
   AeadDecryptor(AeadDecryptor&&) = delete;

@@ -8,13 +8,13 @@
 
 namespace pichi::net {
 
-template <crypto::CryptoMethod method, typename Stream>
+template <CryptoMethod method, typename Stream>
 class SSAeadAdapter : public pichi::Ingress, public pichi::Egress {
 private:
   using Cache = boost::beast::basic_flat_buffer<std::allocator<uint8_t>>;
 
 public:
-  inline static constexpr crypto::CryptoMethod METHOD = method;
+  inline static constexpr CryptoMethod METHOD = method;
 
   template <typename... Args>
   SSAeadAdapter(ConstBuffer<uint8_t> psk, Args&&... args)

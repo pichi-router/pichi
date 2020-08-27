@@ -40,7 +40,6 @@ namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;
 using ip::tcp;
-using pichi::crypto::CryptoMethod;
 using TcpSocket = tcp::socket;
 
 namespace pichi::net {
@@ -49,6 +48,7 @@ namespace pichi::net {
 
 namespace ssl = asio::ssl;
 
+using crypto::generateKey;
 using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
 static auto createTlsContext(api::IngressVO const& vo)
