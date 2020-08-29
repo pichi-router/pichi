@@ -37,13 +37,13 @@ extern std::vector<uint8_t> hex2bin(std::string_view);
 inline decltype(auto) ph = "placeholder";
 extern rapidjson::Document::AllocatorType& alloc;
 
-extern api::IngressVO defaultIngressVO(api::AdapterType);
-extern rapidjson::Value defaultIngressJson(api::AdapterType);
-extern api::EgressVO defaultEgressVO(api::AdapterType);
-extern rapidjson::Value defaultEgressJson(api::AdapterType);
+extern api::IngressVO defaultIngressVO(AdapterType);
+extern rapidjson::Value defaultIngressJson(AdapterType);
+extern api::EgressVO defaultEgressVO(AdapterType);
+extern rapidjson::Value defaultEgressJson(AdapterType);
 
 extern boost::asio::yield_context gYield;
 
-} // namespace pichi
+}  // namespace pichi
 
 #endif

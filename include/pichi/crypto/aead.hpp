@@ -64,6 +64,6 @@ private:
   bool initialized_ = false;
 };
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto
 
 #endif

@@ -13,8 +13,8 @@
 #include <iostream>
 #include <pichi/api/server.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/spawn.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
@@ -25,7 +25,7 @@
 #ifdef HAS_SIGNAL_H
 #include <boost/asio/signal_set.hpp>
 #include <signal.h>
-#endif // HAS_SIGNAL_H
+#endif  // HAS_SIGNAL_H
 
 using namespace std;
 using namespace pichi;
@@ -56,18 +56,18 @@ static json::Document parseJson(char const* str)
 
 class HttpHelper {
 public:
-  HttpHelper(net::ResolveResults&& endpoint, asio::yield_context yield);
+  HttpHelper(ResolveResults&& endpoint, asio::yield_context yield);
 
   vector<string> get(string const& target);
   void put(string const& target, string const& body);
   void del(string const& target);
 
 private:
-  net::ResolveResults endpoint_;
+  ResolveResults endpoint_;
   asio::yield_context yield_;
 };
 
-HttpHelper::HttpHelper(net::ResolveResults&& endpoint, asio::yield_context yield)
+HttpHelper::HttpHelper(ResolveResults&& endpoint, asio::yield_context yield)
   : endpoint_{move(endpoint)}, yield_{yield}
 {
 }
@@ -194,7 +194,7 @@ static void flush(HttpHelper& helper)
 
   cout << "Configuration reset" << endl;
 }
-#endif // defined(HAS_SIGNAL_H) && defined(SIGHUP)
+#endif  // defined(HAS_SIGNAL_H) && defined(SIGHUP)
 
 void run(string const& bind, uint16_t port, string const& fn, string const& mmdb)
 {
@@ -217,7 +217,7 @@ void run(string const& bind, uint16_t port, string const& fn, string const& mmdb
           flush(helper);
           load(helper, fn);
         }
-#endif // defined(HAS_SIGNAL_H) && defined(SIGHUP)
+#endif  // defined(HAS_SIGNAL_H) && defined(SIGHUP)
       },
       [](auto, auto) noexcept { io.stop(); });
 

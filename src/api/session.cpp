@@ -4,9 +4,9 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <iostream>
 #include <pichi/api/session.hpp>
+#include <pichi/common/adapter.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/exception.hpp>
-#include <pichi/net/adapter.hpp>
-#include <pichi/net/common.hpp>
 #include <pichi/net/spawn.hpp>
 
 using namespace std;
@@ -17,9 +17,9 @@ using asio::ip::tcp;
 
 namespace pichi::api {
 
-static void bridge(net::Adapter& from, net::Adapter& to, asio::yield_context yield)
+static void bridge(Adapter& from, Adapter& to, asio::yield_context yield)
 {
-  auto buf = array<uint8_t, net::MAX_FRAME_SIZE>{};
+  auto buf = array<uint8_t, MAX_FRAME_SIZE>{};
   while (from.readable() && to.writable()) to.send({buf, from.recv(buf, yield)}, yield);
 }
 
@@ -30,7 +30,7 @@ Session::Session(asio::io_context& io, Session::IngressPtr&& ingress, Session::E
 {
 }
 
-void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
+void Session::start(Endpoint const& remote, Endpoint const& next)
 {
   // FIXME Not copying for self because net::spawn ensures that
   //   Function and ExceptionHandler share the same scope.
@@ -50,7 +50,7 @@ void Session::start(net::Endpoint const& remote, net::Endpoint const& next)
       [this](auto eptr, auto yield) noexcept { ingress_->disconnect(eptr, yield); });
 }
 
-void Session::start(net::Endpoint const& peer) { start(peer, peer); }
+void Session::start(Endpoint const& peer) { start(peer, peer); }
 
 template <typename Yield> void Session::close(Yield yield)
 {
@@ -58,4 +58,4 @@ template <typename Yield> void Session::close(Yield yield)
   egress_->close(yield);
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api

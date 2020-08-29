@@ -4,14 +4,14 @@
 #include <boost/asio/ip/address.hpp>
 #include <limits>
 #include <pichi/common/asserts.hpp>
-#include <pichi/net/helpers.hpp>
+#include <pichi/common/endpoint.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;
 
-namespace pichi::net {
+namespace pichi {
 
 template <typename AddressType> struct AddressHelper {
   static_assert(is_same_v<AddressType, ip::address_v4> || is_same_v<AddressType, ip::address_v6>);
@@ -155,4 +155,4 @@ Endpoint makeEndpoint(string_view host, string_view port)
   return {detectHostType(host), to_string(host), to_string(port)};
 }
 
-} // namespace pichi::net
+}  // namespace pichi

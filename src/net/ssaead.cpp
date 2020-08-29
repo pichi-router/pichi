@@ -3,8 +3,8 @@
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/stream.hpp>
 #include <utility>
@@ -174,6 +174,6 @@ template class SSAeadAdapter<CryptoMethod::AES_192_GCM, TestStream>;
 template class SSAeadAdapter<CryptoMethod::AES_256_GCM, TestStream>;
 template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, TestStream>;
 template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, TestStream>;
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 
-} // namespace pichi::net
+}  // namespace pichi::net

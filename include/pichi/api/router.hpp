@@ -13,13 +13,13 @@ class tcp;
 template <typename Protocol> class basic_endpoint;
 template <typename Protocol> class basic_resolver_results;
 
-} // namespace boost::asio::ip
+}  // namespace boost::asio::ip
 
 namespace pichi::net {
 
 struct Endpoint;
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
 namespace pichi::api {
 
@@ -51,8 +51,8 @@ public:
 
 private:
   using ResolvedResult = boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp>;
-  using Matcher = std::function<bool(net::Endpoint const&, ResolvedResult const&, std::string_view,
-                                     AdapterType)>;
+  using Matcher =
+      std::function<bool(Endpoint const&, ResolvedResult const&, std::string_view, AdapterType)>;
   using Container = std::map<std::string, std::pair<RuleVO, std::vector<Matcher>>, std::less<>>;
   using DelegateIterator = typename Container::const_iterator;
   using ValueType = std::pair<std::string_view, RuleVO const&>;
@@ -63,7 +63,7 @@ private:
 public:
   Router(char const* fn);
 
-  std::string_view route(net::Endpoint const&, std::string_view ingress, AdapterType,
+  std::string_view route(Endpoint const&, std::string_view ingress, AdapterType,
                          ResolvedResult const&) const;
 
   void update(std::string const&, RuleVO);
@@ -84,6 +84,6 @@ private:
   RouteVO route_ = {"direct"};
 };
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
-#endif // PICHI_API_ROUTER_HPP
+#endif  // PICHI_API_ROUTER_HPP

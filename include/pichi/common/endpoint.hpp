@@ -1,12 +1,11 @@
-#ifndef PICHI_NET_HELPERS_HPP
-#define PICHI_NET_HELPERS_HPP
+#ifndef PICHI_COMMON_ENDPOINT_HPP
+#define PICHI_COMMON_ENDPOINT_HPP
 
 #include <algorithm>
 #include <functional>
 #include <iterator>
 #include <pichi/common/buffer.hpp>
-#include <pichi/net/adapter.hpp>
-#include <pichi/net/common.hpp>
+#include <string>
 #include <string_view>
 #include <type_traits>
 
@@ -14,9 +13,17 @@ namespace std {
 
 inline string to_string(string_view sv) { return {cbegin(sv), cend(sv)}; }
 
-} // namespace std
+}  // namespace std
 
-namespace pichi::net {
+namespace pichi {
+
+struct Endpoint {
+  enum class Type { DOMAIN_NAME, IPV4, IPV6 } type_;
+  std::string host_;
+  std::string port_;
+};
+
+size_t const MAX_FRAME_SIZE = 0x3fff;
 
 template <typename Int> void hton(Int src, MutableBuffer<uint8_t> dst)
 {
@@ -42,6 +49,6 @@ extern Endpoint::Type detectHostType(std::string_view);
 extern Endpoint makeEndpoint(std::string_view, uint16_t);
 extern Endpoint makeEndpoint(std::string_view, std::string_view);
 
-} // namespace pichi::net
+}  // namespace pichi
 
-#endif
+#endif  // PICHI_COMMON_ENDPOINT_HPP

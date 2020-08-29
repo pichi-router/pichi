@@ -37,7 +37,7 @@ void IngressManager::update(string const& name, IngressVO ivo)
   assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::MISC);
 #ifndef ENABLE_TLS
   assertFalse(ivo.tls_.has_value() && *ivo.tls_, PichiError::SEMANTIC_ERROR, "TLS not supported");
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
   auto it = c_.find(name);
   if (it == std::end(c_)) {
@@ -58,4 +58,4 @@ void IngressManager::erase(string_view name)
   if (it != std::end(c_)) c_.erase(it);
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api

@@ -24,7 +24,7 @@ private:
 
   template <typename Yield> void listen(std::string_view, IngressHolder&, Yield yield);
   template <typename ExceptionPtr> void removeIngress(ExceptionPtr, std::string_view);
-  EgressVO const& route(net::Endpoint const&, std::string_view ingress, AdapterType,
+  EgressVO const& route(Endpoint const&, std::string_view ingress, AdapterType,
                         ResolveResult const&);
   bool isDuplicated(ConstBuffer<uint8_t>);
 
@@ -51,6 +51,6 @@ private:
   uint16_t port_;
 };
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
-#endif // PICHI_API_SERVER_HPP
+#endif  // PICHI_API_SERVER_HPP

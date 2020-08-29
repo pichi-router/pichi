@@ -41,4 +41,4 @@ char const* Exception::what() const noexcept
 
 PichiError Exception::error() const { return error_; }
 
-} // namespace pichi
+}  // namespace pichi

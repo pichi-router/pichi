@@ -2,7 +2,7 @@
 #define PICHI_NET_DIRECT_HPP
 
 #include <boost/asio/ip/tcp.hpp>
-#include <pichi/net/adapter.hpp>
+#include <pichi/common/adapter.hpp>
 
 namespace pichi::net {
 
@@ -26,6 +26,6 @@ private:
   Socket socket_;
 };
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
-#endif // PICHI_NET_DIRECT_HPP
+#endif  // PICHI_NET_DIRECT_HPP

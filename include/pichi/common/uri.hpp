@@ -24,6 +24,6 @@ struct HostAndPort {
   std::string_view port_;
 };
 
-} // namespace pichi
+}  // namespace pichi
 
-#endif // PICHI_COMMON_URI_HPP
+#endif  // PICHI_COMMON_URI_HPP

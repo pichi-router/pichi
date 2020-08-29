@@ -5,9 +5,9 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
 #include <pichi/net/stream.hpp>
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(readRemote, Ingress, Adapters)
   fill_n(begin(iv), IV_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto encryptor = Encryptor<Ingress::METHOD>{psk, iv};
-  auto expect = net::makeEndpoint("localhost"sv, 443);
+  auto expect = makeEndpoint("localhost"sv, 443);
   auto plain = array<uint8_t, 1024>{};
   auto cipher = array<uint8_t, 1024>{};
 
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(readRemote, Ingress, Adapters)
   auto ingress = Ingress{psk, socket, true};
   socket.fill(iv);
   socket.fill({cipher, encrypt<Ingress::METHOD>(
-                           encryptor, {plain, net::serializeEndpoint(expect, plain)}, cipher)});
+                           encryptor, {plain, serializeEndpoint(expect, plain)}, cipher)});
 
   auto fact = ingress.readRemote(gYield);
 
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(send_Ingress, Ingress, Adapters)
 BOOST_AUTO_TEST_CASE_TEMPLATE(connect, Egress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Egress::METHOD>>{};
-  auto endpoint = net::makeEndpoint("localhost"sv, 443);
+  auto endpoint = makeEndpoint("localhost"sv, 443);
 
   auto socket = Socket{};
   auto egress = Egress{psk, socket};
@@ -242,7 +242,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(connect, Egress, Adapters)
   auto plain = array<uint8_t, 1024>{};
   auto expect = array<uint8_t, 1024>{};
   auto len =
-      encrypt<Egress::METHOD>(encryptor, {plain, net::serializeEndpoint(endpoint, plain)}, expect);
+      encrypt<Egress::METHOD>(encryptor, {plain, serializeEndpoint(endpoint, plain)}, expect);
 
   auto fact = array<uint8_t, 1024>{};
   BOOST_CHECK_EQUAL(len, socket.flush(fact));

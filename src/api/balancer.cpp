@@ -219,6 +219,6 @@ template unique_ptr<Balancer<IngressIterator>> makeBalancer<>(BalanceType, Ingre
 template unique_ptr<Balancer<int*>> makeBalancer<>(BalanceType, int*, int*);
 using VectorIter = vector<int>::const_iterator;
 template unique_ptr<Balancer<VectorIter>> makeBalancer<>(BalanceType, VectorIter, VectorIter);
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 
-} // namespace pichi::api
+}  // namespace pichi::api

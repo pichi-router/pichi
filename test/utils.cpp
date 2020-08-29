@@ -9,7 +9,7 @@ using namespace std;
 using namespace pichi::api;
 using namespace rapidjson;
 
-using pichi::net::AdapterType;
+using pichi::AdapterType;
 
 namespace pichi {
 
@@ -47,7 +47,7 @@ IngressVO defaultIngressVO(AdapterType type)
     vo.password_ = ph;
     break;
   case AdapterType::TUNNEL:
-    vo.destinations_ = {{net::Endpoint::Type::DOMAIN_NAME, "localhost", "80"}};
+    vo.destinations_ = {{Endpoint::Type::DOMAIN_NAME, "localhost", "80"}};
     vo.balance_ = BalanceType::RANDOM;
     break;
   default:
@@ -159,4 +159,4 @@ Value defaultEgressJson(AdapterType type)
   return v;
 }
 
-} // namespace pichi
+}  // namespace pichi

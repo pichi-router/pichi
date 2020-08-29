@@ -1,10 +1,11 @@
-#ifndef PICHI_NET_ADAPTER_HPP
-#define PICHI_NET_ADAPTER_HPP
+#ifndef PICHI_COMMON_ADAPTER_HPP
+#define PICHI_COMMON_ADAPTER_HPP
 
 #include <boost/asio/spawn2.hpp>
 #include <exception>
 #include <pichi/common/buffer.hpp>
-#include <pichi/net/common.hpp>
+#include <pichi/common/endpoint.hpp>
+#include <pichi/common/enums.hpp>
 #include <stdint.h>
 
 namespace boost::asio::ip {
@@ -12,9 +13,9 @@ namespace boost::asio::ip {
 class tcp;
 template <typename InternetProtocol> class basic_resolver_results;
 
-} // namespace boost::asio::ip
+}  // namespace boost::asio::ip
 
-namespace pichi::net {
+namespace pichi {
 
 using ResolveResults = boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp>;
 
@@ -47,6 +48,6 @@ struct Egress : public Adapter {
   virtual void connect(Endpoint const& remote, ResolveResults next, Yield) = 0;
 };
 
-} // namespace pichi::net
+}  // namespace pichi
 
-#endif // PICHI_NET_ADAPTER_HPP
+#endif  // PICHI_COMMON_ADAPTER_HPP

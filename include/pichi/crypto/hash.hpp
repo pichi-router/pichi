@@ -157,6 +157,6 @@ template <HashAlgorithm algorithm>
 void hkdf(MutableBuffer<uint8_t> okm, ConstBuffer<uint8_t> ikm, ConstBuffer<uint8_t> salt,
           ConstBuffer<uint8_t> info = {(uint8_t const*)"ss-subkey", 9});
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto
 
-#endif
+#endif  // PICHI_CRYPTO_HASH_HPP

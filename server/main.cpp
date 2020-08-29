@@ -10,13 +10,13 @@
 #ifdef HAS_UNISTD_H
 #include <errno.h>
 #include <unistd.h>
-#endif // HAS_UNISTD_H
+#endif  // HAS_UNISTD_H
 #ifdef HAS_PWD_H
 #include <pwd.h>
-#endif // HAS_PWD_H
+#endif  // HAS_PWD_H
 #ifdef HAS_GRP_H
 #include <grp.h>
-#endif // HAS_GRP_H
+#endif  // HAS_GRP_H
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -52,7 +52,7 @@ static void assertFalse(bool b)
   if (b) fail();
 }
 
-#endif // HAS_UNISTD_H
+#endif  // HAS_UNISTD_H
 
 int main(int argc, char const* argv[])
 {
@@ -70,13 +70,13 @@ int main(int argc, char const* argv[])
                                                     "Initial configration(JSON format)")
 #if defined(HAS_FORK) && defined(HAS_SETSID)
       ("daemon,d", "daemonize")
-#endif // HAS_SETUID && HAS_GETPWNAM
+#endif  // HAS_SETUID && HAS_GETPWNAM
 #if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
           ("user,u", po::value<string>(&user), "run as user")
-#endif // HAS_SETUID && HAS_GETPWNAM
+#endif  // HAS_SETUID && HAS_GETPWNAM
 #if defined(HAS_SETGID) && defined(HAS_GETGRNAM)
               ("group", po::value<string>(&group), "run as group")
-#endif // HAS_SETGID && HAS_GETGRNAM
+#endif  // HAS_SETGID && HAS_GETGRNAM
       ;
   auto vm = po::variables_map{};
 
@@ -107,7 +107,7 @@ int main(int argc, char const* argv[])
       close(STDIN_FILENO);
       close(STDOUT_FILENO);
       close(STDERR_FILENO);
-#endif // HAS_CLOSE
+#endif  // HAS_CLOSE
       auto ec = sys::error_code{};
       fs::create_directories(LOG_FILE.parent_path(), ec);
       if (!ec) {
@@ -115,7 +115,7 @@ int main(int argc, char const* argv[])
         assertTrue(freopen(LOG_FILE.c_str(), "a", stderr) != nullptr);
       }
     }
-#endif // HAS_FORK && HAS_SETSID
+#endif  // HAS_FORK && HAS_SETSID
 
 #if defined(HAS_SETGID) && defined(HAS_GETGRNAM)
     if (!group.empty()) {
@@ -123,7 +123,7 @@ int main(int argc, char const* argv[])
       assertFalse(grp == nullptr);
       assertFalse(setgid(grp->gr_gid) == -1);
     }
-#endif // HAS_SETGID && HAS_GETGRNAM
+#endif  // HAS_SETGID && HAS_GETGRNAM
 
 #if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
     if (!user.empty()) {
@@ -131,7 +131,7 @@ int main(int argc, char const* argv[])
       assertFalse(pw == nullptr);
       assertFalse(setuid(pw->pw_uid) == -1);
     }
-#endif // HAS_SETUID && HAS_GETPWNAM
+#endif  // HAS_SETUID && HAS_GETPWNAM
 
     run(listen, port, json, geo);
     return 0;

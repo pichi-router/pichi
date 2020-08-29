@@ -11,10 +11,10 @@ namespace ip = asio::ip;
 namespace pichi::api {
 
 IngressHolder::IngressHolder(asio::io_context& io, IngressVO&& vo)
-  : vo_{move(vo)}, balancer_{vo_.type_ == AdapterType::TUNNEL ?
-                                 makeBalancer(*vo_.balance_, cbegin(vo_.destinations_),
-                                              cend(vo_.destinations_)) :
-                                 nullptr},
+  : vo_{move(vo)},
+    balancer_{vo_.type_ == AdapterType::TUNNEL
+                  ? makeBalancer(*vo_.balance_, cbegin(vo_.destinations_), cend(vo_.destinations_))
+                  : nullptr},
     acceptor_{io, {ip::make_address(vo_.bind_), vo_.port_}}
 {
 }
@@ -22,10 +22,10 @@ IngressHolder::IngressHolder(asio::io_context& io, IngressVO&& vo)
 void IngressHolder::reset(asio::io_context& io, IngressVO&& vo)
 {
   vo_ = move(vo);
-  balancer_ = vo_.type_ == AdapterType::TUNNEL ?
-                  makeBalancer(*vo_.balance_, cbegin(vo_.destinations_), cend(vo_.destinations_)) :
-                  nullptr;
+  balancer_ = vo_.type_ == AdapterType::TUNNEL
+                  ? makeBalancer(*vo_.balance_, cbegin(vo_.destinations_), cend(vo_.destinations_))
+                  : nullptr;
   acceptor_ = ip::tcp::acceptor{io, {ip::make_address(vo_.bind_), vo_.port_}};
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api

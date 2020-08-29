@@ -63,4 +63,4 @@ template <typename Iterator, typename Socket> void TunnelIngress<Iterator, Socke
 
 template class TunnelIngress<vector<Endpoint>::const_iterator, boost::asio::ip::tcp::socket>;
 
-} // namespace pichi::net
+}  // namespace pichi::net

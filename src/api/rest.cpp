@@ -91,8 +91,8 @@ static http::status e2c(PichiError e)
 
 static http::status e2c(sys::error_code e)
 {
-  return e == asio::error::address_in_use ? http::status::locked :
-                                            http::status::internal_server_error;
+  return e == asio::error::address_in_use ? http::status::locked
+                                          : http::status::internal_server_error;
 }
 
 Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
@@ -185,4 +185,4 @@ Rest::Response Rest::errorResponse(exception_ptr eptr)
   }
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api

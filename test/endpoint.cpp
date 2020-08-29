@@ -7,8 +7,8 @@
 #include <boost/beast/core/flat_static_buffer.hpp>
 #include <boost/test/unit_test.hpp>
 #include <initializer_list>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/net/helpers.hpp>
 
 using namespace std;
 using namespace pichi;
@@ -16,10 +16,7 @@ namespace asio = boost::asio;
 namespace beast = boost::beast;
 namespace sys = boost::system;
 
-using EndpointType = net::Endpoint::Type;
-using net::makeEndpoint;
-using net::parseEndpoint;
-using net::serializeEndpoint;
+using EndpointType = Endpoint::Type;
 
 class StubSocket {
 public:
@@ -131,7 +128,7 @@ BOOST_AUTO_TEST_CASE(serialize_Domain)
   auto expect = array
 #ifndef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
       <uint8_t, 13>
-#endif // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
       {0x03_u8, 0x09_u8, 0x6c_u8, 0x6f_u8, 0x63_u8, 0x61_u8, 0x6c_u8,
        0x68_u8, 0x6f_u8, 0x73_u8, 0x74_u8, 0x01_u8, 0xbb_u8};
 
@@ -161,7 +158,7 @@ BOOST_AUTO_TEST_CASE(serialize_IPv4)
   auto expect = array
 #ifndef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
       <uint8_t, 7>
-#endif // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
       {0x01, 0x7f, 0x00, 0x00, 0x01, 0x01, 0xbb};
 
   auto fact = array<uint8_t, 7>{};
@@ -188,7 +185,7 @@ BOOST_AUTO_TEST_CASE(serialize_IPv6)
   auto expect = array
 #ifndef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
       <uint8_t, 19>
-#endif // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
       {0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xbb};
 

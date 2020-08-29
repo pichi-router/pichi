@@ -90,7 +90,7 @@ string base64Decode(string_view base64, PichiError e)
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif // __GNUC__
+#endif  // __GNUC__
 
   switch (padding) {
   case 0:
@@ -106,9 +106,9 @@ string base64Decode(string_view base64, PichiError e)
 
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
-#endif // __GNUC__
+#endif  // __GNUC__
 
   return text;
 }
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto

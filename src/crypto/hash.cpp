@@ -137,4 +137,4 @@ template void hkdf<HashAlgorithm::SHA384>(MutableBuffer<uint8_t>, ConstBuffer<ui
 template void hkdf<HashAlgorithm::SHA512>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
                                           ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto

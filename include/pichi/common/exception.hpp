@@ -21,6 +21,6 @@ private:
   std::string message_;
 };
 
-} // namespace pichi
+}  // namespace pichi
 
-#endif // PICHI_COMMON_EXCEPTION_HPP
+#endif  // PICHI_COMMON_EXCEPTION_HPP

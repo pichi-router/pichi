@@ -14,7 +14,7 @@ using namespace rapidjson;
 using namespace pichi;
 using namespace pichi::api;
 
-using pichi::net::AdapterType;
+using pichi::AdapterType;
 
 static string toString(Value const& v)
 {
@@ -109,7 +109,7 @@ static string toString(RouteVO const& rvo)
   return toString(v);
 }
 
-static bool operator==(net::Endpoint const lhs, net::Endpoint const& rhs)
+static bool operator==(Endpoint const lhs, Endpoint const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_;
 }

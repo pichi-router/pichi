@@ -5,13 +5,12 @@
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
 #include <limits>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/net/helpers.hpp>
 #include <system_error>
 
 using namespace std;
 using namespace pichi;
-using namespace pichi::net;
 namespace asio = boost::asio;
 namespace mpl = boost::mpl;
 namespace sys = boost::system;

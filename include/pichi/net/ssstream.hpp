@@ -1,9 +1,9 @@
 #ifndef PICHI_NET_SSSTREAM_HPP
 #define PICHI_NET_SSSTREAM_HPP
 
+#include <pichi/common/adapter.hpp>
 #include <pichi/crypto/method.hpp>
 #include <pichi/crypto/stream.hpp>
-#include <pichi/net/adapter.hpp>
 
 namespace pichi::net {
 
@@ -13,9 +13,8 @@ public:
   inline static constexpr crypto::CryptoMethod METHOD = method;
 
   template <typename... Args>
-  SSStreamAdapter(ConstBuffer<uint8_t> psk, Args&&... args)
-    : stream_{std::forward<Args>(args)...}, encryptor_{psk}, decryptor_{psk}
-  {
+  SSStreamAdapter(ConstBuffer<uint8_t> psk, Args &&... args)
+      : stream_{std::forward<Args>(args)...}, encryptor_{psk}, decryptor_{psk} {
   }
   ~SSStreamAdapter() override = default;
 
@@ -27,7 +26,7 @@ public:
   size_t readIV(MutableBuffer<uint8_t>, Yield) override;
   Endpoint readRemote(Yield) override;
   void confirm(Yield) override;
-  void connect(Endpoint const& remote, ResolveResults server, Yield) override;
+  void connect(Endpoint const &remote, ResolveResults server, Yield) override;
 
 private:
   Stream stream_;

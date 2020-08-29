@@ -5,8 +5,8 @@
 #include <limits>
 #include <pichi/api/iterator.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/crypto/method.hpp>
-#include <pichi/net/common.hpp>
 #include <rapidjson/document.h>
 #include <string_view>
 #include <unordered_map>
@@ -14,7 +14,6 @@
 
 namespace pichi::api {
 
-using AdapterType = net::AdapterType;
 using CryptoMethod = crypto::CryptoMethod;
 
 enum class DelayMode { RANDOM, FIXED };
@@ -30,7 +29,7 @@ struct IngressVO {
   std::optional<bool> tls_ = {};
   std::optional<std::string> certFile_ = {};
   std::optional<std::string> keyFile_ = {};
-  std::vector<pichi::net::Endpoint> destinations_ = {};
+  std::vector<pichi::Endpoint> destinations_ = {};
   std::optional<BalanceType> balance_ = {};
 };
 
@@ -90,7 +89,7 @@ auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& all
   }
   else if constexpr (std::is_same_v<
                          std::decay_t<typename std::iterator_traits<InputIt>::value_type>,
-                         net::Endpoint>) {
+                         Endpoint>) {
     ret.SetObject();
     std::for_each(first, last, [&ret, &alloc](auto&& endpoint) {
       auto port = std::stoi(endpoint.port_);
@@ -115,6 +114,6 @@ template <typename VO> VO parse(std::string_view src)
   return parse<VO>(doc);
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
-#endif // PICHI_API_VOS_HPP
+#endif  // PICHI_API_VOS_HPP

@@ -1,7 +1,7 @@
 #include <numeric>
 #include <pichi/api/vos.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/net/helpers.hpp>
 
 using namespace std;
 namespace json = rapidjson;
@@ -57,7 +57,7 @@ static decltype(auto) keyFile_ = "key_file";
 static decltype(auto) destinations_ = "destinations";
 static decltype(auto) balance_ = "balance";
 
-} // namespace IngressVOKey
+}  // namespace IngressVOKey
 
 namespace EgressVOKey {
 
@@ -73,7 +73,7 @@ static decltype(auto) tls_ = "tls";
 static decltype(auto) insecure_ = "insecure";
 static decltype(auto) caFile_ = "ca_file";
 
-} // namespace EgressVOKey
+}  // namespace EgressVOKey
 
 namespace RuleVOKey {
 
@@ -84,20 +84,20 @@ static decltype(auto) pattern_ = "pattern";
 static decltype(auto) domain_ = "domain";
 static decltype(auto) country_ = "country";
 
-} // namespace RuleVOKey
+}  // namespace RuleVOKey
 
 namespace RouteVOKey {
 
 static decltype(auto) default_ = "default";
 static decltype(auto) rules_ = "rules";
 
-} // namespace RouteVOKey
+}  // namespace RouteVOKey
 
 namespace ErrorVOKey {
 
 static decltype(auto) message_ = "message";
 
-} // namespace ErrorVOKey
+}  // namespace ErrorVOKey
 
 namespace msg {
 
@@ -129,7 +129,7 @@ static auto const TOO_LONG_NAME_PASSWORD = "Name or password is too long"sv;
 static auto const MISSING_DESTINATIONS_FIELD = "Missiong destinations field"sv;
 static auto const MISSING_BALANCE_FIELD = "Missiong balance field"sv;
 
-} // namespace msg
+}  // namespace msg
 
 static DelayMode parseDelayMode(json::Value const& v)
 {
@@ -223,9 +223,9 @@ static auto parseDestinantions(json::Value const& v)
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   assertFalse(v.MemberCount() == 0, PichiError::BAD_JSON);
 
-  auto ret = vector<net::Endpoint>{};
+  auto ret = vector<Endpoint>{};
   transform(v.MemberBegin(), v.MemberEnd(), back_inserter(ret), [](auto&& item) {
-    return net::makeEndpoint(parseString(item.name), parsePort(item.value));
+    return makeEndpoint(parseString(item.name), parsePort(item.value));
   });
   return ret;
 }
@@ -683,4 +683,4 @@ template <> RouteVO parse(json::Value const& v)
   return rvo;
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api

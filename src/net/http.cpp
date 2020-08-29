@@ -6,11 +6,11 @@
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/write.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/common/uri.hpp>
 #include <pichi/crypto/base64.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/net/stream.hpp>
 #include <regex>
@@ -18,7 +18,7 @@
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4702)
-#endif // _MSC_VER
+#endif  // _MSC_VER
 
 using namespace std;
 namespace asio = boost::asio;
@@ -45,7 +45,7 @@ static auto writeHttp(Stream& s, Message<isRequest>& m, asio::yield_context yiel
   if constexpr (is_same_v<Stream, TestStream>)
     return http::write(s, m);
   else
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
     return http::async_write(s, m, yield);
 }
 
@@ -58,7 +58,7 @@ static auto writeHttpHeader(Stream& s, Message<isRequest>& m, asio::yield_contex
   if constexpr (is_same_v<Stream, TestStream>)
     return http::write_header(s, sr);
   else
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
     return http::async_write_header(s, sr, yield);
 }
 
@@ -71,7 +71,7 @@ static auto readHttpHeader(Stream& s, DynamicBuffer& buffer, Parser<isRequest>& 
   if constexpr (is_same_v<Stream, TestStream>)
     return http::read_header(s, buffer, parser);
   else
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
     return http::async_read_header(s, buffer, parser, yield);
 }
 
@@ -244,7 +244,7 @@ static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
   return true;
 }
 
-} // namespace detail
+}  // namespace detail
 
 using namespace detail;
 
@@ -300,10 +300,11 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr ep
   catch (sys::system_error const& e) {
     // TODO classify these errors
 
-    /* TODO It's not clear that http::make_error_code() will return error codes with different
-     *   categories when its invoker are located in the different DLLs. As the result,
-     *   the pre-defined category will never equal to what comes from Boost.Test.
-     *   The downcasting at runtime has to be used to detect the equation here.
+    /* TODO It's not clear that http::make_error_code() will return error codes
+     * with different categories when its invoker are located in the different
+     * DLLs. As the result, the pre-defined category will never equal to what
+     * comes from Boost.Test. The downcasting at runtime has to be used to
+     * detect the equation here.
      *
      * The original code:
      * static auto const& HTTP_ERROR_CATEGORY =
@@ -325,7 +326,7 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
   if constexpr (IsTlsStreamV<Stream>) {
     stream_.async_handshake(asio::ssl::stream_base::server, yield);
   }
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
   readHttpHeader(stream_, reqCache_, reqParser_, yield);
   auto& req = reqParser_.get();
@@ -351,10 +352,11 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
     /*
      * HTTP CONNECT @RFC2616
      *   Don't validate whether the HOST field exists or not here.
-     *   Some clients are not standard and send the CONNECT request without HOST field.
+     *   Some clients are not standard and send the CONNECT request without HOST
+     * field.
      */
     auto hp = HostAndPort{{req.target().data(), req.target().size()}};
-    return net::makeEndpoint(hp.host_, hp.port_);
+    return makeEndpoint(hp.host_, hp.port_);
   }
   else {
     send_ = [this](auto buf, auto yield) {
@@ -371,15 +373,17 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 
     /*
      * HTTP Proxy @RFC2068
-     *   The HOST field and absolute_path are both mandatory and same according to the standard.
-     *   But some non-standard clients might send request:
-     *     - with different destinations discribed in HOST field and absolute_path;
+     *   The HOST field and absolute_path are both mandatory and same according
+     * to the standard. But some non-standard clients might send request:
+     *     - with different destinations discribed in HOST field and
+     * absolute_path;
      *     - without absolute_path but relative_path specified;
      *     - without HOST field but absolute_path specified.
-     *   The rules, which are not very strict but still standard, listed below are followed
-     *   to handle these non-standard clients:
+     *   The rules, which are not very strict but still standard, listed below
+     * are followed to handle these non-standard clients:
      *     - the destination described in absolute_path would be chosen;
-     *     - the destination described in HOST field would be chosen if relative_path specified;
+     *     - the destination described in HOST field would be chosen if
+     * relative_path specified;
      *     - relative_path will be forwarded without any change.
      */
     auto target = req.target().to_string();
@@ -388,14 +392,14 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
       // absolute_path specified, so convert it to relative one.
       auto uri = Uri{target};
       req.target(boost::string_view{uri.suffix_.data(), uri.suffix_.size()});
-      return net::makeEndpoint(uri.host_, uri.port_);
+      return makeEndpoint(uri.host_, uri.port_);
     }
     else {
       // HOST field is mandatory now since relative_path specified.
       auto it = req.find(http::field::host);
       assertTrue(it != cend(req), PichiError::BAD_PROTO, "Lack of target information");
       auto hp = HostAndPort{{it->value().data(), it->value().size()}};
-      return net::makeEndpoint(hp.host_, hp.port_);
+      return makeEndpoint(hp.host_, hp.port_);
     }
   }
 }
@@ -474,15 +478,15 @@ template class HttpEgress<TcpSocket>;
 using TLSStream = TlsStream<TcpSocket>;
 template class HttpIngress<TLSStream>;
 template class HttpEgress<TLSStream>;
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 template class HttpIngress<TestStream>;
 template class HttpEgress<TestStream>;
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
 #ifdef _MSC_VER
 #pragma warning(pop)
-#endif // _MSC_VER
+#endif  // _MSC_VER

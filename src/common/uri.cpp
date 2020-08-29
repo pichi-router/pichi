@@ -64,4 +64,4 @@ HostAndPort::HostAndPort(string_view s)
   port_ = r[4].matched ? r2sv(r[5]) : "80"sv;
 }
 
-} // namespace pichi
+}  // namespace pichi

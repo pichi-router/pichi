@@ -3,15 +3,15 @@
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/stream.hpp>
 #include <utility>
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/stream.hpp>
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
 using namespace std;
 namespace asio = boost::asio;
@@ -33,7 +33,7 @@ auto const ADDRESS_TYPE_NOT_SUPPORTED =
     array{0x05_u8, 0x08_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
 static auto const AUTH_FAILURE = array{0x01_u8, 0xff_u8};
 static auto const METHOD_FAILURE = array{0x05_u8, 0xff_u8};
-#else  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+#else   // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 uint8_t const NETWORK_UNREACHABLE[] = {0x05_u8, 0x03_u8, 0x00_u8, 0x01_u8, 0x00_u8,
                                        0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
 uint8_t const HOST_UNREACHABLE[] = {0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8,
@@ -44,7 +44,7 @@ uint8_t const ADDRESS_TYPE_NOT_SUPPORTED[] = {0x05_u8, 0x08_u8, 0x00_u8, 0x01_u8
                                               0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
 static uint8_t const AUTH_FAILURE[] = {0x01_u8, 0xff_u8};
 static uint8_t const METHOD_FAILURE[] = {0x05_u8, 0xff_u8};
-#endif // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 
 static ConstBuffer<uint8_t> errorToBuffer(PichiError e)
 {
@@ -147,7 +147,7 @@ template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yiel
   if constexpr (IsTlsStreamV<Stream>) {
     stream_.async_handshake(asio::ssl::stream_base::server, yield);
   }
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
   auto buf = HeaderBuffer<uint8_t>{};
 
@@ -181,9 +181,9 @@ template <typename Stream> void Socks5Ingress<Stream>::confirm(Yield yield)
 #ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   static auto const CONFIRM = array{0x05_u8, 0x00_u8, 0x00_u8, 0x01_u8, 0x00_u8,
                                     0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
-#else  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+#else   // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   static uint8_t const CONFIRM[] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-#endif // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   write(stream_, CONFIRM, yield);
 }
 
@@ -198,7 +198,7 @@ template <typename Stream> void Socks5Ingress<Stream>::disconnect(exception_ptr 
   }
   catch (sys::system_error const& e) {
     buf = errorToBuffer(e.code());
-  } // other exceptions are unexpected, so throw them to the invoker.
+  }  // other exceptions are unexpected, so throw them to the invoker.
   // Ignore the writing exceptions here
   auto ec = sys::error_code{};
   write(stream_, buf, yield[ec]);
@@ -208,11 +208,11 @@ template class Socks5Ingress<tcp::socket>;
 
 #ifdef ENABLE_TLS
 template class Socks5Ingress<TlsStream<tcp::socket>>;
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 template class Socks5Ingress<TestStream>;
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 
 template <typename Stream>
 static void writeString(Stream& stream, asio::yield_context yield, string_view str)
@@ -291,10 +291,10 @@ template class Socks5Egress<tcp::socket>;
 
 #ifdef ENABLE_TLS
 template class Socks5Egress<TlsStream<tcp::socket>>;
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 template class Socks5Egress<TestStream>;
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 
-} // namespace pichi::net
+}  // namespace pichi::net

@@ -13,14 +13,14 @@ namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;
 using ResolvedResults = ip::basic_resolver_results<ip::tcp>;
-using Endpoint = ip::tcp::endpoint;
 
 static decltype(auto) fn = "geo.mmdb";
 
 static ResolvedResults createRR(string_view str = ""sv)
 {
-  return str.empty() ? ResolvedResults{} :
-                       ResolvedResults::create(Endpoint{ip::make_address(str), 443}, ph, ph);
+  return str.empty()
+             ? ResolvedResults{}
+             : ResolvedResults::create(ip::tcp::endpoint{ip::make_address(str), 443}, ph, ph);
 }
 
 BOOST_AUTO_TEST_SUITE(ROUTER_TEST)
@@ -284,8 +284,7 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
   auto r = createRR();
-  for (auto type :
-       {net::Endpoint::Type::DOMAIN_NAME, net::Endpoint::Type::IPV4, net::Endpoint::Type::IPV6}) {
+  for (auto type : {Endpoint::Type::DOMAIN_NAME, Endpoint::Type::IPV4, Endpoint::Type::IPV6}) {
     BOOST_CHECK(router.route({type, "foo.example.com", ph}, ph, AdapterType::DIRECT, createRR()) ==
                 ph);
     BOOST_CHECK(router.route({type, "fooexample.com", ph}, ph, AdapterType::DIRECT, createRR()) ==
@@ -299,9 +298,9 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain)
   router.update(ph, {{}, {}, {}, {}, {"example.com"}});
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
-  BOOST_CHECK(router.route({net::Endpoint::Type::DOMAIN_NAME, "foo.example.com", ph}, ph,
+  BOOST_CHECK(router.route({Endpoint::Type::DOMAIN_NAME, "foo.example.com", ph}, ph,
                            AdapterType::DIRECT, createRR()) == ph);
-  BOOST_CHECK(router.route({net::Endpoint::Type::DOMAIN_NAME, "fooexample.com", ph}, ph,
+  BOOST_CHECK(router.route({Endpoint::Type::DOMAIN_NAME, "fooexample.com", ph}, ph,
                            AdapterType::DIRECT, createRR()) == "direct");
 }
 
@@ -311,10 +310,10 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain_With_Invalid_Type)
   router.update(ph, {{}, {}, {}, {}, {"example.com"}});
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
-  BOOST_CHECK(router.route({net::Endpoint::Type::IPV4, "foo.example.com", ph}, ph,
-                           AdapterType::DIRECT, createRR()) == "direct");
-  BOOST_CHECK(router.route({net::Endpoint::Type::IPV6, "foo.example.com", ph}, ph,
-                           AdapterType::DIRECT, createRR()) == "direct");
+  BOOST_CHECK(router.route({Endpoint::Type::IPV4, "foo.example.com", ph}, ph, AdapterType::DIRECT,
+                           createRR()) == "direct");
+  BOOST_CHECK(router.route({Endpoint::Type::IPV6, "foo.example.com", ph}, ph, AdapterType::DIRECT,
+                           createRR()) == "direct");
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Country)

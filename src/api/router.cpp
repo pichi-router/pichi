@@ -24,7 +24,7 @@ static auto const DM_INVALID = "Invalid domain string"sv;
 static auto const RG_INVALID = "Invalid IP range string"sv;
 static auto const AT_INVALID = "Invalid adapter type string"sv;
 
-} // namespace msg
+}  // namespace msg
 
 static string toLowerCase(string_view orig)
 {
@@ -47,9 +47,9 @@ bool matchDomain(string_view subdomain, string_view domain)
   assertFalse(d.empty(), PichiError::SEMANTIC_ERROR, msg::DM_INVALID);
   assertFalse(s.empty(), msg::DM_INVALID);
   assertFalse('.' == s.front(), msg::DM_INVALID);
-  return s == d ||                                   // same
-         (s.size() > d.size() &&                     // subdomain can not be shorter than domain
-          equal(crbegin(d), crend(d), crbegin(s)) && // subdomain ends up with domain
+  return s == d ||                                    // same
+         (s.size() > d.size() &&                      // subdomain can not be shorter than domain
+          equal(crbegin(d), crend(d), crbegin(s)) &&  // subdomain ends up with domain
           s[s.size() - d.size() - 1] == '.');
 }
 
@@ -86,7 +86,7 @@ Router::ValueType Router::generatePair(DelegateIterator it)
 
 Router::Router(char const* fn) : geo_{fn} {}
 
-string_view Router::route(net::Endpoint const& e, string_view ingress, AdapterType type,
+string_view Router::route(Endpoint const& e, string_view ingress, AdapterType type,
                           ResolvedResult const& r) const
 {
   auto rule = "DEFAUTL rule"sv;
@@ -146,7 +146,7 @@ void Router::update(string const& name, RuleVO rvo)
   });
   transform(cbegin(rvo.domain_), cend(rvo.domain_), back_inserter(matchers), [](auto&& domain) {
     return [&domain](auto&& e, auto&&, auto, auto) {
-      return e.type_ == net::Endpoint::Type::DOMAIN_NAME && matchDomain(e.host_, domain);
+      return e.type_ == Endpoint::Type::DOMAIN_NAME && matchDomain(e.host_, domain);
     };
   });
   transform(cbegin(rvo.country_), cend(rvo.country_), back_inserter(matchers),
@@ -210,4 +210,4 @@ void Router::setRoute(RouteVO rvo)
   if (rvo.default_.has_value()) route_.default_ = rvo.default_;
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api

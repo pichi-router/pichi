@@ -7,10 +7,10 @@
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/base64.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/net/stream.hpp>
 
@@ -24,8 +24,8 @@ using Socket = net::TestSocket;
 using HttpIngress = net::HttpIngress<net::TestStream>;
 using HttpEgress = net::HttpEgress<net::TestStream>;
 
-static auto const HTTPS_ENDPOINT = net::makeEndpoint("localhost"sv, "443"sv);
-static auto const HTTP_ENDPOINT = net::makeEndpoint("localhost"sv, "80"sv);
+static auto const HTTPS_ENDPOINT = makeEndpoint("localhost"sv, "443"sv);
+static auto const HTTP_ENDPOINT = makeEndpoint("localhost"sv, "80"sv);
 
 static auto genTunnelReq()
 {
@@ -165,12 +165,12 @@ BOOST_AUTO_TEST_CASE(readRemote_Tunnel_Authentication_Without_Header)
 BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Header)
 {
   for (auto&& h : {
-           ""s,                                           // Empty header
-           "Token XXXXX"s,                                // Not basic
-           "Basic "s,                                     // Empty Credential
-           "Basic invalid BASE64 code"s,                  // Bad BASE64 sequence
-           "Basic invalidBASE64code"s,                    // Bad BASE64
-           "Basic "s + crypto::base64Encode("nocolon"sv), // No colon
+           ""s,                                            // Empty header
+           "Token XXXXX"s,                                 // Not basic
+           "Basic "s,                                      // Empty Credential
+           "Basic invalid BASE64 code"s,                   // Bad BASE64 sequence
+           "Basic invalidBASE64code"s,                     // Bad BASE64
+           "Basic "s + crypto::base64Encode("nocolon"sv),  // No colon
        }) {
     for (auto&& generator :
          {function<http::request<http::empty_body>()>{genTunnelReq},
@@ -193,10 +193,10 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Header)
 BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Credential)
 {
   for (auto&& h : {
-           "Basic "s + crypto::base64Encode(":bar"sv), // Empty username
-           "Basic "s + crypto::base64Encode("foo:"sv), // Empty password
-           "Basic "s + crypto::base64Encode(":"sv),    // Empty u&p
-           "Basic "s + crypto::base64Encode("f:b"sv),  // Invalid u&p
+           "Basic "s + crypto::base64Encode(":bar"sv),  // Empty username
+           "Basic "s + crypto::base64Encode("foo:"sv),  // Empty password
+           "Basic "s + crypto::base64Encode(":"sv),     // Empty u&p
+           "Basic "s + crypto::base64Encode("f:b"sv),   // Invalid u&p
        }) {
     for (auto&& generator :
          {function<http::request<http::empty_body>()>{genTunnelReq},
@@ -680,7 +680,7 @@ BOOST_AUTO_TEST_CASE(connect_Authentication)
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   auto first = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
 
   BOOST_CHECK_EQUAL(http::verb::connect, first.method());
@@ -707,7 +707,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Tunnel)
   auto resp = genResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "443"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "443"sv), {}, gYield);
   auto req = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
 
   BOOST_CHECK_EQUAL(http::verb::connect, req.method());
@@ -723,7 +723,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Fallback_To_Relay)
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   auto req = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
 
   BOOST_CHECK_EQUAL(http::verb::connect, req.method());
@@ -741,7 +741,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Tunnel_Arbitrary_Data)
   auto resp = genResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "443"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "443"sv), {}, gYield);
   socket.flush(buf);
 
   auto expect = array<uint8_t, 0xff>{};
@@ -762,7 +762,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Non_HTTP_Request)
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
   BOOST_CHECK_EXCEPTION(egress.send(ConstBuffer<uint8_t>{"Non-HTTP request\r\n"sv}, gYield),
@@ -778,7 +778,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_HTTP_Request_Without_Upgrade)
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
   auto origin = genRelayReq("/"s);
@@ -802,7 +802,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_HTTP_Request_With_Upgrade)
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
   auto origin = genRelayReq("/"s);
@@ -826,7 +826,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Multiple_Parts_Header)
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
   auto origin = genRelayReq("/"s);
@@ -852,7 +852,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Request_With_Body)
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
   auto origin = genRelayReqWithBody("/"s);
@@ -879,7 +879,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Request_With_Extra_Data)
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
 
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
   auto origin = genRelayReq("/"s);
@@ -902,7 +902,7 @@ BOOST_AUTO_TEST_CASE(Egress_recv_Tunnel)
 
   auto resp = genResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
-  egress.connect(net::makeEndpoint("localhost"sv, "443"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "443"sv), {}, gYield);
   socket.flush(buf);
 
   auto content = "content"sv;
@@ -921,7 +921,7 @@ BOOST_AUTO_TEST_CASE(Egress_recv_Relay_Non_HTTP_Data)
 
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
   auto content = "non-HTTP data"sv;
@@ -940,7 +940,7 @@ BOOST_AUTO_TEST_CASE(Egress_recv_Relay_HTTP_Response)
 
   auto resp = genRefuseResponse();
   socket.fill({buf, serializeToBuffer(resp, buf)});
-  egress.connect(net::makeEndpoint("localhost"sv, "80"sv), {}, gYield);
+  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
   auto origin = genResponse();

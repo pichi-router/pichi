@@ -69,4 +69,4 @@ size_t generateKey(CryptoMethod method, ConstBuffer<uint8_t> pw, MutableBuffer<u
   }
 }
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto

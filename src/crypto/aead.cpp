@@ -183,4 +183,4 @@ template class AeadDecryptor<CryptoMethod::AES_256_GCM>;
 template class AeadDecryptor<CryptoMethod::CHACHA20_IETF_POLY1305>;
 template class AeadDecryptor<CryptoMethod::XCHACHA20_IETF_POLY1305>;
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto

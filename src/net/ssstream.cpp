@@ -3,8 +3,8 @@
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/ssstream.hpp>
 #include <pichi/net/stream.hpp>
 #include <utility>
@@ -129,6 +129,6 @@ template class SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB, TestStream>;
 template class SSStreamAdapter<CryptoMethod::CHACHA20, TestStream>;
 template class SSStreamAdapter<CryptoMethod::SALSA20, TestStream>;
 template class SSStreamAdapter<CryptoMethod::CHACHA20_IETF, TestStream>;
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 
-} // namespace pichi::net
+}  // namespace pichi::net

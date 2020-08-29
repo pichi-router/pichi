@@ -2,14 +2,14 @@
 #define PICHI_NET_SSAEAD_HPP
 
 #include <boost/beast/core/flat_buffer.hpp>
+#include <pichi/common/adapter.hpp>
 #include <pichi/crypto/aead.hpp>
 #include <pichi/crypto/method.hpp>
-#include <pichi/net/adapter.hpp>
 
 namespace pichi::net {
 
 template <crypto::CryptoMethod method, typename Stream>
-class SSAeadAdapter : public Ingress, public Egress {
+class SSAeadAdapter : public pichi::Ingress, public pichi::Egress {
 private:
   using Cache = boost::beast::basic_flat_buffer<std::allocator<uint8_t>>;
 
@@ -50,6 +50,6 @@ private:
   bool ivReceived_ = false;
 };
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
-#endif // PICHI_NET_SSAEAD_HPP
+#endif  // PICHI_NET_SSAEAD_HPP

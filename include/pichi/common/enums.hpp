@@ -3,6 +3,8 @@
 
 namespace pichi {
 
+enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS, TUNNEL };
+
 enum class PichiError {
   OK = 0,
   BAD_PROTO,
@@ -18,6 +20,6 @@ enum class PichiError {
   MISC
 };
 
-}
+}  // namespace pichi
 
-#endif // PICHI_COMMON_ENUMS_HPP
+#endif  // PICHI_COMMON_ENUMS_HPP

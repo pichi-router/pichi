@@ -31,6 +31,6 @@ inline uint16_t operator""_u16(unsigned long long i)
   return static_cast<uint16_t>(i);
 }
 
-} // namespace pichi
+}  // namespace pichi
 
-#endif // PICHI_COMMON_LITERALS_HPP
+#endif  // PICHI_COMMON_LITERALS_HPP

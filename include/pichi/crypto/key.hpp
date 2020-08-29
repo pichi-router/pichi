@@ -9,6 +9,6 @@ namespace pichi::crypto {
 
 extern size_t generateKey(CryptoMethod, ConstBuffer<uint8_t>, MutableBuffer<uint8_t>);
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto
 
-#endif
+#endif  // PICHI_CRYPTO_KEY_HPP
