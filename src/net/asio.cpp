@@ -268,9 +268,9 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
     return make_unique<DirectAdapter>(io);
   case AdapterType::REJECT:
     switch (*vo.mode_) {
-    case api::DelayMode::RANDOM:
+    case DelayMode::RANDOM:
       return make_unique<RejectEgress>(io);
-    case api::DelayMode::FIXED:
+    case DelayMode::FIXED:
       return make_unique<RejectEgress>(io, *vo.delay_);
     default:
       fail(PichiError::BAD_PROTO);

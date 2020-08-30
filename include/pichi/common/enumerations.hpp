@@ -46,6 +46,9 @@ enum class CryptoMethod {
   // AEAD Crypto Method end
 };
 
+enum class DelayMode { RANDOM, FIXED };
+enum class BalanceType { RANDOM, ROUND_ROBIN, LEAST_CONN };
+
 enum class PichiError {
   OK = 0,
   BAD_PROTO,

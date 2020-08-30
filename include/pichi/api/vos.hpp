@@ -6,6 +6,7 @@
 #include <pichi/api/iterator.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
+#include <pichi/common/enumerations.hpp>
 #include <pichi/crypto/method.hpp>
 #include <rapidjson/document.h>
 #include <string_view>
@@ -13,9 +14,6 @@
 #include <vector>
 
 namespace pichi::api {
-
-enum class DelayMode { RANDOM, FIXED };
-enum class BalanceType { RANDOM, ROUND_ROBIN, LEAST_CONN };
 
 struct IngressVO {
   AdapterType type_;
