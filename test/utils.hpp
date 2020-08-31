@@ -7,7 +7,7 @@
 #include <boost/asio/spawn2.hpp>
 #include <boost/beast/http/error.hpp>
 #include <pichi/common/exception.hpp>
-#include <pichi/vo/vos.hpp>
+#include <rapidjson/document.h>
 #include <string_view>
 #include <vector>
 

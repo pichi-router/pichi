@@ -25,7 +25,6 @@
 #include <pichi/net/tunnel.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
-#include <pichi/vo/vos.hpp>
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/context.hpp>

@@ -9,6 +9,7 @@
 #include <numeric>
 #include <pichi/api/router.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <regex>
 
 using namespace std;

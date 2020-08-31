@@ -16,7 +16,6 @@
 #include <pichi/net/asio.hpp>
 #include <pichi/net/spawn.hpp>
 #include <pichi/vo/egress.hpp>
-#include <pichi/vo/vos.hpp>
 
 using namespace std;
 namespace asio = boost::asio;

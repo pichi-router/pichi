@@ -3,9 +3,9 @@
 
 #include <map>
 #include <memory>
+#include <pichi/vo/iterator.hpp>
 #include <pichi/vo/route.hpp>
 #include <pichi/vo/rule.hpp>
-#include <pichi/vo/vos.hpp>
 
 struct MMDB_s;
 

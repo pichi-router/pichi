@@ -8,6 +8,7 @@
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
 #include <initializer_list>
+#include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 

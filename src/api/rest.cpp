@@ -4,6 +4,7 @@
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/rest.hpp>
 #include <pichi/api/router.hpp>
+#include <pichi/vo/error.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <rapidjson/stringbuffer.h>
@@ -180,10 +181,10 @@ Rest::Response Rest::errorResponse(exception_ptr eptr)
     rethrow_exception(eptr);
   }
   catch (Exception const& e) {
-    return genResp(e2c(e.error()), vo::ErrorVO{e.what()});
+    return genResp(e2c(e.error()), vo::Error{e.what()});
   }
   catch (sys::system_error const& e) {
-    return genResp(e2c(e.code()), vo::ErrorVO{e.what()});
+    return genResp(e2c(e.code()), vo::Error{e.what()});
   }
 }
 

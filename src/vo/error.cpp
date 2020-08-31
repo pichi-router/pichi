@@ -1,11 +1,5 @@
-#include <numeric>
-#include <pichi/common/endpoint.hpp>
-#include <pichi/common/literals.hpp>
+#include <pichi/vo/error.hpp>
 #include <pichi/vo/keys.hpp>
-#include <pichi/vo/messages.hpp>
-#include <pichi/vo/parse.hpp>
-#include <pichi/vo/to_json.hpp>
-#include <pichi/vo/vos.hpp>
 
 using namespace std;
 namespace json = rapidjson;
@@ -13,7 +7,7 @@ using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {
 
-json::Value toJson(ErrorVO const& evo, Allocator& alloc)
+json::Value toJson(Error const& evo, Allocator& alloc)
 {
   using StringRef = json::Value::StringRefType;
   using SizeType = json::SizeType;
