@@ -13,6 +13,12 @@
 
 namespace pichi {
 
+namespace vo {
+
+struct Ingress;
+
+}  // namespace vo
+
 template <PichiError error> bool verifyException(Exception const& e) { return e.error() == error; }
 
 template <boost::asio::error::basic_errors error>
@@ -37,7 +43,7 @@ extern std::vector<uint8_t> hex2bin(std::string_view);
 inline decltype(auto) ph = "placeholder";
 extern rapidjson::Document::AllocatorType& alloc;
 
-extern vo::IngressVO defaultIngressVO(AdapterType);
+extern vo::Ingress defaultIngressVO(AdapterType);
 extern rapidjson::Value defaultIngressJson(AdapterType);
 extern vo::EgressVO defaultEgressVO(AdapterType);
 extern rapidjson::Value defaultEgressJson(AdapterType);

@@ -23,6 +23,7 @@
 #include <pichi/net/ssstream.hpp>
 #include <pichi/net/stream.hpp>
 #include <pichi/net/tunnel.hpp>
+#include <pichi/vo/ingress.hpp>
 #include <pichi/vo/vos.hpp>
 
 #ifdef ENABLE_TLS
@@ -51,7 +52,7 @@ namespace ssl = asio::ssl;
 using crypto::generateKey;
 using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
-static auto createTlsContext(vo::IngressVO const& vo)
+static auto createTlsContext(vo::Ingress const& vo)
 {
   auto ctx = ssl::context{ssl::context::tls_server};
   ctx.use_certificate_chain_file(*vo.certFile_);

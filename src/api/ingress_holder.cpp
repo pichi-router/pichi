@@ -2,6 +2,7 @@
 // Include config.hpp first
 #include <boost/asio/io_context.hpp>
 #include <pichi/api/ingress_holder.hpp>
+#include <pichi/vo/ingress.hpp>
 #include <utility>
 
 using namespace std;
@@ -10,7 +11,7 @@ namespace ip = asio::ip;
 
 namespace pichi::api {
 
-IngressHolder::IngressHolder(asio::io_context& io, vo::IngressVO&& vo)
+IngressHolder::IngressHolder(asio::io_context& io, vo::Ingress&& vo)
   : vo_{move(vo)},
     balancer_{vo_.type_ == AdapterType::TUNNEL
                   ? makeBalancer(*vo_.balance_, cbegin(vo_.destinations_), cend(vo_.destinations_))
@@ -19,7 +20,7 @@ IngressHolder::IngressHolder(asio::io_context& io, vo::IngressVO&& vo)
 {
 }
 
-void IngressHolder::reset(asio::io_context& io, vo::IngressVO&& vo)
+void IngressHolder::reset(asio::io_context& io, vo::Ingress&& vo)
 {
   vo_ = move(vo);
   balancer_ = vo_.type_ == AdapterType::TUNNEL

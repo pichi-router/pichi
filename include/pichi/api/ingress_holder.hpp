@@ -4,7 +4,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <memory>
 #include <pichi/api/balancer.hpp>
-#include <pichi/vo/vos.hpp>
+#include <pichi/vo/ingress.hpp>
 
 namespace boost::asio {
 
@@ -14,10 +14,10 @@ class io_context;
 
 namespace pichi::api {
 
-using IngressIterator = decltype(vo::IngressVO::destinations_)::const_iterator;
+using IngressIterator = decltype(vo::Ingress::destinations_)::const_iterator;
 
 struct IngressHolder {
-  explicit IngressHolder(boost::asio::io_context&, vo::IngressVO&&);
+  explicit IngressHolder(boost::asio::io_context&, vo::Ingress&&);
   ~IngressHolder() = default;
 
   IngressHolder(IngressHolder const&) = delete;
@@ -25,9 +25,9 @@ struct IngressHolder {
   IngressHolder& operator=(IngressHolder const&) = delete;
   IngressHolder& operator=(IngressHolder&&) = delete;
 
-  void reset(boost::asio::io_context&, vo::IngressVO&&);
+  void reset(boost::asio::io_context&, vo::Ingress&&);
 
-  vo::IngressVO vo_;
+  vo::Ingress vo_;
   std::unique_ptr<Balancer<IngressIterator>> balancer_;
   boost::asio::ip::tcp::acceptor acceptor_;
 };

@@ -2,6 +2,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/vo/ingress.hpp>
 #include <sodium/utils.h>
 #include <string.h>
 
@@ -31,9 +32,9 @@ vector<uint8_t> hex2bin(string_view hex)
   return v;
 }
 
-IngressVO defaultIngressVO(AdapterType type)
+vo::Ingress defaultIngressVO(AdapterType type)
 {
-  auto vo = IngressVO{};
+  auto vo = vo::Ingress{};
   vo.type_ = type;
   vo.bind_ = ph;
   vo.port_ = 1_u8;

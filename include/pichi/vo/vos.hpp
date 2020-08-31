@@ -14,20 +14,6 @@
 
 namespace pichi::vo {
 
-struct IngressVO {
-  AdapterType type_;
-  std::string bind_ = {};
-  uint16_t port_ = 0;
-  std::optional<CryptoMethod> method_ = {};
-  std::optional<std::string> password_ = {};
-  std::unordered_map<std::string, std::string> credentials_ = {};
-  std::optional<bool> tls_ = {};
-  std::optional<std::string> certFile_ = {};
-  std::optional<std::string> keyFile_ = {};
-  std::vector<pichi::Endpoint> destinations_ = {};
-  std::optional<BalanceType> balance_ = {};
-};
-
 struct EgressVO {
   AdapterType type_;
   std::optional<std::string> host_ = {};
@@ -60,7 +46,6 @@ struct ErrorVO {
   std::string_view message_;
 };
 
-extern rapidjson::Value toJson(IngressVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(EgressVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(RuleVO const&, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(RouteVO const&, rapidjson::Document::AllocatorType&);

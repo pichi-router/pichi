@@ -5,6 +5,7 @@
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/exception.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/vo/ingress.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <string_view>
 #include <unordered_map>
@@ -12,9 +13,8 @@
 using namespace std;
 using namespace rapidjson;
 using namespace pichi;
-using namespace pichi::vo;
 
-using pichi::AdapterType;
+using vo::toJson;
 
 BOOST_AUTO_TEST_SUITE(REST_TO_JSON)
 
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(toJson_Balance)
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Invalid_Type)
 {
   for (auto t : {AdapterType::DIRECT, AdapterType::REJECT})
-    BOOST_CHECK_EXCEPTION(toJson(IngressVO{t}, alloc), Exception,
+    BOOST_CHECK_EXCEPTION(toJson(vo::Ingress{t}, alloc), Exception,
                           verifyException<PichiError::MISC>);
 }
 
@@ -262,7 +262,7 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_TUNNEL_Mandatory_Fields)
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Empty_Pack)
 {
-  auto empty = unordered_map<string, IngressVO>{};
+  auto empty = unordered_map<string, vo::Ingress>{};
   auto expect = Value{};
   expect.SetObject();
 
@@ -272,14 +272,14 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Empty_Pack)
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack_Empty_Name)
 {
-  auto src = unordered_map<string, IngressVO>{{"", {AdapterType::DIRECT}}};
+  auto src = unordered_map<string, vo::Ingress>{{"", {AdapterType::DIRECT}}};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack)
 {
-  auto src = unordered_map<string, IngressVO>{};
+  auto src = unordered_map<string, vo::Ingress>{};
   auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
@@ -342,7 +342,8 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Fixed)
     vo.delay_ = i;
     auto expect = defaultEgressJson(AdapterType::REJECT);
     expect["delay"].SetInt(i);
-    auto fact = toJson(EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, i}, alloc);
+    auto fact =
+        toJson(vo::EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, i}, alloc);
     BOOST_CHECK(expect == fact);
   }
 }
@@ -506,7 +507,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_SS_Missing_Fields)
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_Empty_Pack)
 {
-  auto empty = unordered_map<string, EgressVO>{};
+  auto empty = unordered_map<string, vo::EgressVO>{};
   auto expect = Value{};
   expect.SetObject();
 
@@ -516,20 +517,20 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_Empty_Pack)
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_Pack_Empty_Name)
 {
-  auto src = unordered_map<string, EgressVO>{{"", {AdapterType::DIRECT}}};
+  auto src = unordered_map<string, vo::EgressVO>{{"", {AdapterType::DIRECT}}};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_Pack)
 {
-  auto src = unordered_map<string, EgressVO>{};
+  auto src = unordered_map<string, vo::EgressVO>{};
   auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
     expect.AddMember(Value{to_string(i).data(), alloc}, defaultEgressJson(AdapterType::DIRECT),
                      alloc);
-    src[to_string(i)] = EgressVO{AdapterType::DIRECT};
+    src[to_string(i)] = vo::EgressVO{AdapterType::DIRECT};
   }
 
   BOOST_CHECK(expect == toJson(begin(src), end(src), alloc));
@@ -537,7 +538,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_Pack)
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Without_Fields)
 {
-  auto const origin = RuleVO{};
+  auto const origin = vo::RuleVO{};
   auto fact = toJson(origin, alloc);
 
   auto expect = Value{};
@@ -556,54 +557,54 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
     return expect;
   };
 
-  auto range = RuleVO{};
+  auto range = vo::RuleVO{};
   range.range_.emplace_back(ph);
   BOOST_CHECK(generate("range", ph) == toJson(range, alloc));
 
-  auto ingress = RuleVO{};
+  auto ingress = vo::RuleVO{};
   ingress.ingress_.emplace_back(ph);
   BOOST_CHECK(generate("ingress_name", ph) == toJson(ingress, alloc));
 
-  auto type = RuleVO{};
+  auto type = vo::RuleVO{};
   type.type_.emplace_back(AdapterType::DIRECT);
   BOOST_CHECK(generate("ingress_type", AdapterType::DIRECT) == toJson(type, alloc));
 
-  auto pattern = RuleVO{};
+  auto pattern = vo::RuleVO{};
   pattern.pattern_.emplace_back(ph);
   BOOST_CHECK(generate("pattern", ph) == toJson(pattern, alloc));
 
-  auto domain = RuleVO{};
+  auto domain = vo::RuleVO{};
   domain.domain_.emplace_back(ph);
   BOOST_CHECK(generate("domain", ph) == toJson(domain, alloc));
 
-  auto country = RuleVO{};
+  auto country = vo::RuleVO{};
   country.country_.emplace_back(ph);
   BOOST_CHECK(generate("country", ph) == toJson(country, alloc));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Empty_Pack)
 {
-  auto empty = unordered_map<string, RuleVO>{};
+  auto empty = unordered_map<string, vo::RuleVO>{};
   BOOST_CHECK(Value{}.SetObject() == toJson(begin(empty), end(empty), alloc));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack_Empty_Name)
 {
-  auto src = unordered_map<string, RuleVO>{{"", {}}};
+  auto src = unordered_map<string, vo::RuleVO>{{"", {}}};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack)
 {
-  auto src = unordered_map<string, RuleVO>{};
+  auto src = unordered_map<string, vo::RuleVO>{};
   auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
     auto v = Value{};
     v.SetObject();
     expect.AddMember(Value{to_string(i).data(), alloc}, v, alloc);
-    src[to_string(i)] = RuleVO{};
+    src[to_string(i)] = vo::RuleVO{};
   }
 
   auto fact = toJson(begin(src), end(src), alloc);
@@ -613,7 +614,7 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_Pack)
 
 BOOST_AUTO_TEST_CASE(toJson_Route_Empty)
 {
-  auto rvo = RouteVO{};
+  auto rvo = vo::RouteVO{};
   BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), Exception, verifyException<PichiError::MISC>);
 
   rvo.default_ = "";
@@ -630,7 +631,7 @@ BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
   expect.AddMember("default", ph, alloc);
   expect.AddMember("rules", array, alloc);
 
-  auto rvo = RouteVO{ph};
+  auto rvo = vo::RouteVO{ph};
   BOOST_CHECK(expect == toJson(rvo, alloc));
 }
 
@@ -647,7 +648,7 @@ BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
   expect.AddMember("rules", rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc),
                    alloc);
 
-  auto rvo = RouteVO{ph, {make_pair(vector<string>{ph}, ph)}};
+  auto rvo = vo::RouteVO{ph, {make_pair(vector<string>{ph}, ph)}};
   BOOST_CHECK(expect == toJson(rvo, alloc));
 }
 

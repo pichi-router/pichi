@@ -6,14 +6,19 @@
 #include <pichi/api/balancer.hpp>
 #include <pichi/api/ingress_holder.hpp>
 #include <pichi/vo/iterator.hpp>
-#include <pichi/vo/vos.hpp>
 #include <utility>
+
+namespace pichi::vo {
+
+struct Ingress;
+
+}  // namespace pichi::vo
 
 namespace pichi::api {
 
 class IngressManager {
 public:
-  using VO = vo::IngressVO;
+  using VO = vo::Ingress;
 
 private:
   using Container = std::map<std::string, IngressHolder, std::less<>>;

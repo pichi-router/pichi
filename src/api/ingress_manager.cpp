@@ -2,6 +2,7 @@
 // Include config.hpp first
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/vo/ingress.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
