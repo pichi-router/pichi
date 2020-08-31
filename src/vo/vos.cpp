@@ -2,6 +2,7 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/keys.hpp>
+#include <pichi/vo/messages.hpp>
 #include <pichi/vo/vos.hpp>
 
 using namespace std;
@@ -9,38 +10,6 @@ namespace json = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {
-
-namespace msg {
-
-static auto const OBJ_TYPE_ERROR = "JSON object required"sv;
-static auto const ARY_TYPE_ERROR = "JSON array required"sv;
-static auto const INT_TYPE_ERROR = "Integer required"sv;
-static auto const STR_TYPE_ERROR = "String required"sv;
-static auto const BOOL_TYPE_ERROR = "Boolean required"sv;
-static auto const PAIR_TYPE_ERROR = "Pair type required"sv;
-static auto const ARY_SIZE_ERROR = "Array size error"sv;
-static auto const AT_INVALID = "Invalid adapter type string"sv;
-static auto const CM_INVALID = "Invalid crypto method string"sv;
-static auto const PT_INVALID = "Port number must be in range (0, 65536)"sv;
-static auto const DM_INVALID = "Invalid delay mode type string"sv;
-static auto const DL_INVALID = "Delay time must be in range [0, 300]"sv;
-static auto const BA_INVALID = "Invalid balance string"sv;
-static auto const STR_EMPTY = "Empty string"sv;
-static auto const CRE_EMPTY = "Empty credentials"sv;
-static auto const MISSING_TYPE_FIELD = "Missing type field"sv;
-static auto const MISSING_HOST_FIELD = "Missing host field"sv;
-static auto const MISSING_BIND_FIELD = "Missing bind field"sv;
-static auto const MISSING_PORT_FIELD = "Missing port field"sv;
-static auto const MISSING_METHOD_FIELD = "Missing method field"sv;
-static auto const MISSING_PW_FIELD = "Missing password field"sv;
-static auto const MISSING_DELAY_FIELD = "Missing delay field"sv;
-static auto const MISSING_CERT_FILE_FIELD = "Missing cert_file field"sv;
-static auto const MISSING_KEY_FILE_FIELD = "Missing key_file field"sv;
-static auto const TOO_LONG_NAME_PASSWORD = "Name or password is too long"sv;
-static auto const MISSING_DESTINATIONS_FIELD = "Missiong destinations field"sv;
-static auto const MISSING_BALANCE_FIELD = "Missiong balance field"sv;
-
-}  // namespace msg
 
 static DelayMode parseDelayMode(json::Value const& v)
 {
