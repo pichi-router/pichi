@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
   auto r = createRR();
-  for (auto type : {Endpoint::Type::DOMAIN_NAME, Endpoint::Type::IPV4, Endpoint::Type::IPV6}) {
+  for (auto type : {EndpointType::DOMAIN_NAME, EndpointType::IPV4, EndpointType::IPV6}) {
     BOOST_CHECK(router.route({type, "foo.example.com", ph}, ph, AdapterType::DIRECT, createRR()) ==
                 ph);
     BOOST_CHECK(router.route({type, "fooexample.com", ph}, ph, AdapterType::DIRECT, createRR()) ==
@@ -298,9 +298,9 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain)
   router.update(ph, {{}, {}, {}, {}, {"example.com"}});
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
-  BOOST_CHECK(router.route({Endpoint::Type::DOMAIN_NAME, "foo.example.com", ph}, ph,
+  BOOST_CHECK(router.route({EndpointType::DOMAIN_NAME, "foo.example.com", ph}, ph,
                            AdapterType::DIRECT, createRR()) == ph);
-  BOOST_CHECK(router.route({Endpoint::Type::DOMAIN_NAME, "fooexample.com", ph}, ph,
+  BOOST_CHECK(router.route({EndpointType::DOMAIN_NAME, "fooexample.com", ph}, ph,
                            AdapterType::DIRECT, createRR()) == "direct");
 }
 
@@ -310,9 +310,9 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain_With_Invalid_Type)
   router.update(ph, {{}, {}, {}, {}, {"example.com"}});
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
-  BOOST_CHECK(router.route({Endpoint::Type::IPV4, "foo.example.com", ph}, ph, AdapterType::DIRECT,
+  BOOST_CHECK(router.route({EndpointType::IPV4, "foo.example.com", ph}, ph, AdapterType::DIRECT,
                            createRR()) == "direct");
-  BOOST_CHECK(router.route({Endpoint::Type::IPV6, "foo.example.com", ph}, ph, AdapterType::DIRECT,
+  BOOST_CHECK(router.route({EndpointType::IPV6, "foo.example.com", ph}, ph, AdapterType::DIRECT,
                            createRR()) == "direct");
 }
 

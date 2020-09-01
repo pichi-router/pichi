@@ -47,7 +47,7 @@ IngressVO defaultIngressVO(AdapterType type)
     vo.password_ = ph;
     break;
   case AdapterType::TUNNEL:
-    vo.destinations_ = {{Endpoint::Type::DOMAIN_NAME, "localhost", "80"}};
+    vo.destinations_ = {{EndpointType::DOMAIN_NAME, "localhost", "80"}};
     vo.balance_ = BalanceType::RANDOM;
     break;
   default:

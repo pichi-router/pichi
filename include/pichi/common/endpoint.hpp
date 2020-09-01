@@ -5,6 +5,7 @@
 #include <functional>
 #include <iterator>
 #include <pichi/common/buffer.hpp>
+#include <pichi/common/enumerations.hpp>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -18,7 +19,7 @@ inline string to_string(string_view sv) { return {cbegin(sv), cend(sv)}; }
 namespace pichi {
 
 struct Endpoint {
-  enum class Type { DOMAIN_NAME, IPV4, IPV6 } type_;
+  EndpointType type_;
   std::string host_;
   std::string port_;
 };
@@ -43,7 +44,7 @@ template <typename Int> Int ntoh(ConstBuffer<uint8_t> src)
 
 extern size_t serializeEndpoint(Endpoint const&, MutableBuffer<uint8_t>);
 extern Endpoint parseEndpoint(std::function<void(MutableBuffer<uint8_t>)>);
-extern Endpoint::Type detectHostType(std::string_view);
+extern EndpointType detectHostType(std::string_view);
 extern Endpoint makeEndpoint(std::string_view, uint16_t);
 extern Endpoint makeEndpoint(std::string_view, std::string_view);
 

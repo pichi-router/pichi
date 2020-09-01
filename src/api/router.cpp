@@ -146,7 +146,7 @@ void Router::update(string const& name, RuleVO rvo)
   });
   transform(cbegin(rvo.domain_), cend(rvo.domain_), back_inserter(matchers), [](auto&& domain) {
     return [&domain](auto&& e, auto&&, auto, auto) {
-      return e.type_ == Endpoint::Type::DOMAIN_NAME && matchDomain(e.host_, domain);
+      return e.type_ == EndpointType::DOMAIN_NAME && matchDomain(e.host_, domain);
     };
   });
   transform(cbegin(rvo.country_), cend(rvo.country_), back_inserter(matchers),

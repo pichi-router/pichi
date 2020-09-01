@@ -167,7 +167,7 @@ template <typename Stream, typename Yield>
 static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield,
                           OptCredential const& cred = {})
 {
-  auto host = remote.type_ == Endpoint::Type::IPV6 ? "[" + remote.host_ + "]" : remote.host_;
+  auto host = remote.type_ == EndpointType::IPV6 ? "[" + remote.host_ + "]" : remote.host_;
   host += ":" + remote.port_;
   auto req = Request{};
   req.method(http::verb::connect);
