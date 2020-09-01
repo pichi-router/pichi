@@ -8,6 +8,7 @@
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/parse.hpp>
+#include <pichi/vo/rule.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -73,7 +74,7 @@ static string toString(vo::Egress const& evo)
   return toString(v);
 }
 
-static string toString(vo::RuleVO const& rvo)
+static string toString(vo::Rule const& rvo)
 {
   auto v = Value{};
   v.SetObject();
@@ -133,7 +134,7 @@ static bool operator==(vo::Egress const& lhs, vo::Egress const& rhs)
          lhs.caFile_ == rhs.caFile_;
 }
 
-static bool operator==(vo::RuleVO const& lhs, vo::RuleVO const& rhs)
+static bool operator==(vo::Rule const& lhs, vo::Rule const& rhs)
 {
   return equal(begin(lhs.range_), end(lhs.range_), begin(rhs.range_), end(rhs.range_)) &&
          equal(begin(lhs.ingress_), end(lhs.ingress_), begin(rhs.ingress_), end(rhs.ingress_)) &&
@@ -890,22 +891,22 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::RuleVO>("not a json"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>("not a json"), Exception,
                         verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::RuleVO>("[\"not a json object\"]"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>("[\"not a json object\"]"), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule)
 {
-  auto const expect = vo::RuleVO{};
-  auto fact = parse<vo::RuleVO>(toString(expect));
+  auto const expect = vo::Rule{};
+  auto fact = parse<vo::Rule>(toString(expect));
   BOOST_CHECK(fact == expect);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
 {
-  auto const origin = vo::RuleVO{};
+  auto const origin = vo::Rule{};
   auto generate = [](auto&& key, auto&& value) {
     auto expect = Document{};
     auto array = Value{};
@@ -916,69 +917,69 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
 
   auto range = origin;
   range.range_.emplace_back(ph);
-  auto fact = parse<vo::RuleVO>(generate("range", ph));
+  auto fact = parse<vo::Rule>(generate("range", ph));
   BOOST_CHECK(range == fact);
 
   auto ingress = origin;
   ingress.ingress_.emplace_back(ph);
-  fact = parse<vo::RuleVO>(generate("ingress_name", ph));
+  fact = parse<vo::Rule>(generate("ingress_name", ph));
   BOOST_CHECK(ingress == fact);
 
   auto type = origin;
   type.type_.emplace_back(AdapterType::DIRECT);
-  fact = parse<vo::RuleVO>(generate("ingress_type", AdapterType::DIRECT));
+  fact = parse<vo::Rule>(generate("ingress_type", AdapterType::DIRECT));
   BOOST_CHECK(type == fact);
 
   auto pattern = origin;
   pattern.pattern_.emplace_back(ph);
-  fact = parse<vo::RuleVO>(generate("pattern", ph));
+  fact = parse<vo::Rule>(generate("pattern", ph));
   BOOST_CHECK(pattern == fact);
 
   auto domain = origin;
   domain.domain_.emplace_back(ph);
-  fact = parse<vo::RuleVO>(generate("domain", ph));
+  fact = parse<vo::Rule>(generate("domain", ph));
   BOOST_CHECK(domain == fact);
 
   auto country = origin;
   country.country_.emplace_back(ph);
-  fact = parse<vo::RuleVO>(generate("country", ph));
+  fact = parse<vo::Rule>(generate("country", ph));
   BOOST_CHECK(country == fact);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Empty_Fields_Content)
 {
-  auto const origin = vo::RuleVO{};
-  parse<vo::RuleVO>(toString(origin));
+  auto const origin = vo::Rule{};
+  parse<vo::Rule>(toString(origin));
 
   auto range = origin;
   range.range_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::RuleVO>(toString(range)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(range)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto ingress = origin;
   ingress.ingress_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::RuleVO>(toString(ingress)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(ingress)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto pattern = origin;
   pattern.pattern_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::RuleVO>(toString(pattern)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(pattern)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto domain = origin;
   domain.domain_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::RuleVO>(toString(domain)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(domain)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto country = origin;
   country.country_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::RuleVO>(toString(country)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(country)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Superfluous_Field)
 {
-  BOOST_CHECK(vo::RuleVO{} == parse<vo::RuleVO>("{\"superfluous_field\":\"none\"}"));
+  BOOST_CHECK(vo::Rule{} == parse<vo::Rule>("{\"superfluous_field\":\"none\"}"));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Invalid_Str)

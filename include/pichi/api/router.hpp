@@ -3,6 +3,7 @@
 
 #include <map>
 #include <memory>
+#include <pichi/vo/rule.hpp>
 #include <pichi/vo/vos.hpp>
 
 struct MMDB_s;
@@ -47,7 +48,7 @@ private:
 
 class Router {
 public:
-  using VO = vo::RuleVO;
+  using VO = vo::Rule;
 
 private:
   using ResolvedResult = boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp>;

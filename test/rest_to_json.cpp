@@ -7,6 +7,7 @@
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
+#include <pichi/vo/rule.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <string_view>
 #include <unordered_map>
@@ -538,7 +539,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_Pack)
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Without_Fields)
 {
-  auto const origin = vo::RuleVO{};
+  auto const origin = vo::Rule{};
   auto fact = toJson(origin, alloc);
 
   auto expect = Value{};
@@ -557,54 +558,54 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
     return expect;
   };
 
-  auto range = vo::RuleVO{};
+  auto range = vo::Rule{};
   range.range_.emplace_back(ph);
   BOOST_CHECK(generate("range", ph) == toJson(range, alloc));
 
-  auto ingress = vo::RuleVO{};
+  auto ingress = vo::Rule{};
   ingress.ingress_.emplace_back(ph);
   BOOST_CHECK(generate("ingress_name", ph) == toJson(ingress, alloc));
 
-  auto type = vo::RuleVO{};
+  auto type = vo::Rule{};
   type.type_.emplace_back(AdapterType::DIRECT);
   BOOST_CHECK(generate("ingress_type", AdapterType::DIRECT) == toJson(type, alloc));
 
-  auto pattern = vo::RuleVO{};
+  auto pattern = vo::Rule{};
   pattern.pattern_.emplace_back(ph);
   BOOST_CHECK(generate("pattern", ph) == toJson(pattern, alloc));
 
-  auto domain = vo::RuleVO{};
+  auto domain = vo::Rule{};
   domain.domain_.emplace_back(ph);
   BOOST_CHECK(generate("domain", ph) == toJson(domain, alloc));
 
-  auto country = vo::RuleVO{};
+  auto country = vo::Rule{};
   country.country_.emplace_back(ph);
   BOOST_CHECK(generate("country", ph) == toJson(country, alloc));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Empty_Pack)
 {
-  auto empty = unordered_map<string, vo::RuleVO>{};
+  auto empty = unordered_map<string, vo::Rule>{};
   BOOST_CHECK(Value{}.SetObject() == toJson(begin(empty), end(empty), alloc));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack_Empty_Name)
 {
-  auto src = unordered_map<string, vo::RuleVO>{{"", {}}};
+  auto src = unordered_map<string, vo::Rule>{{"", {}}};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack)
 {
-  auto src = unordered_map<string, vo::RuleVO>{};
+  auto src = unordered_map<string, vo::Rule>{};
   auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
     auto v = Value{};
     v.SetObject();
     expect.AddMember(Value{to_string(i).data(), alloc}, v, alloc);
-    src[to_string(i)] = vo::RuleVO{};
+    src[to_string(i)] = vo::Rule{};
   }
 
   auto fact = toJson(begin(src), end(src), alloc);
