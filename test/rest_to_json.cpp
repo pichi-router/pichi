@@ -7,6 +7,7 @@
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
+#include <pichi/vo/keys.hpp>
 #include <pichi/vo/route.hpp>
 #include <pichi/vo/rule.hpp>
 #include <pichi/vo/to_json.hpp>
@@ -23,11 +24,11 @@ BOOST_AUTO_TEST_SUITE(REST_TO_JSON)
 
 BOOST_AUTO_TEST_CASE(toJson_AdapterType)
 {
-  auto map = unordered_map<AdapterType, string_view>{{AdapterType::DIRECT, "direct"},
-                                                     {AdapterType::REJECT, "reject"},
-                                                     {AdapterType::SOCKS5, "socks5"},
-                                                     {AdapterType::HTTP, "http"},
-                                                     {AdapterType::SS, "ss"}};
+  auto map = unordered_map<AdapterType, string_view>{{AdapterType::DIRECT, vo::type::DIRECT},
+                                                     {AdapterType::REJECT, vo::type::REJECT},
+                                                     {AdapterType::SOCKS5, vo::type::SOCKS5},
+                                                     {AdapterType::HTTP, vo::type::HTTP},
+                                                     {AdapterType::SS, vo::type::SS}};
   for_each(begin(map), end(map), [](auto&& pair) {
     auto fact = toJson(pair.first, alloc);
     BOOST_CHECK(fact.IsString());
@@ -38,25 +39,25 @@ BOOST_AUTO_TEST_CASE(toJson_AdapterType)
 BOOST_AUTO_TEST_CASE(toJson_CryptoMethod)
 {
   auto map = unordered_map<CryptoMethod, string_view>{
-      {CryptoMethod::RC4_MD5, "rc4-md5"},
-      {CryptoMethod::BF_CFB, "bf-cfb"},
-      {CryptoMethod::AES_128_CTR, "aes-128-ctr"},
-      {CryptoMethod::AES_192_CTR, "aes-192-ctr"},
-      {CryptoMethod::AES_256_CTR, "aes-256-ctr"},
-      {CryptoMethod::AES_128_CFB, "aes-128-cfb"},
-      {CryptoMethod::AES_192_CFB, "aes-192-cfb"},
-      {CryptoMethod::AES_256_CFB, "aes-256-cfb"},
-      {CryptoMethod::CAMELLIA_128_CFB, "camellia-128-cfb"},
-      {CryptoMethod::CAMELLIA_192_CFB, "camellia-192-cfb"},
-      {CryptoMethod::CAMELLIA_256_CFB, "camellia-256-cfb"},
-      {CryptoMethod::CHACHA20, "chacha20"},
-      {CryptoMethod::SALSA20, "salsa20"},
-      {CryptoMethod::CHACHA20_IETF, "chacha20-ietf"},
-      {CryptoMethod::AES_128_GCM, "aes-128-gcm"},
-      {CryptoMethod::AES_192_GCM, "aes-192-gcm"},
-      {CryptoMethod::AES_256_GCM, "aes-256-gcm"},
-      {CryptoMethod::CHACHA20_IETF_POLY1305, "chacha20-ietf-poly1305"},
-      {CryptoMethod::XCHACHA20_IETF_POLY1305, "xchacha20-ietf-poly1305"},
+      {CryptoMethod::RC4_MD5, vo::method::RC4_MD5},
+      {CryptoMethod::BF_CFB, vo::method::BF_CFB},
+      {CryptoMethod::AES_128_CTR, vo::method::AES_128_CTR},
+      {CryptoMethod::AES_192_CTR, vo::method::AES_192_CTR},
+      {CryptoMethod::AES_256_CTR, vo::method::AES_256_CTR},
+      {CryptoMethod::AES_128_CFB, vo::method::AES_128_CFB},
+      {CryptoMethod::AES_192_CFB, vo::method::AES_192_CFB},
+      {CryptoMethod::AES_256_CFB, vo::method::AES_256_CFB},
+      {CryptoMethod::CAMELLIA_128_CFB, vo::method::CAMELLIA_128_CFB},
+      {CryptoMethod::CAMELLIA_192_CFB, vo::method::CAMELLIA_192_CFB},
+      {CryptoMethod::CAMELLIA_256_CFB, vo::method::CAMELLIA_256_CFB},
+      {CryptoMethod::CHACHA20, vo::method::CHACHA20},
+      {CryptoMethod::SALSA20, vo::method::SALSA20},
+      {CryptoMethod::CHACHA20_IETF, vo::method::CHACHA20_IETF},
+      {CryptoMethod::AES_128_GCM, vo::method::AES_128_GCM},
+      {CryptoMethod::AES_192_GCM, vo::method::AES_192_GCM},
+      {CryptoMethod::AES_256_GCM, vo::method::AES_256_GCM},
+      {CryptoMethod::CHACHA20_IETF_POLY1305, vo::method::CHACHA20_IETF_POLY1305},
+      {CryptoMethod::XCHACHA20_IETF_POLY1305, vo::method::XCHACHA20_IETF_POLY1305},
   };
   for_each(begin(map), end(map), [](auto&& pair) {
     auto fact = toJson(pair.first, alloc);
@@ -67,9 +68,9 @@ BOOST_AUTO_TEST_CASE(toJson_CryptoMethod)
 
 BOOST_AUTO_TEST_CASE(toJson_Balance)
 {
-  for (auto p : {make_pair(BalanceType::RANDOM, "random"),
-                 make_pair(BalanceType::ROUND_ROBIN, "round_robin"),
-                 make_pair(BalanceType::LEAST_CONN, "least_conn")}) {
+  for (auto p : {make_pair(BalanceType::RANDOM, vo::balance::RANDOM),
+                 make_pair(BalanceType::ROUND_ROBIN, vo::balance::ROUND_ROBIN),
+                 make_pair(BalanceType::LEAST_CONN, vo::balance::LEAST_CONN)}) {
     auto&& [v, expect] = p;
     auto fact = toJson(v, alloc);
     BOOST_CHECK(fact.IsString());
@@ -162,9 +163,9 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_TLS_Additional_Fields)
     vo.password_ = ph;
 
     auto json = defaultIngressJson(type);
-    json["tls"] = true;
-    json.AddMember("cert_file", ph, alloc);
-    json.AddMember("key_file", ph, alloc);
+    json[vo::ingress::TLS] = true;
+    json.AddMember(vo::ingress::CERT_FILE, ph, alloc);
+    json.AddMember(vo::ingress::KEY_FILE, ph, alloc);
 
     BOOST_CHECK(json == toJson(vo, alloc));
   }
@@ -200,7 +201,7 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_With_Credentials)
     credentials.SetObject();
     credentials.AddMember(ph, ph, alloc);
     auto json = defaultIngressJson(type);
-    json.AddMember("credentials", credentials, alloc);
+    json.AddMember(vo::ingress::CREDENTIALS, credentials, alloc);
 
     BOOST_CHECK(json == toJson(vo, alloc));
   }
@@ -344,7 +345,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Fixed)
     auto vo = defaultEgressVO(AdapterType::REJECT);
     vo.delay_ = i;
     auto expect = defaultEgressJson(AdapterType::REJECT);
-    expect["delay"].SetInt(i);
+    expect[vo::egress::DELAY].SetInt(i);
     auto fact = toJson(vo::Egress{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, i}, alloc);
     BOOST_CHECK(expect == fact);
   }
@@ -353,8 +354,8 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Fixed)
 BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Random_Additional_Fields)
 {
   auto expect = defaultEgressJson(AdapterType::REJECT);
-  expect["mode"] = "random";
-  expect.RemoveMember("delay");
+  expect[vo::egress::MODE] = vo::delay::RANDOM;
+  expect.RemoveMember(vo::egress::DELAY);
 
   auto vo = defaultEgressVO(AdapterType::REJECT);
   vo.mode_ = DelayMode::RANDOM;
@@ -437,8 +438,8 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_TLS_Addtional_Fields)
     vo.caFile_ = ph;
 
     auto json = defaultEgressJson(type);
-    json["tls"] = true;
-    json.AddMember("insecure", true, alloc);
+    json[vo::egress::TLS] = true;
+    json.AddMember(vo::egress::INSECURE, true, alloc);
 
     BOOST_CHECK(json == toJson(vo, alloc));
   }
@@ -453,9 +454,9 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_HTTP_SOCKS5_TLS_With_CA)
     vo.caFile_ = ph;
 
     auto json = defaultEgressJson(type);
-    json["tls"] = true;
-    json.AddMember("insecure", false, alloc);
-    json.AddMember("ca_file", ph, alloc);
+    json[vo::egress::TLS] = true;
+    json.AddMember(vo::egress::INSECURE, false, alloc);
+    json.AddMember(vo::egress::CA_FILE, ph, alloc);
 
     BOOST_CHECK(json == toJson(vo, alloc));
   }
@@ -561,27 +562,27 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
 
   auto range = vo::Rule{};
   range.range_.emplace_back(ph);
-  BOOST_CHECK(generate("range", ph) == toJson(range, alloc));
+  BOOST_CHECK(generate(vo::rule::RANGE, ph) == toJson(range, alloc));
 
   auto ingress = vo::Rule{};
   ingress.ingress_.emplace_back(ph);
-  BOOST_CHECK(generate("ingress_name", ph) == toJson(ingress, alloc));
+  BOOST_CHECK(generate(vo::rule::INGRESS, ph) == toJson(ingress, alloc));
 
   auto type = vo::Rule{};
   type.type_.emplace_back(AdapterType::DIRECT);
-  BOOST_CHECK(generate("ingress_type", AdapterType::DIRECT) == toJson(type, alloc));
+  BOOST_CHECK(generate(vo::rule::TYPE, AdapterType::DIRECT) == toJson(type, alloc));
 
   auto pattern = vo::Rule{};
   pattern.pattern_.emplace_back(ph);
-  BOOST_CHECK(generate("pattern", ph) == toJson(pattern, alloc));
+  BOOST_CHECK(generate(vo::rule::PATTERN, ph) == toJson(pattern, alloc));
 
   auto domain = vo::Rule{};
   domain.domain_.emplace_back(ph);
-  BOOST_CHECK(generate("domain", ph) == toJson(domain, alloc));
+  BOOST_CHECK(generate(vo::rule::DOMAIN_NAME, ph) == toJson(domain, alloc));
 
   auto country = vo::Rule{};
   country.country_.emplace_back(ph);
-  BOOST_CHECK(generate("country", ph) == toJson(country, alloc));
+  BOOST_CHECK(generate(vo::rule::COUNTRY, ph) == toJson(country, alloc));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Empty_Pack)
@@ -630,8 +631,8 @@ BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
 
   expect.SetObject();
   array.SetArray();
-  expect.AddMember("default", ph, alloc);
-  expect.AddMember("rules", array, alloc);
+  expect.AddMember(vo::route::DEFAULT, ph, alloc);
+  expect.AddMember(vo::route::RULES, array, alloc);
 
   auto rvo = vo::Route{ph};
   BOOST_CHECK(expect == toJson(rvo, alloc));
@@ -646,9 +647,9 @@ BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
   expect.SetObject();
   rules.SetArray();
   rule.SetArray();
-  expect.AddMember("default", ph, alloc);
-  expect.AddMember("rules", rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc),
-                   alloc);
+  expect.AddMember(vo::route::DEFAULT, ph, alloc);
+  expect.AddMember(vo::route::RULES,
+                   rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc), alloc);
 
   auto rvo = vo::Route{ph, {make_pair(vector<string>{ph}, ph)}};
   BOOST_CHECK(expect == toJson(rvo, alloc));

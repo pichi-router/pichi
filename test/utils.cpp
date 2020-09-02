@@ -5,11 +5,11 @@
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
+#include <pichi/vo/keys.hpp>
 #include <sodium/utils.h>
 #include <string.h>
 
 using namespace std;
-using namespace pichi::vo;
 using namespace rapidjson;
 
 using pichi::AdapterType;
@@ -67,26 +67,26 @@ Value defaultIngressJson(AdapterType type)
   dst.AddMember("localhost", 80, alloc);
   auto v = Value{};
   v.SetObject();
-  v.AddMember("bind", ph, alloc);
-  v.AddMember("port", 1, alloc);
+  v.AddMember(vo::ingress::BIND, ph, alloc);
+  v.AddMember(vo::ingress::PORT, 1, alloc);
   switch (type) {
   case AdapterType::HTTP:
-    v.AddMember("type", "http", alloc);
-    v.AddMember("tls", false, alloc);
+    v.AddMember(vo::ingress::TYPE, vo::type::HTTP, alloc);
+    v.AddMember(vo::ingress::TLS, false, alloc);
     break;
   case AdapterType::SOCKS5:
-    v.AddMember("type", "socks5", alloc);
-    v.AddMember("tls", false, alloc);
+    v.AddMember(vo::ingress::TYPE, vo::type::SOCKS5, alloc);
+    v.AddMember(vo::ingress::TLS, false, alloc);
     break;
   case AdapterType::SS:
-    v.AddMember("type", "ss", alloc);
-    v.AddMember("method", "rc4-md5", alloc);
-    v.AddMember("password", ph, alloc);
+    v.AddMember(vo::ingress::TYPE, vo::type::SS, alloc);
+    v.AddMember(vo::ingress::METHOD, vo::method::RC4_MD5, alloc);
+    v.AddMember(vo::ingress::PASSWORD, ph, alloc);
     break;
   case AdapterType::TUNNEL:
-    v.AddMember("type", "tunnel", alloc);
-    v.AddMember("destinations", dst, alloc);
-    v.AddMember("balance", "random", alloc);
+    v.AddMember(vo::ingress::TYPE, vo::type::TUNNEL, alloc);
+    v.AddMember(vo::ingress::DESTINATIONS, dst, alloc);
+    v.AddMember(vo::ingress::BALANCE, vo::balance::RANDOM, alloc);
     break;
   default:
     BOOST_ERROR("Invalid type");
@@ -95,9 +95,9 @@ Value defaultIngressJson(AdapterType type)
   return v;
 }
 
-Egress defaultEgressVO(AdapterType type)
+vo::Egress defaultEgressVO(AdapterType type)
 {
-  auto vo = Egress{};
+  auto vo = vo::Egress{};
   vo.type_ = type;
   switch (type) {
   case AdapterType::DIRECT:
@@ -130,30 +130,30 @@ Value defaultEgressJson(AdapterType type)
   auto v = Value{};
   v.SetObject();
   if (type != AdapterType::DIRECT && type != AdapterType::REJECT) {
-    v.AddMember("host", ph, alloc);
-    v.AddMember("port", 1, alloc);
+    v.AddMember(vo::egress::HOST, ph, alloc);
+    v.AddMember(vo::egress::PORT, 1, alloc);
   }
   switch (type) {
   case AdapterType::DIRECT:
-    v.AddMember("type", "direct", alloc);
+    v.AddMember(vo::egress::TYPE, vo::type::DIRECT, alloc);
     break;
   case AdapterType::REJECT:
-    v.AddMember("type", "reject", alloc);
-    v.AddMember("mode", "fixed", alloc);
-    v.AddMember("delay", 0, alloc);
+    v.AddMember(vo::egress::TYPE, vo::type::REJECT, alloc);
+    v.AddMember(vo::egress::MODE, vo::delay::FIXED, alloc);
+    v.AddMember(vo::egress::DELAY, 0, alloc);
     break;
   case AdapterType::HTTP:
-    v.AddMember("type", "http", alloc);
-    v.AddMember("tls", false, alloc);
+    v.AddMember(vo::egress::TYPE, vo::type::HTTP, alloc);
+    v.AddMember(vo::egress::TLS, false, alloc);
     break;
   case AdapterType::SOCKS5:
-    v.AddMember("type", "socks5", alloc);
-    v.AddMember("tls", false, alloc);
+    v.AddMember(vo::egress::TYPE, vo::type::SOCKS5, alloc);
+    v.AddMember(vo::egress::TLS, false, alloc);
     break;
   case AdapterType::SS:
-    v.AddMember("type", "ss", alloc);
-    v.AddMember("method", "rc4-md5", alloc);
-    v.AddMember("password", ph, alloc);
+    v.AddMember(vo::egress::TYPE, vo::type::SS, alloc);
+    v.AddMember(vo::egress::METHOD, vo::method::RC4_MD5, alloc);
+    v.AddMember(vo::egress::PASSWORD, ph, alloc);
     break;
   default:
     BOOST_ERROR("Invalid type");
