@@ -109,11 +109,6 @@ static string toString(RouteVO const& rvo)
   return toString(v);
 }
 
-static bool operator==(Endpoint const lhs, Endpoint const& rhs)
-{
-  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_;
-}
-
 static bool operator==(IngressVO const& lhs, IngressVO const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.bind_ == rhs.bind_ && lhs.port_ == rhs.port_ &&

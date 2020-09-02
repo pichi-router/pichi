@@ -159,4 +159,9 @@ Value defaultEgressJson(AdapterType type)
   return v;
 }
 
+bool operator==(Endpoint const& lhs, Endpoint const& rhs)
+{
+  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_;
+}
+
 }  // namespace pichi
