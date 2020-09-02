@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/common.hpp>
 #include <string_view>

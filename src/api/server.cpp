@@ -1,4 +1,4 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/system_timer.hpp>
@@ -11,8 +11,8 @@
 #include <pichi/api/server.hpp>
 #include <pichi/api/session.hpp>
 #include <pichi/api/vos.hpp>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/spawn.hpp>

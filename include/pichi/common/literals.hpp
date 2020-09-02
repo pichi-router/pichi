@@ -1,5 +1,5 @@
-#ifndef PICHI_COMMON_HPP
-#define PICHI_COMMON_HPP
+#ifndef PICHI_COMMON_LITERALS_HPP
+#define PICHI_COMMON_LITERALS_HPP
 
 #include <cassert>
 #include <limits>
@@ -33,4 +33,4 @@ inline uint16_t operator""_u16(unsigned long long i)
 
 } // namespace pichi
 
-#endif // PICHI_COMMON_HPP
+#endif // PICHI_COMMON_LITERALS_HPP

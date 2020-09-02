@@ -1,7 +1,8 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <iostream>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
-#include <pichi/config.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <pichi/crypto/stream.hpp>
 #include <sodium/crypto_stream_chacha20.h>

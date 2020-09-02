@@ -2,7 +2,7 @@
 #define PICHI_NET_SOCKS5_HPP
 
 #include <optional>
-#include <pichi/common.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/net/adapter.hpp>
 #include <string>
 #include <unordered_map>

@@ -8,7 +8,7 @@
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/rest.hpp>
 #include <pichi/api/router.hpp>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <string>
 #include <string_view>
 #include <unordered_set>

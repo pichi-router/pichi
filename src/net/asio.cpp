@@ -1,4 +1,4 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <array>
 #include <boost/asio/connect.hpp>
@@ -10,8 +10,8 @@
 #include <pichi/api/balancer.hpp>
 #include <pichi/api/ingress_holder.hpp>
 #include <pichi/api/vos.hpp>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/key.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/asio.hpp>

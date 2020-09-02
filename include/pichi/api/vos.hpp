@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <limits>
 #include <pichi/api/iterator.hpp>
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
 #include <pichi/crypto/method.hpp>
 #include <pichi/net/common.hpp>
 #include <rapidjson/document.h>

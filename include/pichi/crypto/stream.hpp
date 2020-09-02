@@ -7,7 +7,7 @@
 #include <mbedtls/arc4.h>
 #include <mbedtls/blowfish.h>
 #include <mbedtls/camellia.h>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/crypto/method.hpp>
 #include <stdint.h>
 

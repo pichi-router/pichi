@@ -1,7 +1,7 @@
-#ifndef PICHI_ASSERTS_HPP
-#define PICHI_ASSERTS_HPP
+#ifndef PICHI_COMMON_ASSERTS_HPP
+#define PICHI_COMMON_ASSERTS_HPP
 
-#include <pichi/exception.hpp>
+#include <pichi/common/exception.hpp>
 
 namespace pichi {
 
@@ -14,4 +14,4 @@ extern void assertFalse(bool b, std::string_view msg = "");
 
 } // namespace pichi
 
-#endif
+#endif // PICHI_COMMON_ASSERTS_HPP

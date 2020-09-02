@@ -5,8 +5,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
-#include <pichi/common.hpp>
-#include <pichi/config.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/ssaead.hpp>

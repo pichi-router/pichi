@@ -1,7 +1,7 @@
 #ifndef PICHI_CRYPTO_KEY_HPP
 #define PICHI_CRYPTO_KEY_HPP
 
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/crypto/method.hpp>
 #include <stdint.h>
 

@@ -3,7 +3,7 @@
 
 #include <boost/asio/buffer.hpp>
 #include <memory>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/net/adapter.hpp>
 
 namespace boost::asio {

@@ -2,7 +2,7 @@
 
 #include "utils.hpp"
 #include <boost/test/unit_test.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/method.hpp>
 
 using namespace pichi;

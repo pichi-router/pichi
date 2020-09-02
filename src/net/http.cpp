@@ -1,18 +1,18 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/write.hpp>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
+#include <pichi/common/uri.hpp>
 #include <pichi/crypto/base64.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/net/stream.hpp>
-#include <pichi/uri.hpp>
 #include <regex>
 
 #ifdef _MSC_VER

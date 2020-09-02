@@ -1,4 +1,4 @@
-#include <pichi/exception.hpp>
+#include <pichi/common/exception.hpp>
 
 using namespace std;
 

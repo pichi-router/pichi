@@ -3,7 +3,7 @@
 #include "utils.hpp"
 #include <array>
 #include <boost/test/unit_test.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/base64.hpp>
 #include <unordered_map>
 

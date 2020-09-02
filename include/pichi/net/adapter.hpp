@@ -3,7 +3,7 @@
 
 #include <boost/asio/spawn2.hpp>
 #include <exception>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/net/common.hpp>
 #include <stdint.h>
 

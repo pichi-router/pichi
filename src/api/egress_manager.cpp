@@ -1,5 +1,6 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <pichi/api/egress_manager.hpp>
-#include <pichi/config.hpp>
 
 using namespace std;
 

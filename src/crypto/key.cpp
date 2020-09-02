@@ -1,4 +1,4 @@
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <pichi/crypto/key.hpp>
 

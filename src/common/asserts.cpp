@@ -1,4 +1,4 @@
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
 
 using namespace std;
 

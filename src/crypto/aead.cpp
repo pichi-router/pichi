@@ -1,6 +1,6 @@
 #include <algorithm>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/aead.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <sodium/crypto_aead_chacha20poly1305.h>

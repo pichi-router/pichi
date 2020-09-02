@@ -4,7 +4,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/api/router.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/literals.hpp>
 
 using namespace std;
 using namespace pichi;

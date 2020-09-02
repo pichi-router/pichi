@@ -1,26 +1,12 @@
-#ifndef PICHI_EXCEPTION_HPP
-#define PICHI_EXCEPTION_HPP
+#ifndef PICHI_COMMON_EXCEPTION_HPP
+#define PICHI_COMMON_EXCEPTION_HPP
 
 #include <exception>
+#include <pichi/common/enums.hpp>
 #include <string>
 #include <string_view>
 
 namespace pichi {
-
-enum class PichiError {
-  OK = 0,
-  BAD_PROTO,
-  CRYPTO_ERROR,
-  BUFFER_OVERFLOW,
-  BAD_JSON,
-  SEMANTIC_ERROR,
-  RES_IN_USE,
-  RES_LOCKED,
-  CONN_FAILURE,
-  BAD_AUTH_METHOD,
-  UNAUTHENTICATED,
-  MISC
-};
 
 class Exception : public std::exception {
 public:
@@ -37,4 +23,4 @@ private:
 
 } // namespace pichi
 
-#endif
+#endif // PICHI_COMMON_EXCEPTION_HPP

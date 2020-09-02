@@ -1,7 +1,7 @@
 #ifndef PICHI_CRYPTO_BASE64_HPP
 #define PICHI_CRYPTO_BASE64_HPP
 
-#include <pichi/exception.hpp>
+#include <pichi/common/exception.hpp>
 #include <stdint.h>
 #include <string>
 #include <string_view>

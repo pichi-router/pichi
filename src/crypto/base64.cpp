@@ -1,6 +1,6 @@
 #include <array>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/base64.hpp>
 
 using namespace std;

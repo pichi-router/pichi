@@ -3,7 +3,7 @@
 #include "utils.hpp"
 #include <array>
 #include <boost/test/unit_test.hpp>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/crypto/hash.hpp>
 
 using namespace std;

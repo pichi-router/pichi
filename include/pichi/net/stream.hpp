@@ -1,13 +1,13 @@
 #ifndef PICHI_NET_STREAM_HPP
 #define PICHI_NET_STREAM_HPP
 
-#include <pichi/config.hpp>
-
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <algorithm>
 #include <boost/asio/buffers_iterator.hpp>
 #include <functional>
-#include <pichi/asserts.hpp>
-#include <pichi/buffer.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/net/adapter.hpp>
 #include <type_traits>
 #include <utility>

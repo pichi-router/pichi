@@ -1,7 +1,7 @@
 #include <boost/algorithm/string.hpp>
 #include <cmath>
-#include <pichi/asserts.hpp>
-#include <pichi/uri.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/uri.hpp>
 #include <regex>
 
 using namespace std;

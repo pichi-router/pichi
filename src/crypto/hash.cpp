@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <array>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
 
 using namespace std;

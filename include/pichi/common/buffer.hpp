@@ -1,5 +1,5 @@
-#ifndef PICHI_BUFFER_HPP
-#define PICHI_BUFFER_HPP
+#ifndef PICHI_COMMON_BUFFER_HPP
+#define PICHI_COMMON_BUFFER_HPP
 
 #include <cassert>
 #include <stddef.h>
@@ -132,4 +132,4 @@ using MutableBuffer = Buffer<PodType>;
 
 } // namespace pichi
 
-#endif
+#endif // PICHI_COMMON_BUFFER_HPP

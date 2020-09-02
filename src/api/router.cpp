@@ -1,4 +1,4 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/asio/ip/network_v4.hpp>
 #include <boost/asio/ip/network_v6.hpp>
@@ -8,7 +8,7 @@
 #include <maxminddb.h>
 #include <numeric>
 #include <pichi/api/router.hpp>
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
 #include <regex>
 
 using namespace std;

@@ -1,8 +1,8 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/asio/ip/tcp.hpp>
 #include <chrono>
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
 #include <pichi/net/reject.hpp>
 #include <random>
 

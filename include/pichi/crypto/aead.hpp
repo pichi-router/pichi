@@ -3,7 +3,7 @@
 
 #include <array>
 #include <mbedtls/gcm.h>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/crypto/method.hpp>
 
 namespace pichi::crypto {

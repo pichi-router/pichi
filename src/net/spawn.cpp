@@ -1,6 +1,6 @@
 #include <boost/beast/http/error.hpp>
 #include <iostream>
-#include <pichi/exception.hpp>
+#include <pichi/common/exception.hpp>
 #include <pichi/net/spawn.hpp>
 
 using namespace std;

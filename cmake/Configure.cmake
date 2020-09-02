@@ -125,6 +125,7 @@ if (BUILD_SERVER)
   check_function_exists("close" HAS_CLOSE)
 endif ()
 
-configure_file(${CMAKE_SOURCE_DIR}/include/pichi/config.hpp.in ${CMAKE_BINARY_DIR}/include/pichi/config.hpp)
+configure_file(${CMAKE_SOURCE_DIR}/include/pichi/common/config.hpp.in
+  ${CMAKE_BINARY_DIR}/include/pichi/common/config.hpp)
 
 message(STATUS "Generating config.hpp - done")

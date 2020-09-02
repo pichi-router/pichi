@@ -7,8 +7,8 @@
 #include <boost/beast/http/parser.hpp>
 #include <limits>
 #include <optional>
-#include <pichi/asserts.hpp>
-#include <pichi/buffer.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/buffer.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/common.hpp>
 #include <string_view>

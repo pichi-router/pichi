@@ -5,7 +5,7 @@
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
 #include <limits>
-#include <pichi/common.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/net/helpers.hpp>
 #include <system_error>
 

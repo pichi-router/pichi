@@ -1,10 +1,10 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
 #include <iostream>
 #include <pichi/api/session.hpp>
-#include <pichi/exception.hpp>
+#include <pichi/common/exception.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/common.hpp>
 #include <pichi/net/spawn.hpp>
