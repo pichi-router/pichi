@@ -189,13 +189,13 @@ BOOST_AUTO_TEST_CASE(Router_setRoute_With_Rules)
 
   for (auto i = 0; i < MAX; ++i) router.update(to_string(i), {});
 
-  auto seq = RouteVO{};
+  auto seq = Route{};
   for (auto i = 0; i < MAX; ++i)
     seq.rules_.push_back(make_pair(vector<string>{to_string(i)}, to_string(i)));
   router.setRoute(seq);
   verifyRules(seq.rules_, router.getRoute().rules_);
 
-  auto rev = RouteVO{};
+  auto rev = Route{};
   for (auto i = MAX - 1; i >= 0; --i)
     seq.rules_.push_back(make_pair(vector<string>{to_string(i)}, to_string(i)));
   router.setRoute(rev);
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE(Router_setRoute_With_Rules)
 
 BOOST_AUTO_TEST_CASE(Router_setRoute_Without_Default)
 {
-  auto route = RouteVO{ph, {make_pair(vector<string>{ph}, ph)}};
+  auto route = Route{ph, {make_pair(vector<string>{ph}, ph)}};
   auto router = Router{fn};
   router.update(ph, {});
   router.setRoute(route);

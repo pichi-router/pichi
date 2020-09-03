@@ -191,9 +191,9 @@ bool Router::isUsed(string_view egress) const
 
 bool Router::needResloving() const { return needResolving_; }
 
-vo::RouteVO Router::getRoute() const { return route_; }
+vo::Route Router::getRoute() const { return route_; }
 
-void Router::setRoute(vo::RouteVO rvo)
+void Router::setRoute(vo::Route rvo)
 {
   needResolving_ = accumulate(
       cbegin(rvo.rules_), cend(rvo.rules_), false, [this](auto needResolving, auto&& item) {

@@ -3,6 +3,7 @@
 
 #include <map>
 #include <memory>
+#include <pichi/vo/route.hpp>
 #include <pichi/vo/rule.hpp>
 #include <pichi/vo/vos.hpp>
 
@@ -16,13 +17,11 @@ template <typename Protocol> class basic_resolver_results;
 
 }  // namespace boost::asio::ip
 
-namespace pichi::net {
+namespace pichi {
 
 struct Endpoint;
 
-}  // namespace pichi::net
-
-namespace pichi::api {
+namespace api {
 
 extern bool matchPattern(std::string_view remote, std::string_view pattern);
 extern bool matchDomain(std::string_view subdomain, std::string_view domain);
@@ -75,16 +74,17 @@ public:
   bool isUsed(std::string_view) const;
   bool needResloving() const;
 
-  vo::RouteVO getRoute() const;
-  void setRoute(vo::RouteVO);
+  vo::Route getRoute() const;
+  void setRoute(vo::Route);
 
 private:
   Geo geo_;
   Container rules_ = {};
   bool needResolving_ = false;
-  vo::RouteVO route_ = {"direct"};
+  vo::Route route_ = {"direct"};
 };
 
-}  // namespace pichi::api
+}  // namespace api
+}  // namespace pichi
 
 #endif  // PICHI_API_ROUTER_HPP

@@ -7,6 +7,7 @@
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
+#include <pichi/vo/route.hpp>
 #include <pichi/vo/rule.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <string_view>
@@ -615,7 +616,7 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_Pack)
 
 BOOST_AUTO_TEST_CASE(toJson_Route_Empty)
 {
-  auto rvo = vo::RouteVO{};
+  auto rvo = vo::Route{};
   BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), Exception, verifyException<PichiError::MISC>);
 
   rvo.default_ = "";
@@ -632,7 +633,7 @@ BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
   expect.AddMember("default", ph, alloc);
   expect.AddMember("rules", array, alloc);
 
-  auto rvo = vo::RouteVO{ph};
+  auto rvo = vo::Route{ph};
   BOOST_CHECK(expect == toJson(rvo, alloc));
 }
 
@@ -649,7 +650,7 @@ BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
   expect.AddMember("rules", rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc),
                    alloc);
 
-  auto rvo = vo::RouteVO{ph, {make_pair(vector<string>{ph}, ph)}};
+  auto rvo = vo::Route{ph, {make_pair(vector<string>{ph}, ph)}};
   BOOST_CHECK(expect == toJson(rvo, alloc));
 }
 

@@ -146,7 +146,7 @@ Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
                    [&](auto&&, auto&&) { return genResp(http::status::ok, router.getRoute()); }),
         make_tuple(http::verb::put, ROUTE_REGEX,
                    [&](auto&& r, auto&&) {
-                     auto vo = vo::parse<vo::RouteVO>(r.body());
+                     auto vo = vo::parse<vo::Route>(r.body());
                      assertFalse(vo.default_.has_value() &&
                                      egresses.find(*vo.default_) == end(egresses),
                                  PichiError::SEMANTIC_ERROR, "Unknown egress"sv);
