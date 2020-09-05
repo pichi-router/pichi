@@ -99,16 +99,6 @@ auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& all
   return ret;
 }
 
-template <typename VO> VO parse(rapidjson::Value const&);
-
-template <typename VO> VO parse(std::string_view src)
-{
-  auto doc = rapidjson::Document{};
-  doc.Parse(src.data(), src.size());
-  assertFalse(doc.HasParseError(), PichiError::BAD_JSON, "JSON syntax error");
-  return parse<VO>(doc);
-}
-
 }  // namespace pichi::vo
 
 #endif  // PICHI_VO_VOS_HPP

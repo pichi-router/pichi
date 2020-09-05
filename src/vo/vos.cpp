@@ -3,6 +3,7 @@
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/messages.hpp>
+#include <pichi/vo/parse.hpp>
 #include <pichi/vo/vos.hpp>
 
 using namespace std;
@@ -10,124 +11,6 @@ namespace json = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {
-
-static DelayMode parseDelayMode(json::Value const& v)
-{
-  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
-  if (str == delay::RANDOM) return DelayMode::RANDOM;
-  if (str == delay::FIXED) return DelayMode::FIXED;
-  fail(PichiError::BAD_JSON, msg::DM_INVALID);
-}
-
-static AdapterType parseAdapterType(json::Value const& v)
-{
-  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
-  if (str == type::DIRECT) return AdapterType::DIRECT;
-  if (str == type::REJECT) return AdapterType::REJECT;
-  if (str == type::SOCKS5) return AdapterType::SOCKS5;
-  if (str == type::HTTP) return AdapterType::HTTP;
-  if (str == type::SS) return AdapterType::SS;
-  if (str == type::TUNNEL) return AdapterType::TUNNEL;
-  fail(PichiError::BAD_JSON, msg::AT_INVALID);
-}
-
-static CryptoMethod parseCryptoMethod(json::Value const& v)
-{
-  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
-  if (str == method::RC4_MD5) return CryptoMethod::RC4_MD5;
-  if (str == method::BF_CFB) return CryptoMethod::BF_CFB;
-  if (str == method::AES_128_CTR) return CryptoMethod::AES_128_CTR;
-  if (str == method::AES_192_CTR) return CryptoMethod::AES_192_CTR;
-  if (str == method::AES_256_CTR) return CryptoMethod::AES_256_CTR;
-  if (str == method::AES_128_CFB) return CryptoMethod::AES_128_CFB;
-  if (str == method::AES_192_CFB) return CryptoMethod::AES_192_CFB;
-  if (str == method::AES_256_CFB) return CryptoMethod::AES_256_CFB;
-  if (str == method::CAMELLIA_128_CFB) return CryptoMethod::CAMELLIA_128_CFB;
-  if (str == method::CAMELLIA_192_CFB) return CryptoMethod::CAMELLIA_192_CFB;
-  if (str == method::CAMELLIA_256_CFB) return CryptoMethod::CAMELLIA_256_CFB;
-  if (str == method::CHACHA20) return CryptoMethod::CHACHA20;
-  if (str == method::SALSA20) return CryptoMethod::SALSA20;
-  if (str == method::CHACHA20_IETF) return CryptoMethod::CHACHA20_IETF;
-  if (str == method::AES_128_GCM) return CryptoMethod::AES_128_GCM;
-  if (str == method::AES_192_GCM) return CryptoMethod::AES_192_GCM;
-  if (str == method::AES_256_GCM) return CryptoMethod::AES_256_GCM;
-  if (str == method::CHACHA20_IETF_POLY1305) return CryptoMethod::CHACHA20_IETF_POLY1305;
-  if (str == method::XCHACHA20_IETF_POLY1305) return CryptoMethod::XCHACHA20_IETF_POLY1305;
-  fail(PichiError::BAD_JSON, msg::CM_INVALID);
-}
-
-static uint16_t parsePort(json::Value const& v)
-{
-  assertTrue(v.IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
-  auto port = v.GetInt();
-  assertTrue(port > 0_u16, PichiError::BAD_JSON, msg::PT_INVALID);
-  assertTrue(port <= numeric_limits<uint16_t>::max(), PichiError::BAD_JSON, msg::PT_INVALID);
-  return static_cast<uint16_t>(port);
-}
-
-static string parseString(json::Value const& v)
-{
-  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto ret = string{v.GetString()};
-  assertFalse(ret.empty(), PichiError::BAD_JSON, msg::STR_EMPTY);
-  return ret;
-}
-
-static auto parseBoolean(json::Value const& v)
-{
-  assertTrue(v.IsBool(), PichiError::BAD_JSON, msg::BOOL_TYPE_ERROR);
-  return v.GetBool();
-}
-
-static auto parseNameOrPassword(json::Value const& v)
-{
-  auto ret = parseString(v);
-  assertTrue(ret.size() < 256, PichiError::BAD_JSON, msg::TOO_LONG_NAME_PASSWORD);
-  return ret;
-}
-
-static pair<string, string> parsePair(json::Value const& v,
-                                      function<string(json::Value const&)> parse)
-{
-  assertTrue(v.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
-  auto array = v.GetArray();
-  assertTrue(array.Size() == 2, PichiError::BAD_JSON, msg::PAIR_TYPE_ERROR);
-  return make_pair(parse(array[0]), parse(array[1]));
-}
-
-static auto parseDestinantions(json::Value const& v)
-{
-  assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
-  assertFalse(v.MemberCount() == 0, PichiError::BAD_JSON);
-
-  auto ret = vector<Endpoint>{};
-  transform(v.MemberBegin(), v.MemberEnd(), back_inserter(ret), [](auto&& item) {
-    return makeEndpoint(parseString(item.name), parsePort(item.value));
-  });
-  return ret;
-}
-
-static BalanceType parseBalanceType(json::Value const& v)
-{
-  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
-  if (str == balance::RANDOM) return BalanceType::RANDOM;
-  if (str == balance::ROUND_ROBIN) return BalanceType::ROUND_ROBIN;
-  if (str == balance::LEAST_CONN) return BalanceType::LEAST_CONN;
-  fail(PichiError::BAD_JSON, msg::BA_INVALID);
-}
-
-template <typename OutputIt, typename T, typename Convert>
-void parseArray(json::Value const& root, T const& key, OutputIt out, Convert&& convert)
-{
-  if (!root.HasMember(key)) return;
-  assertTrue(root[key].IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
-  auto array = root[key].GetArray();
-  transform(begin(array), end(array), out, forward<Convert>(convert));
-}
 
 json::Value toJson(string_view str, Allocator& alloc)
 {
@@ -402,12 +285,12 @@ template <> IngressVO parse(json::Value const& v)
 
   auto ivo = IngressVO{};
 
-  ivo.type_ = parseAdapterType(v[ingress::TYPE]);
+  ivo.type_ = parse<AdapterType>(v[ingress::TYPE]);
   if (ivo.type_ == AdapterType::HTTP || ivo.type_ == AdapterType::SOCKS5 ||
       ivo.type_ == AdapterType::SS || ivo.type_ == AdapterType::TUNNEL) {
     assertTrue(v.HasMember(ingress::BIND), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
     assertTrue(v.HasMember(ingress::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-    ivo.bind_ = parseString(v[ingress::BIND]);
+    ivo.bind_ = parse<string>(v[ingress::BIND]);
     ivo.port_ = parsePort(v[ingress::PORT]);
   }
 
@@ -415,18 +298,18 @@ template <> IngressVO parse(json::Value const& v)
   case AdapterType::SS:
     assertTrue(v.HasMember(ingress::METHOD), PichiError::BAD_JSON, msg::MISSING_METHOD_FIELD);
     assertTrue(v.HasMember(ingress::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
-    ivo.method_ = parseCryptoMethod(v[ingress::METHOD]);
-    ivo.password_ = parseString(v[ingress::PASSWORD]);
+    ivo.method_ = parse<CryptoMethod>(v[ingress::METHOD]);
+    ivo.password_ = parse<string>(v[ingress::PASSWORD]);
     break;
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    ivo.tls_ = v.HasMember(ingress::TLS) && parseBoolean(v[ingress::TLS]);
+    ivo.tls_ = v.HasMember(ingress::TLS) && parse<bool>(v[ingress::TLS]);
     if (*ivo.tls_) {
       assertTrue(v.HasMember(ingress::CERT_FILE), PichiError::BAD_JSON,
                  msg::MISSING_CERT_FILE_FIELD);
       assertTrue(v.HasMember(ingress::KEY_FILE), PichiError::BAD_JSON, msg::MISSING_KEY_FILE_FIELD);
-      ivo.certFile_ = parseString(v[ingress::CERT_FILE]);
-      ivo.keyFile_ = parseString(v[ingress::KEY_FILE]);
+      ivo.certFile_ = parse<string>(v[ingress::CERT_FILE]);
+      ivo.keyFile_ = parse<string>(v[ingress::KEY_FILE]);
     }
     if (v.HasMember(ingress::CREDENTIALS)) {
       auto& credentials = v[ingress::CREDENTIALS];
@@ -446,7 +329,7 @@ template <> IngressVO parse(json::Value const& v)
                msg::MISSING_DESTINATIONS_FIELD);
     assertTrue(v.HasMember(ingress::BALANCE), PichiError::BAD_JSON, msg::MISSING_BALANCE_FIELD);
     ivo.destinations_ = parseDestinantions(v[ingress::DESTINATIONS]);
-    ivo.balance_ = parseBalanceType(v[ingress::BALANCE]);
+    ivo.balance_ = parse<BalanceType>(v[ingress::BALANCE]);
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
@@ -461,13 +344,13 @@ template <> EgressVO parse(json::Value const& v)
   assertTrue(v.HasMember(egress::TYPE), PichiError::BAD_JSON, msg::MISSING_TYPE_FIELD);
 
   auto evo = EgressVO{};
-  evo.type_ = parseAdapterType(v[egress::TYPE]);
+  evo.type_ = parse<AdapterType>(v[egress::TYPE]);
 
   if (evo.type_ == AdapterType::HTTP || evo.type_ == AdapterType::SOCKS5 ||
       evo.type_ == AdapterType::SS) {
     assertTrue(v.HasMember(egress::HOST), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
     assertTrue(v.HasMember(egress::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-    evo.host_ = parseString(v[egress::HOST]);
+    evo.host_ = parse<string>(v[egress::HOST]);
     evo.port_ = parsePort(v[egress::PORT]);
   }
 
@@ -475,16 +358,16 @@ template <> EgressVO parse(json::Value const& v)
   case AdapterType::SS:
     assertTrue(v.HasMember(egress::METHOD), PichiError::BAD_JSON, msg::MISSING_METHOD_FIELD);
     assertTrue(v.HasMember(egress::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
-    evo.method_ = parseCryptoMethod(v[egress::METHOD]);
-    evo.password_ = parseString(v[egress::PASSWORD]);
+    evo.method_ = parse<CryptoMethod>(v[egress::METHOD]);
+    evo.password_ = parse<string>(v[egress::PASSWORD]);
     break;
   case AdapterType::SOCKS5:
   case AdapterType::HTTP:
-    evo.tls_ = v.HasMember(egress::TLS) && parseBoolean(v[egress::TLS]);
+    evo.tls_ = v.HasMember(egress::TLS) && parse<bool>(v[egress::TLS]);
     if (*evo.tls_) {
-      evo.insecure_ = v.HasMember(egress::INSECURE) && parseBoolean(v[egress::INSECURE]);
+      evo.insecure_ = v.HasMember(egress::INSECURE) && parse<bool>(v[egress::INSECURE]);
       if (!*evo.insecure_ && v.HasMember(egress::CA_FILE))
-        evo.caFile_ = parseString(v[egress::CA_FILE]);
+        evo.caFile_ = parse<string>(v[egress::CA_FILE]);
     }
     if (v.HasMember(egress::CREDENTIAL)) {
       evo.credential_ = parsePair(v[egress::CREDENTIAL], parseNameOrPassword);
@@ -492,7 +375,7 @@ template <> EgressVO parse(json::Value const& v)
     break;
   case AdapterType::REJECT:
     if (v.HasMember(egress::MODE)) {
-      evo.mode_ = parseDelayMode(v[egress::MODE]);
+      evo.mode_ = parse<DelayMode>(v[egress::MODE]);
       if (evo.mode_ == DelayMode::FIXED) {
         assertTrue(v.HasMember(egress::DELAY), PichiError::BAD_JSON, msg::MISSING_DELAY_FIELD);
         assertTrue(v[egress::DELAY].IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
@@ -520,13 +403,15 @@ template <> RuleVO parse(json::Value const& v)
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
 
   auto rvo = RuleVO{};
+  auto parseString = [](auto&& v) { return parse<string>(v); };
+  auto parseAdapterType = [](auto&& v) { return parse<AdapterType>(v); };
 
-  parseArray(v, rule::RANGE, back_inserter(rvo.range_), &parseString);
-  parseArray(v, rule::INGRESS, back_inserter(rvo.ingress_), &parseString);
-  parseArray(v, rule::TYPE, back_inserter(rvo.type_), &parseAdapterType);
-  parseArray(v, rule::PATTERN, back_inserter(rvo.pattern_), &parseString);
-  parseArray(v, rule::DOMAIN_NAME, back_inserter(rvo.domain_), &parseString);
-  parseArray(v, rule::COUNTRY, back_inserter(rvo.country_), &parseString);
+  parseArray(v, rule::RANGE, back_inserter(rvo.range_), parseString);
+  parseArray(v, rule::INGRESS, back_inserter(rvo.ingress_), parseString);
+  parseArray(v, rule::TYPE, back_inserter(rvo.type_), parseAdapterType);
+  parseArray(v, rule::PATTERN, back_inserter(rvo.pattern_), parseString);
+  parseArray(v, rule::DOMAIN_NAME, back_inserter(rvo.domain_), parseString);
+  parseArray(v, rule::COUNTRY, back_inserter(rvo.country_), parseString);
 
   return rvo;
 }
@@ -537,7 +422,7 @@ template <> RouteVO parse(json::Value const& v)
 
   auto rvo = RouteVO{};
 
-  if (v.HasMember(route::DEFAULT)) rvo.default_.emplace(parseString(v[route::DEFAULT]));
+  if (v.HasMember(route::DEFAULT)) rvo.default_.emplace(parse<string>(v[route::DEFAULT]));
 
   parseArray(v, route::RULES, back_inserter(rvo.rules_), [](auto&& v) {
     assertTrue(v.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
@@ -547,10 +432,10 @@ template <> RouteVO parse(json::Value const& v)
     auto last = first + (array.Size() - 1);
     return make_pair(accumulate(first, last, vector<string>{},
                                 [](auto&& full, auto&& item) {
-                                  full.push_back(parseString(item));
+                                  full.push_back(parse<string>(item));
                                   return move(full);
                                 }),
-                     parseString(*last));
+                     parse<string>(*last));
   });
 
   return rvo;
