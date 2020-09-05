@@ -9,13 +9,15 @@
 #include <pichi/vo/keys.hpp>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::api;
-using namespace pichi::vo;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;
 using ResolvedResults = ip::basic_resolver_results<ip::tcp>;
+
+namespace pichi::unit_test {
+
+using namespace api;
+using vo::Route;
 
 static decltype(auto) fn = "geo.mmdb";
 
@@ -372,3 +374,5 @@ BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Necessary_Country)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

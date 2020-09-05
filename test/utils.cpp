@@ -11,7 +11,7 @@
 using namespace std;
 using namespace rapidjson;
 
-namespace pichi {
+namespace pichi::unit_test {
 
 static auto doc = Document{};
 Document::AllocatorType& alloc = doc.GetAllocator();
@@ -159,4 +159,4 @@ Value defaultEgressJson(AdapterType type)
   return v;
 }
 
-}  // namespace pichi
+}  // namespace pichi::unit_test

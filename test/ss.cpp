@@ -13,11 +13,13 @@
 #include <pichi/net/stream.hpp>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::crypto;
 namespace asio = boost::asio;
 namespace mpl = boost::mpl;
 namespace sys = boost::system;
+
+namespace pichi::unit_test {
+
+using namespace crypto;
 
 using Socket = net::TestSocket;
 template <CryptoMethod method> using StreamAdapter = net::SSStreamAdapter<method, net::TestStream>;
@@ -325,3 +327,5 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Egress_By_Insufficient_Buffer, Egress, Adapte
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

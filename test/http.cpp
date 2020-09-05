@@ -15,10 +15,11 @@
 #include <pichi/net/stream.hpp>
 
 using namespace std;
-using namespace pichi;
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
 namespace sys = boost::system;
+
+namespace pichi::unit_test {
 
 using Socket = net::TestSocket;
 using HttpIngress = net::HttpIngress<net::TestStream>;
@@ -954,3 +955,5 @@ BOOST_AUTO_TEST_CASE(Egress_recv_Relay_HTTP_Response)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

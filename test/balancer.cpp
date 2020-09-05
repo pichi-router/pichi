@@ -11,14 +11,16 @@
 #include <vector>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::api;
 namespace mpl = boost::mpl;
 
 using RawPointer = int*;
 using VectorIter = vector<int>::const_iterator;
 
 using Iterators = mpl::list<RawPointer, VectorIter>;
+
+namespace pichi::unit_test {
+
+using namespace api;
 
 static size_t const N = 100_sz;
 
@@ -127,3 +129,5 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(LEAST_CONN_release, Iterator, Iterators)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

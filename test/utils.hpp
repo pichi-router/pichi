@@ -20,6 +20,8 @@ struct Egress;
 
 }  // namespace vo
 
+namespace unit_test {
+
 template <PichiError error> bool verifyException(Exception const& e) { return e.error() == error; }
 
 template <boost::asio::error::basic_errors error>
@@ -50,6 +52,8 @@ extern vo::Egress defaultEgressVO(AdapterType);
 extern rapidjson::Value defaultEgressJson(AdapterType);
 
 extern boost::asio::yield_context gYield;
+
+}  // namespace unit_test
 
 }  // namespace pichi
 

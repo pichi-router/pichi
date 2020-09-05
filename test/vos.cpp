@@ -9,11 +9,12 @@
 #include <unordered_map>
 
 using namespace std;
-using namespace pichi;
 using namespace rapidjson;
 
-using vo::parse;
-using vo::toJson;
+namespace pichi::unit_test {
+
+using pichi::vo::parse;
+using pichi::vo::toJson;
 
 template <typename String> auto createValue(String const& str)
 {
@@ -225,3 +226,5 @@ BOOST_AUTO_TEST_CASE(parseDestinations_Correct_One)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

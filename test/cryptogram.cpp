@@ -11,9 +11,11 @@
 #include <pichi/crypto/stream.hpp>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::crypto;
 namespace mpl = boost::mpl;
+
+namespace pichi::unit_test {
+
+using namespace crypto;
 
 template <size_t> struct KeyIv {
   static vector<uint8_t> const KEY;
@@ -529,3 +531,5 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Decryption_long, Case, StreamCases)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

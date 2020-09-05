@@ -7,8 +7,10 @@
 #include <pichi/crypto/hash.hpp>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::crypto;
+
+namespace pichi::unit_test {
+
+using namespace crypto;
 
 template <HashAlgorithm algorithm> void verify(string_view hex, ConstBuffer<uint8_t> raw = {})
 {
@@ -140,3 +142,5 @@ BOOST_AUTO_TEST_CASE(SHA512)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

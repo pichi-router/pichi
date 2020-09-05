@@ -8,9 +8,12 @@
 #include <pichi/crypto/hash.hpp>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::crypto;
+
 namespace mpl = boost::mpl;
+
+namespace pichi::unit_test {
+
+using namespace crypto;
 
 // According to RFC 5869 Appendix A
 template <int id> struct RFC5869 {
@@ -164,3 +167,5 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(maxLen, Case, MaxLenCases)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

@@ -10,8 +10,9 @@
 #include <unordered_map>
 
 using namespace std;
-using namespace pichi;
 using namespace rapidjson;
+
+namespace pichi::unit_test {
 
 using vo::parse;
 using vo::toJson;
@@ -595,3 +596,5 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_Pack)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

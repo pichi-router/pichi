@@ -13,11 +13,12 @@
 #include <pichi/common/literals.hpp>
 
 using namespace std;
-using namespace pichi;
 namespace asio = boost::asio;
 namespace beast = boost::beast;
 namespace sys = boost::system;
 namespace mpl = boost::mpl;
+
+namespace pichi::unit_test {
 
 template <EndpointType type> struct EndpointHelper {
   static uint8_t const CHAR;
@@ -449,3 +450,5 @@ BOOST_AUTO_TEST_CASE(detectHostType_Normal)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

@@ -13,9 +13,10 @@
 #include <vector>
 
 using namespace std;
-using namespace pichi;
 namespace asio = boost::asio;
 namespace sys = boost::system;
+
+namespace pichi::unit_test {
 
 using Socket = net::TestSocket;
 using TestIngress = pichi::net::Socks5Ingress<net::TestStream>;
@@ -750,3 +751,5 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Unused_system_error)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test
