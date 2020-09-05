@@ -5,6 +5,7 @@
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/exception.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
@@ -53,7 +54,7 @@ static string toString(vo::Ingress const& ingress)
   return toString(v);
 }
 
-static string toString(vo::EgressVO const& evo)
+static string toString(vo::Egress const& evo)
 {
   auto v = Value{};
   v.SetObject();
@@ -124,7 +125,7 @@ static bool operator==(vo::Ingress const& lhs, vo::Ingress const& rhs)
          lhs.balance_ == rhs.balance_;
 }
 
-static bool operator==(vo::EgressVO const& lhs, vo::EgressVO const& rhs)
+static bool operator==(vo::Egress const& lhs, vo::Egress const& rhs)
 {
   return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_ &&
          lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.mode_ == rhs.mode_ &&
@@ -575,9 +576,9 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Port)
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>("not a json"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>("not a json"), Exception,
                         verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>("[\"not a json object\"]"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>("[\"not a json object\"]"), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -585,7 +586,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Default_Ones)
 {
   for (auto type : {AdapterType::DIRECT, AdapterType::HTTP, AdapterType::REJECT,
                     AdapterType::SOCKS5, AdapterType::SS}) {
-    BOOST_CHECK(defaultEgressVO(type) == parse<vo::EgressVO>(toString(defaultEgressJson(type))));
+    BOOST_CHECK(defaultEgressVO(type) == parse<vo::Egress>(toString(defaultEgressJson(type))));
   }
 }
 
@@ -601,7 +602,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Direct_Additional_Fields)
   vo.tls_ = true;
   vo.insecure_ = true;
   vo.caFile_ = ph;
-  BOOST_CHECK(defaultEgressVO(AdapterType::DIRECT) == parse<vo::EgressVO>(toString(vo)));
+  BOOST_CHECK(defaultEgressVO(AdapterType::DIRECT) == parse<vo::Egress>(toString(vo)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Default_Mode)
@@ -616,12 +617,12 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Default_Mode)
   vo.tls_ = true;
   vo.insecure_ = true;
   vo.caFile_ = ph;
-  BOOST_CHECK(defaultEgressVO(AdapterType::REJECT) == parse<vo::EgressVO>(toString(vo)));
+  BOOST_CHECK(defaultEgressVO(AdapterType::REJECT) == parse<vo::Egress>(toString(vo)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Invalid_Mode)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>("{\"type\":\"reject\",\"mode\":\"invalid mode\"}"),
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>("{\"type\":\"reject\",\"mode\":\"invalid mode\"}"),
                         Exception, verifyException<PichiError::BAD_JSON>);
 }
 
@@ -630,7 +631,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Random_Additional_Fields)
   auto origin = defaultEgressVO(AdapterType::REJECT);
   origin.mode_ = DelayMode::RANDOM;
   origin.delay_.reset();
-  BOOST_CHECK(origin == parse<vo::EgressVO>(toString(origin)));
+  BOOST_CHECK(origin == parse<vo::Egress>(toString(origin)));
 
   auto vo = origin;
   vo.delay_ = 0_u16;
@@ -641,26 +642,24 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Random_Additional_Fields)
   vo.tls_ = true;
   vo.insecure_ = true;
   vo.caFile_ = ph;
-  BOOST_CHECK(origin == parse<vo::EgressVO>(toString(vo)));
+  BOOST_CHECK(origin == parse<vo::Egress>(toString(vo)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Missing_Delay)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>("{\"type\":\"reject\",\"mode\":\"fixed\"}"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>("{\"type\":\"reject\",\"mode\":\"fixed\"}"), Exception,
                         verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(
-      parse<vo::EgressVO>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":\"1\"}"), Exception,
+      parse<vo::Egress>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":\"1\"}"), Exception,
       verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Delay_Out_Of_Range)
 {
-  BOOST_CHECK_EXCEPTION(
-      parse<vo::EgressVO>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":-1}"), Exception,
-      verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(
-      parse<vo::EgressVO>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":301}"), Exception,
-      verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":-1}"),
+                        Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>("{\"type\":\"reject\",\"mode\":\"fixed\",\"delay\":301}"),
+                        Exception, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Fixed)
@@ -668,7 +667,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Reject_Fixed)
   for (auto i = 0_u16; i <= 300_u16; ++i) {
     auto vo = defaultEgressVO(AdapterType::REJECT);
     vo.delay_ = i;
-    BOOST_CHECK(vo == parse<vo::EgressVO>(toString(vo)));
+    BOOST_CHECK(vo == parse<vo::Egress>(toString(vo)));
   }
 }
 
@@ -677,22 +676,22 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Mandatory_Fields)
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
     auto noHost = defaultEgressJson(type);
     noHost.RemoveMember("host");
-    BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(noHost)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(noHost)), Exception,
                           verifyException<PichiError::BAD_JSON>);
 
     auto emptyHost = defaultEgressJson(type);
     emptyHost["host"] = "";
-    BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(emptyHost)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(emptyHost)), Exception,
                           verifyException<PichiError::BAD_JSON>);
 
     auto noPort = defaultEgressJson(type);
     noPort.RemoveMember("port");
-    BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(noPort)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(noPort)), Exception,
                           verifyException<PichiError::BAD_JSON>);
 
     auto zeroPort = defaultEgressJson(type);
     zeroPort["port"] = 0;
-    BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(zeroPort)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(zeroPort)), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -707,7 +706,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Additional_Fields)
     json.AddMember("delay", 0, alloc);
     json.AddMember("insecure", true, alloc);
     json.AddMember("ca_file", toJson(ph, alloc), alloc);
-    BOOST_CHECK(defaultEgressVO(type) == parse<vo::EgressVO>(json));
+    BOOST_CHECK(defaultEgressVO(type) == parse<vo::Egress>(json));
   }
 }
 
@@ -716,7 +715,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Default_TLS_Field)
   for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
     auto json = defaultEgressJson(type);
     json.RemoveMember("tls");
-    BOOST_CHECK(defaultEgressVO(type) == parse<vo::EgressVO>(json));
+    BOOST_CHECK(defaultEgressVO(type) == parse<vo::Egress>(json));
   }
 }
 
@@ -728,7 +727,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Default_Insecure_Field)
     auto vo = defaultEgressVO(type);
     vo.tls_ = true;
     vo.insecure_ = false;
-    BOOST_CHECK(vo == parse<vo::EgressVO>(json));
+    BOOST_CHECK(vo == parse<vo::Egress>(json));
   }
 }
 
@@ -742,7 +741,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Insecure_With_CA_Field)
     auto vo = defaultEgressVO(type);
     vo.tls_ = true;
     vo.insecure_ = true;
-    BOOST_CHECK(vo == parse<vo::EgressVO>(json));
+    BOOST_CHECK(vo == parse<vo::Egress>(json));
   }
 }
 
@@ -756,7 +755,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Secure_With_CA_Field)
     vo.tls_ = true;
     vo.insecure_ = false;
     vo.caFile_ = ph;
-    BOOST_CHECK(vo == parse<vo::EgressVO>(json));
+    BOOST_CHECK(vo == parse<vo::Egress>(json));
   }
 }
 
@@ -766,7 +765,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Secure_With_Empty_CA_Field)
     auto json = defaultEgressJson(type);
     json["tls"] = true;
     json.AddMember("ca_file", toJson("", alloc), alloc);
-    BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(json), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(json), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -778,7 +777,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Incorrect_Type_Credential)
     obj.SetObject();
     auto json = defaultEgressJson(type);
     json.AddMember("credential", obj, alloc);
-    BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(json), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(json), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -793,7 +792,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Incorrect_Credential_Pair)
       for (auto i = 0; i < count; ++i) ary.PushBack(ph, alloc);
       auto json = defaultEgressJson(type);
       json.AddMember("credential", ary, alloc);
-      BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(json), Exception,
+      BOOST_CHECK_EXCEPTION(parse<vo::Egress>(json), Exception,
                             verifyException<PichiError::BAD_JSON>);
     }
   }
@@ -808,7 +807,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Too_Long_Name)
     ary.PushBack(ph, alloc);
     auto json = defaultEgressJson(type);
     json.AddMember("credential", ary, alloc);
-    BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(json), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(json), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -822,7 +821,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Too_Long_Password)
     ary.PushBack(toJson(string(256_sz, 'p'), alloc), alloc);
     auto json = defaultEgressJson(type);
     json.AddMember("credential", ary, alloc);
-    BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(json), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(json), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -830,41 +829,41 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_With_Too_Long_Password)
 BOOST_AUTO_TEST_CASE(parse_Egress_SS_Mandatory_Fields)
 {
   auto origin = defaultEgressVO(AdapterType::SS);
-  auto holder = parse<vo::EgressVO>(toString(origin));
+  auto holder = parse<vo::Egress>(toString(origin));
 
   auto noHost = origin;
   noHost.host_.reset();
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(noHost)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(noHost)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto emptyHost = origin;
   emptyHost.host_->clear();
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(emptyHost)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(emptyHost)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto zeroPort = origin;
   zeroPort.port_.reset();
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(zeroPort)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(zeroPort)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto noPort = origin;
   noPort.port_ = 0_u16;
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(noPort)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(noPort)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto noMethod = origin;
   noMethod.method_.reset();
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(noMethod)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(noMethod)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto noPassword = origin;
   noPassword.password_.reset();
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(noPassword)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(noPassword)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(toString(emptyPassword)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(emptyPassword)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -876,18 +875,17 @@ BOOST_AUTO_TEST_CASE(parse_Egress_SS_Additional_Fields)
   json.AddMember("tls", true, alloc);
   json.AddMember("insecure", true, alloc);
   json.AddMember("ca_file", toJson(ph, alloc), alloc);
-  BOOST_CHECK(defaultEgressVO(AdapterType::SS) == parse<vo::EgressVO>(json));
+  BOOST_CHECK(defaultEgressVO(AdapterType::SS) == parse<vo::Egress>(json));
 }
 
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
 {
   decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(negative), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(negative), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
   decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
-  BOOST_CHECK_EXCEPTION(parse<vo::EgressVO>(huge), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(huge), Exception, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)

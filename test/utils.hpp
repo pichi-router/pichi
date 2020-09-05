@@ -13,9 +13,12 @@
 
 namespace pichi {
 
+struct Endpoint;
+
 namespace vo {
 
 struct Ingress;
+struct Egress;
 
 }  // namespace vo
 
@@ -45,7 +48,7 @@ extern rapidjson::Document::AllocatorType& alloc;
 
 extern vo::Ingress defaultIngressVO(AdapterType);
 extern rapidjson::Value defaultIngressJson(AdapterType);
-extern vo::EgressVO defaultEgressVO(AdapterType);
+extern vo::Egress defaultEgressVO(AdapterType);
 extern rapidjson::Value defaultEgressJson(AdapterType);
 
 extern boost::asio::yield_context gYield;

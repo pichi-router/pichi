@@ -1,7 +1,9 @@
 #include "utils.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <sodium/utils.h>
 #include <string.h>
@@ -93,9 +95,9 @@ Value defaultIngressJson(AdapterType type)
   return v;
 }
 
-EgressVO defaultEgressVO(AdapterType type)
+Egress defaultEgressVO(AdapterType type)
 {
-  auto vo = EgressVO{};
+  auto vo = Egress{};
   vo.type_ = type;
   switch (type) {
   case AdapterType::DIRECT:

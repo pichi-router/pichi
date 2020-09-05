@@ -5,6 +5,7 @@
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/exception.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <string_view>
@@ -342,8 +343,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_REJECT_Fixed)
     vo.delay_ = i;
     auto expect = defaultEgressJson(AdapterType::REJECT);
     expect["delay"].SetInt(i);
-    auto fact =
-        toJson(vo::EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, i}, alloc);
+    auto fact = toJson(vo::Egress{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, i}, alloc);
     BOOST_CHECK(expect == fact);
   }
 }
@@ -507,7 +507,7 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_SS_Missing_Fields)
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_Empty_Pack)
 {
-  auto empty = unordered_map<string, vo::EgressVO>{};
+  auto empty = unordered_map<string, vo::Egress>{};
   auto expect = Value{};
   expect.SetObject();
 
@@ -517,20 +517,20 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_Empty_Pack)
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_Pack_Empty_Name)
 {
-  auto src = unordered_map<string, vo::EgressVO>{{"", {AdapterType::DIRECT}}};
+  auto src = unordered_map<string, vo::Egress>{{"", {AdapterType::DIRECT}}};
   BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_Pack)
 {
-  auto src = unordered_map<string, vo::EgressVO>{};
+  auto src = unordered_map<string, vo::Egress>{};
   auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {
     expect.AddMember(Value{to_string(i).data(), alloc}, defaultEgressJson(AdapterType::DIRECT),
                      alloc);
-    src[to_string(i)] = vo::EgressVO{AdapterType::DIRECT};
+    src[to_string(i)] = vo::Egress{AdapterType::DIRECT};
   }
 
   BOOST_CHECK(expect == toJson(begin(src), end(src), alloc));

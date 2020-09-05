@@ -23,6 +23,7 @@
 #include <pichi/net/ssstream.hpp>
 #include <pichi/net/stream.hpp>
 #include <pichi/net/tunnel.hpp>
+#include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/vos.hpp>
 
@@ -60,7 +61,7 @@ static auto createTlsContext(vo::Ingress const& vo)
   return ctx;
 }
 
-static auto createTlsContext(vo::EgressVO const& vo)
+static auto createTlsContext(vo::Egress const& vo)
 {
   auto ctx = ssl::context{ssl::context::tls_client};
   if (*vo.insecure_) {
@@ -246,7 +247,7 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
   }
 }
 
-unique_ptr<Egress> makeEgress(vo::EgressVO const& vo, asio::io_context& io)
+unique_ptr<Egress> makeEgress(vo::Egress const& vo, asio::io_context& io)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};

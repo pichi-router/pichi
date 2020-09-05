@@ -2,7 +2,8 @@
 #define PICHI_API_EGRESS_MANAGER_HPP
 
 #include <map>
-#include <pichi/vo/vos.hpp>
+#include <pichi/common/enumerations.hpp>
+#include <pichi/vo/egress.hpp>
 #include <string>
 #include <string_view>
 
@@ -10,7 +11,7 @@ namespace pichi::api {
 
 class EgressManager {
 public:
-  using VO = vo::EgressVO;
+  using VO = vo::Egress;
 
 private:
   using Container = std::map<std::string, VO, std::less<>>;
