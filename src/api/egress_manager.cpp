@@ -2,6 +2,7 @@
 // Include config.hpp first
 #include <iterator>
 #include <pichi/api/egress_manager.hpp>
+#include <pichi/common/asserts.hpp>
 
 using namespace std;
 

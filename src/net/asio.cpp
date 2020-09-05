@@ -49,7 +49,6 @@ namespace pichi::net {
 
 namespace ssl = asio::ssl;
 
-using crypto::generateKey;
 using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
 static auto createTlsContext(vo::Ingress const& vo)
@@ -105,6 +104,8 @@ template <typename Stream, typename Yield> void connect(ResolveResults next, Str
   }
 #endif  // ENABLE_TLS
 }
+
+using crypto::generateKey;
 
 template <typename Stream, typename Yield>
 void read(Stream& s, MutableBuffer<uint8_t> buf, Yield yield)

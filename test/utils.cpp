@@ -11,8 +11,6 @@
 using namespace std;
 using namespace rapidjson;
 
-using pichi::AdapterType;
-
 namespace pichi {
 
 static auto doc = Document{};

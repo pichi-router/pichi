@@ -3,6 +3,8 @@
 
 #include <cassert>
 #include <limits>
+#include <stddef.h>
+#include <stdint.h>
 #include <type_traits>
 
 namespace pichi {
