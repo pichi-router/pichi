@@ -1,13 +1,13 @@
 #include <numeric>
-#include <pichi/api/vos.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/vo/vos.hpp>
 
 using namespace std;
 namespace json = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
-namespace pichi::api {
+namespace pichi::vo {
 
 static decltype(auto) DIRECT_TYPE = "direct";
 static decltype(auto) REJECT_TYPE = "reject";
@@ -683,4 +683,4 @@ template <> RouteVO parse(json::Value const& v)
   return rvo;
 }
 
-}  // namespace pichi::api
+}  // namespace pichi::vo

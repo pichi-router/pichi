@@ -9,6 +9,7 @@
 using namespace std;
 using namespace pichi;
 using namespace pichi::api;
+using namespace pichi::vo;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;

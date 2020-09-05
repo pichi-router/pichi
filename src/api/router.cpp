@@ -106,7 +106,7 @@ string_view Router::route(Endpoint const& e, string_view ingress, AdapterType ty
   return egress;
 }
 
-void Router::update(string const& name, RuleVO rvo)
+void Router::update(string const& name, VO rvo)
 {
   auto matchers = vector<Matcher>{};
 
@@ -191,9 +191,9 @@ bool Router::isUsed(string_view egress) const
 
 bool Router::needResloving() const { return needResolving_; }
 
-RouteVO Router::getRoute() const { return route_; }
+vo::RouteVO Router::getRoute() const { return route_; }
 
-void Router::setRoute(RouteVO rvo)
+void Router::setRoute(vo::RouteVO rvo)
 {
   needResolving_ = accumulate(
       cbegin(rvo.rules_), cend(rvo.rules_), false, [this](auto needResolving, auto&& item) {

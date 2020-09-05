@@ -2,7 +2,7 @@
 #define PICHI_API_BALANCER_HPP
 
 #include <memory>
-#include <pichi/api/vos.hpp>
+#include <pichi/common/enumerations.hpp>
 
 namespace pichi::api {
 
@@ -16,6 +16,6 @@ template <typename ForwardIt> struct Balancer {
 template <typename ForwardIt>
 std::unique_ptr<Balancer<ForwardIt>> makeBalancer(BalanceType, ForwardIt, ForwardIt);
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
-#endif // PICHI_API_BALANCER_HPP
+#endif  // PICHI_API_BALANCER_HPP

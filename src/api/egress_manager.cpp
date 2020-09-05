@@ -6,7 +6,7 @@ using namespace std;
 
 namespace pichi::api {
 
-void EgressManager::update(string const& name, EgressVO vo)
+void EgressManager::update(string const& name, VO vo)
 {
 #ifndef ENABLE_TLS
   assertFalse(vo.tls_.has_value() && *vo.tls_, PichiError::SEMANTIC_ERROR, "TLS not supported");

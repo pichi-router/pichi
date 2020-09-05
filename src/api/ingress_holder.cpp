@@ -10,7 +10,7 @@ namespace ip = asio::ip;
 
 namespace pichi::api {
 
-IngressHolder::IngressHolder(asio::io_context& io, IngressVO&& vo)
+IngressHolder::IngressHolder(asio::io_context& io, vo::IngressVO&& vo)
   : vo_{move(vo)},
     balancer_{vo_.type_ == AdapterType::TUNNEL
                   ? makeBalancer(*vo_.balance_, cbegin(vo_.destinations_), cend(vo_.destinations_))
@@ -19,7 +19,7 @@ IngressHolder::IngressHolder(asio::io_context& io, IngressVO&& vo)
 {
 }
 
-void IngressHolder::reset(asio::io_context& io, IngressVO&& vo)
+void IngressHolder::reset(asio::io_context& io, vo::IngressVO&& vo)
 {
   vo_ = move(vo);
   balancer_ = vo_.type_ == AdapterType::TUNNEL

@@ -36,10 +36,14 @@ class io_context;
 
 }  // namespace boost::asio
 
+namespace pichi::vo {
+
+struct EgressVO;
+
+}  // namespace pichi::vo
+
 namespace pichi::api {
 
-struct IngressVO;
-struct EgressVO;
 struct IngressHolder;
 
 }  // namespace pichi::api
@@ -53,7 +57,7 @@ template <typename Socket, typename Yield> void write(Socket&, ConstBuffer<uint8
 template <typename Socket, typename Yield> void close(Socket&, Yield);
 
 template <typename Socket> std::unique_ptr<Ingress> makeIngress(api::IngressHolder&, Socket&&);
-std::unique_ptr<Egress> makeEgress(api::EgressVO const&, boost::asio::io_context&);
+std::unique_ptr<Egress> makeEgress(vo::EgressVO const&, boost::asio::io_context&);
 
 }  // namespace pichi::net
 

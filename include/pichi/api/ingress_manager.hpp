@@ -5,21 +5,21 @@
 #include <map>
 #include <pichi/api/balancer.hpp>
 #include <pichi/api/ingress_holder.hpp>
-#include <pichi/api/iterator.hpp>
-#include <pichi/api/vos.hpp>
+#include <pichi/vo/iterator.hpp>
+#include <pichi/vo/vos.hpp>
 #include <utility>
 
 namespace pichi::api {
 
 class IngressManager {
 public:
-  using VO = IngressVO;
+  using VO = vo::IngressVO;
 
 private:
   using Container = std::map<std::string, IngressHolder, std::less<>>;
   using DelegateIterator = typename Container::const_iterator;
-  using ValueType = std::pair<std::string_view, IngressVO const&>;
-  using ConstIterator = Iterator<DelegateIterator, ValueType>;
+  using ValueType = std::pair<std::string_view, VO const&>;
+  using ConstIterator = vo::Iterator<DelegateIterator, ValueType>;
   using Handler = std::function<void(std::string_view, IngressHolder&)>;
 
   static ValueType generatePair(DelegateIterator);
@@ -27,7 +27,7 @@ private:
 public:
   IngressManager(boost::asio::io_context&, Handler);
 
-  void update(std::string const&, IngressVO);
+  void update(std::string const&, VO);
   void erase(std::string_view);
 
   ConstIterator begin() const noexcept;
@@ -39,6 +39,6 @@ private:
   Container c_;
 };
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
-#endif // PICHI_API_INGRESS_MANAGER_HPP
+#endif  // PICHI_API_INGRESS_MANAGER_HPP

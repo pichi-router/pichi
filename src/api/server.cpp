@@ -10,12 +10,12 @@
 #include <memory>
 #include <pichi/api/server.hpp>
 #include <pichi/api/session.hpp>
-#include <pichi/api/vos.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/spawn.hpp>
+#include <pichi/vo/vos.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
@@ -28,9 +28,9 @@ using tcp = ip::tcp;
 namespace pichi::api {
 
 static auto const IMMEDIATE_REJECTOR =
-    EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
+    vo::EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
 static auto const RANDOM_REJECTOR =
-    EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
+    vo::EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
 static auto const IV_EXPIRE_TIME = 1h;
 
 static auto resolve(Endpoint const& remote, asio::io_context& io, asio::yield_context yield)
@@ -151,8 +151,8 @@ bool Server::isDuplicated(ConstBuffer<uint8_t> raw)
   return false;
 }
 
-EgressVO const& Server::route(Endpoint const& remote, string_view iname, AdapterType type,
-                              ResolveResult const& r)
+vo::EgressVO const& Server::route(Endpoint const& remote, string_view iname, AdapterType type,
+                                  ResolveResult const& r)
 {
   auto it = egresses_.find(router_.route(remote, iname, type, r));
   assertFalse(it == cend(egresses_));

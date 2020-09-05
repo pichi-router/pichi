@@ -53,7 +53,7 @@ template <typename Manager> static auto getVO(Manager const& manager)
 template <typename Manager>
 static auto putVO(Rest::Request const& req, cmatch const& mr, Manager& manager)
 {
-  manager.update(mr[1].str(), parse<typename Manager::VO>(req.body()));
+  manager.update(mr[1].str(), vo::parse<typename Manager::VO>(req.body()));
   return genResp(http::status::no_content);
 }
 
@@ -144,7 +144,7 @@ Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
                    [&](auto&&, auto&&) { return genResp(http::status::ok, router.getRoute()); }),
         make_tuple(http::verb::put, ROUTE_REGEX,
                    [&](auto&& r, auto&&) {
-                     auto vo = parse<RouteVO>(r.body());
+                     auto vo = vo::parse<vo::RouteVO>(r.body());
                      assertFalse(vo.default_.has_value() &&
                                      egresses.find(*vo.default_) == end(egresses),
                                  PichiError::SEMANTIC_ERROR, "Unknown egress"sv);
@@ -178,10 +178,10 @@ Rest::Response Rest::errorResponse(exception_ptr eptr)
     rethrow_exception(eptr);
   }
   catch (Exception const& e) {
-    return genResp(e2c(e.error()), ErrorVO{e.what()});
+    return genResp(e2c(e.error()), vo::ErrorVO{e.what()});
   }
   catch (sys::system_error const& e) {
-    return genResp(e2c(e.code()), ErrorVO{e.what()});
+    return genResp(e2c(e.code()), vo::ErrorVO{e.what()});
   }
 }
 

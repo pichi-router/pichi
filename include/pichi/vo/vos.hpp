@@ -1,19 +1,18 @@
-#ifndef PICHI_API_VOS_HPP
-#define PICHI_API_VOS_HPP
+#ifndef PICHI_VO_VOS_HPP
+#define PICHI_VO_VOS_HPP
 
 #include <algorithm>
 #include <limits>
-#include <pichi/api/iterator.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/enumerations.hpp>
-#include <pichi/crypto/method.hpp>
+#include <pichi/vo/iterator.hpp>
 #include <rapidjson/document.h>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
-namespace pichi::api {
+namespace pichi::vo {
 
 struct IngressVO {
   AdapterType type_;
@@ -110,6 +109,6 @@ template <typename VO> VO parse(std::string_view src)
   return parse<VO>(doc);
 }
 
-}  // namespace pichi::api
+}  // namespace pichi::vo
 
-#endif  // PICHI_API_VOS_HPP
+#endif  // PICHI_VO_VOS_HPP

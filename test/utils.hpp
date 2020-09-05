@@ -6,8 +6,8 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/spawn2.hpp>
 #include <boost/beast/http/error.hpp>
-#include <pichi/api/vos.hpp>
 #include <pichi/common/exception.hpp>
+#include <pichi/vo/vos.hpp>
 #include <string_view>
 #include <vector>
 
@@ -37,9 +37,9 @@ extern std::vector<uint8_t> hex2bin(std::string_view);
 inline decltype(auto) ph = "placeholder";
 extern rapidjson::Document::AllocatorType& alloc;
 
-extern api::IngressVO defaultIngressVO(AdapterType);
+extern vo::IngressVO defaultIngressVO(AdapterType);
 extern rapidjson::Value defaultIngressJson(AdapterType);
-extern api::EgressVO defaultEgressVO(AdapterType);
+extern vo::EgressVO defaultEgressVO(AdapterType);
 extern rapidjson::Value defaultEgressJson(AdapterType);
 
 extern boost::asio::yield_context gYield;

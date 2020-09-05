@@ -6,7 +6,7 @@
 #include <string.h>
 
 using namespace std;
-using namespace pichi::api;
+using namespace pichi::vo;
 using namespace rapidjson;
 
 using pichi::AdapterType;

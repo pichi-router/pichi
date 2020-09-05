@@ -31,7 +31,7 @@ IngressManager::ConstIterator IngressManager::end() const noexcept
   return {cend(c_), cend(c_), &IngressManager::generatePair};
 }
 
-void IngressManager::update(string const& name, IngressVO ivo)
+void IngressManager::update(string const& name, VO ivo)
 {
   assertFalse(ivo.type_ == AdapterType::DIRECT, PichiError::MISC);
   assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::MISC);

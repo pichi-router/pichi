@@ -11,7 +11,7 @@
 using namespace std;
 using namespace rapidjson;
 using namespace pichi;
-using namespace pichi::api;
+using namespace pichi::vo;
 
 using pichi::AdapterType;
 

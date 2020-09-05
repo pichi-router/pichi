@@ -9,7 +9,6 @@
 #include <boost/asio/write.hpp>
 #include <pichi/api/balancer.hpp>
 #include <pichi/api/ingress_holder.hpp>
-#include <pichi/api/vos.hpp>
 #include <pichi/common/adapter.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
@@ -24,6 +23,7 @@
 #include <pichi/net/ssstream.hpp>
 #include <pichi/net/stream.hpp>
 #include <pichi/net/tunnel.hpp>
+#include <pichi/vo/vos.hpp>
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/context.hpp>
@@ -51,7 +51,7 @@ namespace ssl = asio::ssl;
 using crypto::generateKey;
 using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
-static auto createTlsContext(api::IngressVO const& vo)
+static auto createTlsContext(vo::IngressVO const& vo)
 {
   auto ctx = ssl::context{ssl::context::tls_server};
   ctx.use_certificate_chain_file(*vo.certFile_);
@@ -59,7 +59,7 @@ static auto createTlsContext(api::IngressVO const& vo)
   return ctx;
 }
 
-static auto createTlsContext(api::EgressVO const& vo)
+static auto createTlsContext(vo::EgressVO const& vo)
 {
   auto ctx = ssl::context{ssl::context::tls_client};
   if (*vo.insecure_) {
@@ -245,7 +245,7 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
   }
 }
 
-unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
+unique_ptr<Egress> makeEgress(vo::EgressVO const& vo, asio::io_context& io)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
