@@ -46,6 +46,8 @@ auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& all
   return ret;
 }
 
+extern std::string toString(rapidjson::Value const&);
+
 }  // namespace pichi::vo
 
 #endif  // PICHI_VO_TO_JSON_HPP

@@ -2,6 +2,8 @@
 #include <pichi/common/enumerations.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/to_json.hpp>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 using namespace std;
 namespace json = rapidjson;
@@ -106,6 +108,14 @@ json::Value toJson(BalanceType selector, Allocator& alloc)
   default:
     fail();
   }
+}
+
+string toString(json::Value const& v)
+{
+  auto buf = json::StringBuffer{};
+  auto writer = json::Writer<json::StringBuffer>{buf};
+  v.Accept(writer);
+  return buf.GetString();
 }
 
 }  // namespace pichi::vo

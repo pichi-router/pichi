@@ -22,16 +22,9 @@ using namespace pichi;
 
 using vo::parse;
 using vo::toJson;
+using vo::toString;
 
 using pichi::AdapterType;
-
-static string toString(Value const& v)
-{
-  auto buf = StringBuffer{};
-  auto writer = Writer<StringBuffer>{buf};
-  v.Accept(writer);
-  return buf.GetString();
-}
 
 static string toString(vo::Ingress const& ingress)
 {

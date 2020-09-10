@@ -16,10 +16,9 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/spawn.hpp>
+#include <pichi/vo/to_json.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 #include <vector>
 
 #ifdef HAS_SIGNAL_H
@@ -145,14 +144,6 @@ static auto readJson(string const& fn)
   return doc;
 }
 
-static string toString(json::Value const& v)
-{
-  auto buf = json::StringBuffer{};
-  auto writer = json::Writer<json::StringBuffer>{buf};
-  v.Accept(writer);
-  return buf.GetString();
-}
-
 template <typename StringRef>
 static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const& category)
 {
@@ -163,7 +154,7 @@ static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const
   }
 
   for (auto&& node : it->value.GetObject())
-    helper.put("/"s + category + "/" + node.name.GetString(), toString(node.value));
+    helper.put("/"s + category + "/" + node.name.GetString(), vo::toString(node.value));
 }
 
 static void load(HttpHelper& helper, string const& fn)
@@ -175,7 +166,7 @@ static void load(HttpHelper& helper, string const& fn)
   loadSet(helper, json, EGRESSES);
   loadSet(helper, json, RULES);
   if (json.HasMember(ROUTE))
-    helper.put("/"s + ROUTE, toString(json[ROUTE]));
+    helper.put("/"s + ROUTE, vo::toString(json[ROUTE]));
   else
     cout << INDENT << ROUTE << " NOT loaded" << endl;
   cout << "Configuration " << fn << " loaded" << endl;
