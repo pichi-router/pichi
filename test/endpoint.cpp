@@ -30,19 +30,19 @@ template <> uint8_t const EndpointHelper<EndpointType::DOMAIN_NAME>::CHAR = 3;
 template <> size_t const EndpointHelper<EndpointType::DOMAIN_NAME>::SIZE = 7;
 template <>
 Endpoint const EndpointHelper<EndpointType::DOMAIN_NAME>::ENDPOINT = {EndpointType::DOMAIN_NAME,
-                                                                      string(CHAR, CHAR), "771"};
+                                                                      string(CHAR, CHAR), 771_u16};
 
 template <> uint8_t const EndpointHelper<EndpointType::IPV4>::CHAR = 1;
 template <> size_t const EndpointHelper<EndpointType::IPV4>::SIZE = 7;
 template <>
 Endpoint const EndpointHelper<EndpointType::IPV4>::ENDPOINT = {EndpointType::IPV4, "1.1.1.1",
-                                                               "257"};
+                                                               257_u16};
 
 template <> uint8_t const EndpointHelper<EndpointType::IPV6>::CHAR = 4;
 template <> size_t const EndpointHelper<EndpointType::IPV6>::SIZE = 19;
 template <>
 Endpoint const EndpointHelper<EndpointType::IPV6>::ENDPOINT = {
-    EndpointType::IPV6, "404:404:404:404:404:404:404:404", "1028"};
+    EndpointType::IPV6, "404:404:404:404:404:404:404:404", 1028_u16};
 
 using Helpers = mpl::list<EndpointHelper<EndpointType::DOMAIN_NAME>,
                           EndpointHelper<EndpointType::IPV4>, EndpointHelper<EndpointType::IPV6>>;
@@ -85,11 +85,11 @@ BOOST_AUTO_TEST_SUITE(ENDPOINT)
 BOOST_AUTO_TEST_CASE(serialize_Empty_Host)
 {
   auto buf = array<uint8_t, 64>{};
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::DOMAIN_NAME, ""s, "1"s}, buf), Exception,
+  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::DOMAIN_NAME, ""s, 1_u16}, buf), Exception,
                         verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV4, ""s, "1"s}, buf), Exception,
+  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV4, ""s, 1_u16}, buf), Exception,
                         verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV6, ""s, "1"s}, buf), Exception,
+  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV6, ""s, 1_u16}, buf), Exception,
                         verifyException<PichiError::MISC>);
 }
 
@@ -102,32 +102,12 @@ BOOST_AUTO_TEST_CASE(serialize_Empty_Port)
   }
 }
 
-BOOST_AUTO_TEST_CASE(serialize_Alphabetic_Port)
-{
-  auto buf = array<uint8_t, 64>{};
-  for (auto host : {"localhost"sv, "127.0.0.1"sv, "::1"sv}) {
-    BOOST_CHECK_EXCEPTION(serializeEndpoint(makeEndpoint(host, "http"sv), buf), invalid_argument,
-                          [](auto&&) { return true; });
-  }
-}
-
-BOOST_AUTO_TEST_CASE(serialize_Port_Out_Of_Range)
-{
-  auto buf = array<uint8_t, 64>{};
-  for (auto host : {"localhost"sv, "127.0.0.1"sv, "::1"sv}) {
-    BOOST_CHECK_EXCEPTION(serializeEndpoint(makeEndpoint(host, 0), buf), Exception,
-                          verifyException<PichiError::MISC>);
-    BOOST_CHECK_EXCEPTION(serializeEndpoint(makeEndpoint(host, "65536"sv), buf), Exception,
-                          verifyException<PichiError::MISC>);
-  }
-}
-
 BOOST_AUTO_TEST_CASE(serialize_Invalid_IP_Address)
 {
   auto buf = array<uint8_t, 64>{};
 
   for (auto type : {EndpointType::IPV4, EndpointType::IPV6}) {
-    BOOST_CHECK_EXCEPTION(serializeEndpoint({type, "localhost"s, "1"s}, buf), sys::system_error,
+    BOOST_CHECK_EXCEPTION(serializeEndpoint({type, "localhost"s, 1_u16}, buf), sys::system_error,
                           verifyException<asio::error::invalid_argument>);
   }
 }
@@ -136,7 +116,7 @@ BOOST_AUTO_TEST_CASE(serialize_Domain_Name_Too_Long)
 {
   auto buf = array<uint8_t, 1024>{};
   BOOST_CHECK_EXCEPTION(
-      serializeEndpoint({EndpointType::DOMAIN_NAME, string(0x100, 'a'), "1"s}, buf), Exception,
+      serializeEndpoint({EndpointType::DOMAIN_NAME, string(0x100, 'a'), 1_u16}, buf), Exception,
       verifyException<PichiError::MISC>);
 }
 
@@ -253,7 +233,7 @@ BOOST_AUTO_TEST_CASE(parse_Domain)
   auto ep = parseEndpoint([&stub](auto buf) { stub.read(buf); });
   BOOST_CHECK(EndpointType::DOMAIN_NAME == ep.type_);
   BOOST_CHECK_EQUAL("localhost"sv, ep.host_);
-  BOOST_CHECK_EQUAL("443"sv, ep.port_);
+  BOOST_CHECK_EQUAL(443_u16, ep.port_);
   BOOST_CHECK_EQUAL(13_sz, stub.transfered());
 }
 
@@ -265,7 +245,7 @@ BOOST_AUTO_TEST_CASE(parse_IPv4)
   auto ep = parseEndpoint([&stub](auto buf) { stub.read(buf); });
   BOOST_CHECK(EndpointType::IPV4 == ep.type_);
   BOOST_CHECK_EQUAL("0.0.0.0"sv, ep.host_);
-  BOOST_CHECK_EQUAL("443"sv, ep.port_);
+  BOOST_CHECK_EQUAL(443_u16, ep.port_);
   BOOST_CHECK_EQUAL(7_sz, stub.transfered());
 }
 
@@ -278,7 +258,7 @@ BOOST_AUTO_TEST_CASE(parse_IPv6)
   auto ep = parseEndpoint([&stub](auto buf) { stub.read(buf); });
   BOOST_CHECK(EndpointType::IPV6 == ep.type_);
   BOOST_CHECK_EQUAL("::"sv, ep.host_);
-  BOOST_CHECK_EQUAL("443"sv, ep.port_);
+  BOOST_CHECK_EQUAL(443_u16, ep.port_);
   BOOST_CHECK_EQUAL(19_sz, stub.transfered());
 }
 
@@ -349,58 +329,31 @@ BOOST_AUTO_TEST_CASE(serializeEndpoint_Empty_Endpoint)
 {
   auto buf = array<uint8_t, 1024>{};
   for (auto type : {EndpointType::DOMAIN_NAME, EndpointType::IPV4, EndpointType::IPV6}) {
-    BOOST_CHECK_EXCEPTION(serializeEndpoint({type, "", ""}, buf), Exception,
-                          verifyException<PichiError::MISC>);
-    BOOST_CHECK_EXCEPTION(serializeEndpoint({type, "", "placeholder"}, buf), Exception,
-                          verifyException<PichiError::MISC>);
-    BOOST_CHECK_EXCEPTION(serializeEndpoint({type, "placeholder", ""}, buf), Exception,
+    BOOST_CHECK_EXCEPTION(serializeEndpoint({type, "", 0_u16}, buf), Exception,
                           verifyException<PichiError::MISC>);
   }
-}
-
-BOOST_AUTO_TEST_CASE(serializeEndpoint_Invalid_Port_String)
-{
-  auto buf = array<uint8_t, 1024>{};
-  BOOST_CHECK_EXCEPTION(
-      serializeEndpoint({EndpointType::DOMAIN_NAME, "placeholder", "invalid port"}, buf),
-      invalid_argument, [](auto& e) { return string_view{e.what()}.find("stoi") != string::npos; });
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV4, "127.0.0.1", "invalid port"}, buf),
-                        invalid_argument,
-                        [](auto& e) { return string_view{e.what()}.find("stoi") != string::npos; });
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV6, "::1", "invalid port"}, buf),
-                        invalid_argument,
-                        [](auto& e) { return string_view{e.what()}.find("stoi") != string::npos; });
-}
-
-BOOST_AUTO_TEST_CASE(serializeEndpoint_Invalid_Port_Range)
-{
-  auto buf = array<uint8_t, 1024>{};
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::DOMAIN_NAME, "placeholder", "-1"}, buf),
-                        Exception, verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::DOMAIN_NAME, "placeholder", "0"}, buf),
-                        Exception, verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::DOMAIN_NAME, "placeholder", "65536"}, buf),
-                        Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(serializeEndpoint_Invalid_IP_Address)
 {
   auto buf = array<uint8_t, 1024>{};
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV4, "::1", "80"}, buf),
+  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV4, "::1", 80_u16}, buf),
                         sys::system_error, verifyException<asio::error::invalid_argument>);
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV4, "invalid ipv4 address", "80"}, buf),
+  BOOST_CHECK_EXCEPTION(
+      serializeEndpoint({EndpointType::IPV4, "invalid ipv4 address", 80_u16}, buf),
+      sys::system_error, verifyException<asio::error::invalid_argument>);
+  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV6, "1.1.1.1", 80_u16}, buf),
                         sys::system_error, verifyException<asio::error::invalid_argument>);
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV6, "1.1.1.1", "80"}, buf),
-                        sys::system_error, verifyException<asio::error::invalid_argument>);
-  BOOST_CHECK_EXCEPTION(serializeEndpoint({EndpointType::IPV6, "invalid ipv6 address", "80"}, buf),
-                        sys::system_error, verifyException<asio::error::invalid_argument>);
+  BOOST_CHECK_EXCEPTION(
+      serializeEndpoint({EndpointType::IPV6, "invalid ipv6 address", 80_u16}, buf),
+      sys::system_error, verifyException<asio::error::invalid_argument>);
 }
 
 BOOST_AUTO_TEST_CASE(serializeEndpoint_Invalid_Domain_Length)
 {
   auto buf = array<uint8_t, 1024>{};
   BOOST_CHECK_EXCEPTION(
-      serializeEndpoint({EndpointType::DOMAIN_NAME, string(0x100, 'a'), "80"}, buf), Exception,
+      serializeEndpoint({EndpointType::DOMAIN_NAME, string(0x100, 'a'), 80_u16}, buf), Exception,
       verifyException<PichiError::MISC>);
 }
 

@@ -282,7 +282,7 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
   read(stream_, {buf, 3}, yield);
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
   assertTrue(buf[1] == 0x00, PichiError::CONN_FAILURE,
-             "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
+             "Failed to establish connection with " + remote.host_ + ":" + to_string(remote.port_));
   assertTrue(buf[2] == 0x00, PichiError::BAD_PROTO);
   parseEndpoint([this, yield](auto dst) { read(stream_, dst, yield); });
 }

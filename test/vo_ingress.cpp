@@ -678,10 +678,6 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_TROJAN_Mandatory_Fields)
   noRemoteHost.remote_->host_.clear();
   BOOST_CHECK_EXCEPTION(toJson(noRemoteHost, alloc), Exception, verifyException<PichiError::MISC>);
 
-  auto noRemotePort = origin;
-  noRemotePort.remote_->port_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(noRemotePort, alloc), Exception, verifyException<PichiError::MISC>);
-
   auto noPasswords = origin;
   noPasswords.passwords_.clear();
   BOOST_CHECK_EXCEPTION(toJson(noPasswords, alloc), Exception, verifyException<PichiError::MISC>);

@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Difference_Destinations)
 
   BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
   BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
-  BOOST_CHECK_EQUAL("8080"sv, remote.port_);
+  BOOST_CHECK_EQUAL(8080_u16, remote.port_);
 }
 
 BOOST_AUTO_TEST_CASE(readRemote_Relay_Without_Both_Fields)

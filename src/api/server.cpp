@@ -36,7 +36,7 @@ static auto const IV_EXPIRE_TIME = 1h;
 static auto resolve(Endpoint const& remote, asio::io_context& io, asio::yield_context yield)
 {
   auto ec = sys::error_code{};
-  auto r = tcp::resolver{io}.async_resolve(remote.host_, remote.port_, yield[ec]);
+  auto r = tcp::resolver{io}.async_resolve(remote.host_, to_string(remote.port_), yield[ec]);
   return ec ? tcp::resolver::results_type{} : r;
 }
 

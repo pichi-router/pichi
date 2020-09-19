@@ -69,7 +69,6 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
   case AdapterType::TROJAN:
     assertTrue(ingress.remote_.has_value());
     assertFalse(ingress.remote_->host_.empty());
-    assertFalse(ingress.remote_->port_.empty());
     assertFalse(ingress.passwords_.empty());
     assertTrue(ingress.certFile_.has_value());
     assertFalse(ingress.certFile_->empty());
@@ -78,7 +77,7 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
     for_each(cbegin(ingress.passwords_), cend(ingress.passwords_),
              [](auto&& pwd) { assertFalse(pwd.empty()); });
     ret.AddMember(ingress::REMOTE_HOST, toJson(ingress.remote_->host_, alloc), alloc);
-    ret.AddMember(ingress::REMOTE_PORT, portToJson(ingress.remote_->port_), alloc);
+    ret.AddMember(ingress::REMOTE_PORT, ingress.remote_->port_, alloc);
     ret.AddMember(ingress::PASSWORDS,
                   toJson(cbegin(ingress.passwords_), cend(ingress.passwords_), alloc), alloc);
     ret.AddMember(ingress::CERT_FILE, toJson(*ingress.certFile_, alloc), alloc);

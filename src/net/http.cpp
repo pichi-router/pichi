@@ -14,6 +14,7 @@
 #include <pichi/net/http.hpp>
 #include <pichi/net/stream.hpp>
 #include <regex>
+#include <sstream>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -167,8 +168,10 @@ template <typename Stream, typename Yield>
 static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield,
                           OptCredential const& cred = {})
 {
-  auto host = remote.type_ == EndpointType::IPV6 ? "[" + remote.host_ + "]" : remote.host_;
-  host += ":" + remote.port_;
+  auto oss = ostringstream{};
+  oss << (remote.type_ == EndpointType::IPV6 ? "[" + remote.host_ + "]" : remote.host_) << ":"
+      << remote.port_;
+  auto host = oss.str();
   auto req = Request{};
   req.method(http::verb::connect);
   req.target(host);

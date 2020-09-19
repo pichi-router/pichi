@@ -35,7 +35,7 @@ auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& all
                          Endpoint>) {
     ret.SetObject();
     std::for_each(first, last, [&ret, &alloc](auto&& endpoint) {
-      ret.AddMember(toJson(endpoint.host_, alloc), portToJson(endpoint.port_), alloc);
+      ret.AddMember(toJson(endpoint.host_, alloc), rapidjson::Value{endpoint.port_}, alloc);
     });
   }
   else {
