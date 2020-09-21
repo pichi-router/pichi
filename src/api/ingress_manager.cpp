@@ -1,8 +1,8 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <pichi/api/ingress_manager.hpp>
-#include <pichi/asserts.hpp>
-#include <pichi/config.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/vo/ingress.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
@@ -32,13 +32,13 @@ IngressManager::ConstIterator IngressManager::end() const noexcept
   return {cend(c_), cend(c_), &IngressManager::generatePair};
 }
 
-void IngressManager::update(string const& name, IngressVO ivo)
+void IngressManager::update(string const& name, VO ivo)
 {
   assertFalse(ivo.type_ == AdapterType::DIRECT, PichiError::MISC);
   assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::MISC);
 #ifndef ENABLE_TLS
   assertFalse(ivo.tls_.has_value() && *ivo.tls_, PichiError::SEMANTIC_ERROR, "TLS not supported");
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
   auto it = c_.find(name);
   if (it == std::end(c_)) {
@@ -59,4 +59,4 @@ void IngressManager::erase(string_view name)
   if (it != std::end(c_)) c_.erase(it);
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api

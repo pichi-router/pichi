@@ -2,7 +2,8 @@
 #define PICHI_API_EGRESS_MANAGER_HPP
 
 #include <map>
-#include <pichi/api/vos.hpp>
+#include <pichi/common/enumerations.hpp>
+#include <pichi/vo/egress.hpp>
 #include <string>
 #include <string_view>
 
@@ -10,16 +11,16 @@ namespace pichi::api {
 
 class EgressManager {
 public:
-  using VO = EgressVO;
+  using VO = vo::Egress;
 
 private:
-  using Container = std::map<std::string, EgressVO, std::less<>>;
+  using Container = std::map<std::string, VO, std::less<>>;
   using ConstIterator = typename Container::const_iterator;
 
 public:
   EgressManager() = default;
 
-  void update(std::string const&, EgressVO);
+  void update(std::string const&, VO);
   void erase(std::string_view);
 
   ConstIterator begin() const noexcept;
@@ -30,6 +31,6 @@ private:
   Container c_ = {{"direct", {AdapterType::DIRECT}}};
 };
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
-#endif // PICHI_API_EGRESS_MANAGER_HPP
+#endif  // PICHI_API_EGRESS_MANAGER_HPP

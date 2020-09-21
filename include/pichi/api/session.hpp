@@ -4,32 +4,16 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <memory>
-#include <pichi/net/common.hpp>
-
-#ifndef _MSC_VER
-
-namespace pichi::net {
-
-struct Ingress;
-struct Egress;
-
-} // namespace pichi::net
-
-#else // _MSC_VER
-
-// TODO find out why MSVC couldn't compile with the forward declaration
-#include <pichi/net/adapter.hpp>
-#include <pichi/net/common.hpp>
-
-#endif // _MSC_VER
+#include <pichi/common/adapter.hpp>
+#include <pichi/common/endpoint.hpp>
 
 namespace pichi::api {
 
 class Session : public std::enable_shared_from_this<Session> {
 private:
   using Strand = boost::asio::io_context::strand;
-  using IngressPtr = std::unique_ptr<net::Ingress>;
-  using EgressPtr = std::unique_ptr<net::Egress>;
+  using IngressPtr = std::unique_ptr<Ingress>;
+  using EgressPtr = std::unique_ptr<Egress>;
 
   template <typename Yield> void close(Yield);
 
@@ -42,8 +26,8 @@ public:
   // According to Effective Moderm C++, Item 22.
   ~Session();
   explicit Session(boost::asio::io_context& io, IngressPtr&&, EgressPtr&&);
-  void start(net::Endpoint const&, net::Endpoint const&);
-  void start(net::Endpoint const& = {});
+  void start(Endpoint const&, Endpoint const&);
+  void start(Endpoint const& = {});
 
 private:
   Strand strand_;
@@ -51,6 +35,6 @@ private:
   EgressPtr egress_;
 };
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
 #endif

@@ -2,10 +2,11 @@
 
 #include "utils.hpp"
 #include <boost/test/unit_test.hpp>
-#include <pichi/uri.hpp>
+#include <pichi/common/uri.hpp>
 
 using namespace std;
-using namespace pichi;
+
+namespace pichi::unit_test {
 
 BOOST_AUTO_TEST_SUITE(URI)
 
@@ -211,3 +212,5 @@ BOOST_AUTO_TEST_CASE(HostAndPort_IPv6)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

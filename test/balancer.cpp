@@ -5,20 +5,22 @@
 #include <boost/test/unit_test.hpp>
 #include <cmath>
 #include <pichi/api/balancer.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/literals.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::api;
 namespace mpl = boost::mpl;
 
 using RawPointer = int*;
 using VectorIter = vector<int>::const_iterator;
 
 using Iterators = mpl::list<RawPointer, VectorIter>;
+
+namespace pichi::unit_test {
+
+using namespace api;
 
 static size_t const N = 100_sz;
 
@@ -127,3 +129,5 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(LEAST_CONN_release, Iterator, Iterators)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

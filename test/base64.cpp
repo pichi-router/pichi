@@ -3,13 +3,15 @@
 #include "utils.hpp"
 #include <array>
 #include <boost/test/unit_test.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/base64.hpp>
 #include <unordered_map>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::crypto;
+
+namespace pichi::unit_test {
+
+using namespace crypto;
 
 BOOST_AUTO_TEST_SUITE(Base64)
 
@@ -63,3 +65,5 @@ BOOST_AUTO_TEST_CASE(decode_RFC4648)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

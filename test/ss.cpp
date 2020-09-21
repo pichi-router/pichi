@@ -5,20 +5,21 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
-#include <pichi/common.hpp>
-#include <pichi/config.hpp>
+#include <pichi/common/endpoint.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
 #include <pichi/net/stream.hpp>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::crypto;
 namespace asio = boost::asio;
 namespace mpl = boost::mpl;
 namespace sys = boost::system;
+
+namespace pichi::unit_test {
+
+using namespace crypto;
 
 using Socket = net::TestSocket;
 template <CryptoMethod method> using StreamAdapter = net::SSStreamAdapter<method, net::TestStream>;
@@ -37,7 +38,7 @@ using Adapters = mpl::list<
 
 template <CryptoMethod method> static constexpr size_t cipherLength(size_t plainLength)
 {
-  if constexpr (helpers::isStream<method>())
+  if constexpr (detail::isStream<method>())
     return plainLength;
   else
     return plainLength + TAG_SIZE<method> * 2 + 2;
@@ -48,7 +49,7 @@ static size_t encrypt(Encryptor<method>& encryptor, ConstBuffer<uint8_t> plain,
                       MutableBuffer<uint8_t> cipher)
 {
   BOOST_REQUIRE_GE(cipher.size(), cipherLength<method>(plain.size()));
-  if constexpr (helpers::isStream<method>()) {
+  if constexpr (detail::isStream<method>()) {
     encryptor.encrypt(plain, cipher);
   }
   else {
@@ -115,7 +116,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(readRemote, Ingress, Adapters)
   fill_n(begin(iv), IV_SIZE<Ingress::METHOD>, 0xff_u8);
 
   auto encryptor = Encryptor<Ingress::METHOD>{psk, iv};
-  auto expect = net::makeEndpoint("localhost"sv, 443);
+  auto expect = makeEndpoint("localhost"sv, 443);
   auto plain = array<uint8_t, 1024>{};
   auto cipher = array<uint8_t, 1024>{};
 
@@ -123,7 +124,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(readRemote, Ingress, Adapters)
   auto ingress = Ingress{psk, socket, true};
   socket.fill(iv);
   socket.fill({cipher, encrypt<Ingress::METHOD>(
-                           encryptor, {plain, net::serializeEndpoint(expect, plain)}, cipher)});
+                           encryptor, {plain, serializeEndpoint(expect, plain)}, cipher)});
 
   auto fact = ingress.readRemote(gYield);
 
@@ -229,7 +230,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(send_Ingress, Ingress, Adapters)
 BOOST_AUTO_TEST_CASE_TEMPLATE(connect, Egress, Adapters)
 {
   auto psk = array<uint8_t, KEY_SIZE<Egress::METHOD>>{};
-  auto endpoint = net::makeEndpoint("localhost"sv, 443);
+  auto endpoint = makeEndpoint("localhost"sv, 443);
 
   auto socket = Socket{};
   auto egress = Egress{psk, socket};
@@ -243,7 +244,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(connect, Egress, Adapters)
   auto plain = array<uint8_t, 1024>{};
   auto expect = array<uint8_t, 1024>{};
   auto len =
-      encrypt<Egress::METHOD>(encryptor, {plain, net::serializeEndpoint(endpoint, plain)}, expect);
+      encrypt<Egress::METHOD>(encryptor, {plain, serializeEndpoint(endpoint, plain)}, expect);
 
   auto fact = array<uint8_t, 1024>{};
   BOOST_CHECK_EQUAL(len, socket.flush(fact));
@@ -326,3 +327,5 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Egress_By_Insufficient_Buffer, Egress, Adapte
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

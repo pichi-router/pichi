@@ -1,4 +1,4 @@
-#include <pichi/exception.hpp>
+#include <pichi/common/exception.hpp>
 
 using namespace std;
 
@@ -41,4 +41,4 @@ char const* Exception::what() const noexcept
 
 PichiError Exception::error() const { return error_; }
 
-} // namespace pichi
+}  // namespace pichi

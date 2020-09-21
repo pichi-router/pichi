@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <array>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
 
 using namespace std;
@@ -137,4 +137,4 @@ template void hkdf<HashAlgorithm::SHA384>(MutableBuffer<uint8_t>, ConstBuffer<ui
 template void hkdf<HashAlgorithm::SHA512>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
                                           ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto

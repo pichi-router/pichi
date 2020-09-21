@@ -1,12 +1,12 @@
-#ifndef PICHI_NET_HELPERS_HPP
-#define PICHI_NET_HELPERS_HPP
+#ifndef PICHI_COMMON_ENDPOINT_HPP
+#define PICHI_COMMON_ENDPOINT_HPP
 
 #include <algorithm>
 #include <functional>
 #include <iterator>
-#include <pichi/buffer.hpp>
-#include <pichi/net/adapter.hpp>
-#include <pichi/net/common.hpp>
+#include <pichi/common/buffer.hpp>
+#include <pichi/common/enumerations.hpp>
+#include <string>
 #include <string_view>
 #include <type_traits>
 
@@ -14,9 +14,15 @@ namespace std {
 
 inline string to_string(string_view sv) { return {cbegin(sv), cend(sv)}; }
 
-} // namespace std
+}  // namespace std
 
-namespace pichi::net {
+namespace pichi {
+
+struct Endpoint {
+  EndpointType type_;
+  std::string host_;
+  std::string port_;
+};
 
 template <typename Int> void hton(Int src, MutableBuffer<uint8_t> dst)
 {
@@ -38,10 +44,12 @@ template <typename Int> Int ntoh(ConstBuffer<uint8_t> src)
 
 extern size_t serializeEndpoint(Endpoint const&, MutableBuffer<uint8_t>);
 extern Endpoint parseEndpoint(std::function<void(MutableBuffer<uint8_t>)>);
-extern Endpoint::Type detectHostType(std::string_view);
+extern EndpointType detectHostType(std::string_view);
 extern Endpoint makeEndpoint(std::string_view, uint16_t);
 extern Endpoint makeEndpoint(std::string_view, std::string_view);
 
-} // namespace pichi::net
+extern bool operator==(Endpoint const&, Endpoint const&);
 
-#endif
+}  // namespace pichi
+
+#endif  // PICHI_COMMON_ENDPOINT_HPP

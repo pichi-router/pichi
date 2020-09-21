@@ -1,13 +1,12 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <cassert>
 #include <iterator>
 #include <map>
 #include <pichi/api/balancer.hpp>
 #include <pichi/api/ingress_holder.hpp>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
-#include <pichi/config.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/literals.hpp>
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
@@ -220,6 +219,6 @@ template unique_ptr<Balancer<IngressIterator>> makeBalancer<>(BalanceType, Ingre
 template unique_ptr<Balancer<int*>> makeBalancer<>(BalanceType, int*, int*);
 using VectorIter = vector<int>::const_iterator;
 template unique_ptr<Balancer<VectorIter>> makeBalancer<>(BalanceType, VectorIter, VectorIter);
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 
-} // namespace pichi::api
+}  // namespace pichi::api

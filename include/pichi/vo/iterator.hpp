@@ -1,5 +1,5 @@
-#ifndef PICHI_API_ITERATOR_HPP
-#define PICHI_API_ITERATOR_HPP
+#ifndef PICHI_VO_ITERATOR_HPP
+#define PICHI_VO_ITERATOR_HPP
 
 #include <functional>
 #include <iterator>
@@ -7,8 +7,7 @@
 #include <string_view>
 #include <type_traits>
 
-namespace pichi {
-namespace api {
+namespace pichi::vo {
 
 template <typename T> struct IsPair : public std::false_type {
 };
@@ -77,7 +76,6 @@ private:
   Holder holder_ = {};
 };
 
-} // namespace api
-} // namespace pichi
+}  // namespace pichi::vo
 
-#endif // PICHI_API_ITERATOR_HPP
+#endif  // PICHI_VO_ITERATOR_HPP

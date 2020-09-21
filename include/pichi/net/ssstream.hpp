@@ -1,16 +1,16 @@
 #ifndef PICHI_NET_SSSTREAM_HPP
 #define PICHI_NET_SSSTREAM_HPP
 
+#include <pichi/common/adapter.hpp>
 #include <pichi/crypto/method.hpp>
 #include <pichi/crypto/stream.hpp>
-#include <pichi/net/adapter.hpp>
 
 namespace pichi::net {
 
-template <crypto::CryptoMethod method, typename Stream>
+template <CryptoMethod method, typename Stream>
 class SSStreamAdapter : public Ingress, public Egress {
 public:
-  inline static constexpr crypto::CryptoMethod METHOD = method;
+  inline static constexpr CryptoMethod METHOD = method;
 
   template <typename... Args>
   SSStreamAdapter(ConstBuffer<uint8_t> psk, Args&&... args)
@@ -37,6 +37,6 @@ private:
   bool ivReceived_ = false;
 };
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
-#endif // PICHI_NET_SSSTREAM_HPP
+#endif  // PICHI_NET_SSSTREAM_HPP

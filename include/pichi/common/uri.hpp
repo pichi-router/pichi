@@ -1,5 +1,5 @@
-#ifndef PICHI_URI_HPP
-#define PICHI_URI_HPP
+#ifndef PICHI_COMMON_URI_HPP
+#define PICHI_COMMON_URI_HPP
 
 #include <string_view>
 
@@ -24,6 +24,6 @@ struct HostAndPort {
   std::string_view port_;
 };
 
-} // namespace pichi
+}  // namespace pichi
 
-#endif // PICHI_URI_HPP
+#endif  // PICHI_COMMON_URI_HPP

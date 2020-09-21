@@ -1,7 +1,6 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <pichi/net/asio.hpp>
-#include <pichi/net/common.hpp>
 #include <pichi/net/direct.hpp>
 #include <utility>
 
@@ -30,4 +29,4 @@ void DirectAdapter::connect(Endpoint const&, ResolveResults next, Yield yield)
   pichi::net::connect(next, socket_, yield);
 }
 
-} // namespace pichi::net
+}  // namespace pichi::net

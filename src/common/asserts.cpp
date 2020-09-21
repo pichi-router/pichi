@@ -1,4 +1,4 @@
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
 
 using namespace std;
 
@@ -19,4 +19,4 @@ void assertFalse(bool b, PichiError e, string_view msg) { assertTrue(!b, e, msg)
 
 void assertFalse(bool b, string_view msg) { assertTrue(!b, PichiError::MISC, msg); }
 
-} // namespace pichi
+}  // namespace pichi

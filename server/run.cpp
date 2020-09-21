@@ -1,4 +1,4 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -12,20 +12,19 @@
 #include <fstream>
 #include <iostream>
 #include <pichi/api/server.hpp>
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/spawn.hpp>
+#include <pichi/vo/to_json.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 #include <vector>
 
 #ifdef HAS_SIGNAL_H
 #include <boost/asio/signal_set.hpp>
 #include <signal.h>
-#endif // HAS_SIGNAL_H
+#endif  // HAS_SIGNAL_H
 
 using namespace std;
 using namespace pichi;
@@ -56,18 +55,18 @@ static json::Document parseJson(char const* str)
 
 class HttpHelper {
 public:
-  HttpHelper(net::ResolveResults&& endpoint, asio::yield_context yield);
+  HttpHelper(ResolveResults&& endpoint, asio::yield_context yield);
 
   vector<string> get(string const& target);
   void put(string const& target, string const& body);
   void del(string const& target);
 
 private:
-  net::ResolveResults endpoint_;
+  ResolveResults endpoint_;
   asio::yield_context yield_;
 };
 
-HttpHelper::HttpHelper(net::ResolveResults&& endpoint, asio::yield_context yield)
+HttpHelper::HttpHelper(ResolveResults&& endpoint, asio::yield_context yield)
   : endpoint_{move(endpoint)}, yield_{yield}
 {
 }
@@ -145,14 +144,6 @@ static auto readJson(string const& fn)
   return doc;
 }
 
-static string toString(json::Value const& v)
-{
-  auto buf = json::StringBuffer{};
-  auto writer = json::Writer<json::StringBuffer>{buf};
-  v.Accept(writer);
-  return buf.GetString();
-}
-
 template <typename StringRef>
 static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const& category)
 {
@@ -163,7 +154,7 @@ static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const
   }
 
   for (auto&& node : it->value.GetObject())
-    helper.put("/"s + category + "/" + node.name.GetString(), toString(node.value));
+    helper.put("/"s + category + "/" + node.name.GetString(), vo::toString(node.value));
 }
 
 static void load(HttpHelper& helper, string const& fn)
@@ -175,7 +166,7 @@ static void load(HttpHelper& helper, string const& fn)
   loadSet(helper, json, EGRESSES);
   loadSet(helper, json, RULES);
   if (json.HasMember(ROUTE))
-    helper.put("/"s + ROUTE, toString(json[ROUTE]));
+    helper.put("/"s + ROUTE, vo::toString(json[ROUTE]));
   else
     cout << INDENT << ROUTE << " NOT loaded" << endl;
   cout << "Configuration " << fn << " loaded" << endl;
@@ -194,7 +185,7 @@ static void flush(HttpHelper& helper)
 
   cout << "Configuration reset" << endl;
 }
-#endif // defined(HAS_SIGNAL_H) && defined(SIGHUP)
+#endif  // defined(HAS_SIGNAL_H) && defined(SIGHUP)
 
 void run(string const& bind, uint16_t port, string const& fn, string const& mmdb)
 {
@@ -217,7 +208,7 @@ void run(string const& bind, uint16_t port, string const& fn, string const& mmdb
           flush(helper);
           load(helper, fn);
         }
-#endif // defined(HAS_SIGNAL_H) && defined(SIGHUP)
+#endif  // defined(HAS_SIGNAL_H) && defined(SIGHUP)
       },
       [](auto, auto) noexcept { io.stop(); });
 

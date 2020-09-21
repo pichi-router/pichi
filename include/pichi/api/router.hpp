@@ -3,7 +3,9 @@
 
 #include <map>
 #include <memory>
-#include <pichi/api/vos.hpp>
+#include <pichi/vo/iterator.hpp>
+#include <pichi/vo/route.hpp>
+#include <pichi/vo/rule.hpp>
 
 struct MMDB_s;
 
@@ -13,15 +15,13 @@ class tcp;
 template <typename Protocol> class basic_endpoint;
 template <typename Protocol> class basic_resolver_results;
 
-} // namespace boost::asio::ip
+}  // namespace boost::asio::ip
 
-namespace pichi::net {
+namespace pichi {
 
 struct Endpoint;
 
-} // namespace pichi::net
-
-namespace pichi::api {
+namespace api {
 
 extern bool matchPattern(std::string_view remote, std::string_view pattern);
 extern bool matchDomain(std::string_view subdomain, std::string_view domain);
@@ -47,26 +47,26 @@ private:
 
 class Router {
 public:
-  using VO = RuleVO;
+  using VO = vo::Rule;
 
 private:
   using ResolvedResult = boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp>;
-  using Matcher = std::function<bool(net::Endpoint const&, ResolvedResult const&, std::string_view,
-                                     AdapterType)>;
-  using Container = std::map<std::string, std::pair<RuleVO, std::vector<Matcher>>, std::less<>>;
+  using Matcher =
+      std::function<bool(Endpoint const&, ResolvedResult const&, std::string_view, AdapterType)>;
+  using Container = std::map<std::string, std::pair<VO, std::vector<Matcher>>, std::less<>>;
   using DelegateIterator = typename Container::const_iterator;
-  using ValueType = std::pair<std::string_view, RuleVO const&>;
-  using ConstIterator = Iterator<DelegateIterator, ValueType>;
+  using ValueType = std::pair<std::string_view, VO const&>;
+  using ConstIterator = vo::Iterator<DelegateIterator, ValueType>;
 
   static ValueType generatePair(DelegateIterator);
 
 public:
   Router(char const* fn);
 
-  std::string_view route(net::Endpoint const&, std::string_view ingress, AdapterType,
+  std::string_view route(Endpoint const&, std::string_view ingress, AdapterType,
                          ResolvedResult const&) const;
 
-  void update(std::string const&, RuleVO);
+  void update(std::string const&, VO);
   void erase(std::string_view);
 
   ConstIterator begin() const noexcept;
@@ -74,16 +74,17 @@ public:
   bool isUsed(std::string_view) const;
   bool needResloving() const;
 
-  RouteVO getRoute() const;
-  void setRoute(RouteVO);
+  vo::Route getRoute() const;
+  void setRoute(vo::Route);
 
 private:
   Geo geo_;
   Container rules_ = {};
   bool needResolving_ = false;
-  RouteVO route_ = {"direct"};
+  vo::Route route_ = {"direct"};
 };
 
-} // namespace pichi::api
+}  // namespace api
+}  // namespace pichi
 
-#endif // PICHI_API_ROUTER_HPP
+#endif  // PICHI_API_ROUTER_HPP

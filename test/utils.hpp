@@ -1,17 +1,26 @@
 #ifndef PICHI_TEST_UTILS_HPP
 #define PICHI_TEST_UTILS_HPP
 
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/asio/error.hpp>
 #include <boost/asio/spawn2.hpp>
 #include <boost/beast/http/error.hpp>
-#include <pichi/api/vos.hpp>
-#include <pichi/exception.hpp>
+#include <pichi/common/exception.hpp>
+#include <rapidjson/document.h>
 #include <string_view>
 #include <vector>
 
 namespace pichi {
+
+namespace vo {
+
+struct Ingress;
+struct Egress;
+
+}  // namespace vo
+
+namespace unit_test {
 
 template <PichiError error> bool verifyException(Exception const& e) { return e.error() == error; }
 
@@ -37,13 +46,15 @@ extern std::vector<uint8_t> hex2bin(std::string_view);
 inline decltype(auto) ph = "placeholder";
 extern rapidjson::Document::AllocatorType& alloc;
 
-extern api::IngressVO defaultIngressVO(api::AdapterType);
-extern rapidjson::Value defaultIngressJson(api::AdapterType);
-extern api::EgressVO defaultEgressVO(api::AdapterType);
-extern rapidjson::Value defaultEgressJson(api::AdapterType);
+extern vo::Ingress defaultIngressVO(AdapterType);
+extern rapidjson::Value defaultIngressJson(AdapterType);
+extern vo::Egress defaultEgressVO(AdapterType);
+extern rapidjson::Value defaultEgressJson(AdapterType);
 
 extern boost::asio::yield_context gYield;
 
-} // namespace pichi
+}  // namespace unit_test
+
+}  // namespace pichi
 
 #endif

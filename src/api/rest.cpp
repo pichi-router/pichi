@@ -1,9 +1,12 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <pichi/api/egress_manager.hpp>
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/rest.hpp>
 #include <pichi/api/router.hpp>
+#include <pichi/vo/error.hpp>
+#include <pichi/vo/parse.hpp>
+#include <pichi/vo/to_json.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <sstream>
@@ -53,7 +56,7 @@ template <typename Manager> static auto getVO(Manager const& manager)
 template <typename Manager>
 static auto putVO(Rest::Request const& req, cmatch const& mr, Manager& manager)
 {
-  manager.update(mr[1].str(), parse<typename Manager::VO>(req.body()));
+  manager.update(mr[1].str(), vo::parse<typename Manager::VO>(req.body()));
   return genResp(http::status::no_content);
 }
 
@@ -91,8 +94,8 @@ static http::status e2c(PichiError e)
 
 static http::status e2c(sys::error_code e)
 {
-  return e == asio::error::address_in_use ? http::status::locked :
-                                            http::status::internal_server_error;
+  return e == asio::error::address_in_use ? http::status::locked
+                                          : http::status::internal_server_error;
 }
 
 Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
@@ -144,7 +147,7 @@ Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
                    [&](auto&&, auto&&) { return genResp(http::status::ok, router.getRoute()); }),
         make_tuple(http::verb::put, ROUTE_REGEX,
                    [&](auto&& r, auto&&) {
-                     auto vo = parse<RouteVO>(r.body());
+                     auto vo = vo::parse<vo::Route>(r.body());
                      assertFalse(vo.default_.has_value() &&
                                      egresses.find(*vo.default_) == end(egresses),
                                  PichiError::SEMANTIC_ERROR, "Unknown egress"sv);
@@ -178,11 +181,11 @@ Rest::Response Rest::errorResponse(exception_ptr eptr)
     rethrow_exception(eptr);
   }
   catch (Exception const& e) {
-    return genResp(e2c(e.error()), ErrorVO{e.what()});
+    return genResp(e2c(e.error()), vo::Error{e.what()});
   }
   catch (sys::system_error const& e) {
-    return genResp(e2c(e.code()), ErrorVO{e.what()});
+    return genResp(e2c(e.code()), vo::Error{e.what()});
   }
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api

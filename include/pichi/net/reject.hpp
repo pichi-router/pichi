@@ -2,7 +2,7 @@
 #define PICHI_NET_REJECT_HPP
 
 #include <boost/asio/system_timer.hpp>
-#include <pichi/net/adapter.hpp>
+#include <pichi/common/adapter.hpp>
 
 namespace pichi::net {
 

@@ -1,8 +1,10 @@
-#ifndef PICHI_COMMON_HPP
-#define PICHI_COMMON_HPP
+#ifndef PICHI_COMMON_LITERALS_HPP
+#define PICHI_COMMON_LITERALS_HPP
 
 #include <cassert>
 #include <limits>
+#include <stddef.h>
+#include <stdint.h>
 #include <type_traits>
 
 namespace pichi {
@@ -31,6 +33,6 @@ inline uint16_t operator""_u16(unsigned long long i)
   return static_cast<uint16_t>(i);
 }
 
-} // namespace pichi
+}  // namespace pichi
 
-#endif // PICHI_COMMON_HPP
+#endif  // PICHI_COMMON_LITERALS_HPP

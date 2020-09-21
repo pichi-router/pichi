@@ -8,7 +8,7 @@
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/rest.hpp>
 #include <pichi/api/router.hpp>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -24,8 +24,8 @@ private:
 
   template <typename Yield> void listen(std::string_view, IngressHolder&, Yield yield);
   template <typename ExceptionPtr> void removeIngress(ExceptionPtr, std::string_view);
-  EgressVO const& route(net::Endpoint const&, std::string_view ingress, AdapterType,
-                        ResolveResult const&);
+  vo::Egress const& route(Endpoint const&, std::string_view ingress, AdapterType,
+                          ResolveResult const&);
   bool isDuplicated(ConstBuffer<uint8_t>);
 
 public:
@@ -51,6 +51,6 @@ private:
   uint16_t port_;
 };
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
-#endif // PICHI_API_SERVER_HPP
+#endif  // PICHI_API_SERVER_HPP

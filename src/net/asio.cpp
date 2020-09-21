@@ -1,4 +1,4 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <array>
 #include <boost/asio/connect.hpp>
@@ -9,15 +9,13 @@
 #include <boost/asio/write.hpp>
 #include <pichi/api/balancer.hpp>
 #include <pichi/api/ingress_holder.hpp>
-#include <pichi/api/vos.hpp>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/adapter.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/key.hpp>
-#include <pichi/net/adapter.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/common.hpp>
 #include <pichi/net/direct.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/net/reject.hpp>
 #include <pichi/net/socks5.hpp>
@@ -25,23 +23,24 @@
 #include <pichi/net/ssstream.hpp>
 #include <pichi/net/stream.hpp>
 #include <pichi/net/tunnel.hpp>
+#include <pichi/vo/egress.hpp>
+#include <pichi/vo/ingress.hpp>
 
 #ifdef ENABLE_TLS
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #ifdef DEPRECATED_RFC2818_CLASS
 #include <boost/asio/ssl/host_name_verification.hpp>
-#else // DEPRECATED_RFC2818_CLASS
+#else  // DEPRECATED_RFC2818_CLASS
 #include <boost/asio/ssl/rfc2818_verification.hpp>
-#endif // DEPRECATED_RFC2818_CLASS
-#endif // ENABLE_TLS
+#endif  // DEPRECATED_RFC2818_CLASS
+#endif  // ENABLE_TLS
 
 using namespace std;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;
 using ip::tcp;
-using pichi::crypto::CryptoMethod;
 using TcpSocket = tcp::socket;
 
 namespace pichi::net {
@@ -52,7 +51,7 @@ namespace ssl = asio::ssl;
 
 using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
-static auto createTlsContext(api::IngressVO const& vo)
+static auto createTlsContext(vo::Ingress const& vo)
 {
   auto ctx = ssl::context{ssl::context::tls_server};
   ctx.use_certificate_chain_file(*vo.certFile_);
@@ -60,7 +59,7 @@ static auto createTlsContext(api::IngressVO const& vo)
   return ctx;
 }
 
-static auto createTlsContext(api::EgressVO const& vo)
+static auto createTlsContext(vo::Egress const& vo)
 {
   auto ctx = ssl::context{ssl::context::tls_client};
   if (*vo.insecure_) {
@@ -75,14 +74,14 @@ static auto createTlsContext(api::EgressVO const& vo)
     ctx.set_default_verify_paths();
 #ifdef DEPRECATED_RFC2818_CLASS
     ctx.set_verify_callback(ssl::host_name_verification{*vo.host_});
-#else  // DEPRECATED_RFC2818_CLASS
+#else   // DEPRECATED_RFC2818_CLASS
     ctx.set_verify_callback(ssl::rfc2818_verification{*vo.host_});
-#endif // DEPRECATED_RFC2818_CLASS
+#endif  // DEPRECATED_RFC2818_CLASS
   }
   return ctx;
 }
 
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
 template <typename Stream, typename Yield> void connect(ResolveResults next, Stream& s, Yield yield)
 {
@@ -94,17 +93,19 @@ template <typename Stream, typename Yield> void connect(ResolveResults next, Str
     return;
   }
   else {
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
     asyncConnect(s, next, yield);
 #ifdef BUILD_TEST
   }
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 #ifdef ENABLE_TLS
   if constexpr (IsTlsStreamV<Stream>) {
     s.async_handshake(ssl::stream_base::client, yield);
   }
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 }
+
+using crypto::generateKey;
 
 template <typename Stream, typename Yield>
 void read(Stream& s, MutableBuffer<uint8_t> buf, Yield yield)
@@ -113,7 +114,7 @@ void read(Stream& s, MutableBuffer<uint8_t> buf, Yield yield)
   if constexpr (is_same_v<Stream, TestStream>)
     asio::read(s, asio::buffer(buf));
   else
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
     asio::async_read(s, asio::buffer(buf), yield);
 }
 
@@ -125,7 +126,7 @@ size_t readSome(Stream& s, MutableBuffer<uint8_t> buf, Yield yield)
     return s.read_some(asio::buffer(buf));
   }
   else
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
     return s.async_read_some(asio::buffer(buf), yield);
 }
 
@@ -136,13 +137,14 @@ void write(Stream& s, ConstBuffer<uint8_t> buf, Yield yield)
   if constexpr (is_same_v<Stream, TestStream>)
     asio::write(s, asio::buffer(buf));
   else
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
     asio::async_write(s, asio::buffer(buf), yield);
 }
 
 template <typename Stream, typename Yield> void close(Stream& s, Yield yield)
 {
-  // This function is supposed to be 'noexcept' because it's always invoked in the desturctors.
+  // This function is supposed to be 'noexcept' because it's always invoked in
+  // the desturctors.
   // TODO log it
   auto ec = sys::error_code{};
 #ifdef ENABLE_TLS
@@ -151,12 +153,12 @@ template <typename Stream, typename Yield> void close(Stream& s, Yield yield)
     s.close(ec);
   }
   else {
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
     suppressC4100(yield);
     s.close(ec);
 #ifdef ENABLE_TLS
   }
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 }
 
 template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, Socket&& s)
@@ -171,7 +173,7 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
       return make_unique<HttpIngress<TLSStream>>(vo.credentials_, createTlsContext(vo),
                                                  forward<Socket>(s));
     else
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
       return make_unique<HttpIngress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
@@ -179,7 +181,7 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
       return make_unique<Socks5Ingress<TLSStream>>(vo.credentials_, createTlsContext(vo),
                                                    forward<Socket>(s));
     else
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
       return make_unique<Socks5Ingress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
   case AdapterType::SS:
     psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
@@ -245,7 +247,7 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
   }
 }
 
-unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
+unique_ptr<Egress> makeEgress(vo::Egress const& vo, asio::io_context& io)
 {
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
@@ -255,22 +257,22 @@ unique_ptr<Egress> makeEgress(api::EgressVO const& vo, asio::io_context& io)
     if (*vo.tls_)
       return make_unique<HttpEgress<TLSStream>>(vo.credential_, createTlsContext(vo), io);
     else
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
       return make_unique<HttpEgress<TcpSocket>>(vo.credential_, io);
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
     if (*vo.tls_)
       return make_unique<Socks5Egress<TLSStream>>(vo.credential_, createTlsContext(vo), io);
     else
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
       return make_unique<Socks5Egress<tcp::socket>>(vo.credential_, io);
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(io);
   case AdapterType::REJECT:
     switch (*vo.mode_) {
-    case api::DelayMode::RANDOM:
+    case DelayMode::RANDOM:
       return make_unique<RejectEgress>(io);
-    case api::DelayMode::FIXED:
+    case DelayMode::FIXED:
       return make_unique<RejectEgress>(io, *vo.delay_);
     default:
       fail(PichiError::BAD_PROTO);
@@ -338,7 +340,7 @@ template void read<>(TLSStream&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TLSStream&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TLSStream&, ConstBuffer<uint8_t>, Yield);
 template void close<>(TLSStream&, Yield);
-#endif // ENABLE_TLS
+#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 template void connect<>(ResolveResults, TestStream&, Yield);
@@ -346,8 +348,8 @@ template void read<>(TestStream&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TestStream&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TestStream&, ConstBuffer<uint8_t>, Yield);
 template void close<>(TestStream&, Yield);
-#endif // BUILD_TEST
+#endif  // BUILD_TEST
 
 template unique_ptr<Ingress> makeIngress<>(api::IngressHolder&, TcpSocket&&);
 
-} // namespace pichi::net
+}  // namespace pichi::net

@@ -11,9 +11,11 @@
 #include <vector>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::crypto;
 namespace mpl = boost::mpl;
+
+namespace pichi::unit_test {
+
+using namespace crypto;
 
 static auto const cases = vector<pair<vector<uint8_t>, vector<uint8_t>>>{
     make_pair(vector<uint8_t>{},
@@ -61,3 +63,5 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(generateKey_Normal, Helper, Helpers)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

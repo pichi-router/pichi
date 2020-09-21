@@ -1,4 +1,4 @@
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <pichi/crypto/key.hpp>
 
@@ -69,4 +69,4 @@ size_t generateKey(CryptoMethod method, ConstBuffer<uint8_t> pw, MutableBuffer<u
   }
 }
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto

@@ -1,10 +1,10 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/asio/io_context.hpp>
 #include <iostream>
 #include <pichi.h>
 #include <pichi/api/server.hpp>
-#include <pichi/asserts.hpp>
+#include <pichi/common/asserts.hpp>
 
 using namespace std;
 namespace api = pichi::api;

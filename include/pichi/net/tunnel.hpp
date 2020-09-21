@@ -2,8 +2,8 @@
 #define PICHI_NET_TUNNEL_HPP
 
 #include <pichi/api/balancer.hpp>
-#include <pichi/net/adapter.hpp>
-#include <pichi/net/common.hpp>
+#include <pichi/common/adapter.hpp>
+#include <pichi/common/endpoint.hpp>
 
 namespace pichi::net {
 
@@ -42,6 +42,6 @@ private:
   bool released_ = false;
 };
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
-#endif // PICHI_NET_TUNNEL_HPP
+#endif  // PICHI_NET_TUNNEL_HPP

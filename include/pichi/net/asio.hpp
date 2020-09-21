@@ -3,8 +3,8 @@
 
 #include <boost/asio/buffer.hpp>
 #include <memory>
-#include <pichi/buffer.hpp>
-#include <pichi/net/adapter.hpp>
+#include <pichi/common/adapter.hpp>
+#include <pichi/common/buffer.hpp>
 
 namespace boost::asio {
 
@@ -34,21 +34,22 @@ inline const_buffer buffer(pichi::ConstBuffer<PodType> origin, size_t size)
 
 class io_context;
 
-} // namespace boost::asio
+}  // namespace boost::asio
+
+namespace pichi::vo {
+
+struct Ingress;
+struct Egress;
+
+}  // namespace pichi::vo
 
 namespace pichi::api {
 
-struct IngressVO;
-struct EgressVO;
 struct IngressHolder;
 
-} // namespace pichi::api
+}  // namespace pichi::api
 
 namespace pichi::net {
-
-struct Endpoint;
-struct Ingress;
-struct Egress;
 
 template <typename Socket, typename Yield> void connect(ResolveResults, Socket&, Yield);
 template <typename Socket, typename Yield> void read(Socket&, MutableBuffer<uint8_t>, Yield);
@@ -57,8 +58,8 @@ template <typename Socket, typename Yield> void write(Socket&, ConstBuffer<uint8
 template <typename Socket, typename Yield> void close(Socket&, Yield);
 
 template <typename Socket> std::unique_ptr<Ingress> makeIngress(api::IngressHolder&, Socket&&);
-std::unique_ptr<Egress> makeEgress(api::EgressVO const&, boost::asio::io_context&);
+std::unique_ptr<Egress> makeEgress(vo::Egress const&, boost::asio::io_context&);
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
-#endif // PICHI_NET_ASIO_HPP
+#endif  // PICHI_NET_ASIO_HPP

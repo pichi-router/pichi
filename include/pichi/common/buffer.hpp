@@ -1,5 +1,5 @@
-#ifndef PICHI_BUFFER_HPP
-#define PICHI_BUFFER_HPP
+#ifndef PICHI_COMMON_BUFFER_HPP
+#define PICHI_COMMON_BUFFER_HPP
 
 #include <cassert>
 #include <stddef.h>
@@ -130,6 +130,6 @@ template <typename PodType> using ConstBuffer = Buffer<PodType const>;
 template <typename PodType, std::enable_if_t<!std::is_const_v<PodType>, int> = 0>
 using MutableBuffer = Buffer<PodType>;
 
-} // namespace pichi
+}  // namespace pichi
 
-#endif
+#endif  // PICHI_COMMON_BUFFER_HPP

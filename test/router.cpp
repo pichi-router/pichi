@@ -4,23 +4,28 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/api/router.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/endpoint.hpp>
+#include <pichi/common/literals.hpp>
+#include <pichi/vo/keys.hpp>
 
 using namespace std;
-using namespace pichi;
-using namespace pichi::api;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace sys = boost::system;
 using ResolvedResults = ip::basic_resolver_results<ip::tcp>;
-using Endpoint = ip::tcp::endpoint;
+
+namespace pichi::unit_test {
+
+using namespace api;
+using vo::Route;
 
 static decltype(auto) fn = "geo.mmdb";
 
 static ResolvedResults createRR(string_view str = ""sv)
 {
-  return str.empty() ? ResolvedResults{} :
-                       ResolvedResults::create(Endpoint{ip::make_address(str), 443}, ph, ph);
+  return str.empty()
+             ? ResolvedResults{}
+             : ResolvedResults::create(ip::tcp::endpoint{ip::make_address(str), 443}, ph, ph);
 }
 
 BOOST_AUTO_TEST_SUITE(ROUTER_TEST)
@@ -150,7 +155,7 @@ BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Rule)
 {
   auto verifyDefault = [](auto&& rvo) {
     BOOST_CHECK(rvo.default_.has_value());
-    BOOST_CHECK(*rvo.default_ == "direct");
+    BOOST_CHECK(*rvo.default_ == vo::type::DIRECT);
     BOOST_CHECK(rvo.rules_.empty());
   };
 
@@ -167,7 +172,7 @@ BOOST_AUTO_TEST_CASE(Router_Set_Default_Route)
   auto router = Router{fn};
   auto vo = router.getRoute();
   BOOST_CHECK(vo.default_.has_value());
-  BOOST_CHECK(*vo.default_ == "direct");
+  BOOST_CHECK(*vo.default_ == vo::type::DIRECT);
   BOOST_CHECK(vo.rules_.empty());
 
   router.setRoute({ph});
@@ -188,13 +193,13 @@ BOOST_AUTO_TEST_CASE(Router_setRoute_With_Rules)
 
   for (auto i = 0; i < MAX; ++i) router.update(to_string(i), {});
 
-  auto seq = RouteVO{};
+  auto seq = Route{};
   for (auto i = 0; i < MAX; ++i)
     seq.rules_.push_back(make_pair(vector<string>{to_string(i)}, to_string(i)));
   router.setRoute(seq);
   verifyRules(seq.rules_, router.getRoute().rules_);
 
-  auto rev = RouteVO{};
+  auto rev = Route{};
   for (auto i = MAX - 1; i >= 0; --i)
     seq.rules_.push_back(make_pair(vector<string>{to_string(i)}, to_string(i)));
   router.setRoute(rev);
@@ -203,7 +208,7 @@ BOOST_AUTO_TEST_CASE(Router_setRoute_With_Rules)
 
 BOOST_AUTO_TEST_CASE(Router_setRoute_Without_Default)
 {
-  auto route = RouteVO{ph, {make_pair(vector<string>{ph}, ph)}};
+  auto route = Route{ph, {make_pair(vector<string>{ph}, ph)}};
   auto router = Router{fn};
   router.update(ph, {});
   router.setRoute(route);
@@ -251,8 +256,8 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Range)
 
   BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("10.0.0.1")) == ph);
   BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("fd00::1")) == ph);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("127.0.0.1")) == "direct");
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("fe00::1")) == "direct");
+  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("127.0.0.1")) == vo::type::DIRECT);
+  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("fe00::1")) == vo::type::DIRECT);
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Ingress)
@@ -263,7 +268,7 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Ingress)
 
   auto r = createRR("fe00::1");
   BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, r) == ph);
-  BOOST_CHECK(router.route({}, "NotMatched", AdapterType::DIRECT, r) == "direct");
+  BOOST_CHECK(router.route({}, "NotMatched", AdapterType::DIRECT, r) == vo::type::DIRECT);
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Type)
@@ -274,7 +279,7 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Type)
 
   auto r = createRR("fe00::1");
   BOOST_CHECK(router.route({}, ph, AdapterType::HTTP, r) == ph);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, r) == "direct");
+  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, r) == vo::type::DIRECT);
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
@@ -284,12 +289,11 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
   auto r = createRR();
-  for (auto type :
-       {net::Endpoint::Type::DOMAIN_NAME, net::Endpoint::Type::IPV4, net::Endpoint::Type::IPV6}) {
+  for (auto type : {EndpointType::DOMAIN_NAME, EndpointType::IPV4, EndpointType::IPV6}) {
     BOOST_CHECK(router.route({type, "foo.example.com", ph}, ph, AdapterType::DIRECT, createRR()) ==
                 ph);
     BOOST_CHECK(router.route({type, "fooexample.com", ph}, ph, AdapterType::DIRECT, createRR()) ==
-                "direct");
+                vo::type::DIRECT);
   }
 }
 
@@ -299,10 +303,10 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain)
   router.update(ph, {{}, {}, {}, {}, {"example.com"}});
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
-  BOOST_CHECK(router.route({net::Endpoint::Type::DOMAIN_NAME, "foo.example.com", ph}, ph,
+  BOOST_CHECK(router.route({EndpointType::DOMAIN_NAME, "foo.example.com", ph}, ph,
                            AdapterType::DIRECT, createRR()) == ph);
-  BOOST_CHECK(router.route({net::Endpoint::Type::DOMAIN_NAME, "fooexample.com", ph}, ph,
-                           AdapterType::DIRECT, createRR()) == "direct");
+  BOOST_CHECK(router.route({EndpointType::DOMAIN_NAME, "fooexample.com", ph}, ph,
+                           AdapterType::DIRECT, createRR()) == vo::type::DIRECT);
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Domain_With_Invalid_Type)
@@ -311,10 +315,10 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Domain_With_Invalid_Type)
   router.update(ph, {{}, {}, {}, {}, {"example.com"}});
   router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
 
-  BOOST_CHECK(router.route({net::Endpoint::Type::IPV4, "foo.example.com", ph}, ph,
-                           AdapterType::DIRECT, createRR()) == "direct");
-  BOOST_CHECK(router.route({net::Endpoint::Type::IPV6, "foo.example.com", ph}, ph,
-                           AdapterType::DIRECT, createRR()) == "direct");
+  BOOST_CHECK(router.route({EndpointType::IPV4, "foo.example.com", ph}, ph, AdapterType::DIRECT,
+                           createRR()) == vo::type::DIRECT);
+  BOOST_CHECK(router.route({EndpointType::IPV6, "foo.example.com", ph}, ph, AdapterType::DIRECT,
+                           createRR()) == vo::type::DIRECT);
 }
 
 BOOST_AUTO_TEST_CASE(Router_Matching_Country)
@@ -325,8 +329,9 @@ BOOST_AUTO_TEST_CASE(Router_Matching_Country)
 
   BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("1.1.1.1")) == ph);
   BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("::ffff:1.1.1.1")) == ph);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("8.8.8.8")) == "direct");
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("::ffff:8.8.8.8")) == "direct");
+  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("8.8.8.8")) == vo::type::DIRECT);
+  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("::ffff:8.8.8.8")) ==
+              vo::type::DIRECT);
 }
 
 BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Default)
@@ -346,8 +351,8 @@ BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Unnecessary_Rules)
 BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Unnecessary_Route)
 {
   auto router = Router{fn};
-  router.update("range", {{"127.0.0.1/32"}});
-  router.update("country", {{}, {}, {}, {}, {}, {ph}});
+  router.update(vo::rule::RANGE, {{"127.0.0.1/32"}});
+  router.update(vo::rule::COUNTRY, {{}, {}, {}, {}, {}, {ph}});
   BOOST_CHECK(!router.needResloving());
 }
 
@@ -369,3 +374,5 @@ BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Necessary_Country)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

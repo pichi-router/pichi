@@ -2,11 +2,12 @@
 
 #include "utils.hpp"
 #include <boost/test/unit_test.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/crypto/method.hpp>
 
-using namespace pichi;
-using namespace pichi::crypto;
+namespace pichi::unit_test {
+
+using namespace crypto;
 
 BOOST_AUTO_TEST_SUITE(METHOD)
 
@@ -75,3 +76,5 @@ BOOST_AUTO_TEST_CASE(TAG_SIZE_Test)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace pichi::unit_test

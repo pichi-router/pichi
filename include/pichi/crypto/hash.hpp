@@ -5,11 +5,10 @@
 #include <mbedtls/sha1.h>
 #include <mbedtls/sha256.h>
 #include <mbedtls/sha512.h>
-#include <pichi/buffer.hpp>
+#include <pichi/common/buffer.hpp>
+#include <pichi/common/enumerations.hpp>
 
 namespace pichi::crypto {
-
-enum class HashAlgorithm { MD5, SHA1, SHA224, SHA256, SHA384, SHA512 };
 
 // TODO use lambda if compiler supports
 struct StartFunctions {
@@ -157,6 +156,6 @@ template <HashAlgorithm algorithm>
 void hkdf(MutableBuffer<uint8_t> okm, ConstBuffer<uint8_t> ikm, ConstBuffer<uint8_t> salt,
           ConstBuffer<uint8_t> info = {(uint8_t const*)"ss-subkey", 9});
 
-} // namespace pichi::crypto
+}  // namespace pichi::crypto
 
-#endif
+#endif  // PICHI_CRYPTO_HASH_HPP

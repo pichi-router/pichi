@@ -1,8 +1,8 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/beast/http/error.hpp>
 #include <iostream>
-#include <pichi/exception.hpp>
+#include <pichi/common/exception.hpp>
 #include <pichi/net/spawn.hpp>
 
 using namespace std;

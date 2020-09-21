@@ -1,4 +1,4 @@
-#include <pichi/config.hpp>
+#include <pichi/common/config.hpp>
 // Include config.hpp first
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/system_timer.hpp>
@@ -10,12 +10,12 @@
 #include <memory>
 #include <pichi/api/server.hpp>
 #include <pichi/api/session.hpp>
-#include <pichi/api/vos.hpp>
-#include <pichi/asserts.hpp>
-#include <pichi/common.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/net/asio.hpp>
-#include <pichi/net/helpers.hpp>
 #include <pichi/net/spawn.hpp>
+#include <pichi/vo/egress.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
@@ -28,12 +28,12 @@ using tcp = ip::tcp;
 namespace pichi::api {
 
 static auto const IMMEDIATE_REJECTOR =
-    EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
+    vo::Egress{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
 static auto const RANDOM_REJECTOR =
-    EgressVO{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
+    vo::Egress{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
 static auto const IV_EXPIRE_TIME = 1h;
 
-static auto resolve(net::Endpoint const& remote, asio::io_context& io, asio::yield_context yield)
+static auto resolve(Endpoint const& remote, asio::io_context& io, asio::yield_context yield)
 {
   auto ec = sys::error_code{};
   auto r = tcp::resolver{io}.async_resolve(remote.host_, remote.port_, yield[ec]);
@@ -49,10 +49,11 @@ static auto visitingSelf(tcp::resolver::results_type const& r, string_view bind,
 }
 
 Server::Server(asio::io_context& io, char const* fn)
-  : strand_{io}, router_{fn}, egresses_{},
-    ingresses_{io, [this](auto in, auto&& holder) { startIngress(in, holder); }}, rest_{ingresses_,
-                                                                                        egresses_,
-                                                                                        router_}
+  : strand_{io},
+    router_{fn},
+    egresses_{},
+    ingresses_{io, [this](auto in, auto&& holder) { startIngress(in, holder); }},
+    rest_{ingresses_, egresses_, router_}
 {
 }
 
@@ -106,14 +107,14 @@ template <typename Yield> void Server::listen(string_view iname, IngressHolder& 
             // Refuse connection to the server itself via ingresses.
             // TODO it might be a rule rather than hardcode.
             auto r = resolve(remote, io, yield);
-            auto&& evo = visitingSelf(r, bind_, port_) ? IMMEDIATE_REJECTOR :
-                                                         route(remote, iname, vo.type_, r);
+            auto&& evo = visitingSelf(r, bind_, port_) ? IMMEDIATE_REJECTOR
+                                                       : route(remote, iname, vo.type_, r);
 
             auto session = make_shared<Session>(io, move(ingress), net::makeEgress(evo, io));
             if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
               session->start(remote);
             else
-              session->start(remote, net::makeEndpoint(*evo.host_, *evo.port_));
+              session->start(remote, makeEndpoint(*evo.host_, *evo.port_));
           }
         },
         [ingress = p](auto eptr, auto yield) noexcept { ingress->disconnect(eptr, yield); });
@@ -150,8 +151,8 @@ bool Server::isDuplicated(ConstBuffer<uint8_t> raw)
   return false;
 }
 
-EgressVO const& Server::route(net::Endpoint const& remote, string_view iname, AdapterType type,
-                              ResolveResult const& r)
+vo::Egress const& Server::route(Endpoint const& remote, string_view iname, AdapterType type,
+                                ResolveResult const& r)
 {
   auto it = egresses_.find(router_.route(remote, iname, type, r));
   assertFalse(it == cend(egresses_));
@@ -169,4 +170,4 @@ void Server::startIngress(string_view iname, IngressHolder& holder)
       [this, iname](auto eptr, auto) noexcept { removeIngress(eptr, iname); });
 }
 
-} // namespace pichi::api
+}  // namespace pichi::api
