@@ -56,11 +56,17 @@ inline decltype(auto) LEAST_CONN = "least_conn";
 
 }  // namespace balance
 
+namespace endpoint {
+
+inline decltype(auto) HOST = "host";
+inline decltype(auto) PORT = "port";
+
+}  // namespace endpoint
+
 namespace ingress {
 
 inline decltype(auto) TYPE = "type";
 inline decltype(auto) BIND = "bind";
-inline decltype(auto) PORT = "port";
 inline decltype(auto) METHOD = "method";
 inline decltype(auto) PASSWORD = "password";
 inline decltype(auto) CREDENTIALS = "credentials";

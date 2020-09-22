@@ -119,6 +119,14 @@ json::Value toJson(BalanceType selector, Allocator& alloc)
   }
 }
 
+json::Value toJson(Endpoint const& endpoint, Allocator& alloc)
+{
+  auto ret = json::Value{json::kObjectType};
+  ret.AddMember(endpoint::HOST, toJson(endpoint.host_, alloc), alloc);
+  ret.AddMember(endpoint::PORT, endpoint.port_, alloc);
+  return ret;
+}
+
 string toString(json::Value const& v)
 {
   auto buf = json::StringBuffer{};

@@ -20,9 +20,11 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
   ret.SetObject();
 
   assertFalse(ingress.bind_.empty());
-  assertFalse(ingress.port_ == 0_u16);
-  ret.AddMember(ingress::BIND, toJson(ingress.bind_, alloc), alloc);
-  ret.AddMember(ingress::PORT, json::Value{ingress.port_}, alloc);
+  ret.AddMember(ingress::BIND, json::Value(json::kArrayType), alloc);
+  for_each(cbegin(ingress.bind_), cend(ingress.bind_),
+           [&bind = ret[ingress::BIND], &alloc](auto&& endpoint) {
+             bind.PushBack(toJson(endpoint, alloc), alloc);
+           });
   ret.AddMember(ingress::TYPE, toJson(ingress.type_, alloc), alloc);
 
   switch (ingress.type_) {
@@ -99,10 +101,13 @@ template <> Ingress parse(json::Value const& v)
   ivo.type_ = parse<AdapterType>(v[ingress::TYPE]);
   assertFalse(ivo.type_ == AdapterType::DIRECT, PichiError::BAD_JSON, msg::AT_INVALID);
   assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::BAD_JSON, msg::AT_INVALID);
+
   assertTrue(v.HasMember(ingress::BIND), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
-  assertTrue(v.HasMember(ingress::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-  ivo.bind_ = parse<string>(v[ingress::BIND]);
-  ivo.port_ = parsePort(v[ingress::PORT]);
+  auto&& bind = v[ingress::BIND];
+  assertTrue(bind.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
+  assertFalse(bind.Empty(), PichiError::BAD_JSON, msg::ARY_SIZE_ERROR);
+  transform(bind.Begin(), bind.End(), back_inserter(ivo.bind_),
+            [](auto&& v) { return parse<Endpoint>(v); });
 
   switch (ivo.type_) {
   case AdapterType::SS:
@@ -166,7 +171,8 @@ template <> Ingress parse(json::Value const& v)
 
 bool operator==(Ingress const& lhs, Ingress const& rhs)
 {
-  return lhs.type_ == rhs.type_ && lhs.bind_ == rhs.bind_ && lhs.port_ == rhs.port_ &&
+  return lhs.type_ == rhs.type_ &&
+         equal(cbegin(lhs.bind_), cend(lhs.bind_), cbegin(rhs.bind_), cend(rhs.bind_)) &&
          lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.tls_ == rhs.tls_ &&
          lhs.certFile_ == rhs.certFile_ && lhs.keyFile_ == rhs.keyFile_ &&
          equal(cbegin(lhs.destinations_), cend(lhs.destinations_), cbegin(rhs.destinations_),

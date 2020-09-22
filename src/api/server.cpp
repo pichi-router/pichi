@@ -85,10 +85,11 @@ void Server::listen(string_view address, uint16_t port)
   });
 }
 
-template <typename Yield> void Server::listen(string_view iname, IngressHolder& holder, Yield yield)
+template <typename Acceptor, typename Yield>
+void Server::listen(Acceptor& acceptor, string_view iname, IngressHolder& holder, Yield yield)
 {
-  while (holder.acceptor_.is_open()) {
-    auto ingress = net::makeIngress(holder, holder.acceptor_.async_accept(yield));
+  while (acceptor.is_open()) {
+    auto ingress = net::makeIngress(holder, acceptor.async_accept(yield));
     auto p = ingress.get();
     // FIXME Not copying for ingress because net::spawn ensures that
     //   Function and ExceptionHandler share the same scope.
@@ -161,12 +162,17 @@ vo::Egress const& Server::route(Endpoint const& remote, string_view iname, Adapt
 
 void Server::startIngress(string_view iname, IngressHolder& holder)
 {
-  /*
-   * IngressVO named `iname` has already been inserted into `ingresses_`.
-   * It should be removed if exception occurs.
-   */
   net::spawn(
-      strand_, [this, iname, &holder](auto yield) { listen(iname, holder, yield); },
+      strand_,
+      [this, iname, &holder](auto yield) {
+        for (auto&& acceptor : holder.acceptors_) {
+          listen(acceptor, iname, holder, yield);
+        }
+      },
+      /*
+       * IngressVO named `iname` has already been inserted into `ingresses_`.
+       * It should be removed if exception occurs.
+       */
       [this, iname](auto eptr, auto) noexcept { removeIngress(eptr, iname); });
 }
 

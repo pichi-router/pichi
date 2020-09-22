@@ -81,6 +81,14 @@ template <> BalanceType parse(json::Value const& v)
   fail(PichiError::BAD_JSON, msg::BA_INVALID);
 }
 
+template <> Endpoint parse(json::Value const& v)
+{
+  assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
+  assertTrue(v.HasMember(endpoint::HOST), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
+  assertTrue(v.HasMember(endpoint::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
+  return makeEndpoint(parse<string>(v[endpoint::HOST]), parsePort(v[endpoint::PORT]));
+}
+
 uint16_t parsePort(json::Value const& v)
 {
   assertTrue(v.IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);

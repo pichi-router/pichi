@@ -5,6 +5,7 @@
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/keys.hpp>
+#include <pichi/vo/to_json.hpp>
 #include <sodium/utils.h>
 #include <string.h>
 
@@ -20,6 +21,7 @@ static boost::asio::io_context io;
 static boost::asio::detail::Pull* pPull = nullptr;
 static boost::asio::detail::Push* pPush = nullptr;
 static boost::asio::detail::YieldState* pState = nullptr;
+static auto const DEFAULT_ENDPOINT = makeEndpoint("localhost", 80_u16);
 boost::asio::yield_context gYield = {io.get_executor(), *pState, *pPush, *pPull};
 
 vector<uint8_t> str2vec(string_view s) { return {cbegin(s), cend(s)}; }
@@ -35,8 +37,7 @@ vo::Ingress defaultIngressVO(AdapterType type)
 {
   auto vo = vo::Ingress{};
   vo.type_ = type;
-  vo.bind_ = ph;
-  vo.port_ = 1_u8;
+  vo.bind_.emplace_back(DEFAULT_ENDPOINT);
   switch (type) {
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
@@ -47,12 +48,12 @@ vo::Ingress defaultIngressVO(AdapterType type)
     vo.password_ = ph;
     break;
   case AdapterType::TUNNEL:
-    vo.destinations_ = {makeEndpoint("localhost", 80)};
+    vo.destinations_ = {DEFAULT_ENDPOINT};
     vo.balance_ = BalanceType::RANDOM;
     break;
   case AdapterType::TROJAN:
     vo.passwords_ = {ph};
-    vo.remote_ = makeEndpoint("localhost", 80);
+    vo.remote_ = DEFAULT_ENDPOINT;
     vo.certFile_ = ph;
     vo.keyFile_ = ph;
     break;
@@ -68,10 +69,9 @@ Value defaultIngressJson(AdapterType type)
   auto dst = Value{};
   dst.SetObject();
   dst.AddMember("localhost", 80, alloc);
-  auto v = Value{};
-  v.SetObject();
-  v.AddMember(vo::ingress::BIND, ph, alloc);
-  v.AddMember(vo::ingress::PORT, 1, alloc);
+  auto v = Value{kObjectType};
+  v.AddMember(vo::ingress::BIND, Value{kArrayType}, alloc);
+  v[vo::ingress::BIND].PushBack(vo::toJson(DEFAULT_ENDPOINT, alloc), alloc);
   switch (type) {
   case AdapterType::HTTP:
     v.AddMember(vo::ingress::TYPE, vo::type::HTTP, alloc);

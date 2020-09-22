@@ -15,8 +15,7 @@ namespace pichi::vo {
 
 struct Ingress {
   AdapterType type_;
-  std::string bind_ = {};
-  uint16_t port_ = 0;
+  std::vector<Endpoint> bind_ = {};
   std::optional<CryptoMethod> method_ = {};
   std::optional<std::string> password_ = {};
   std::unordered_map<std::string, std::string> credentials_ = {};

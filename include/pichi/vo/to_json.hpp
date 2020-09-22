@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/enumerations.hpp>
 #include <pichi/vo/iterator.hpp>
 #include <rapidjson/document.h>
@@ -18,6 +19,7 @@ extern rapidjson::Value toJson(CryptoMethod, rapidjson::Document::AllocatorType&
 extern rapidjson::Value toJson(DelayMode, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(BalanceType, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(std::string_view, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(Endpoint const&, rapidjson::Document::AllocatorType&);
 
 template <typename InputIt>
 auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& alloc)

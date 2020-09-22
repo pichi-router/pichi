@@ -7,6 +7,7 @@
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
+#include <sstream>
 
 using namespace std;
 using namespace rapidjson;
@@ -23,8 +24,11 @@ static string toString(vo::Ingress const& ingress)
   v.SetObject();
 
   v.AddMember(vo::ingress::TYPE, toJson(ingress.type_, alloc), alloc);
-  v.AddMember(vo::ingress::BIND, toJson(ingress.bind_, alloc), alloc);
-  v.AddMember(vo::ingress::PORT, ingress.port_, alloc);
+  v.AddMember(vo::ingress::BIND, Value{kArrayType}, alloc);
+  for_each(cbegin(ingress.bind_), cend(ingress.bind_),
+           [&bind = v[vo::ingress::BIND]](auto&& endpoint) {
+             bind.PushBack(toJson(endpoint, alloc), alloc);
+           });
   if (ingress.method_.has_value())
     v.AddMember(vo::ingress::METHOD, toJson(*ingress.method_, alloc), alloc);
   if (ingress.password_.has_value())
@@ -71,22 +75,23 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Default_Ones)
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Mandatory_Fields)
+BOOST_AUTO_TEST_CASE(parse_IngressVO_Mandatory_Fields)
 {
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL,
+                    AdapterType::TROJAN}) {
     auto noType = defaultIngressJson(type);
     noType.RemoveMember(vo::ingress::TYPE);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noType)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(noType), Exception,
                           verifyException<PichiError::BAD_JSON>);
 
-    auto noBind = defaultEgressJson(type);
+    auto noBind = defaultIngressJson(type);
     noBind.RemoveMember(vo::ingress::BIND);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noBind)), Exception,
+    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(noBind), Exception,
                           verifyException<PichiError::BAD_JSON>);
 
-    auto noPort = defaultEgressJson(type);
-    noPort.RemoveMember(vo::ingress::PORT);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noPort)), Exception,
+    auto emptyBind = defaultIngressJson(type);
+    emptyBind[vo::ingress::BIND].Clear();
+    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(emptyBind), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -111,24 +116,6 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Default_TLS_Fields)
     auto json = defaultIngressJson(type);
     json.RemoveMember(vo::ingress::TLS);
     BOOST_CHECK(defaultIngressVO(type) == parse<vo::Ingress>(toString(json)));
-  }
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Empty_Fields)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto origin = defaultIngressVO(type);
-    parse<vo::Ingress>(toString(origin));
-
-    auto emptyBind = origin;
-    emptyBind.bind_.clear();
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(emptyBind)), Exception,
-                          verifyException<PichiError::BAD_JSON>);
-
-    auto zeroPort = origin;
-    zeroPort.port_ = 0;
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(zeroPort)), Exception,
-                          verifyException<PichiError::BAD_JSON>);
   }
 }
 
@@ -271,16 +258,6 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
   auto origin = defaultIngressVO(AdapterType::SS);
   auto holder = parse<vo::Ingress>(toString(origin));
 
-  auto emptyBind = origin;
-  emptyBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(emptyBind)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto zeroPort = origin;
-  zeroPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(zeroPort)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
   auto noMethod = origin;
   noMethod.method_.reset();
   BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noMethod)), Exception,
@@ -299,8 +276,8 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Mandatory_Field)
 {
-  for (auto k : {"type", "bind", "port", "passwords", "remote_host", "remote_port", "cert_file",
-                 "key_file"}) {
+  for (auto k : {vo::ingress::PASSWORDS, vo::ingress::REMOTE_HOST, vo::ingress::REMOTE_PORT,
+                 vo::ingress::CERT_FILE, vo::ingress::KEY_FILE}) {
     auto json = defaultIngressJson(AdapterType::TROJAN);
     json.RemoveMember(k);
     BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
@@ -310,41 +287,26 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Mandatory_Field)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Non_Empty_Field)
 {
-  for (auto k : {"bind", "remote_host", "cert_file", "key_file"}) {
+  for (auto k : {vo::ingress::REMOTE_HOST, vo::ingress::CERT_FILE, vo::ingress::KEY_FILE}) {
     auto json = defaultIngressJson(AdapterType::TROJAN);
     json[k].SetString("");
     BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
   auto json = defaultIngressJson(AdapterType::TROJAN);
-  for (auto&& pwd : json["passwords"].GetArray()) pwd.SetString("");
+  for (auto&& pwd : json[vo::ingress::PASSWORDS].GetArray()) pwd.SetString("");
   BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Non_Empty_Passwords)
 {
   auto json = defaultIngressJson(AdapterType::TROJAN);
-  json["passwords"].Clear();
+  json[vo::ingress::PASSWORDS].Clear();
   BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Mandatory_Fields)
 {
-  auto noType = defaultIngressJson(AdapterType::TUNNEL);
-  noType.RemoveMember(vo::ingress::TYPE);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noType)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto noBind = defaultIngressJson(AdapterType::TUNNEL);
-  noBind.RemoveMember(vo::ingress::BIND);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noBind)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto noPort = defaultIngressJson(AdapterType::TUNNEL);
-  noPort.RemoveMember(vo::ingress::PORT);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noPort)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
   auto noDest = defaultIngressJson(AdapterType::TUNNEL);
   noDest.RemoveMember(vo::ingress::DESTINATIONS);
   BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noDest)), Exception,
@@ -490,16 +452,6 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Balance)
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Port)
-{
-  decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(negative), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  decltype(auto) huge = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":65536}";
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(huge), Exception, verifyException<PichiError::BAD_JSON>);
-}
-
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Invalid_Type)
 {
   for (auto t : {AdapterType::DIRECT, AdapterType::REJECT})
@@ -520,14 +472,6 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_Mandatory_Fields)
   for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
     auto normal = defaultIngressVO(type);
     toJson(normal, alloc);
-
-    auto noBind = normal;
-    noBind.bind_.clear();
-    BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
-
-    auto noPort = normal;
-    noPort.port_ = 0;
-    BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
 
     auto noTls = normal;
     noTls.tls_.reset();
@@ -635,14 +579,6 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Mandatory_Fields)
   auto origin = defaultIngressVO(AdapterType::SS);
   toJson(origin, alloc);
 
-  auto noBind = origin;
-  noBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto noPort = origin;
-  noPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
-
   auto noMethod = origin;
   noMethod.method_.reset();
   BOOST_CHECK_EXCEPTION(toJson(noMethod, alloc), Exception, verifyException<PichiError::MISC>);
@@ -708,14 +644,6 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_TUNNEL_Mandatory_Fields)
   auto origin = defaultIngressVO(AdapterType::TUNNEL);
   toJson(origin, alloc);
 
-  auto noBind = origin;
-  noBind.bind_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(noBind, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto noPort = origin;
-  noPort.port_ = 0;
-  BOOST_CHECK_EXCEPTION(toJson(noPort, alloc), Exception, verifyException<PichiError::MISC>);
-
   auto noDest = origin;
   noDest.destinations_.clear();
   BOOST_CHECK_EXCEPTION(toJson(noDest, alloc), Exception, verifyException<PichiError::MISC>);
@@ -728,8 +656,7 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_TUNNEL_Mandatory_Fields)
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Empty_Pack)
 {
   auto empty = unordered_map<string, vo::Ingress>{};
-  auto expect = Value{};
-  expect.SetObject();
+  auto expect = Value{kObjectType};
 
   auto fact = toJson(begin(empty), end(empty), alloc);
   BOOST_CHECK(expect == fact);
@@ -745,8 +672,7 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack_Empty_Name)
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack)
 {
   auto src = unordered_map<string, vo::Ingress>{};
-  auto expect = Value{};
-  expect.SetObject();
+  auto expect = Value{kObjectType};
   for (auto i = 0; i < 10; ++i) {
     expect.AddMember(Value{to_string(i).data(), alloc}, defaultIngressJson(AdapterType::HTTP),
                      alloc);
