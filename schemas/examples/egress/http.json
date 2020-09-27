@@ -1,0 +1,7 @@
+{
+  "type": "http",
+  "server": {
+    "host": "proxy.example.com",
+    "port": 3128
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "ss",
+  "bind": [
+    {
+      "host": "::",
+      "port": 8388
+    },
+    {
+      "host": "0.0.0.0",
+      "port": 8388
+    }
+  ],
+  "ss": {
+    "method": "xchacha20-ietf-poly1305",
+    "password": "shadowsocks password"
+  }
+}

@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  version: "1.3"
+  version: "1.4"
   title: 'Pichi API'
   description: 'RESTful API for pichi server'
 tags:
@@ -313,19 +313,16 @@ paths:
                 $ref: '#/components/schemas/ErrorMessage'
 components:
   schemas:
-    ErrorMessage:
-      type: object
-      properties:
-        message:
-          type: string
-          example: 'Error message in detail'
-    AdapterType:
+    IngressType:
       type: string
       enum:
         - http
         - socks5
         - ss
-    CryptoMethod:
+        - tunnel
+        - trojan
+        - vmess
+    ShadowsocksMethod:
       description: 'SS method'
       type: string
       enum:
@@ -348,6 +345,392 @@ components:
         - aes-256-gcm
         - chacha20-ietf-poly1305
         - xchacha20-ietf-poly1305
+    VMessSecurity:
+      description: 'The security option for VMess protocol'
+      type: string
+      enum:
+        - auto
+        - none
+        - chacha20-poly1305
+        - aes-128-gcm
+    Endpoint:
+      description: 'The endpoint object'
+      type: object
+      properties:
+        host:
+          description: 'Host name or IP(v4/v6) address'
+          type: string
+          example: 'example.com'
+        port:
+          description: 'TCP port'
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+          example: 8388
+      required:
+        - host
+        - port
+    Bind:
+      description: 'Bind option of ingress'
+      type: object
+      properties:
+        bind:
+          description: 'Binding endpoints'
+          type: array
+          items:
+            $ref: '#/components/schemas/Endpoint'
+          minLength: 1
+      required:
+        - bind
+    Server:
+      description: 'Server option of egress'
+      type: object
+      properties:
+        server:
+          $ref: '#/components/schemas/Endpoint'
+      required:
+        - server
+    ShadowsocksOption:
+      description: 'The extra options for Shadowsocks Adapter'
+      type: object
+      properties:
+        password:
+          description: 'Shadowsocks password'
+          type: string
+          example: 'ss password'
+        method:
+          $ref: '#/components/schemas/ShadowsocksMethod'
+      required:
+        - password
+        - method
+    TunnelOption:
+      description: 'The extra options for Tunnel ingress'
+      type: object
+      properties:
+        destinations:
+          description: 'Destination endpoints'
+          type: array
+          items:
+            $ref: '#/components/schemas/Endpoint'
+          minLength: 1
+        balance:
+          description: 'Tunnel balance type'
+          type: string
+          enum:
+            - random
+            - round-robin
+            - least-conn
+      required:
+        - destinations
+        - balance
+    RejectOption:
+      description: 'The extra options for Reject egress'
+      type: object
+      properties:
+        mode:
+          description: 'Reject mode'
+          type: string
+          enum:
+            - fixed
+            - random
+          default: 'fixed'
+        delay:
+          description: 'Dealy seconds to reject the connection'
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 300
+          default: 0
+      required:
+        - mode
+    TlsForIngress:
+      description: 'TLS options for ingress'
+      type: object
+      properties:
+        cert_file:
+          description: 'The file path of certificate'
+          type: string
+          example: '/etc/letsencrypt/live/example.com/fullchain.pem'
+        key_file:
+          description: 'The file path of private key'
+          type: string
+          example: '/etc/letsencrypt/live/example.com/privkey.pem'
+      required:
+        - cert_file
+        - key_file
+    TlsForEgress:
+      description: 'TLS options for egress'
+      type: object
+      properties:
+        insecure:
+          description: 'Wether to verify the TLS certificate'
+          type: boolean
+          default: false
+        ca_file:
+          description: 'The file path of CA certificate'
+          type: string
+          example: '/etc/cert/rootCA.pem'
+        server_name:
+          description: 'The server name used to verify the certificate'
+          type: string
+          example: 'example.com'
+        sni:
+          description: 'SNI extension field of TLS'
+          type: string
+          example: 'example.com'
+      required:
+        - insecure
+    WebsocketOption:
+      description: 'Websocket options for Trojan/VMess adapter'
+      type: object
+      properties:
+        path:
+          description: 'Websocket URI path'
+          type: string
+          example: '/path'
+        host:
+          description: 'HOST field in HTTP header'
+          type: string
+          example: 'example.com'
+      required:
+        - path
+    HttpSocks5Credential:
+      description: 'Credential object for Http/Socks5 adapter'
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+    TojanCredential:
+      description: 'Credential object for Trojan adapter'
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
+    VMessCredential:
+      description: 'Credential object for VMess adapter'
+      type: object
+      properties:
+        uuid:
+          description: 'VMess UUID string'
+          type: string
+          example: 'f2096007-5315-49dd-a623-1d3ed7ab891c'
+        alter_id:
+          description: 'The number of extra alternative IDs'
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 65535
+          example: 4
+        security:
+          $ref: '#/components/schemas/VMessSecurity'
+      required:
+        - uuid
+        - alter_id
+    ShadowsocksAdapter:
+      description: 'Shadowsocks ingress object'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - ss
+        ss:
+          $ref: '#/components/schemas/ShadowsocksOption'
+      required:
+        - type
+        - ss
+    TunnelIngress:
+      description: 'Tunnel ingress object'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - tunnel
+        tunnel:
+          $ref: '#/components/schemas/TunnelOption'
+      required:
+        - type
+        - tunnel
+    HttpSocks5Ingress:
+      description: "HTTP/Socks5 ingress object"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - http
+            - socks5
+        credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/HttpSocks5Credential'
+        tls:
+          $ref: '#/components/schemas/TlsForIngress'
+      required:
+        - type
+    TrojanIngress:
+      description: "Trojan ingress object"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - trojan
+        trojan:
+          description: "The extra options for Trojan ingress"
+          type: object
+          properties:
+            remote:
+              $ref: '#/components/schemas/Endpoint'
+          required:
+            - remote
+        credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/TojanCredential'
+          minLength: 1
+        tls:
+          $ref: '#/components/schemas/TlsForIngress'
+        websocket:
+          $ref: '#/components/schemas/WebsocketOption'
+      required:
+        - type
+        - trojan
+        - credentials
+        - tls
+    VMessIngress:
+      description: 'VMess ingress object'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - vmess
+        credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/VMessCredential'
+          minLength: 1
+        tls:
+          $ref: '#/components/schemas/TlsForIngress'
+        websocket:
+          $ref: '#/components/schemas/WebsocketOption'
+      required:
+        - type
+        - credentials
+    DirectEgress:
+      description: "Direct egress object"
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - direct
+      required:
+        - type
+    RejectEgress:
+      description: 'Reject egress object'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - reject
+        reject:
+          $ref: '#/components/schemas/RejectOption'
+      required:
+        - type
+    HttpSocks5Egress:
+      description: 'HTTP/Socks5 egress object'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - http
+            - socks5
+        credential:
+          $ref: '#/components/schemas/HttpSocks5Credential'
+        tls:
+          $ref: '#/components/schemas/TlsForEgress'
+      required:
+        - type
+    TrojanEgress:
+      description: 'Trojan egress object'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - trojan
+        credential:
+          $ref: '#/components/schemas/TojanCredential'
+        tls:
+          $ref: '#/components/schemas/TlsForEgress'
+        websocket:
+          $ref: '#/components/schemas/WebsocketOption'
+      required:
+        - type
+        - credential
+        - tls
+    VMessEgress:
+      description: 'VMess egress object'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - vmess
+        credential:
+          $ref: '#/components/schemas/VMessCredential'
+        tls:
+          $ref: '#/components/schemas/TlsForEgress'
+        websocket:
+          $ref: '#/components/schemas/WebsocketOption'
+      required:
+        - type
+        - credential
+    ProxyEgress:
+      description: 'Proxy egress object'
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Server'
+        - oneOf:
+          - $ref: '#/components/schemas/HttpSocks5Egress'
+          - $ref: '#/components/schemas/ShadowsocksAdapter'
+          - $ref: '#/components/schemas/TrojanEgress'
+          - $ref: '#/components/schemas/VMessEgress'
+    Ingress:
+      description: 'Ingress object'
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Bind'
+        - oneOf:
+          - $ref: '#/components/schemas/TunnelIngress'
+          - $ref: '#/components/schemas/HttpSocks5Ingress'
+          - $ref: '#/components/schemas/ShadowsocksAdapter'
+          - $ref: '#/components/schemas/TrojanIngress'
+          - $ref: '#/components/schemas/VMessIngress'
+    Egress:
+        oneOf:
+          - $ref: '#/components/schemas/DirectEgress'
+          - $ref: '#/components/schemas/RejectEgress'
+          - $ref: '#/components/schemas/ProxyEgress'
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'Error message in detail'
     Rule:
       type: object
       properties:
@@ -367,7 +750,7 @@ components:
           description: 'ingress type array'
           type: array
           items:
-            $ref: '#/components/schemas/AdapterType'
+            $ref: '#/components/schemas/IngressType'
         pattern:
           description: 'Remote server address pattern'
           type: array
@@ -402,195 +785,3 @@ components:
             items:
               type: string
             example: ['rule_0', 'rule_1', 'egress_0']
-    Host:
-      description: "IP(v4/v6) address or domain name"
-      type: string
-      example: "1.1.1.1"
-    Port:
-      description: "TCP port"
-      type: integer
-      format: int32
-      minimum: 1
-      maximum: 65535
-      example: 8388
-    LocalEndpoint:
-      properties:
-        bind:
-          $ref: "#/components/schemas/Host"
-        port:
-          $ref: "#/components/schemas/Port"
-      required:
-        - bind
-        - port
-    RemoteEndpoint:
-      properties:
-        host:
-          $ref: "#/components/schemas/Host"
-        port:
-          $ref: "#/components/schemas/Port"
-      required:
-        - host
-        - port
-    Credentials:
-      description: "Username and password pairs"
-      type: object
-      additionalProperties:
-        type: string
-        description: "Password"
-    Credential:
-      description: "Username and password pair"
-      type: array
-      minLength: 2
-      maxLength: 2
-      items:
-        type: string
-        example: "username / password"
-    TunnelIngress:
-      description: "Tunnel ingress"
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - tunnel
-        destinations:
-          description: "Destination endpoints"
-          example: {"dst_0":80,"dst_1":80}
-          type: object
-          additionalProperties:
-            type: integer
-          minProperties: 1
-        balance:
-          type: string
-          enum:
-            - random
-            - round_robin
-            - least_conn
-      required:
-        - type
-        - destinations
-        - balance
-    HttpOrSocks5Ingress:
-      description: "HTTP(s) or Socks5(s) ingress"
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - http
-            - socks5
-        credentials:
-          $ref: "#/components/schemas/Credentials"
-        tls:
-          type: boolean
-          description: "Whether TLS is enabled"
-          default: false
-          example: false
-        cert_file:
-          description: "TLS certification file path"
-          type: string
-          example: "/etc/cert/cert.pem"
-        key_file:
-          description: "TLS private key file path"
-          type: string
-          example: "/etc/cert/privkey.pem"
-      required:
-        - type
-        - tls
-    HttpOrSocks5Egress:
-      description: "HTTP(s) or Socks5(s) egress"
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - http
-            - socks5
-        credential:
-          $ref: "#/components/schemas/Credential"
-        tls:
-          type: boolean
-          description: "Whether TLS is enabled"
-          default: false
-          example: false
-        insecure:
-          description: "Whether to verify the peer certificate"
-          type: boolean
-          default: true
-          example: true
-        ca_file:
-          description: "CA file path"
-          type: string
-          example: "/etc/cert/ca.pem"
-      required:
-        - type
-        - tls
-    SSAdapter:
-      description: "Shadowsocks adapter"
-      type: object
-      properties: 
-        type:
-          type: string
-          enum:
-            - ss
-        method:
-          $ref: '#/components/schemas/CryptoMethod'
-        password:
-          description: 'SS psk'
-          type: string
-          example: 'ss password'
-      required:
-        - type
-        - method
-        - password
-    RejectEgress:
-      description: "Reject egress"
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - reject
-        mode:
-          type: string
-          description: 'Delay mode for reject egress'
-          enum:
-            - random
-            - fixed
-          default: 'fixed'
-          example: 'random'
-        delay:
-          type: integer
-          description: 'Seconds delayed before rejecting connection'
-          default: 0
-          minimum: 0
-          maximum: 300
-      required:
-        - type
-        - mode
-    DirectEgress:
-      description: "Direct egress"
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - direct
-      required:
-        - type
-    Ingress:
-      allOf:
-        - $ref: "#/components/schemas/LocalEndpoint"
-        - oneOf:
-          - $ref: "#/components/schemas/TunnelIngress"
-          - $ref: "#/components/schemas/HttpOrSocks5Ingress"
-          - $ref: "#/components/schemas/SSAdapter"
-    Egress:
-      oneOf:
-        - $ref: "#/components/schemas/DirectEgress"
-        - $ref: "#/components/schemas/RejectEgress"
-        - allOf:
-          - $ref: "#/components/schemas/RemoteEndpoint"
-          - oneOf:
-            - $ref: "#/components/schemas/HttpOrSocks5Egress"
-            - $ref: "#/components/schemas/SSAdapter"

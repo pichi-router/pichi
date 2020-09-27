@@ -1,0 +1,17 @@
+{
+  "type": "socks5",
+  "server": {
+    "host": "::1",
+    "port": 3128
+  },
+  "credential": {
+    "username": "socks5_proxy_user_000",
+    "password": "socks5_proxy_pass_000"
+  },
+  "tls": {
+    "insecure": false,
+    "ca_file": "/etc/cert/rootCA.pem",
+    "server_name": "example.com",
+    "sni": "www.example.com"
+  }
+}

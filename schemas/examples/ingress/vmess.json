@@ -1,0 +1,18 @@
+{
+  "type": "vmess",
+  "bind": [
+    {
+      "host": "::",
+      "port": 443
+    }
+  ],
+  "credentials": [
+    {
+      "uuid": "fa314a7b-a26b-42ee-8b94-6ac4ca5ae895"
+    },
+    {
+      "uuid": "67f05624-28b4-4470-b6dd-a5802cdb80dc",
+      "alter_id": 64
+    }
+  ]
+}

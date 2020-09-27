@@ -1,0 +1,16 @@
+{
+  "type": "tunnel",
+  "tunnel": {
+    "destinations": [
+      {
+        "host": "tunnel0.example.com",
+        "port": 853
+      },
+      {
+        "host": "tunnel1.example.com",
+        "port": 853
+      }
+    ],
+    "balance": "random"
+  }
+}

@@ -6,7 +6,7 @@ Pichi is a flexible rule-based proxy.
 
 ### Unix-like
 
-| OS | macOS 10.15 | macOS 10.14 | Alpine 3.x |
+| OS | macOS 10.15 | macOS 10.14 | Alpine 3.11 |
 |:----------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | **Toolchain** | Xcode 11.3 | Xcode 11.1 | GCC 8.3 |
 | **Status** | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/9?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=9&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/3?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=3&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/5?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=5&branchName=master) |
@@ -79,20 +79,24 @@ Transparent proxy is very useful if you want to use some DNS servers which might
 
 #### Ingress protocols
 
+* Tunnel: TCP tunnel to multiple destinations to be chosen by pre-defined load balance algorithms
 * HTTP Proxy: defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt)
 * HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
 * SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
 * Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
-* Tunnel: TCP tunnel to multiple destinations to be chosen by pre-defined load balance algorithms
+* Trojan: defined by [trojan-gfw](https://trojan-gfw.github.io/trojan/protocol) and its websocket extension defined by [trojan-go](https://github.com/p4gefau1t/trojan-go)
+* VMess: defined by [V2Ray](https://v2ray.com/developer/protocols/vmess.html)
 
 #### Egress protocols
 
+* Direct: connecting to destination directly
+* Reject: rejecting request immediately or after a fixed/random delay
 * HTTP Proxy: defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt)
 * HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
 * SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
 * Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
-* Direct: connecting to destination directly
-* Reject: rejecting request immediately or after a fixed/random delay
+* Trojan: defined by [trojan-gfw](https://trojan-gfw.github.io/trojan/protocol) and its websocket extension defined by [trojan-go](https://github.com/p4gefau1t/trojan-go)
+* VMess: defined by [V2Ray](https://v2ray.com/developer/protocols/vmess.html)
 
 **NOTE:** HTTP egress would like to try [HTTP CONNECT](https://www.ietf.org/rfc/rfc2817.txt) first. HTTP proxy will be chosen if the previous handshake is failed.
 
@@ -181,17 +185,26 @@ Furthermore, Pichi server reloads JSON configuration on `SIGHUP` received if OS 
 
 ### API Specification
 
-[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.3)
+[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.4)
 
 ### Examples
 
 #### Proxy like ss-local(shadowsocks-libev)
 
 ```
-$ curl -i -X PUT -d '{"type":"socks5","bind":"127.0.0.1","port":1080}' http://pichi-router:port/ingresses/socks5
+$ curl -i -X PUT -d '{ \
+>       "type":"socks5", \
+>       "bind":[ \
+>         {"host":"127.0.0.1","port":1080} \
+>       ] \
+>     }' http://pichi-router:port/ingresses/socks5
 HTTP/1.1 204 No Content
 
-$ curl -i -X PUT -d '{"type":"ss","host":"my-ss-server","port":8388,"method":"rc4-md5","password":"my-password"}' http://pichi-router:port/egresses/shadowsocks
+$ curl -i -X PUT -d '{ \
+>       "type":"ss", \
+>       "server":{"host":"my-ss-server","port":8388}, \
+>       "ss":{"method":"rc4-md5","password":"my-password"} \
+>     }' http://pichi-router:port/egresses/shadowsocks
 HTTP/1.1 204 No Content
 
 $ curl -i -X PUT -d '{"default":"shadowsocks"}' http://pichi-router:port/route
@@ -202,16 +215,40 @@ HTTP/1.1 204 No Content
 #### HTTP proxy except intranet
 
 ```
-$ curl -i -X PUT -d '{"type":"http","bind":"::","port":8080}' http://pichi-router:port/ingresses/http
+$ curl -i -X PUT -d '{ \
+>       "type":"http", \
+>       "bind":[ \
+>         {"host":"::","port":8080}
+>       ] \
+>     }' http://pichi-router:port/ingresses/http
 HTTP/1.1 204 No Content
 
-$ curl -i -X PUT -d '{"type":"http","host":"http-proxy","port":8080}' http://pichi-router:port/egresses/http
+$ curl -i -X PUT -d '{ \
+>       "type":"http", \
+>       "server":{"host":"http-proxy","port":8080} \
+>     }' http://pichi-router:port/egresses/http
 HTTP/1.1 204 No Content
 
-$ curl -i -X PUT -d '{"range":["::1/128","127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"],"domain":["local"],"pattern":["^localhost$"]}' http://pichi-router:port/rules/intranet
+$ curl -i -X PUT -d '{ \
+>       "range":[ \
+>         "::1/128", \
+>         "127.0.0.1/32", \
+>         "10.0.0.0/8", \
+>         "172.16.0.0/12", \
+>         "192.168.0.0/16", \
+>         "fc00::/7" \
+>       ], \
+>       "domain":["local"], \
+>       "pattern":["^localhost$"] \
+>     }' http://pichi-router:port/rules/intranet
 HTTP/1.1 204 No Content
 
-$ curl -i -X PUT -d '{"default":"http","rules":[["intranet","direct"]]}' http://pichi-router:port/route
+$ curl -i -X PUT -d '{ \
+>       "default":"http", \
+>       "rules":[ \
+>         ["intranet","direct"] \
+>       ] \
+>     }' http://pichi-router:port/route
 HTTP/1.1 204 No Content
 
 ```
@@ -221,7 +258,16 @@ HTTP/1.1 204 No Content
 ```
 $ for((i=20000;i<20100;++i)); do \
 >   curl -X PUT \
->   -d "{\"type\":\"ss\",\"bind\":\"::\",\"port\":$i,\"method\":\"rc4-md5\",\"password\":\"pw-$i\"}" \
+>   -d "{ \
+>         \"type\":\"ss\", \
+>         \"bind\":[ \
+>           {\"host\":\"::\",\"port\":$i} \
+>         ], \
+>         \"ss\":{ \
+>           \"method\":\"rc4-md5\", \
+>           \"password\":\"pw-$i\" \
+>         } \
+>       }" \
 >   "http://pichi-router:port/ingresses/$i"; \
 > done
 
@@ -230,10 +276,16 @@ $ for((i=20000;i<20100;++i)); do \
 #### dark web
 
 ```
-$ curl -i -X PUT -d '{"type":"socks5","host":"localhost","port":9050}' http://pichi-router:port/egresses/tor
+$ curl -i -X PUT -d '{ \
+>       "type":"socks5", \
+>       "server":{"host":"localhost","port":9050} \
+>     }' http://pichi-router:port/egresses/tor
 HTTP/1.1 204 No Content
 
-$ curl -i -X PUT -d '{"type":"http","host":"localhost","port":4444}' http://pichi-router:port/egresses/i2p
+$ curl -i -X PUT -d '{ \
+>       "type":"http", \
+>       "server":{"host":"localhost","port":4444} \
+>     }' http://pichi-router:port/egresses/i2p
 HTTP/1.1 204 No Content
 
 $ curl -i -X PUT -d '{"domain":["onion"]}' http://pichi-router:port/rules/onion
@@ -242,7 +294,12 @@ HTTP/1.1 204 No Content
 $ curl -i -X PUT -d '{"domain":["i2p"]}' http://pichi-router:port/rules/i2p
 HTTP/1.1 204 No Content
 
-$ curl -i -X PUT -d '{"rules":[["onion","tor"],["i2p","i2p"]]}' http://pichi-router:port/route
+$ curl -i -X PUT -d '{ \
+>       "rules":[ \
+>         ["onion","tor"], \
+>         ["i2p","i2p"] \
+>       ] \
+>     }' http://pichi-router:port/route
 HTTP/1.1 204 No Content
 
 ```
@@ -250,11 +307,16 @@ HTTP/1.1 204 No Content
 #### socks5 server with TLS certificate issued by Let's encrypt CA
 
 ```
-$ curl -i -X PUT -d '{"type":"socks5","bind":"::1","port":1080, \
-      "tls":true, \
-      "key_file": "/etc/letsencrypt/live/example.com/privkey.pem", \
-      "cert_file": "/etc/letsencrypt/live/example.com/fullchain.pem" \
-    }' http://pichi-router:port/ingresses/socks5s
+$ curl -i -X PUT -d '{ \
+>       "type":"socks5", \
+>       "bind":[ \
+>         {"host":"::1","port":1080} \
+>       ], \
+>       "tls": { \
+>         "key_file": "/etc/letsencrypt/live/example.com/privkey.pem", \
+>         "cert_file": "/etc/letsencrypt/live/example.com/fullchain.pem" \
+>       } \
+>     }' http://pichi-router:port/ingresses/socks5s
 HTTP/1.1 204 No Content
 
 ```
@@ -262,13 +324,26 @@ HTTP/1.1 204 No Content
 #### DNS proxy
 
 ```
-$ curl -i -X PUT -d '{"type":"tunnel","bind":"::1","port":53, \
-      "destinations":{"1.1.1.1":53,"1.0.0.1":53}, \
-      "balance":"random" \
-    }' http://pichi-router:port/ingresses/cloudflare
+$ curl -i -X PUT -d '{ \
+>       "type":"tunnel", \
+>       "bind":[ \
+>         {"host":"::1","port":53} \
+>       ], \
+>       "tunnel":{ \
+>         "destinations": [ \
+>           { "host": "1.1.1.1", "port": 53 }, \
+>           { "host": "1.0.0.1", "port": 53 } \
+>         ], \
+>         "balance":"random" \
+>       } \
+>     }' http://pichi-router:port/ingresses/cloudflare
 HTTP/1.1 204 No Content
 
 ```
+
+#### More examples
+
+Please refer to the [folder](schemas/examples) to find more examples.
 
 ## Build
 
@@ -280,7 +355,7 @@ HTTP/1.1 204 No Content
 * [libsodium](https://libsodium.org) 1.0.12
 * [RapidJSON](http://rapidjson.org/) 1.1.0
 * [libmaxminddb](http://maxmind.github.io/libmaxminddb/) 1.3.0
-* [OpenSSL](https://www.openssl.org) (*Optional*)
+* [OpenSSL](https://www.openssl.org)
 
 ### CMake options
 
@@ -288,7 +363,6 @@ HTTP/1.1 204 No Content
 * `BUILD_TEST`: Build unit test cases, the default is **ON**.
 * `STATIC_LINK`: Generate static library, the default is **ON**.
 * `INSTALL_DEVEL`: Install development files, the default is **OFF**.
-* `ENABLE_TLS`: Provide TLS support, the default is **ON**.
 
 ### Build and run tests
 

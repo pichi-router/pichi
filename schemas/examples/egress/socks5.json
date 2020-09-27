@@ -1,0 +1,7 @@
+{
+  "type": "socks5",
+  "server": {
+    "host": "::1",
+    "port": 3128
+  }
+}

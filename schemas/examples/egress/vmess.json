@@ -1,0 +1,11 @@
+{
+  "type": "vmess",
+  "server": {
+    "host": "vmess.example.com",
+    "port": 443
+  },
+  "credential": {
+    "uuid": "22d1d4eb-3619-48fd-ae74-bfef06ac5c3d",
+    "alter_id": 64
+  }
+}

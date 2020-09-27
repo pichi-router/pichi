@@ -1,0 +1,13 @@
+{
+  "type": "trojan",
+  "server": {
+    "host": "trojan.example.com",
+    "port": 443
+  },
+  "credential": {
+    "password": "trojan password"
+  },
+  "tls": {
+    "insecure": true
+  }
+}

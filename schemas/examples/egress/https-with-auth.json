@@ -1,0 +1,16 @@
+{
+  "type": "http",
+  "server": {
+    "host": "::1",
+    "port": 3128
+  },
+  "credential": {
+    "username": "http_proxy_user_000",
+    "password": "http_proxy_pass_000"
+  },
+  "tls": {
+    "insecure": false,
+    "server_name": "example.com",
+    "sni": "www.example.com"
+  }
+}

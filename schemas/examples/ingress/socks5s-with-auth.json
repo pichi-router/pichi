@@ -1,0 +1,27 @@
+{
+  "type": "socks5",
+  "bind": [
+    {
+      "host": "::1",
+      "port": 1080
+    },
+    {
+      "host": "127.0.0.1",
+      "port": 1080
+    }
+  ],
+  "credentials": [
+    {
+      "username": "socks5_proxy_user_000",
+      "password": "socks5_proxy_pass_000"
+    },
+    {
+      "username": "socks5_proxy_user_001",
+      "password": "socks5_proxy_pass_001"
+    }
+  ],
+  "tls": {
+    "key_file": "/etc/letsencrypt/live/example.com/privkey.pem",
+    "cert_file": "/etc/letsencrypt/live/example.com/fullchain.pem"
+  }
+}
