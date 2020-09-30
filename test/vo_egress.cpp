@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Str)
 BOOST_AUTO_TEST_CASE(parse_Egress_Default_Ones)
 {
   for (auto type : {AdapterType::DIRECT, AdapterType::HTTP, AdapterType::REJECT,
-                    AdapterType::SOCKS5, AdapterType::SS}) {
+                    AdapterType::SOCKS5, AdapterType::SS, AdapterType::TROJAN}) {
     BOOST_CHECK(defaultEgressVO(type) == parse<vo::Egress>(toString(defaultEgressJson(type))));
   }
 }
@@ -343,6 +343,39 @@ BOOST_AUTO_TEST_CASE(parse_Egress_SS_Additional_Fields)
   BOOST_CHECK(defaultEgressVO(AdapterType::SS) == parse<vo::Egress>(json));
 }
 
+BOOST_AUTO_TEST_CASE(parse_Egress_TROJAN_Mandatory_Fields)
+{
+  auto json = defaultEgressJson(AdapterType::TROJAN);
+  json.RemoveMember("password");
+  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_TROJAN_Default_Value_Of_Insecure_Field)
+{
+  auto json = defaultEgressJson(AdapterType::TROJAN);
+  json.RemoveMember("insecure");
+  BOOST_CHECK(defaultEgressVO(AdapterType::TROJAN) == parse<vo::Egress>(json));
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_TROJAN_CA_File_Field_While_Insecure_Is_False)
+{
+  auto json = defaultEgressJson(AdapterType::TROJAN);
+  json.AddMember("insecure", false, alloc);
+  json.AddMember("ca_file", ph, alloc);
+  auto vo = parse<vo::Egress>(json);
+  BOOST_CHECK(vo.caFile_.has_value());
+  BOOST_CHECK_EQUAL(*vo.caFile_, ph);
+}
+
+BOOST_AUTO_TEST_CASE(parse_Egress_TROJAN_CA_File_Field_While_Insecure_Is_True)
+{
+  auto json = defaultEgressJson(AdapterType::TROJAN);
+  json.AddMember("insecure", true, alloc);
+  json.AddMember("ca_file", ph, alloc);
+  auto vo = parse<vo::Egress>(json);
+  BOOST_CHECK(!vo.caFile_.has_value());
+}
+
 BOOST_AUTO_TEST_CASE(parse_Egress_Invalid_Port)
 {
   decltype(auto) negative = "{\"name\":\"p\",\"type\":\"http\",\"bind\":\"p\",\"port\":-1}";
@@ -562,6 +595,37 @@ BOOST_AUTO_TEST_CASE(toJson_Egress_SS_Missing_Fields)
   auto emptyPassword = origin;
   emptyPassword.password_->clear();
   BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_TROJAN_Mandatory_Fields)
+{
+  auto origin = defaultEgressVO(AdapterType::TROJAN);
+  toJson(origin, alloc);
+
+  auto noPassword = origin;
+  noPassword.password_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noPassword, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyPassword = origin;
+  emptyPassword.password_->clear();
+  BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noInsecure = origin;
+  noInsecure.insecure_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noInsecure, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyCaFile = origin;
+  emptyCaFile.caFile_ = ""s;
+  BOOST_CHECK_EXCEPTION(toJson(emptyCaFile, alloc), Exception, verifyException<PichiError::MISC>);
+}
+
+BOOST_AUTO_TEST_CASE(toJson_Egress_TROJAN_CA_File_Ignored_When_Insecure)
+{
+  auto vo = defaultEgressVO(AdapterType::TROJAN);
+  vo.insecure_ = true;
+  vo.caFile_ = ph;
+  auto json = toJson(vo, alloc);
+  BOOST_CHECK(!json.HasMember("ca_file"));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Egress_Empty_Pack)

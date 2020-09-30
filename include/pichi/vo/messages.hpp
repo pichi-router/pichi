@@ -32,6 +32,9 @@ static std::string_view const MISSING_KEY_FILE_FIELD = "Missing key_file field";
 static std::string_view const TOO_LONG_NAME_PASSWORD = "Name or password is too long";
 static std::string_view const MISSING_DESTINATIONS_FIELD = "Missiong destinations field";
 static std::string_view const MISSING_BALANCE_FIELD = "Missiong balance field";
+static std::string_view const MISSING_REMOTE_HOST_FIELD = "Missing remote_host field";
+static std::string_view const MISSING_REMOTE_PORT_FIELD = "Missing remote_port field";
+static std::string_view const MISSING_PASSWORDS_FIELD = "MIssing passwords field";
 
 }  // namespace pichi::vo::msg
 

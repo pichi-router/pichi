@@ -22,6 +22,7 @@
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
 #include <pichi/net/stream.hpp>
+#include <pichi/net/trojan.hpp>
 #include <pichi/net/tunnel.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
@@ -167,6 +168,10 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
   auto psk = MutableBuffer<uint8_t>{container};
   auto& vo = holder.vo_;
   switch (vo.type_) {
+  case AdapterType::TROJAN:
+    return make_unique<TrojanIngress<TLSStream>>(*vo.remote_, cbegin(vo.passwords_),
+                                                 cend(vo.passwords_), createTlsContext(vo),
+                                                 forward<Socket>(s));
   case AdapterType::HTTP:
 #ifdef ENABLE_TLS
     if (*vo.tls_)
@@ -252,6 +257,8 @@ unique_ptr<Egress> makeEgress(vo::Egress const& vo, asio::io_context& io)
   auto container = array<uint8_t, 1024>{0};
   auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
+  case AdapterType::TROJAN:
+    return make_unique<TrojanEgress<TLSStream>>(*vo.password_, createTlsContext(vo), io);
   case AdapterType::HTTP:
 #ifdef ENABLE_TLS
     if (*vo.tls_)

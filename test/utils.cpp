@@ -47,8 +47,14 @@ vo::Ingress defaultIngressVO(AdapterType type)
     vo.password_ = ph;
     break;
   case AdapterType::TUNNEL:
-    vo.destinations_ = {{EndpointType::DOMAIN_NAME, "localhost", "80"}};
+    vo.destinations_ = {makeEndpoint("localhost", 80)};
     vo.balance_ = BalanceType::RANDOM;
+    break;
+  case AdapterType::TROJAN:
+    vo.passwords_ = {ph};
+    vo.remote_ = makeEndpoint("localhost", 80);
+    vo.certFile_ = ph;
+    vo.keyFile_ = ph;
     break;
   default:
     BOOST_ERROR("Invalid type");
@@ -85,6 +91,14 @@ Value defaultIngressJson(AdapterType type)
     v.AddMember(vo::ingress::DESTINATIONS, dst, alloc);
     v.AddMember(vo::ingress::BALANCE, vo::balance::RANDOM, alloc);
     break;
+  case AdapterType::TROJAN:
+    v.AddMember("type", "trojan", alloc);
+    v.AddMember("passwords", Value{}.SetArray().PushBack(ph, alloc), alloc);
+    v.AddMember("remote_host", "localhost", alloc);
+    v.AddMember("remote_port", 80, alloc);
+    v.AddMember("cert_file", ph, alloc);
+    v.AddMember("key_file", ph, alloc);
+    break;
   default:
     BOOST_ERROR("Invalid type");
     break;
@@ -114,6 +128,12 @@ vo::Egress defaultEgressVO(AdapterType type)
     vo.host_ = ph;
     vo.port_ = 1_u8;
     vo.tls_ = false;
+    break;
+  case AdapterType::TROJAN:
+    vo.host_ = ph;
+    vo.port_ = 1_u8;
+    vo.password_ = ph;
+    vo.insecure_ = false;
     break;
   default:
     BOOST_ERROR("Invalid type");
@@ -151,6 +171,10 @@ Value defaultEgressJson(AdapterType type)
     v.AddMember(vo::egress::TYPE, vo::type::SS, alloc);
     v.AddMember(vo::egress::METHOD, vo::method::RC4_MD5, alloc);
     v.AddMember(vo::egress::PASSWORD, ph, alloc);
+    break;
+  case AdapterType::TROJAN:
+    v.AddMember("type", "trojan", alloc);
+    v.AddMember("password", ph, alloc);
     break;
   default:
     BOOST_ERROR("Invalid type");

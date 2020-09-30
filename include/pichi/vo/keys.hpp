@@ -13,6 +13,7 @@ inline decltype(auto) SOCKS5 = "socks5";
 inline decltype(auto) HTTP = "http";
 inline decltype(auto) SS = "ss";
 inline decltype(auto) TUNNEL = "tunnel";
+inline decltype(auto) TROJAN = "trojan";
 
 }  // namespace type
 
@@ -68,6 +69,9 @@ inline decltype(auto) CERT_FILE = "cert_file";
 inline decltype(auto) KEY_FILE = "key_file";
 inline decltype(auto) DESTINATIONS = "destinations";
 inline decltype(auto) BALANCE = "balance";
+inline decltype(auto) REMOTE_HOST = "remote_host";
+inline decltype(auto) REMOTE_PORT = "remote_port";
+inline decltype(auto) PASSWORDS = "passwords";
 
 }  // namespace ingress
 

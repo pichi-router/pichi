@@ -11,6 +11,13 @@ using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {
 
+json::Value portToJson(string const& port)
+{
+  auto p = std::stoi(port);
+  assertTrue(p > 0 && p <= std::numeric_limits<uint16_t>::max());
+  return json::Value{p};
+}
+
 json::Value toJson(string_view str, Allocator& alloc)
 {
   auto ret = json::Value{};
@@ -45,6 +52,8 @@ json::Value toJson(AdapterType type, Allocator& alloc)
     return toJson(type::SS, alloc);
   case AdapterType::TUNNEL:
     return toJson(type::TUNNEL, alloc);
+  case AdapterType::TROJAN:
+    return toJson(type::TROJAN, alloc);
   default:
     fail(PichiError::MISC);
   }

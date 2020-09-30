@@ -65,7 +65,8 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Type)
 
 BOOST_AUTO_TEST_CASE(parse_IngressVO_Default_Ones)
 {
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL}) {
+  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL,
+                    AdapterType::TROJAN}) {
     BOOST_CHECK(defaultIngressVO(type) == parse<vo::Ingress>(toString(defaultIngressJson(type))));
   }
 }
@@ -296,6 +297,37 @@ BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
                         verifyException<PichiError::BAD_JSON>);
 }
 
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Mandatory_Field)
+{
+  for (auto k : {"type", "bind", "port", "passwords", "remote_host", "remote_port", "cert_file",
+                 "key_file"}) {
+    auto json = defaultIngressJson(AdapterType::TROJAN);
+    json.RemoveMember(k);
+    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Non_Empty_Field)
+{
+  for (auto k : {"bind", "remote_host", "cert_file", "key_file"}) {
+    auto json = defaultIngressJson(AdapterType::TROJAN);
+    json[k].SetString("");
+    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
+                          verifyException<PichiError::BAD_JSON>);
+  }
+  auto json = defaultIngressJson(AdapterType::TROJAN);
+  for (auto&& pwd : json["passwords"].GetArray()) pwd.SetString("");
+  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Non_Empty_Passwords)
+{
+  auto json = defaultIngressJson(AdapterType::TROJAN);
+  json["passwords"].Clear();
+  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
 BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Mandatory_Fields)
 {
   auto noType = defaultIngressJson(AdapterType::TUNNEL);
@@ -477,7 +509,8 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_Invalid_Type)
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_Default_Ones)
 {
-  for (auto t : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL}) {
+  for (auto t : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL,
+                 AdapterType::TROJAN}) {
     BOOST_CHECK(defaultIngressJson(t) == toJson(defaultIngressVO(t), alloc));
   }
 }
@@ -630,6 +663,48 @@ BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Additional_Fields)
   vo.certFile_ = ph;
   vo.keyFile_ = ph;
   BOOST_CHECK(defaultIngressJson(AdapterType::SS) == toJson(vo, alloc));
+}
+
+BOOST_AUTO_TEST_CASE(toJson_IngressVO_TROJAN_Mandatory_Fields)
+{
+  auto origin = defaultIngressVO(AdapterType::TROJAN);
+  toJson(origin, alloc);
+
+  auto noRemote = origin;
+  noRemote.remote_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noRemote, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noRemoteHost = origin;
+  noRemoteHost.remote_->host_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(noRemoteHost, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noRemotePort = origin;
+  noRemotePort.remote_->port_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(noRemotePort, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noPasswords = origin;
+  noPasswords.passwords_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(noPasswords, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyPassword = origin;
+  emptyPassword.passwords_.insert(""s);
+  BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noCertFile = origin;
+  noCertFile.certFile_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noCertFile, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyCertFile = origin;
+  emptyCertFile.certFile_->clear();
+  BOOST_CHECK_EXCEPTION(toJson(emptyCertFile, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto noKeyFile = origin;
+  noKeyFile.keyFile_.reset();
+  BOOST_CHECK_EXCEPTION(toJson(noKeyFile, alloc), Exception, verifyException<PichiError::MISC>);
+
+  auto emptyKeyFile = origin;
+  emptyKeyFile.keyFile_->clear();
+  BOOST_CHECK_EXCEPTION(toJson(emptyKeyFile, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_IngressVO_TUNNEL_Mandatory_Fields)

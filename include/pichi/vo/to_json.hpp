@@ -12,6 +12,7 @@
 
 namespace pichi::vo {
 
+extern rapidjson::Value portToJson(std::string const&);
 extern rapidjson::Value toJson(AdapterType, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(CryptoMethod, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(DelayMode, rapidjson::Document::AllocatorType&);
@@ -34,9 +35,7 @@ auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& all
                          Endpoint>) {
     ret.SetObject();
     std::for_each(first, last, [&ret, &alloc](auto&& endpoint) {
-      auto port = std::stoi(endpoint.port_);
-      assertTrue(port > 0 && port <= std::numeric_limits<uint16_t>::max());
-      ret.AddMember(toJson(endpoint.host_, alloc), rapidjson::Value{port}, alloc);
+      ret.AddMember(toJson(endpoint.host_, alloc), portToJson(endpoint.port_), alloc);
     });
   }
   else {

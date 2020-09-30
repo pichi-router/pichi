@@ -46,6 +46,17 @@ json::Value toJson(Egress const& evo, Allocator& alloc)
       }
     }
     break;
+  case AdapterType::TROJAN:
+    assertTrue(evo.password_.has_value());
+    assertFalse(evo.password_->empty());
+    egress_.AddMember(egress::PASSWORD, toJson(*evo.password_, alloc), alloc);
+    assertTrue(evo.insecure_.has_value());
+    egress_.AddMember(egress::INSECURE, *evo.insecure_, alloc);
+    if (!*evo.insecure_ && evo.caFile_.has_value()) {
+      assertFalse(evo.caFile_->empty());
+      egress_.AddMember(egress::CA_FILE, toJson(*evo.caFile_, alloc), alloc);
+    }
+    break;
   case AdapterType::REJECT:
     assertTrue(evo.mode_.has_value());
     egress_.AddMember(egress::MODE, toJson(*evo.mode_, alloc), alloc);
@@ -73,7 +84,7 @@ template <> Egress parse(json::Value const& v)
   evo.type_ = parse<AdapterType>(v[egress::TYPE]);
 
   if (evo.type_ == AdapterType::HTTP || evo.type_ == AdapterType::SOCKS5 ||
-      evo.type_ == AdapterType::SS) {
+      evo.type_ == AdapterType::SS || evo.type_ == AdapterType::TROJAN) {
     assertTrue(v.HasMember(egress::HOST), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
     assertTrue(v.HasMember(egress::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
     evo.host_ = parse<string>(v[egress::HOST]);
@@ -98,6 +109,13 @@ template <> Egress parse(json::Value const& v)
     if (v.HasMember(egress::CREDENTIAL)) {
       evo.credential_ = parsePair(v[egress::CREDENTIAL], parseNameOrPassword);
     }
+    break;
+  case AdapterType::TROJAN:
+    evo.insecure_ = v.HasMember(egress::INSECURE) && parse<bool>(v[egress::INSECURE]);
+    if (!*evo.insecure_ && v.HasMember(egress::CA_FILE))
+      evo.caFile_ = parse<string>(v[egress::CA_FILE]);
+    assertTrue(v.HasMember(egress::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
+    evo.password_ = parse<string>(v[egress::PASSWORD]);
     break;
   case AdapterType::REJECT:
     if (v.HasMember(egress::MODE)) {

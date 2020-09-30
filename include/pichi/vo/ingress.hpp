@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace pichi::vo {
@@ -24,6 +25,8 @@ struct Ingress {
   std::optional<std::string> keyFile_ = {};
   std::vector<pichi::Endpoint> destinations_ = {};
   std::optional<BalanceType> balance_ = {};
+  std::optional<Endpoint> remote_ = {};
+  std::unordered_set<std::string> passwords_ = {};
 };
 
 extern rapidjson::Value toJson(Ingress const&, rapidjson::Document::AllocatorType&);

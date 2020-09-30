@@ -13,16 +13,18 @@ namespace pichi::vo {
 
 json::Value toJson(Ingress const& ingress, Allocator& alloc)
 {
+  assertFalse(ingress.type_ == AdapterType::DIRECT);
+  assertFalse(ingress.type_ == AdapterType::REJECT);
+
   auto ret = json::Value{};
   ret.SetObject();
-  if (ingress.type_ == AdapterType::HTTP || ingress.type_ == AdapterType::SOCKS5 ||
-      ingress.type_ == AdapterType::SS || ingress.type_ == AdapterType::TUNNEL) {
-    assertFalse(ingress.bind_.empty(), PichiError::MISC);
-    assertFalse(ingress.port_ == 0_u16, PichiError::MISC);
-    ret.AddMember(ingress::BIND, toJson(ingress.bind_, alloc), alloc);
-    ret.AddMember(ingress::PORT, json::Value{ingress.port_}, alloc);
-    ret.AddMember(ingress::TYPE, toJson(ingress.type_, alloc), alloc);
-  }
+
+  assertFalse(ingress.bind_.empty());
+  assertFalse(ingress.port_ == 0_u16);
+  ret.AddMember(ingress::BIND, toJson(ingress.bind_, alloc), alloc);
+  ret.AddMember(ingress::PORT, json::Value{ingress.port_}, alloc);
+  ret.AddMember(ingress::TYPE, toJson(ingress.type_, alloc), alloc);
+
   switch (ingress.type_) {
   case AdapterType::SS:
     assertTrue(ingress.method_.has_value(), PichiError::MISC);
@@ -64,8 +66,26 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
                   toJson(cbegin(ingress.destinations_), cend(ingress.destinations_), alloc), alloc);
     ret.AddMember(ingress::BALANCE, toJson(*ingress.balance_, alloc), alloc);
     break;
+  case AdapterType::TROJAN:
+    assertTrue(ingress.remote_.has_value());
+    assertFalse(ingress.remote_->host_.empty());
+    assertFalse(ingress.remote_->port_.empty());
+    assertFalse(ingress.passwords_.empty());
+    assertTrue(ingress.certFile_.has_value());
+    assertFalse(ingress.certFile_->empty());
+    assertTrue(ingress.keyFile_.has_value());
+    assertFalse(ingress.keyFile_->empty());
+    for_each(cbegin(ingress.passwords_), cend(ingress.passwords_),
+             [](auto&& pwd) { assertFalse(pwd.empty()); });
+    ret.AddMember(ingress::REMOTE_HOST, toJson(ingress.remote_->host_, alloc), alloc);
+    ret.AddMember(ingress::REMOTE_PORT, portToJson(ingress.remote_->port_), alloc);
+    ret.AddMember(ingress::PASSWORDS,
+                  toJson(cbegin(ingress.passwords_), cend(ingress.passwords_), alloc), alloc);
+    ret.AddMember(ingress::CERT_FILE, toJson(*ingress.certFile_, alloc), alloc);
+    ret.AddMember(ingress::KEY_FILE, toJson(*ingress.keyFile_, alloc), alloc);
+    break;
   default:
-    fail(PichiError::MISC);
+    fail();
   }
   return ret;
 }
@@ -78,13 +98,12 @@ template <> Ingress parse(json::Value const& v)
   auto ivo = Ingress{};
 
   ivo.type_ = parse<AdapterType>(v[ingress::TYPE]);
-  if (ivo.type_ == AdapterType::HTTP || ivo.type_ == AdapterType::SOCKS5 ||
-      ivo.type_ == AdapterType::SS || ivo.type_ == AdapterType::TUNNEL) {
-    assertTrue(v.HasMember(ingress::BIND), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
-    assertTrue(v.HasMember(ingress::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-    ivo.bind_ = parse<string>(v[ingress::BIND]);
-    ivo.port_ = parsePort(v[ingress::PORT]);
-  }
+  assertFalse(ivo.type_ == AdapterType::DIRECT, PichiError::BAD_JSON, msg::AT_INVALID);
+  assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::BAD_JSON, msg::AT_INVALID);
+  assertTrue(v.HasMember(ingress::BIND), PichiError::BAD_JSON, msg::MISSING_BIND_FIELD);
+  assertTrue(v.HasMember(ingress::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
+  ivo.bind_ = parse<string>(v[ingress::BIND]);
+  ivo.port_ = parsePort(v[ingress::PORT]);
 
   switch (ivo.type_) {
   case AdapterType::SS:
@@ -122,6 +141,22 @@ template <> Ingress parse(json::Value const& v)
     assertTrue(v.HasMember(ingress::BALANCE), PichiError::BAD_JSON, msg::MISSING_BALANCE_FIELD);
     ivo.destinations_ = parseDestinantions(v[ingress::DESTINATIONS]);
     ivo.balance_ = parse<BalanceType>(v[ingress::BALANCE]);
+    break;
+  case AdapterType::TROJAN:
+    assertTrue(v.HasMember(ingress::REMOTE_HOST), PichiError::BAD_JSON,
+               msg::MISSING_REMOTE_HOST_FIELD);
+    assertTrue(v.HasMember(ingress::REMOTE_PORT), PichiError::BAD_JSON,
+               msg::MISSING_REMOTE_PORT_FIELD);
+    assertTrue(v.HasMember(ingress::PASSWORDS), PichiError::BAD_JSON, msg::MISSING_PASSWORDS_FIELD);
+    assertTrue(v.HasMember(ingress::CERT_FILE), PichiError::BAD_JSON, msg::MISSING_KEY_FILE_FIELD);
+    assertTrue(v.HasMember(ingress::KEY_FILE), PichiError::BAD_JSON, msg::MISSING_CERT_FILE_FIELD);
+    ivo.remote_ =
+        makeEndpoint(parse<string>(v[ingress::REMOTE_HOST]), parsePort(v[ingress::REMOTE_PORT]));
+    ivo.certFile_ = parse<string>(v[ingress::CERT_FILE]);
+    ivo.keyFile_ = parse<string>(v[ingress::KEY_FILE]);
+    parseArray(v, ingress::PASSWORDS, inserter(ivo.passwords_, end(ivo.passwords_)),
+               [](auto&& v) { return parse<string>(v); });
+    assertFalse(ivo.passwords_.empty(), PichiError::BAD_JSON);
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);

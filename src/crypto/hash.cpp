@@ -3,6 +3,7 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
+#include <sodium/utils.h>
 
 using namespace std;
 
@@ -136,5 +137,13 @@ template void hkdf<HashAlgorithm::SHA384>(MutableBuffer<uint8_t>, ConstBuffer<ui
                                           ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
 template void hkdf<HashAlgorithm::SHA512>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
                                           ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
+
+string bin2hex(ConstBuffer<uint8_t> bin)
+{
+  auto hex = string(bin.size() * 2 + 1, '\0');
+  sodium_bin2hex(hex.data(), hex.size(), bin.data(), bin.size());
+  hex.erase(cbegin(hex) + hex.size() - 1);
+  return hex;
+}
 
 }  // namespace pichi::crypto

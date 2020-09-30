@@ -5,7 +5,7 @@ namespace pichi {
 
 enum class EndpointType { DOMAIN_NAME, IPV4, IPV6 };
 
-enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS, TUNNEL };
+enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS, TUNNEL, TROJAN };
 
 enum class HashAlgorithm { MD5, SHA1, SHA224, SHA256, SHA384, SHA512 };
 

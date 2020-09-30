@@ -15,19 +15,19 @@ namespace pichi {
  */
 template <typename T> void suppressC4100(T&& t) { static_assert(std::is_same_v<T, decltype(t)>); }
 
-inline size_t operator""_sz(unsigned long long i)
+inline constexpr size_t operator""_sz(unsigned long long i)
 {
   assert(i <= std::numeric_limits<size_t>::max());
   return static_cast<size_t>(i);
 }
 
-inline uint8_t operator""_u8(unsigned long long i)
+inline constexpr uint8_t operator""_u8(unsigned long long i)
 {
   assert(i <= std::numeric_limits<uint8_t>::max());
   return static_cast<uint8_t>(i);
 }
 
-inline uint16_t operator""_u16(unsigned long long i)
+inline constexpr uint16_t operator""_u16(unsigned long long i)
 {
   assert(i <= std::numeric_limits<uint16_t>::max());
   return static_cast<uint16_t>(i);
