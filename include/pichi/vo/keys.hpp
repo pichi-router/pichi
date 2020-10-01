@@ -72,6 +72,16 @@ inline decltype(auto) PORT = "port";
 
 }  // namespace endpoint
 
+namespace credential {
+
+inline decltype(auto) USERNAME = "username";
+inline decltype(auto) PASSWORD = "password";
+inline decltype(auto) UUID = "uuid";
+inline decltype(auto) ALTER_ID = "alter_id";
+inline decltype(auto) SECURITY = "security";
+
+}  // namespace credential
+
 namespace ingress {
 
 inline decltype(auto) TYPE = "type";
