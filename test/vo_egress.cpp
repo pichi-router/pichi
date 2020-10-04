@@ -153,11 +153,6 @@ BOOST_AUTO_TEST_CASE(parse_Egress_HTTP_SOCKS5_Mandatory_Fields)
     noPort.RemoveMember(vo::egress::PORT);
     BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(noPort)), Exception,
                           verifyException<PichiError::BAD_JSON>);
-
-    auto zeroPort = defaultEgressJson(type);
-    zeroPort[vo::egress::PORT] = 0;
-    BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(zeroPort)), Exception,
-                          verifyException<PichiError::BAD_JSON>);
   }
 }
 
@@ -306,13 +301,8 @@ BOOST_AUTO_TEST_CASE(parse_Egress_SS_Mandatory_Fields)
   BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(emptyHost)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 
-  auto zeroPort = origin;
-  zeroPort.port_.reset();
-  BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(zeroPort)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
   auto noPort = origin;
-  noPort.port_ = 0_u16;
+  noPort.port_.reset();
   BOOST_CHECK_EXCEPTION(parse<vo::Egress>(toString(noPort)), Exception,
                         verifyException<PichiError::BAD_JSON>);
 

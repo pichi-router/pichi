@@ -154,8 +154,8 @@ template <> Ingress parse(json::Value const& v)
     assertTrue(v.HasMember(ingress::PASSWORDS), PichiError::BAD_JSON, msg::MISSING_PASSWORDS_FIELD);
     assertTrue(v.HasMember(ingress::CERT_FILE), PichiError::BAD_JSON, msg::MISSING_KEY_FILE_FIELD);
     assertTrue(v.HasMember(ingress::KEY_FILE), PichiError::BAD_JSON, msg::MISSING_CERT_FILE_FIELD);
-    ivo.remote_ =
-        makeEndpoint(parse<string>(v[ingress::REMOTE_HOST]), parsePort(v[ingress::REMOTE_PORT]));
+    ivo.remote_ = makeEndpoint(parse<string>(v[ingress::REMOTE_HOST]),
+                               parse<uint16_t>(v[ingress::REMOTE_PORT]));
     ivo.certFile_ = parse<string>(v[ingress::CERT_FILE]);
     ivo.keyFile_ = parse<string>(v[ingress::KEY_FILE]);
     parseArray(v, ingress::PASSWORDS, inserter(ivo.passwords_, end(ivo.passwords_)),

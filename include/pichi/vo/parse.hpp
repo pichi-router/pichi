@@ -19,7 +19,6 @@ namespace pichi::vo {
 
 template <typename T> T parse(rapidjson::Value const&);
 
-extern uint16_t parsePort(rapidjson::Value const&);
 extern std::string parseNameOrPassword(rapidjson::Value const&);
 extern std::vector<Endpoint> parseDestinantions(rapidjson::Value const&);
 

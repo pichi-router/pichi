@@ -88,7 +88,7 @@ template <> Egress parse(json::Value const& v)
     assertTrue(v.HasMember(egress::HOST), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
     assertTrue(v.HasMember(egress::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
     evo.host_ = parse<string>(v[egress::HOST]);
-    evo.port_ = parsePort(v[egress::PORT]);
+    evo.port_ = parse<uint16_t>(v[egress::PORT]);
   }
 
   switch (evo.type_) {
