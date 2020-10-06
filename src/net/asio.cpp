@@ -6,6 +6,8 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/spawn2.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/write.hpp>
 #include <pichi/api/balancer.hpp>
 #include <pichi/api/ingress_holder.hpp>
@@ -27,15 +29,11 @@
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 
-#ifdef ENABLE_TLS
-#include <boost/asio/ssl/context.hpp>
-#include <boost/asio/ssl/stream.hpp>
 #ifdef DEPRECATED_RFC2818_CLASS
 #include <boost/asio/ssl/host_name_verification.hpp>
 #else  // DEPRECATED_RFC2818_CLASS
 #include <boost/asio/ssl/rfc2818_verification.hpp>
 #endif  // DEPRECATED_RFC2818_CLASS
-#endif  // ENABLE_TLS
 
 using namespace std;
 namespace asio = boost::asio;
@@ -45,8 +43,6 @@ using ip::tcp;
 using TcpSocket = tcp::socket;
 
 namespace pichi::net {
-
-#ifdef ENABLE_TLS
 
 namespace ssl = asio::ssl;
 
@@ -82,8 +78,6 @@ static auto createTlsContext(vo::Egress const& vo)
   return ctx;
 }
 
-#endif  // ENABLE_TLS
-
 template <typename Stream, typename Yield> void connect(ResolveResults next, Stream& s, Yield yield)
 {
 #ifdef BUILD_TEST
@@ -99,11 +93,9 @@ template <typename Stream, typename Yield> void connect(ResolveResults next, Str
 #ifdef BUILD_TEST
   }
 #endif  // BUILD_TEST
-#ifdef ENABLE_TLS
   if constexpr (IsTlsStreamV<Stream>) {
     s.async_handshake(ssl::stream_base::client, yield);
   }
-#endif  // ENABLE_TLS
 }
 
 using crypto::generateKey;
@@ -148,18 +140,14 @@ template <typename Stream, typename Yield> void close(Stream& s, Yield yield)
   // the desturctors.
   // TODO log it
   auto ec = sys::error_code{};
-#ifdef ENABLE_TLS
   if constexpr (IsTlsStreamV<Stream>) {
     s.async_shutdown(yield[ec]);
     s.close(ec);
   }
   else {
-#endif  // ENABLE_TLS
     suppressC4100(yield);
     s.close(ec);
-#ifdef ENABLE_TLS
   }
-#endif  // ENABLE_TLS
 }
 
 template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, Socket&& s)
@@ -173,20 +161,16 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
                                                  cend(vo.passwords_), createTlsContext(vo),
                                                  forward<Socket>(s));
   case AdapterType::HTTP:
-#ifdef ENABLE_TLS
     if (*vo.tls_)
       return make_unique<HttpIngress<TLSStream>>(vo.credentials_, createTlsContext(vo),
                                                  forward<Socket>(s));
     else
-#endif  // ENABLE_TLS
       return make_unique<HttpIngress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
   case AdapterType::SOCKS5:
-#ifdef ENABLE_TLS
     if (*vo.tls_)
       return make_unique<Socks5Ingress<TLSStream>>(vo.credentials_, createTlsContext(vo),
                                                    forward<Socket>(s));
     else
-#endif  // ENABLE_TLS
       return make_unique<Socks5Ingress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
   case AdapterType::SS:
     psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
@@ -260,18 +244,14 @@ unique_ptr<Egress> makeEgress(vo::Egress const& vo, asio::io_context& io)
   case AdapterType::TROJAN:
     return make_unique<TrojanEgress<TLSStream>>(*vo.password_, createTlsContext(vo), io);
   case AdapterType::HTTP:
-#ifdef ENABLE_TLS
     if (*vo.tls_)
       return make_unique<HttpEgress<TLSStream>>(vo.credential_, createTlsContext(vo), io);
     else
-#endif  // ENABLE_TLS
       return make_unique<HttpEgress<TcpSocket>>(vo.credential_, io);
   case AdapterType::SOCKS5:
-#ifdef ENABLE_TLS
     if (*vo.tls_)
       return make_unique<Socks5Egress<TLSStream>>(vo.credential_, createTlsContext(vo), io);
     else
-#endif  // ENABLE_TLS
       return make_unique<Socks5Egress<tcp::socket>>(vo.credential_, io);
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(io);
@@ -341,13 +321,11 @@ template size_t readSome<>(TcpSocket&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TcpSocket&, ConstBuffer<uint8_t>, Yield);
 template void close<>(TcpSocket&, Yield);
 
-#ifdef ENABLE_TLS
 template void connect<>(ResolveResults, TLSStream&, Yield);
 template void read<>(TLSStream&, MutableBuffer<uint8_t>, Yield);
 template size_t readSome<>(TLSStream&, MutableBuffer<uint8_t>, Yield);
 template void write<>(TLSStream&, ConstBuffer<uint8_t>, Yield);
 template void close<>(TLSStream&, Yield);
-#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 template void connect<>(ResolveResults, TestStream&, Yield);

@@ -1,5 +1,3 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/vo/ingress.hpp>
@@ -36,9 +34,7 @@ void IngressManager::update(string const& name, VO ivo)
 {
   assertFalse(ivo.type_ == AdapterType::DIRECT, PichiError::MISC);
   assertFalse(ivo.type_ == AdapterType::REJECT, PichiError::MISC);
-#ifndef ENABLE_TLS
   assertFalse(ivo.tls_.has_value() && *ivo.tls_, PichiError::SEMANTIC_ERROR, "TLS not supported");
-#endif  // ENABLE_TLS
 
   auto it = c_.find(name);
   if (it == std::end(c_)) {

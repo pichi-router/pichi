@@ -322,11 +322,9 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr ep
 
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 {
-#ifdef ENABLE_TLS
   if constexpr (IsTlsStreamV<Stream>) {
     stream_.async_handshake(asio::ssl::stream_base::server, yield);
   }
-#endif  // ENABLE_TLS
 
   readHttpHeader(stream_, reqCache_, reqParser_, yield);
   auto& req = reqParser_.get();
@@ -474,11 +472,9 @@ using TcpSocket = tcp::socket;
 template class HttpIngress<TcpSocket>;
 template class HttpEgress<TcpSocket>;
 
-#ifdef ENABLE_TLS
 using TLSStream = TlsStream<TcpSocket>;
 template class HttpIngress<TLSStream>;
 template class HttpEgress<TLSStream>;
-#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 template class HttpIngress<TestStream>;

@@ -70,7 +70,6 @@
 #error "CMAKE_INSTALL_PREFIX not defined"
 #endif  // CMAKE_INSTALL_PREFIX
 
-#cmakedefine ENABLE_TLS
 #cmakedefine BUILD_TEST
 
 #endif  // PICHI_CONFIG_H

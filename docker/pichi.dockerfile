@@ -10,8 +10,8 @@ ADD src ${SRC_DIR}/src
 
 RUN apk add --no-cache g++ cmake make mbedtls-dev mbedtls-static libsodium-dev libsodium-static \
   rapidjson-dev libmaxminddb-dev boost-dev boost-static libressl-dev && \
-  cmake -D CMAKE_BUILD_TYPE=MiniSizeRel -D CMAKE_INSTALL_PREFIX=/usr/local -D ENABLE_TLS=ON \
-  -D BUILD_SERVER=ON -D BUILD_TEST=OFF -B "${BUILD_DIR}" "${SRC_DIR}" && \
+  cmake -D CMAKE_BUILD_TYPE=MiniSizeRel -D CMAKE_INSTALL_PREFIX=/usr/local \
+  -D BUILD_TEST=OFF -B "${BUILD_DIR}" "${SRC_DIR}" && \
   cmake --build "${BUILD_DIR}" -j "$(nproc)" && \
   cmake --build "${BUILD_DIR}" --target install/strip && \
   apk del --no-cache g++ cmake make mbedtls-dev mbedtls-static libsodium-dev libsodium-static \

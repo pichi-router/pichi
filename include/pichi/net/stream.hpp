@@ -5,17 +5,14 @@
 // Include config.hpp first
 #include <algorithm>
 #include <boost/asio/buffers_iterator.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/stream.hpp>
 #include <functional>
 #include <pichi/common/adapter.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/buffer.hpp>
 #include <type_traits>
 #include <utility>
-
-#ifdef ENABLE_TLS
-#include <boost/asio/ssl/context.hpp>
-#include <boost/asio/ssl/stream.hpp>
-#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 #include <boost/beast/core/flat_buffer.hpp>
@@ -86,8 +83,6 @@ template <typename T> struct IsTlsStream : public std::false_type {
 
 template <typename T> inline constexpr bool IsTlsStreamV = IsTlsStream<T>::value;
 
-#ifdef ENABLE_TLS
-
 /*
  *  1. TlsStream is about to implement both of AsyncReadStream and
  * AsyncWriteStream concepts, which is required by the HTTP functions provided
@@ -157,8 +152,6 @@ private:
 
 template <typename T> struct IsTlsStream<TlsStream<T>> : public std::true_type {
 };
-
-#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 

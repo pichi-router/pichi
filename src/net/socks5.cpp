@@ -2,16 +2,13 @@
 // Include config.hpp first
 #include <array>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl/stream.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/net/asio.hpp>
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/stream.hpp>
 #include <utility>
-
-#ifdef ENABLE_TLS
-#include <boost/asio/ssl/stream.hpp>
-#endif  // ENABLE_TLS
 
 using namespace std;
 namespace asio = boost::asio;
@@ -143,11 +140,9 @@ template <typename Stream> bool Socks5Ingress<Stream>::writable() const
 
 template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yield)
 {
-#ifdef ENABLE_TLS
   if constexpr (IsTlsStreamV<Stream>) {
     stream_.async_handshake(asio::ssl::stream_base::server, yield);
   }
-#endif  // ENABLE_TLS
 
   auto buf = HeaderBuffer<uint8_t>{};
 
@@ -206,9 +201,7 @@ template <typename Stream> void Socks5Ingress<Stream>::disconnect(exception_ptr 
 
 template class Socks5Ingress<tcp::socket>;
 
-#ifdef ENABLE_TLS
 template class Socks5Ingress<TlsStream<tcp::socket>>;
-#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 template class Socks5Ingress<TestStream>;
@@ -289,9 +282,7 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
 
 template class Socks5Egress<tcp::socket>;
 
-#ifdef ENABLE_TLS
 template class Socks5Egress<TlsStream<tcp::socket>>;
-#endif  // ENABLE_TLS
 
 #ifdef BUILD_TEST
 template class Socks5Egress<TestStream>;

@@ -1,5 +1,3 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
 #include <iterator>
 #include <pichi/api/egress_manager.hpp>
 #include <pichi/common/asserts.hpp>
@@ -10,9 +8,7 @@ namespace pichi::api {
 
 void EgressManager::update(string const& name, VO vo)
 {
-#ifndef ENABLE_TLS
   assertFalse(vo.tls_.has_value() && *vo.tls_, PichiError::SEMANTIC_ERROR, "TLS not supported");
-#endif  // ENABLE_TLS
   c_[name] = move(vo);
 }
 
