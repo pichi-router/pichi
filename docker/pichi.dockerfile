@@ -9,7 +9,7 @@ ADD server ${SRC_DIR}/server
 ADD src ${SRC_DIR}/src
 
 RUN apk add --no-cache g++ cmake make mbedtls-dev mbedtls-static libsodium-dev libsodium-static \
-  rapidjson-dev libmaxminddb-dev boost-dev boost-static libressl-dev && \
+  rapidjson-dev libmaxminddb-dev boost-dev boost-static libressl-dev ca-certificates && \
   cmake -D CMAKE_BUILD_TYPE=MiniSizeRel -D CMAKE_INSTALL_PREFIX=/usr/local \
   -D BUILD_TEST=OFF -B "${BUILD_DIR}" "${SRC_DIR}" && \
   cmake --build "${BUILD_DIR}" -j "$(nproc)" && \

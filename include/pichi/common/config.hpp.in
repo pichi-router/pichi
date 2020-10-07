@@ -32,6 +32,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #include <boost/asio/basic_socket.hpp>
+#include <boost/asio/ssl/impl/context.ipp>
 #pragma clang diagnostic pop
 #endif  // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO && __clang__
 
