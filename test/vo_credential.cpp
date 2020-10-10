@@ -1,10 +1,8 @@
 #define BOOST_TEST_MODULE pichi vo_credential test
 
 #include "utils.hpp"
-#include <boost/mpl/set.hpp>
+#include "vo.hpp"
 #include <boost/test/unit_test.hpp>
-#include <pichi/common/endpoint.hpp>
-#include <pichi/common/literals.hpp>
 #include <pichi/vo/credential.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
@@ -13,100 +11,12 @@
 
 using namespace std;
 using namespace rapidjson;
-namespace mpl = boost::mpl;
 
 namespace pichi::unit_test {
 
 BOOST_AUTO_TEST_SUITE(VO_CREDENTIAL)
 
 using namespace pichi::vo;
-
-using AllCredentials =
-    mpl::set<up::IngressCredential, trojan::IngressCredential, vmess::IngressCredential,
-             up::EgressCredential, trojan::EgressCredential, vmess::EgressCredential>;
-
-using IngressCredentials =
-    mpl::set<up::IngressCredential, trojan::IngressCredential, vmess::IngressCredential>;
-
-using EgressCredentials =
-    mpl::set<up::EgressCredential, trojan::EgressCredential, vmess::EgressCredential>;
-
-template <typename Credential> Credential defaultCredential()
-{
-  if constexpr (is_same_v<Credential, up::IngressCredential>) {
-    return up::IngressCredential{{{ph, ph}}};
-  }
-  else if constexpr (is_same_v<Credential, trojan::IngressCredential>) {
-    return trojan::IngressCredential{{ph}};
-  }
-  else if constexpr (is_same_v<Credential, vmess::IngressCredential>) {
-    return vmess::IngressCredential{{{ph, 0_u16}}};
-  }
-  else if constexpr (is_same_v<Credential, up::EgressCredential>) {
-    return up::EgressCredential{make_pair(ph, ph)};
-  }
-  else if constexpr (is_same_v<Credential, trojan::EgressCredential>) {
-    return trojan::EgressCredential{ph};
-  }
-  else if constexpr (is_same_v<Credential, vmess::EgressCredential>) {
-    return vmess::EgressCredential{ph, 0_u16, VMessSecurity::AUTO};
-  }
-  else {
-    BOOST_FAIL("Unacceptable adapter type");
-    return 0;
-  }
-}
-
-template <typename Modifier> Value createJsonObject(Modifier&& modify)
-{
-  static_assert(is_invocable_v<Modifier, Value&>);
-  auto ret = Value{kObjectType};
-  modify(ret);
-  return ret;
-}
-
-template <typename Modifier> Value createJsonArray(Modifier&& modify)
-{
-  auto ret = Value{kArrayType};
-  ret.PushBack(createJsonObject(std::forward<Modifier>(modify)), alloc);
-  return ret;
-}
-
-template <typename Credential> Value defaultCredentialJson()
-{
-  if constexpr (is_same_v<Credential, up::IngressCredential>) {
-    return createJsonArray([](auto&& item) {
-      item.AddMember(credential::USERNAME, ph, alloc).AddMember(credential::PASSWORD, ph, alloc);
-    });
-  }
-  else if constexpr (is_same_v<Credential, trojan::IngressCredential>) {
-    return createJsonArray([](auto&& item) { item.AddMember(credential::PASSWORD, ph, alloc); });
-  }
-  else if constexpr (is_same_v<Credential, vmess::IngressCredential>) {
-    return createJsonArray([](auto&& item) {
-      item.AddMember(credential::UUID, ph, alloc).AddMember(credential::ALTER_ID, Value{0}, alloc);
-    });
-  }
-  else if constexpr (is_same_v<Credential, up::EgressCredential>) {
-    return createJsonObject([](auto&& item) {
-      item.AddMember(credential::USERNAME, ph, alloc).AddMember(credential::PASSWORD, ph, alloc);
-    });
-  }
-  else if constexpr (is_same_v<Credential, trojan::EgressCredential>) {
-    return createJsonObject([](auto&& item) { item.AddMember(credential::PASSWORD, ph, alloc); });
-  }
-  else if constexpr (is_same_v<Credential, vmess::EgressCredential>) {
-    return createJsonObject([](auto&& item) {
-      item.AddMember(credential::UUID, ph, alloc)
-          .AddMember(credential::ALTER_ID, Value{0}, alloc)
-          .AddMember(credential::SECURITY, toJson(VMessSecurity::AUTO, alloc), alloc);
-    });
-  }
-  else {
-    BOOST_FAIL("Unacceptable adapter type");
-    return {};
-  }
-}
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Credential_Normal_Case, Credential, AllCredentials)
 {

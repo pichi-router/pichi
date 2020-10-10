@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE pichi vo_options test
 
 #include "utils.hpp"
-#include <boost/mpl/set.hpp>
+#include "vo.hpp"
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/keys.hpp>
@@ -11,84 +11,12 @@
 
 using namespace std;
 using namespace rapidjson;
-namespace mpl = boost::mpl;
 
 namespace pichi::unit_test {
 
 BOOST_AUTO_TEST_SUITE(VO_OPTIONS)
 
 using namespace pichi::vo;
-
-using AllOptions = mpl::set<ShadowsocksOption, TunnelOption, RejectOption, TrojanOption,
-                            TlsIngressOption, TlsEgressOption, WebsocketOption>;
-
-template <typename Option> using HasKeyT = typename mpl::has_key<AllOptions, Option>::type;
-template <typename Option> static constexpr bool HasKey = HasKeyT<Option>::value;
-
-template <typename Option> Value defaultOptionJson()
-{
-  static_assert(HasKey<Option>);
-  auto ret = Value{kObjectType};
-  if constexpr (is_same_v<Option, ShadowsocksOption>) {
-    ret.AddMember(option::METHOD, toJson(CryptoMethod::RC4_MD5, alloc), alloc);
-    ret.AddMember(option::PASSWORD, ph, alloc);
-  }
-  else if constexpr (is_same_v<Option, TunnelOption>) {
-    auto destinations = Value{kArrayType};
-    destinations.PushBack(toJson(makeEndpoint(ph, 0_u16), alloc), alloc);
-    ret.AddMember(option::DESTINATIONS, destinations, alloc);
-    ret.AddMember(option::BALANCE, toJson(BalanceType::RANDOM, alloc), alloc);
-  }
-  else if constexpr (is_same_v<Option, RejectOption>) {
-    ret.AddMember(option::MODE, toJson(DelayMode::FIXED, alloc), alloc);
-    ret.AddMember(option::DELAY, Value{0_u16}, alloc);
-  }
-  else if constexpr (is_same_v<Option, TrojanOption>) {
-    ret.AddMember(option::REMOTE, toJson(makeEndpoint(ph, 0_u16), alloc), alloc);
-  }
-  else if constexpr (is_same_v<Option, TlsIngressOption>) {
-    ret.AddMember(tls::CERT_FILE, toJson(ph, alloc), alloc);
-    ret.AddMember(tls::KEY_FILE, toJson(ph, alloc), alloc);
-  }
-  else if constexpr (is_same_v<Option, TlsEgressOption>) {
-    ret.AddMember(tls::INSECURE, false, alloc);
-    ret.AddMember(tls::CA_FILE, ph, alloc);
-    ret.AddMember(tls::SERVER_NAME, ph, alloc);
-    ret.AddMember(tls::SNI, ph, alloc);
-  }
-  else if constexpr (is_same_v<Option, WebsocketOption>) {
-    ret.AddMember(websocket::PATH, ph, alloc);
-    ret.AddMember(websocket::HOST, ph, alloc);
-  }
-  return ret;
-}
-
-template <typename Option> Option defaultOption()
-{
-  static_assert(HasKey<Option>);
-  if constexpr (is_same_v<Option, ShadowsocksOption>) {
-    return {ph, CryptoMethod::RC4_MD5};
-  }
-  else if constexpr (is_same_v<Option, TunnelOption>) {
-    return {{makeEndpoint(ph, 0_u16)}, BalanceType::RANDOM};
-  }
-  else if constexpr (is_same_v<Option, RejectOption>) {
-    return {DelayMode::FIXED, {0_u16}};
-  }
-  else if constexpr (is_same_v<Option, TrojanOption>) {
-    return {makeEndpoint(ph, 0_u16)};
-  }
-  else if constexpr (is_same_v<Option, TlsIngressOption>) {
-    return {ph, ph};
-  }
-  else if constexpr (is_same_v<Option, TlsEgressOption>) {
-    return {false, {ph}, {ph}, {ph}};
-  }
-  else if constexpr (is_same_v<Option, WebsocketOption>) {
-    return {ph, ph};
-  }
-  return {};
-}
 
 template <typename Option, typename Key> Value generateJsonWithout(Key&& key)
 {

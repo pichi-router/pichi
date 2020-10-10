@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE pichi vos test
 
 #include "utils.hpp"
+#include "vo.hpp"
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/vo/keys.hpp>

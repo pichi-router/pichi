@@ -7,20 +7,10 @@
 #include <boost/asio/spawn2.hpp>
 #include <boost/beast/http/error.hpp>
 #include <pichi/common/exception.hpp>
-#include <rapidjson/document.h>
 #include <string_view>
 #include <vector>
 
-namespace pichi {
-
-namespace vo {
-
-struct Ingress;
-struct Egress;
-
-}  // namespace vo
-
-namespace unit_test {
+namespace pichi::unit_test {
 
 template <PichiError error> bool verifyException(Exception const& e) { return e.error() == error; }
 
@@ -44,17 +34,8 @@ extern std::vector<uint8_t> str2vec(std::string_view);
 extern std::vector<uint8_t> hex2bin(std::string_view);
 
 inline decltype(auto) ph = "placeholder";
-extern rapidjson::Document::AllocatorType& alloc;
-
-extern vo::Ingress defaultIngressVO(AdapterType);
-extern rapidjson::Value defaultIngressJson(AdapterType);
-extern vo::Egress defaultEgressVO(AdapterType);
-extern rapidjson::Value defaultEgressJson(AdapterType);
-
 extern boost::asio::yield_context gYield;
 
-}  // namespace unit_test
-
-}  // namespace pichi
+}  // namespace pichi::unit_test
 
 #endif

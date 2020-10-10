@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE pichi vo_ingress test
 
 #include "utils.hpp"
+#include "vo.hpp"
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/ingress.hpp>
