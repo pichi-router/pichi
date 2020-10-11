@@ -32,13 +32,16 @@ static std::string_view const MISSING_DELAY_FIELD = "Missing delay field";
 static std::string_view const MISSING_CERT_FILE_FIELD = "Missing cert_file field";
 static std::string_view const MISSING_KEY_FILE_FIELD = "Missing key_file field";
 static std::string_view const MISSING_UUID_FIELD = "Missing uuid field";
-
-static std::string_view const TOO_LONG_NAME_PASSWORD = "Name or password is too long";
+static std::string_view const MISSING_REMOTE_FIELD = "Missing remote field";
+static std::string_view const MISSING_PATH_FIELD = "Missing remote field";
 static std::string_view const MISSING_DESTINATIONS_FIELD = "Missiong destinations field";
 static std::string_view const MISSING_BALANCE_FIELD = "Missiong balance field";
 static std::string_view const MISSING_REMOTE_HOST_FIELD = "Missing remote_host field";
 static std::string_view const MISSING_REMOTE_PORT_FIELD = "Missing remote_port field";
 static std::string_view const MISSING_PASSWORDS_FIELD = "MIssing passwords field";
+
+static std::string_view const TOO_LONG_NAME_PASSWORD = "Name or password is too long";
+static std::string_view const DELAY_OUT_OF_RANGE = "Delay out of range";
 static std::string_view const DUPLICATED_ITEMS = "Duplicated items";
 
 }  // namespace pichi::vo::msg

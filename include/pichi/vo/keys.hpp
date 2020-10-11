@@ -82,6 +82,51 @@ inline decltype(auto) SECURITY = "security";
 
 }  // namespace credential
 
+namespace shadowsocks {
+
+inline decltype(auto) PASSWORD = "password";
+inline decltype(auto) METHOD = "method";
+
+}  // namespace shadowsocks
+
+namespace tunnel {
+
+inline decltype(auto) DESTINATIONS = "destinations";
+inline decltype(auto) BALANCE = "balance";
+
+}  // namespace tunnel
+
+namespace reject {
+
+inline decltype(auto) MODE = "mode";
+inline decltype(auto) DELAY = "delay";
+
+}  // namespace reject
+
+namespace trojan {
+
+inline decltype(auto) REMOTE = "remote";
+
+}  // namespace trojan
+
+namespace tls {
+
+inline decltype(auto) CERT_FILE = "cert_file";
+inline decltype(auto) KEY_FILE = "key_file";
+inline decltype(auto) INSECURE = "insecure";
+inline decltype(auto) CA_FILE = "ca_file";
+inline decltype(auto) SERVER_NAME = "server_name";
+inline decltype(auto) SNI = "sni";
+
+}  // namespace tls
+
+namespace websocket {
+
+inline decltype(auto) PATH = "path";
+inline decltype(auto) HOST = "host";
+
+}  // namespace websocket
+
 namespace ingress {
 
 inline decltype(auto) TYPE = "type";
