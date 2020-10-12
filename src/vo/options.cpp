@@ -17,16 +17,16 @@ namespace pichi::vo {
 template <> ShadowsocksOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
-  assertTrue(v.HasMember(shadowsocks::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
-  assertTrue(v.HasMember(shadowsocks::METHOD), PichiError::BAD_JSON, msg::MISSING_METHOD_FIELD);
-  return {parse<string>(v[shadowsocks::PASSWORD]), parse<CryptoMethod>(v[shadowsocks::METHOD])};
+  assertTrue(v.HasMember(option::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
+  assertTrue(v.HasMember(option::METHOD), PichiError::BAD_JSON, msg::MISSING_METHOD_FIELD);
+  return {parse<string>(v[option::PASSWORD]), parse<CryptoMethod>(v[option::METHOD])};
 }
 
 json::Value toJson(ShadowsocksOption const& opt, Allocator& alloc)
 {
   auto ret = json::Value{json::kObjectType};
-  ret.AddMember(shadowsocks::PASSWORD, toJson(opt.password_, alloc), alloc);
-  ret.AddMember(shadowsocks::METHOD, toJson(opt.method_, alloc), alloc);
+  ret.AddMember(option::PASSWORD, toJson(opt.password_, alloc), alloc);
+  ret.AddMember(option::METHOD, toJson(opt.method_, alloc), alloc);
   return ret;
 }
 
@@ -38,18 +38,18 @@ bool operator==(ShadowsocksOption const& lhs, ShadowsocksOption const& rhs)
 template <> TunnelOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
-  assertTrue(v.HasMember(tunnel::DESTINATIONS), PichiError::BAD_JSON,
+  assertTrue(v.HasMember(option::DESTINATIONS), PichiError::BAD_JSON,
              msg::MISSING_DESTINATIONS_FIELD);
-  assertTrue(v[tunnel::DESTINATIONS].IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
-  assertFalse(v[tunnel::DESTINATIONS].Empty(), PichiError::BAD_JSON, msg::ARY_SIZE_ERROR);
-  assertTrue(v.HasMember(tunnel::BALANCE), PichiError::BAD_JSON, msg::MISSING_BALANCE_FIELD);
-  return {accumulate(v[tunnel::DESTINATIONS].Begin(), v[tunnel::DESTINATIONS].End(),
+  assertTrue(v[option::DESTINATIONS].IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
+  assertFalse(v[option::DESTINATIONS].Empty(), PichiError::BAD_JSON, msg::ARY_SIZE_ERROR);
+  assertTrue(v.HasMember(option::BALANCE), PichiError::BAD_JSON, msg::MISSING_BALANCE_FIELD);
+  return {accumulate(v[option::DESTINATIONS].Begin(), v[option::DESTINATIONS].End(),
                      vector<Endpoint>{},
                      [](auto&& sum, auto&& item) {
                        sum.push_back(parse<Endpoint>(item));
                        return move(sum);
                      }),
-          parse<BalanceType>(v[tunnel::BALANCE])};
+          parse<BalanceType>(v[option::BALANCE])};
 }
 
 json::Value toJson(TunnelOption const& opt, Allocator& alloc)
@@ -58,8 +58,8 @@ json::Value toJson(TunnelOption const& opt, Allocator& alloc)
   auto destinations = json::Value{json::kArrayType};
   for (auto&& dest : opt.destinations_) destinations.PushBack(toJson(dest, alloc), alloc);
   auto ret = json::Value{json::kObjectType};
-  ret.AddMember(tunnel::DESTINATIONS, destinations, alloc);
-  ret.AddMember(tunnel::BALANCE, toJson(opt.balance_, alloc), alloc);
+  ret.AddMember(option::DESTINATIONS, destinations, alloc);
+  ret.AddMember(option::BALANCE, toJson(opt.balance_, alloc), alloc);
   return ret;
 }
 
@@ -72,9 +72,9 @@ template <> RejectOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   auto ret = RejectOption{DelayMode::FIXED, {}};
-  if (v.HasMember(reject::MODE)) ret.mode_ = parse<DelayMode>(v[reject::MODE]);
+  if (v.HasMember(option::MODE)) ret.mode_ = parse<DelayMode>(v[option::MODE]);
   if (ret.mode_ == DelayMode::FIXED) {
-    ret.delay_ = v.HasMember(reject::DELAY) ? parse<uint16_t>(v[reject::DELAY]) : 0_u16;
+    ret.delay_ = v.HasMember(option::DELAY) ? parse<uint16_t>(v[option::DELAY]) : 0_u16;
     assertTrue(ret.delay_ <= 300_u16, PichiError::BAD_JSON, msg::DELAY_OUT_OF_RANGE);
   }
   return ret;
@@ -83,11 +83,11 @@ template <> RejectOption parse(json::Value const& v)
 json::Value toJson(RejectOption const& opt, Allocator& alloc)
 {
   auto ret = json::Value{json::kObjectType};
-  ret.AddMember(reject::MODE, toJson(opt.mode_, alloc), alloc);
+  ret.AddMember(option::MODE, toJson(opt.mode_, alloc), alloc);
   if (opt.mode_ == DelayMode::FIXED) {
     assertTrue(opt.delay_.has_value());
     assertTrue(opt.delay_ <= 300_u16);
-    ret.AddMember(reject::DELAY, *opt.delay_, alloc);
+    ret.AddMember(option::DELAY, *opt.delay_, alloc);
   }
   return ret;
 }
@@ -100,14 +100,14 @@ bool operator==(RejectOption const& lhs, RejectOption const& rhs)
 template <> TrojanOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
-  assertTrue(v.HasMember(trojan::REMOTE), PichiError::BAD_JSON, msg::MISSING_REMOTE_FIELD);
-  return {parse<Endpoint>(v[trojan::REMOTE])};
+  assertTrue(v.HasMember(option::REMOTE), PichiError::BAD_JSON, msg::MISSING_REMOTE_FIELD);
+  return {parse<Endpoint>(v[option::REMOTE])};
 }
 
 json::Value toJson(TrojanOption const& opt, Allocator& alloc)
 {
   auto ret = json::Value{json::kObjectType};
-  ret.AddMember(trojan::REMOTE, toJson(opt.remote_, alloc), alloc);
+  ret.AddMember(option::REMOTE, toJson(opt.remote_, alloc), alloc);
   return ret;
 }
 

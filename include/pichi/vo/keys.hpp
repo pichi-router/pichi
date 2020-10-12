@@ -82,32 +82,17 @@ inline decltype(auto) SECURITY = "security";
 
 }  // namespace credential
 
-namespace shadowsocks {
+namespace option {
 
 inline decltype(auto) PASSWORD = "password";
 inline decltype(auto) METHOD = "method";
-
-}  // namespace shadowsocks
-
-namespace tunnel {
-
 inline decltype(auto) DESTINATIONS = "destinations";
 inline decltype(auto) BALANCE = "balance";
-
-}  // namespace tunnel
-
-namespace reject {
-
 inline decltype(auto) MODE = "mode";
 inline decltype(auto) DELAY = "delay";
-
-}  // namespace reject
-
-namespace trojan {
-
 inline decltype(auto) REMOTE = "remote";
 
-}  // namespace trojan
+}  // namespace option
 
 namespace tls {
 

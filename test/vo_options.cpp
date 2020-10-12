@@ -30,21 +30,21 @@ template <typename Option> Value defaultOptionJson()
   static_assert(HasKey<Option>);
   auto ret = Value{kObjectType};
   if constexpr (is_same_v<Option, ShadowsocksOption>) {
-    ret.AddMember(shadowsocks::METHOD, toJson(CryptoMethod::RC4_MD5, alloc), alloc);
-    ret.AddMember(shadowsocks::PASSWORD, ph, alloc);
+    ret.AddMember(option::METHOD, toJson(CryptoMethod::RC4_MD5, alloc), alloc);
+    ret.AddMember(option::PASSWORD, ph, alloc);
   }
   else if constexpr (is_same_v<Option, TunnelOption>) {
     auto destinations = Value{kArrayType};
     destinations.PushBack(toJson(makeEndpoint(ph, 0_u16), alloc), alloc);
-    ret.AddMember(tunnel::DESTINATIONS, destinations, alloc);
-    ret.AddMember(tunnel::BALANCE, toJson(BalanceType::RANDOM, alloc), alloc);
+    ret.AddMember(option::DESTINATIONS, destinations, alloc);
+    ret.AddMember(option::BALANCE, toJson(BalanceType::RANDOM, alloc), alloc);
   }
   else if constexpr (is_same_v<Option, RejectOption>) {
-    ret.AddMember(reject::MODE, toJson(DelayMode::FIXED, alloc), alloc);
-    ret.AddMember(reject::DELAY, Value{0_u16}, alloc);
+    ret.AddMember(option::MODE, toJson(DelayMode::FIXED, alloc), alloc);
+    ret.AddMember(option::DELAY, Value{0_u16}, alloc);
   }
   else if constexpr (is_same_v<Option, TrojanOption>) {
-    ret.AddMember(trojan::REMOTE, toJson(makeEndpoint(ph, 0_u16), alloc), alloc);
+    ret.AddMember(option::REMOTE, toJson(makeEndpoint(ph, 0_u16), alloc), alloc);
   }
   else if constexpr (is_same_v<Option, TlsIngressOption>) {
     ret.AddMember(tls::CERT_FILE, toJson(ph, alloc), alloc);
@@ -118,28 +118,28 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Option_Invalid_Type, Option, AllOptions)
 BOOST_AUTO_TEST_CASE(parse_ShadowsocksOption_Mandatory_Fields)
 {
   BOOST_CHECK_EXCEPTION(
-      parse<ShadowsocksOption>(generateJsonWithout<ShadowsocksOption>(shadowsocks::METHOD)),
-      Exception, verifyException<PichiError::BAD_JSON>);
+      parse<ShadowsocksOption>(generateJsonWithout<ShadowsocksOption>(option::METHOD)), Exception,
+      verifyException<PichiError::BAD_JSON>);
 
   BOOST_CHECK_EXCEPTION(
-      parse<ShadowsocksOption>(generateJsonWithout<ShadowsocksOption>(shadowsocks::PASSWORD)),
-      Exception, verifyException<PichiError::BAD_JSON>);
+      parse<ShadowsocksOption>(generateJsonWithout<ShadowsocksOption>(option::PASSWORD)), Exception,
+      verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TunnelOption_Mandatory_Fields)
 {
   BOOST_CHECK_EXCEPTION(
-      parse<TunnelOption>(generateJsonWithout<TunnelOption>(tunnel::DESTINATIONS)), Exception,
+      parse<TunnelOption>(generateJsonWithout<TunnelOption>(option::DESTINATIONS)), Exception,
       verifyException<PichiError::BAD_JSON>);
 
-  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(generateJsonWithout<TunnelOption>(tunnel::BALANCE)),
+  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(generateJsonWithout<TunnelOption>(option::BALANCE)),
                         Exception, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TunnelOption_Invalid_Type_Of_Destinations)
 {
   auto invalid = defaultOptionJson<TunnelOption>();
-  invalid[tunnel::DESTINATIONS].SetObject();
+  invalid[option::DESTINATIONS].SetObject();
   BOOST_CHECK_EXCEPTION(parse<TunnelOption>(invalid), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE(parse_TunnelOption_Invalid_Type_Of_Destinations)
 BOOST_AUTO_TEST_CASE(parse_TunnelOption_Empty_Destinations)
 {
   auto empty = defaultOptionJson<TunnelOption>();
-  empty[tunnel::DESTINATIONS].Clear();
+  empty[option::DESTINATIONS].Clear();
   BOOST_CHECK_EXCEPTION(parse<TunnelOption>(empty), Exception,
                         verifyException<PichiError::BAD_JSON>);
 }
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(toJson_TunnelOption_Empty_Destinations)
 BOOST_AUTO_TEST_CASE(parse_RejectOption_Delay_Out_Of_Range)
 {
   auto out = defaultOptionJson<RejectOption>();
-  out[reject::DELAY] = 301_u16;
+  out[option::DELAY] = 301_u16;
   BOOST_CHECK_EXCEPTION(parse<RejectOption>(out), Exception, verifyException<PichiError::BAD_JSON>);
 }
 
@@ -177,8 +177,8 @@ BOOST_AUTO_TEST_CASE(parse_RejectOption_Default_Fields)
 BOOST_AUTO_TEST_CASE(parse_RejectOption_Ignoring_Delay)
 {
   auto json = Value{kObjectType};
-  json.AddMember(reject::MODE, toJson(DelayMode::RANDOM, alloc), alloc);
-  json.AddMember(reject::DELAY, 0_u16, alloc);
+  json.AddMember(option::MODE, toJson(DelayMode::RANDOM, alloc), alloc);
+  json.AddMember(option::DELAY, 0_u16, alloc);
   auto hasDelay = parse<RejectOption>(json);
   BOOST_CHECK(hasDelay.mode_ == DelayMode::RANDOM);
   BOOST_CHECK(!hasDelay.delay_.has_value());
@@ -187,9 +187,9 @@ BOOST_AUTO_TEST_CASE(parse_RejectOption_Ignoring_Delay)
 BOOST_AUTO_TEST_CASE(toJson_RejectOption_Ignoring_Delay_When_Random)
 {
   auto ignore = toJson(RejectOption{DelayMode::RANDOM, {0_u16}}, alloc);
-  BOOST_CHECK(ignore.HasMember(reject::MODE));
-  BOOST_CHECK(parse<DelayMode>(ignore[reject::MODE]) == DelayMode::RANDOM);
-  BOOST_CHECK(!ignore.HasMember(reject::DELAY));
+  BOOST_CHECK(ignore.HasMember(option::MODE));
+  BOOST_CHECK(parse<DelayMode>(ignore[option::MODE]) == DelayMode::RANDOM);
+  BOOST_CHECK(!ignore.HasMember(option::DELAY));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_RejectOption_Mandatory_Delay_When_Fixed)
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(toJson_RejectOption_Delay_Out_Of_Range)
 
 BOOST_AUTO_TEST_CASE(parse_TrojanOption_Mandatory_Fields)
 {
-  BOOST_CHECK_EXCEPTION(parse<TrojanOption>(generateJsonWithout<TrojanOption>(trojan::REMOTE)),
+  BOOST_CHECK_EXCEPTION(parse<TrojanOption>(generateJsonWithout<TrojanOption>(option::REMOTE)),
                         Exception, verifyException<PichiError::BAD_JSON>);
 }
 
