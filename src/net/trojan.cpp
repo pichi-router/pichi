@@ -89,8 +89,9 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
      *   |          56           | X'0D0A' |  1  |
      *   +-----------------------+---------+-----+
      */
-    auto pwd = string{cbegin(received_), cbegin(received_) + PWD_LEN};
     assertTrue(received_.size() > PWD_LEN + 2, PichiError::BAD_PROTO);
+
+    auto pwd = string{cbegin(received_), cbegin(received_) + PWD_LEN};
     assertTrue(passwords_.find(pwd) != cend(passwords_), PichiError::UNAUTHENTICATED);
 
     auto first = received_.data() + PWD_LEN;
