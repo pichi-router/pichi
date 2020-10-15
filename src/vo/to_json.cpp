@@ -119,6 +119,22 @@ json::Value toJson(BalanceType selector, Allocator& alloc)
   }
 }
 
+json::Value toJson(VMessSecurity security, Allocator& alloc)
+{
+  switch (security) {
+  case VMessSecurity::AUTO:
+    return toJson(security::AUTO, alloc);
+  case VMessSecurity::NONE:
+    return toJson(security::NONE, alloc);
+  case VMessSecurity::CHACHA20_IETF_POLY1305:
+    return toJson(security::CHACHA20_IETF_POLY1305, alloc);
+  case VMessSecurity::AES_128_GCM:
+    return toJson(security::AES_128_GCM, alloc);
+  default:
+    fail();
+  }
+}
+
 json::Value toJson(Endpoint const& endpoint, Allocator& alloc)
 {
   auto ret = json::Value{json::kObjectType};

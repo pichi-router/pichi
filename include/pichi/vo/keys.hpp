@@ -56,6 +56,15 @@ inline decltype(auto) LEAST_CONN = "least_conn";
 
 }  // namespace balance
 
+namespace security {
+
+inline decltype(auto) AUTO = "auto";
+inline decltype(auto) NONE = "auto";
+inline decltype(auto) CHACHA20_IETF_POLY1305 = "chacha20-ietf-poly1305";
+inline decltype(auto) AES_128_GCM = "aes-128-gcm";
+
+}  // namespace security
+
 namespace endpoint {
 
 inline decltype(auto) HOST = "host";

@@ -18,6 +18,7 @@ extern rapidjson::Value toJson(AdapterType, rapidjson::Document::AllocatorType&)
 extern rapidjson::Value toJson(CryptoMethod, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(DelayMode, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(BalanceType, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(VMessSecurity, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(std::string_view, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(Endpoint const&, rapidjson::Document::AllocatorType&);
 

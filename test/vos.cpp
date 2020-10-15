@@ -145,6 +145,24 @@ BOOST_AUTO_TEST_CASE(toJson_DelayMode)
       {{DelayMode::FIXED, vo::delay::FIXED}, {DelayMode::RANDOM, vo::delay::RANDOM}});
 }
 
+BOOST_AUTO_TEST_CASE(parse_VMessSecurity)
+{
+  verifyParsing<VMessSecurity>(
+      {{vo::security::AUTO, VMessSecurity::AUTO},
+       {vo::security::NONE, VMessSecurity::NONE},
+       {vo::security::CHACHA20_IETF_POLY1305, VMessSecurity::CHACHA20_IETF_POLY1305},
+       {vo::security::AES_128_GCM, VMessSecurity::AES_128_GCM}});
+}
+
+BOOST_AUTO_TEST_CASE(toJson_VMessSecurity)
+{
+  verifyToJson<VMessSecurity>(
+      {{VMessSecurity::AUTO, vo::security::AUTO},
+       {VMessSecurity::NONE, vo::security::NONE},
+       {VMessSecurity::CHACHA20_IETF_POLY1305, vo::security::CHACHA20_IETF_POLY1305},
+       {VMessSecurity::AES_128_GCM, vo::security::AES_128_GCM}});
+}
+
 BOOST_AUTO_TEST_CASE(parse_Uint16_Incorrect_Type)
 {
   for (auto&& v : {Value{0.0}, Value{kStringType}, Value{kNullType}, Value{kTrueType},

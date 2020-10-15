@@ -18,6 +18,7 @@ static std::string_view const UINT16_INVALID = "Exceed the range of uint16_t [0,
 static std::string_view const DM_INVALID = "Invalid delay mode type string";
 static std::string_view const DL_INVALID = "Delay time must be in range [0, 300]";
 static std::string_view const BA_INVALID = "Invalid balance string";
+static std::string_view const SEC_INVALID = "Invalid security string";
 static std::string_view const STR_EMPTY = "Empty string";
 static std::string_view const CRE_EMPTY = "Empty credentials";
 static std::string_view const MISSING_TYPE_FIELD = "Missing type field";

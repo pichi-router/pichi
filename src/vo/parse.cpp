@@ -81,6 +81,17 @@ template <> BalanceType parse(json::Value const& v)
   fail(PichiError::BAD_JSON, msg::BA_INVALID);
 }
 
+template <> VMessSecurity parse(json::Value const& v)
+{
+  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
+  auto str = string_view{v.GetString()};
+  if (str == security::AUTO) return VMessSecurity::AUTO;
+  if (str == security::NONE) return VMessSecurity::NONE;
+  if (str == security::CHACHA20_IETF_POLY1305) return VMessSecurity::CHACHA20_IETF_POLY1305;
+  if (str == security::AES_128_GCM) return VMessSecurity::AES_128_GCM;
+  fail(PichiError::BAD_JSON, msg::SEC_INVALID);
+}
+
 template <> uint16_t parse(json::Value const& v)
 {
   assertTrue(v.IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
