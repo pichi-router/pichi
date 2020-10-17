@@ -1,25 +1,26 @@
 #ifndef PICHI_NET_SOCKS5_HPP
 #define PICHI_NET_SOCKS5_HPP
 
+#include <functional>
 #include <optional>
 #include <pichi/common/adapter.hpp>
 #include <pichi/common/literals.hpp>
 #include <string>
-#include <unordered_map>
 
 namespace pichi::net {
 
 template <typename Stream> class Socks5Ingress : public Ingress {
 private:
-  using Credentials = std::unordered_map<std::string, std::string>;
+  using Authenticator = std::optional<std::function<bool(std::string const&, std::string const&)>>;
 
   void authenticate(Yield);
 
 public:
   template <typename... Args>
-  Socks5Ingress(Credentials credentials, Args &&... args)
-      : stream_{std::forward<Args>(args)...}, credentials_{
-                                                  std::move(credentials)} {}
+  Socks5Ingress(Authenticator auth, Args&&... args)
+    : stream_{std::forward<Args>(args)...}, auth_{std::move(auth)}
+  {
+  }
 
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
   void send(ConstBuffer<uint8_t>, Yield) override;
@@ -32,7 +33,7 @@ public:
 
 private:
   Stream stream_;
-  Credentials credentials_;
+  Authenticator auth_;
 };
 
 template <typename Stream> class Socks5Egress : public Egress {
@@ -43,22 +44,23 @@ private:
 
 public:
   template <typename... Args>
-  Socks5Egress(std::optional<Credential> credential, Args &&... args)
-      : stream_{std::forward<Args>(args)...}, credential_{
-                                                  std::move(credential)} {}
+  Socks5Egress(std::optional<Credential> credential, Args&&... args)
+    : stream_{std::forward<Args>(args)...}, credential_{std::move(credential)}
+  {
+  }
 
   size_t recv(MutableBuffer<uint8_t>, Yield) override;
   void send(ConstBuffer<uint8_t>, Yield) override;
   void close(Yield) override;
   bool readable() const override;
   bool writable() const override;
-  void connect(Endpoint const &remote, ResolveResults next, Yield) override;
+  void connect(Endpoint const& remote, ResolveResults next, Yield) override;
 
 private:
   Stream stream_;
   std::optional<Credential> credential_;
 };
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
-#endif // PICHI_NET_SOCKS5_HPP
+#endif  // PICHI_NET_SOCKS5_HPP

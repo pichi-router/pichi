@@ -84,6 +84,17 @@ static auto createTlsContext(vo::Egress const& vo)
 
 #endif  // ENABLE_TLS
 
+static optional<function<bool(string const&, string const&)>>
+    genAuthenticator(optional<vo::Ingress::Credential> const& credential)
+{
+  if (credential.has_value())
+    return [&all = get<vo::UpIngressCredential>(*credential).credential_](auto&& u, auto&& p) {
+      auto it = all.find(u);
+      return it != cend(all) && it->second == p;
+    };
+  return {};
+}
+
 template <typename Socket>
 unique_ptr<Ingress> createShadowsocksIngress(Socket&& s, vo::ShadowsocksOption const& option)
 {
@@ -233,21 +244,21 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
     // FIXME credential is disabled
 #ifdef ENABLE_TLS
     if (vo.tls_.has_value())
-      return make_unique<HttpIngress<TLSStream>>(unordered_map<string, string>{},
+      return make_unique<HttpIngress<TLSStream>>(genAuthenticator(vo.credential_),
                                                  createTlsContext(*vo.tls_), forward<Socket>(s));
     else
 #endif  // ENABLE_TLS
-      return make_unique<HttpIngress<TcpSocket>>(unordered_map<string, string>{},
+      return make_unique<HttpIngress<TcpSocket>>(genAuthenticator(vo.credential_),
                                                  forward<Socket>(s));
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
     // FIXME credential is disabled
     if (vo.tls_.has_value())
-      return make_unique<Socks5Ingress<TLSStream>>(unordered_map<string, string>{},
+      return make_unique<Socks5Ingress<TLSStream>>(genAuthenticator(vo.credential_),
                                                    createTlsContext(*vo.tls_), forward<Socket>(s));
     else
 #endif  // ENABLE_TLS
-      return make_unique<Socks5Ingress<TcpSocket>>(unordered_map<string, string>{},
+      return make_unique<Socks5Ingress<TcpSocket>>(genAuthenticator(vo.credential_),
                                                    forward<Socket>(s));
   case AdapterType::SS:
     return createShadowsocksIngress(forward<Socket>(s), get<vo::ShadowsocksOption>(*vo.opt_));

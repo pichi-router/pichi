@@ -138,6 +138,11 @@ static void verifyDisconnectResponse(PichiError e, http::response<http::empty_bo
   }
 }
 
+static auto defaultAuthenticator(string const& u, string const& p)
+{
+  return u == "foo" && p == "bar";
+}
+
 BOOST_AUTO_TEST_SUITE(HTTP)
 
 BOOST_AUTO_TEST_CASE(readRemote_Invalid_HTTP_Header)
@@ -156,7 +161,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Tunnel_Authentication_Without_Header)
   auto req = genTunnelReq();
 
   auto socket = Socket{};
-  auto ingress = HttpIngress{{{"foo"s, "bar"s}}, socket, true};
+  auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
 
   socket.fill({buf, serializeToBuffer(req, buf)});
   BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
@@ -180,7 +185,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Header)
       req.set(http::field::proxy_authorization, h);
 
       auto socket = Socket{};
-      auto ingress = HttpIngress{{{"foo"s, "bar"s}}, socket, true};
+      auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
 
       auto buf = array<uint8_t, 1024>{};
       socket.fill({buf, serializeToBuffer(req, buf)});
@@ -206,7 +211,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Credential)
       req.set(http::field::proxy_authorization, h);
 
       auto socket = Socket{};
-      auto ingress = HttpIngress{{{"foo"s, "bar"s}}, socket, true};
+      auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
 
       auto buf = array<uint8_t, 1024>{};
       socket.fill({buf, serializeToBuffer(req, buf)});
@@ -223,7 +228,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Tunnel_Correct)
   req.set(http::field::proxy_authorization, "Basic "s + crypto::base64Encode("foo:bar"sv));
 
   auto socket = Socket{};
-  auto ingress = HttpIngress{{{"foo"s, "bar"s}}, socket, true};
+  auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
 
   auto buf = array<uint8_t, 1024>{};
   socket.fill({buf, serializeToBuffer(req, buf)});
@@ -242,7 +247,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Relay_Correct)
   req.set(http::field::proxy_authorization, "Basic "s + crypto::base64Encode("foo:bar"sv));
 
   auto socket = Socket{};
-  auto ingress = HttpIngress{{{"foo"s, "bar"s}}, socket, true};
+  auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
 
   auto buf = array<uint8_t, 1024>{};
   socket.fill({buf, serializeToBuffer(req, buf)});

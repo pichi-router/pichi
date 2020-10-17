@@ -247,6 +247,22 @@ static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
   return true;
 }
 
+template <typename Request> auto getUsernameAndPassword(Request const& req)
+{
+  auto auth = req.find(http::field::proxy_authorization);
+  assertFalse(auth == cend(req), PichiError::BAD_AUTH_METHOD);
+  auto m = cmatch{};
+  auto credential = auth->value();
+  assertTrue(regex_match(cbegin(credential), cend(credential), m, BASIC_AUTH_PATTERN),
+             PichiError::BAD_AUTH_METHOD);
+  assertTrue(2 == m.size() && m[1].matched, PichiError::BAD_AUTH_METHOD);
+  auto plain = crypto::base64Decode({m[1].first, static_cast<size_t>(m[1].length())},
+                                    PichiError::BAD_AUTH_METHOD);
+  auto colon = plain.find_first_of(':');
+  assertFalse(colon == string::npos, PichiError::BAD_AUTH_METHOD);
+  return make_pair(plain.substr(0, colon), plain.substr(colon + 1));
+}
+
 }  // namespace detail
 
 using namespace detail;
@@ -333,8 +349,9 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 
   readHttpHeader(stream_, reqCache_, reqParser_, yield);
   auto& req = reqParser_.get();
-  if (!credentials_.empty()) {
-    authenticate(req);
+  if (auth_.has_value()) {
+    auto [username, password] = getUsernameAndPassword(req);
+    assertTrue(invoke(*auth_, username, password), PichiError::UNAUTHENTICATED);
     req.erase(http::field::proxy_authorization);
   }
 
@@ -405,28 +422,6 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
       return makeEndpoint(hp.host_, hp.port_);
     }
   }
-}
-
-template <typename Stream> void HttpIngress<Stream>::authenticate(Header<true> const& req)
-{
-  auto auth = req.find(http::field::proxy_authorization);
-  assertFalse(auth == cend(req), PichiError::BAD_AUTH_METHOD);
-  auto m = cmatch{};
-  auto credential = auth->value();
-  assertTrue(regex_match(cbegin(credential), cend(credential), m, BASIC_AUTH_PATTERN),
-             PichiError::BAD_AUTH_METHOD);
-  assertTrue(2 == m.size() && m[1].matched, PichiError::BAD_AUTH_METHOD);
-  auto plain = crypto::base64Decode({m[1].first, static_cast<size_t>(m[1].length())},
-                                    PichiError::BAD_AUTH_METHOD);
-  auto np = string_view{plain};
-  auto colon = np.find_first_of(':');
-  assertFalse(colon == string_view::npos, PichiError::BAD_AUTH_METHOD);
-  assertFalse(cend(credentials_) ==
-                  find_if(cbegin(credentials_), cend(credentials_),
-                          [name = np.substr(0, colon), pass = np.substr(colon + 1)](auto&& item) {
-                            return item.first == name && item.second == pass;
-                          }),
-              PichiError::UNAUTHENTICATED);
 }
 
 template <typename Stream>
