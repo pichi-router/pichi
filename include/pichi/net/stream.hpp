@@ -274,8 +274,8 @@ private:
  * intended to support all the stream classes with async_connect member function
  * template.
  */
-template <typename Stream, typename ConnectHandler>
-auto asyncConnect(Stream& stream, ResolveResults results, ConnectHandler&& handler)
+template <typename Stream, typename Results, typename ConnectHandler>
+auto asyncConnect(Stream& stream, Results results, ConnectHandler&& handler)
 {
   // FIXME the life term of results should be extended until all of the
   // async-ops are accomplished,

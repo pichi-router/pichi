@@ -2,9 +2,14 @@
 #define PICHI_NET_ASIO_HPP
 
 #include <boost/asio/buffer.hpp>
-#include <memory>
+#include <boost/asio/read.hpp>
+#include <boost/asio/ssl/stream_base.hpp>
+#include <boost/asio/write.hpp>
 #include <pichi/common/adapter.hpp>
 #include <pichi/common/buffer.hpp>
+#include <pichi/common/literals.hpp>
+#include <pichi/net/stream.hpp>
+#include <type_traits>
 
 namespace boost::asio {
 
@@ -32,33 +37,80 @@ inline const_buffer buffer(pichi::ConstBuffer<PodType> origin, size_t size)
   return {origin.data(), size * sizeof(PodType)};
 }
 
-class io_context;
-
 }  // namespace boost::asio
-
-namespace pichi::vo {
-
-struct Ingress;
-struct Egress;
-
-}  // namespace pichi::vo
-
-namespace pichi::api {
-
-struct IngressHolder;
-
-}  // namespace pichi::api
 
 namespace pichi::net {
 
-template <typename Socket, typename Yield> void connect(ResolveResults, Socket&, Yield);
-template <typename Socket, typename Yield> void read(Socket&, MutableBuffer<uint8_t>, Yield);
-template <typename Socket, typename Yield> size_t readSome(Socket&, MutableBuffer<uint8_t>, Yield);
-template <typename Socket, typename Yield> void write(Socket&, ConstBuffer<uint8_t>, Yield);
-template <typename Socket, typename Yield> void close(Socket&, Yield);
+template <typename Stream, typename Results, typename Yield>
+void connect(Results next, Stream& stream, Yield yield)
+{
+#ifdef BUILD_TEST
+  if constexpr (std::is_same_v<Stream, TestStream>) {
+    suppressC4100(next);
+    suppressC4100(yield);
+    stream.connect();
+    return;
+  }
+  else {
+#endif  // BUILD_TEST
+    asyncConnect(stream, next, yield);
+#ifdef BUILD_TEST
+  }
+#endif  // BUILD_TEST
+  if constexpr (IsTlsStreamV<Stream>) {
+    stream.async_handshake(boost::asio::ssl::stream_base::client, yield);
+  }
+}
 
-template <typename Socket> std::unique_ptr<Ingress> makeIngress(api::IngressHolder&, Socket&&);
-std::unique_ptr<Egress> makeEgress(vo::Egress const&, boost::asio::io_context&);
+template <typename Stream, typename Yield>
+void read(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
+{
+#ifdef BUILD_TEST
+  if constexpr (std::is_same_v<Stream, TestStream>)
+    boost::asio::read(stream, boost::asio::buffer(buf));
+  else
+#endif  // BUILD_TEST
+    boost::asio::async_read(stream, boost::asio::buffer(buf), yield);
+}
+
+template <typename Stream, typename Yield>
+size_t readSome(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
+{
+#ifdef BUILD_TEST
+  if constexpr (std::is_same_v<Stream, TestStream>) {
+    return stream.read_some(boost::asio::buffer(buf));
+  }
+  else
+#endif  // BUILD_TEST
+    return stream.async_read_some(boost::asio::buffer(buf), yield);
+}
+
+template <typename Stream, typename Yield>
+void write(Stream& stream, ConstBuffer<uint8_t> buf, Yield yield)
+{
+#ifdef BUILD_TEST
+  if constexpr (std::is_same_v<Stream, TestStream>)
+    boost::asio::write(stream, boost::asio::buffer(buf));
+  else
+#endif  // BUILD_TEST
+    boost::asio::async_write(stream, boost::asio::buffer(buf), yield);
+}
+
+template <typename Stream, typename Yield> void close(Stream& stream, Yield yield)
+{
+  // This function is supposed to be 'noexcept' because it's always invoked in
+  // the desturctors.
+  // TODO log it
+  auto ec = boost::system::error_code{};
+  if constexpr (IsTlsStreamV<Stream>) {
+    stream.async_shutdown(yield[ec]);
+    stream.close(ec);
+  }
+  else {
+    suppressC4100(yield);
+    stream.close(ec);
+  }
+}
 
 }  // namespace pichi::net
 
