@@ -38,7 +38,10 @@ static std::string_view const MISSING_DESTINATIONS_FIELD = "Missiong destination
 static std::string_view const MISSING_BALANCE_FIELD = "Missiong balance field";
 static std::string_view const MISSING_REMOTE_HOST_FIELD = "Missing remote_host field";
 static std::string_view const MISSING_REMOTE_PORT_FIELD = "Missing remote_port field";
-static std::string_view const MISSING_PASSWORDS_FIELD = "MIssing passwords field";
+static std::string_view const MISSING_PASSWORDS_FIELD = "Missing passwords field";
+static std::string_view const MISSING_OPTION_FIELD = "Missing option field";
+static std::string_view const MISSING_TLS_FIELD = "Missing tls field";
+static std::string_view const MISSING_CRED_FIELD = "Missing credential field";
 
 static std::string_view const TOO_LONG_NAME_PASSWORD = "Name or password is too long";
 static std::string_view const DELAY_OUT_OF_RANGE = "Delay out of range";

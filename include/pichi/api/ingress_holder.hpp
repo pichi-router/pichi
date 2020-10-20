@@ -15,7 +15,7 @@ class io_context;
 
 namespace pichi::api {
 
-using IngressIterator = decltype(vo::Ingress::destinations_)::const_iterator;
+using IngressIterator = decltype(vo::TunnelOption::destinations_)::const_iterator;
 
 struct IngressHolder {
   explicit IngressHolder(boost::asio::io_context&, vo::Ingress&&);

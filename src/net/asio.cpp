@@ -52,11 +52,11 @@ namespace ssl = asio::ssl;
 
 using TLSStream = pichi::net::TlsStream<TcpSocket>;
 
-static auto createTlsContext(vo::Ingress const& vo)
+static auto createTlsContext(vo::TlsIngressOption const& option)
 {
   auto ctx = ssl::context{ssl::context::tls_server};
-  ctx.use_certificate_chain_file(*vo.certFile_);
-  ctx.use_private_key_file(*vo.keyFile_, ssl::context::pem);
+  ctx.use_certificate_chain_file(option.certFile_);
+  ctx.use_private_key_file(option.keyFile_, ssl::context::pem);
   return ctx;
 }
 
@@ -83,6 +83,63 @@ static auto createTlsContext(vo::Egress const& vo)
 }
 
 #endif  // ENABLE_TLS
+
+template <typename Socket>
+unique_ptr<Ingress> createShadowsocksIngress(Socket&& s, vo::ShadowsocksOption const& option)
+{
+  auto container = array<uint8_t, 1024>{0};
+  auto psk = MutableBuffer<uint8_t>{container};
+  psk = {container,
+         crypto::generateKey(option.method_, ConstBuffer<uint8_t>{option.password_}, container)};
+  switch (option.method_) {
+  case CryptoMethod::RC4_MD5:
+    return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::BF_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::AES_128_CTR:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::AES_192_CTR:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CTR, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::AES_256_CTR:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CTR, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::AES_128_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CFB, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::AES_192_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CFB, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::AES_256_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CFB, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::CAMELLIA_128_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB, Socket>>(psk,
+                                                                                forward<Socket>(s));
+  case CryptoMethod::CAMELLIA_192_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB, Socket>>(psk,
+                                                                                forward<Socket>(s));
+  case CryptoMethod::CAMELLIA_256_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB, Socket>>(psk,
+                                                                                forward<Socket>(s));
+  case CryptoMethod::CHACHA20:
+    return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::SALSA20:
+    return make_unique<SSStreamAdapter<CryptoMethod::SALSA20, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::CHACHA20_IETF:
+    return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF, Socket>>(psk,
+                                                                             forward<Socket>(s));
+  case CryptoMethod::AES_128_GCM:
+    return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::AES_192_GCM:
+    return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::AES_256_GCM:
+    return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM, Socket>>(psk, forward<Socket>(s));
+  case CryptoMethod::CHACHA20_IETF_POLY1305:
+    return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, Socket>>(
+        psk, forward<Socket>(s));
+  case CryptoMethod::XCHACHA20_IETF_POLY1305:
+    return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, Socket>>(
+        psk, forward<Socket>(s));
+  default:
+    fail(PichiError::BAD_PROTO);
+  }
+}
 
 template <typename Stream, typename Yield> void connect(ResolveResults next, Stream& s, Yield yield)
 {
@@ -164,86 +221,36 @@ template <typename Stream, typename Yield> void close(Stream& s, Yield yield)
 
 template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, Socket&& s)
 {
-  auto container = array<uint8_t, 1024>{0};
-  auto psk = MutableBuffer<uint8_t>{container};
   auto& vo = holder.vo_;
   switch (vo.type_) {
   case AdapterType::TROJAN:
-    return make_unique<TrojanIngress<TLSStream>>(*vo.remote_, cbegin(vo.passwords_),
-                                                 cend(vo.passwords_), createTlsContext(vo),
-                                                 forward<Socket>(s));
+    return make_unique<TrojanIngress<TLSStream>>(
+        get<vo::TrojanOption>(*vo.opt_).remote_,
+        cbegin(get<vo::trojan::IngressCredential>(*vo.credential_).credential_),
+        cend(get<vo::trojan::IngressCredential>(*vo.credential_).credential_),
+        createTlsContext(*vo.tls_), forward<Socket>(s));
   case AdapterType::HTTP:
+    // FIXME credential is disabled
 #ifdef ENABLE_TLS
-    if (*vo.tls_)
-      return make_unique<HttpIngress<TLSStream>>(vo.credentials_, createTlsContext(vo),
-                                                 forward<Socket>(s));
+    if (vo.tls_.has_value())
+      return make_unique<HttpIngress<TLSStream>>(unordered_map<string, string>{},
+                                                 createTlsContext(*vo.tls_), forward<Socket>(s));
     else
 #endif  // ENABLE_TLS
-      return make_unique<HttpIngress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
+      return make_unique<HttpIngress<TcpSocket>>(unordered_map<string, string>{},
+                                                 forward<Socket>(s));
   case AdapterType::SOCKS5:
 #ifdef ENABLE_TLS
-    if (*vo.tls_)
-      return make_unique<Socks5Ingress<TLSStream>>(vo.credentials_, createTlsContext(vo),
-                                                   forward<Socket>(s));
+    // FIXME credential is disabled
+    if (vo.tls_.has_value())
+      return make_unique<Socks5Ingress<TLSStream>>(unordered_map<string, string>{},
+                                                   createTlsContext(*vo.tls_), forward<Socket>(s));
     else
 #endif  // ENABLE_TLS
-      return make_unique<Socks5Ingress<TcpSocket>>(vo.credentials_, forward<Socket>(s));
+      return make_unique<Socks5Ingress<TcpSocket>>(unordered_map<string, string>{},
+                                                   forward<Socket>(s));
   case AdapterType::SS:
-    psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
-    switch (*vo.method_) {
-    case CryptoMethod::RC4_MD5:
-      return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5, Socket>>(psk, forward<Socket>(s));
-    case CryptoMethod::BF_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB, Socket>>(psk, forward<Socket>(s));
-    case CryptoMethod::AES_128_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR, Socket>>(psk,
-                                                                             forward<Socket>(s));
-    case CryptoMethod::AES_192_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CTR, Socket>>(psk,
-                                                                             forward<Socket>(s));
-    case CryptoMethod::AES_256_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CTR, Socket>>(psk,
-                                                                             forward<Socket>(s));
-    case CryptoMethod::AES_128_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CFB, Socket>>(psk,
-                                                                             forward<Socket>(s));
-    case CryptoMethod::AES_192_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CFB, Socket>>(psk,
-                                                                             forward<Socket>(s));
-    case CryptoMethod::AES_256_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CFB, Socket>>(psk,
-                                                                             forward<Socket>(s));
-    case CryptoMethod::CAMELLIA_128_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB, Socket>>(
-          psk, forward<Socket>(s));
-    case CryptoMethod::CAMELLIA_192_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB, Socket>>(
-          psk, forward<Socket>(s));
-    case CryptoMethod::CAMELLIA_256_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB, Socket>>(
-          psk, forward<Socket>(s));
-    case CryptoMethod::CHACHA20:
-      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20, Socket>>(psk, forward<Socket>(s));
-    case CryptoMethod::SALSA20:
-      return make_unique<SSStreamAdapter<CryptoMethod::SALSA20, Socket>>(psk, forward<Socket>(s));
-    case CryptoMethod::CHACHA20_IETF:
-      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF, Socket>>(psk,
-                                                                               forward<Socket>(s));
-    case CryptoMethod::AES_128_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM, Socket>>(psk, forward<Socket>(s));
-    case CryptoMethod::AES_192_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM, Socket>>(psk, forward<Socket>(s));
-    case CryptoMethod::AES_256_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM, Socket>>(psk, forward<Socket>(s));
-    case CryptoMethod::CHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, Socket>>(
-          psk, forward<Socket>(s));
-    case CryptoMethod::XCHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, Socket>>(
-          psk, forward<Socket>(s));
-    default:
-      fail(PichiError::BAD_PROTO);
-    }
+    return createShadowsocksIngress(forward<Socket>(s), get<vo::ShadowsocksOption>(*vo.opt_));
   case AdapterType::TUNNEL:
     return make_unique<TunnelIngress<api::IngressIterator, Socket>>(*holder.balancer_,
                                                                     forward<Socket>(s));

@@ -37,10 +37,8 @@ template <typename Option> rapidjson::Value defaultOptionJson();
 template <typename Option> Option defaultOption();
 
 extern rapidjson::Document::AllocatorType& alloc;
-extern Endpoint const DEFAULT_ENDPINT;
+extern Endpoint const DEFAULT_ENDPOINT;
 
-extern vo::Ingress defaultIngressVO(AdapterType);
-extern rapidjson::Value defaultIngressJson(AdapterType);
 extern vo::Egress defaultEgressVO(AdapterType);
 extern rapidjson::Value defaultEgressJson(AdapterType);
 

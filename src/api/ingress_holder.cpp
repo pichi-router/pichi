@@ -25,7 +25,9 @@ static auto createAcceptors(asio::io_context& io, vo::Ingress const& vo)
 IngressHolder::IngressHolder(asio::io_context& io, vo::Ingress&& vo)
   : vo_{move(vo)},
     balancer_{vo_.type_ == AdapterType::TUNNEL
-                  ? makeBalancer(*vo_.balance_, cbegin(vo_.destinations_), cend(vo_.destinations_))
+                  ? makeBalancer(get<vo::TunnelOption>(*vo_.opt_).balance_,
+                                 cbegin(get<vo::TunnelOption>(*vo_.opt_).destinations_),
+                                 cend(get<vo::TunnelOption>(*vo_.opt_).destinations_))
                   : nullptr},
     acceptors_{createAcceptors(io, vo_)}
 {
@@ -36,7 +38,9 @@ void IngressHolder::reset(asio::io_context& io, vo::Ingress&& vo)
   // TODO Exception safety
   vo_ = move(vo);
   balancer_ = vo_.type_ == AdapterType::TUNNEL
-                  ? makeBalancer(*vo_.balance_, cbegin(vo_.destinations_), cend(vo_.destinations_))
+                  ? makeBalancer(get<vo::TunnelOption>(*vo_.opt_).balance_,
+                                 cbegin(get<vo::TunnelOption>(*vo_.opt_).destinations_),
+                                 cend(get<vo::TunnelOption>(*vo_.opt_).destinations_))
                   : nullptr;
   auto acceptors = createAcceptors(io, vo_);
   swap(acceptors_, acceptors);

@@ -2,6 +2,7 @@
 
 #include "utils.hpp"
 #include "vo.hpp"
+#include <boost/mpl/set.hpp>
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/ingress.hpp>
@@ -12,677 +13,303 @@
 
 using namespace std;
 using namespace rapidjson;
+namespace mpl = boost::mpl;
 
 namespace pichi::unit_test {
 
-using vo::parse;
-using vo::toJson;
-using vo::toString;
-
-static string toString(vo::Ingress const& ingress)
-{
-  auto v = Value{};
-  v.SetObject();
-
-  v.AddMember(vo::ingress::TYPE, toJson(ingress.type_, alloc), alloc);
-  v.AddMember(vo::ingress::BIND, Value{kArrayType}, alloc);
-  for_each(cbegin(ingress.bind_), cend(ingress.bind_),
-           [&bind = v[vo::ingress::BIND]](auto&& endpoint) {
-             bind.PushBack(toJson(endpoint, alloc), alloc);
-           });
-  if (ingress.method_.has_value())
-    v.AddMember(vo::ingress::METHOD, toJson(*ingress.method_, alloc), alloc);
-  if (ingress.password_.has_value())
-    v.AddMember(vo::ingress::PASSWORD, toJson(*ingress.password_, alloc), alloc);
-  if (ingress.tls_.has_value()) v.AddMember(vo::ingress::TLS, *ingress.tls_, alloc);
-  if (ingress.certFile_.has_value())
-    v.AddMember(vo::ingress::CERT_FILE, toJson(*ingress.certFile_, alloc), alloc);
-  if (ingress.keyFile_.has_value())
-    v.AddMember(vo::ingress::KEY_FILE, toJson(*ingress.keyFile_, alloc), alloc);
-  if (!ingress.destinations_.empty())
-    v.AddMember(vo::ingress::DESTINATIONS,
-                toJson(begin(ingress.destinations_), end(ingress.destinations_), alloc), alloc);
-  if (ingress.balance_.has_value())
-    v.AddMember(vo::ingress::BALANCE, toJson(*ingress.balance_, alloc), alloc);
-
-  return toString(v);
-}
-
 BOOST_AUTO_TEST_SUITE(VO_INGRESS)
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Str)
+using namespace pichi::vo;
+
+enum class Present { MANDATORY, OPTIONAL, UNUSED };
+
+template <AdapterType type> struct AdapterTrait {
+};
+
+template <> struct AdapterTrait<AdapterType::HTTP> {
+  static const AdapterType type_ = AdapterType::HTTP;
+  static const Present credential_ = Present::OPTIONAL;
+  static const Present option_ = Present::UNUSED;
+  static const Present tls_ = Present::OPTIONAL;
+  static const Present websocket_ = Present::UNUSED;
+  using Credential = up::IngressCredential;
+};
+
+template <> struct AdapterTrait<AdapterType::SOCKS5> {
+  static const AdapterType type_ = AdapterType::SOCKS5;
+  static const Present credential_ = Present::OPTIONAL;
+  static const Present option_ = Present::UNUSED;
+  static const Present tls_ = Present::OPTIONAL;
+  static const Present websocket_ = Present::UNUSED;
+  using Credential = up::IngressCredential;
+  using Tls = TlsIngressOption;
+};
+
+template <> struct AdapterTrait<AdapterType::TUNNEL> {
+  static const AdapterType type_ = AdapterType::TUNNEL;
+  static const Present credential_ = Present::UNUSED;
+  static const Present option_ = Present::MANDATORY;
+  static const Present tls_ = Present::UNUSED;
+  static const Present websocket_ = Present::UNUSED;
+  using Option = TunnelOption;
+};
+
+template <> struct AdapterTrait<AdapterType::SS> {
+  static const AdapterType type_ = AdapterType::SS;
+  static const Present credential_ = Present::UNUSED;
+  static const Present option_ = Present::MANDATORY;
+  static const Present tls_ = Present::UNUSED;
+  static const Present websocket_ = Present::UNUSED;
+  using Option = ShadowsocksOption;
+};
+
+template <> struct AdapterTrait<AdapterType::TROJAN> {
+  static const AdapterType type_ = AdapterType::TROJAN;
+  static const Present credential_ = Present::MANDATORY;
+  static const Present option_ = Present::MANDATORY;
+  static const Present tls_ = Present::MANDATORY;
+  static const Present websocket_ = Present::OPTIONAL;
+  using Credential = trojan::IngressCredential;
+  using Option = TrojanOption;
+};
+
+template <> struct AdapterTrait<AdapterType::VMESS> {
+  static const AdapterType type_ = AdapterType::VMESS;
+  static const Present credential_ = Present::MANDATORY;
+  static const Present option_ = Present::UNUSED;
+  static const Present tls_ = Present::OPTIONAL;
+  static const Present websocket_ = Present::OPTIONAL;
+  using Credential = vmess::IngressCredential;
+};
+
+using AllAdapterTraits =
+    mpl::set<AdapterTrait<AdapterType::HTTP>, AdapterTrait<AdapterType::SOCKS5>,
+             AdapterTrait<AdapterType::TUNNEL>, AdapterTrait<AdapterType::SS>,
+             AdapterTrait<AdapterType::TROJAN>, AdapterTrait<AdapterType::VMESS>>;
+
+template <AdapterType type> Value defaultIngressJson()
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>("not a json"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>("[\"not a json object\"]"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+  using Trait = AdapterTrait<type>;
+  auto ingress = Value{kObjectType};
+  ingress.AddMember(ingress::TYPE, toJson(type, alloc), alloc);
+  ingress.AddMember(ingress::BIND, Value{kArrayType}, alloc);
+  ingress[ingress::BIND].PushBack(toJson(DEFAULT_ENDPOINT, alloc), alloc);
+  if constexpr (Trait::credential_ == Present::MANDATORY)
+    ingress.AddMember(ingress::CREDENTIAL, defaultCredentialJson<typename Trait::Credential>(),
+                      alloc);
+  if constexpr (Trait::option_ == Present::MANDATORY)
+    ingress.AddMember(ingress::OPTION, defaultOptionJson<typename Trait::Option>(), alloc);
+  if constexpr (Trait::tls_ == Present::MANDATORY)
+    ingress.AddMember(ingress::TLS, defaultOptionJson<TlsIngressOption>(), alloc);
+  if constexpr (Trait::websocket_ == Present::MANDATORY)
+    ingress.AddMember(ingress::WEBSOCKET, defaultOptionJson<WebsocketOption>(), alloc);
+
+  return ingress;
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Invalid_Type)
+template <AdapterType type> Ingress defaultIngress()
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>("{\"type\":\"invalid\"}"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>("{\"type\":\"direct\"}"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>("{\"type\":\"reject\"}"), Exception,
-                        verifyException<PichiError::BAD_JSON>);
+  using Trait = AdapterTrait<type>;
+  auto ingress = Ingress{};
+  ingress.type_ = type;
+  ingress.bind_.push_back(DEFAULT_ENDPOINT);
+  if constexpr (Trait::credential_ == Present::MANDATORY)
+    ingress.credential_ = defaultCredential<typename Trait::Credential>();
+  if constexpr (Trait::option_ == Present::MANDATORY)
+    ingress.opt_ = defaultOption<typename Trait::Option>();
+  if constexpr (Trait::tls_ == Present::MANDATORY) ingress.tls_ = defaultOption<TlsIngressOption>();
+  if constexpr (Trait::websocket_ == Present::MANDATORY)
+    ingress.websocket_ = defaultOption<WebsocketOption>();
+  return ingress;
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Default_Ones)
+BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
 {
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL,
-                    AdapterType::TROJAN}) {
-    BOOST_CHECK(defaultIngressVO(type) == parse<vo::Ingress>(toString(defaultIngressJson(type))));
-  }
+  BOOST_CHECK(defaultIngress<Trait::type_>() == parse<Ingress>(defaultIngressJson<Trait::type_>()));
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_Mandatory_Fields)
+BOOST_AUTO_TEST_CASE(parse_Invalid_Json_Type)
 {
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL,
-                    AdapterType::TROJAN}) {
-    auto noType = defaultIngressJson(type);
-    noType.RemoveMember(vo::ingress::TYPE);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(noType), Exception,
-                          verifyException<PichiError::BAD_JSON>);
-
-    auto noBind = defaultIngressJson(type);
-    noBind.RemoveMember(vo::ingress::BIND);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(noBind), Exception,
-                          verifyException<PichiError::BAD_JSON>);
-
-    auto emptyBind = defaultIngressJson(type);
-    emptyBind[vo::ingress::BIND].Clear();
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(emptyBind), Exception,
-                          verifyException<PichiError::BAD_JSON>);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Additional_Fields)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto vo = defaultIngressVO(type);
-    BOOST_CHECK(vo == parse<vo::Ingress>(toString(vo)));
-
-    vo.method_ = CryptoMethod::RC4_MD5;
-    vo.password_ = ph;
-    vo.certFile_ = ph;
-    vo.keyFile_ = ph;
-    BOOST_CHECK(defaultIngressVO(type) == parse<vo::Ingress>(toString(vo)));
-  }
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Default_TLS_Fields)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto json = defaultIngressJson(type);
-    json.RemoveMember(vo::ingress::TLS);
-    BOOST_CHECK(defaultIngressVO(type) == parse<vo::Ingress>(toString(json)));
-  }
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_TLS_Mandatory_Fields)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto noCertFile = defaultIngressJson(type);
-    noCertFile[vo::ingress::TLS] = true;
-    noCertFile.AddMember(vo::ingress::KEY_FILE, toJson(ph, alloc), alloc);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noCertFile)), Exception,
-                          verifyException<PichiError::BAD_JSON>);
-
-    auto emptyCertFile = defaultIngressJson(type);
-    emptyCertFile[vo::ingress::TLS] = true;
-    emptyCertFile.AddMember(vo::ingress::CERT_FILE, toJson("", alloc), alloc);
-    emptyCertFile.AddMember(vo::ingress::KEY_FILE, toJson(ph, alloc), alloc);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(emptyCertFile)), Exception,
-                          verifyException<PichiError::BAD_JSON>);
-
-    auto noKeyFile = defaultIngressJson(type);
-    noKeyFile[vo::ingress::TLS] = true;
-    noKeyFile.AddMember(vo::ingress::CERT_FILE, toJson(ph, alloc), alloc);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noKeyFile)), Exception,
-                          verifyException<PichiError::BAD_JSON>);
-
-    auto emptyKeyFile = defaultIngressJson(type);
-    emptyKeyFile[vo::ingress::TLS] = true;
-    emptyKeyFile.AddMember(vo::ingress::CERT_FILE, toJson(ph, alloc), alloc);
-    emptyKeyFile.AddMember(vo::ingress::KEY_FILE, toJson("", alloc), alloc);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(emptyKeyFile)), Exception,
-                          verifyException<PichiError::BAD_JSON>);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_TLS_Additional_Fields)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto vo = defaultIngressVO(type);
-    vo.tls_ = true;
-    vo.certFile_ = ph;
-    vo.keyFile_ = ph;
-
-    auto json = defaultIngressJson(type);
-    json[vo::ingress::TLS] = true;
-    json.AddMember(vo::ingress::KEY_FILE, toJson(ph, alloc), alloc);
-    json.AddMember(vo::ingress::CERT_FILE, toJson(ph, alloc), alloc);
-    json.AddMember(vo::ingress::PASSWORD, toJson(ph, alloc), alloc);
-    json.AddMember(vo::ingress::METHOD, toJson(ph, alloc), alloc);
-
-    BOOST_CHECK(vo == parse<vo::Ingress>(json));
-  }
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_With_Incorrect_Type_Credentials)
-{
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto credentials = Value{};
-    credentials.SetArray();
-    auto json = defaultIngressJson(type);
-    json.AddMember(vo::ingress::CREDENTIALS, credentials, alloc);
-
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
+  for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kArrayType}) {
+    BOOST_CHECK_EXCEPTION(parse<Ingress>(Value{t}), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_With_Empty_Credentials)
+BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Basic_Mandatory_Fields, Trait, AllAdapterTraits)
 {
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto emptyCred = Value{};
-    emptyCred.SetObject();
-    auto json = defaultIngressJson(type);
-    json.AddMember(vo::ingress::CREDENTIALS, emptyCred, alloc);
+  auto noType = defaultIngressJson<Trait::type_>();
+  noType.RemoveMember(ingress::TYPE);
+  BOOST_CHECK_EXCEPTION(parse<Ingress>(noType), Exception, verifyException<PichiError::BAD_JSON>);
 
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
+  auto noBind = defaultIngressJson<Trait::type_>();
+  noBind.RemoveMember(ingress::BIND);
+  BOOST_CHECK_EXCEPTION(parse<Ingress>(noBind), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Invalid_Types, Trait, AllAdapterTraits)
+{
+  for (auto t : {AdapterType::DIRECT, AdapterType::REJECT}) {
+    auto invalid = defaultIngressJson<Trait::type_>();
+    invalid[ingress::TYPE] = toJson(t, alloc);
+    BOOST_CHECK_EXCEPTION(parse<Ingress>(invalid), Exception,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_With_Too_Long_Name)
+BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Invalid_Bind_Type, Trait, AllAdapterTraits)
 {
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto tooLongName = toJson(string(256_sz, 'n'), alloc);
-    auto credentials = Value{};
-    credentials.SetObject();
-    credentials.AddMember(tooLongName, ph, alloc);
-    auto json = defaultIngressJson(type);
-    json.AddMember(vo::ingress::CREDENTIALS, credentials, alloc);
-
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
-                          verifyException<PichiError::BAD_JSON>);
+  for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kObjectType}) {
+    auto json = defaultIngressJson<Trait::type_>();
+    json[ingress::BIND] = Value{t};
+    BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_With_Too_Long_Password)
+BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Empty_Bind, Trait, AllAdapterTraits)
 {
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto tooLongPassword = toJson(string(256_sz, 'p'), alloc);
-    auto credentials = Value{};
-    credentials.SetObject();
-    credentials.AddMember(ph, tooLongPassword, alloc);
-    auto json = defaultIngressJson(type);
-    json.AddMember(vo::ingress::CREDENTIALS, credentials, alloc);
+  auto json = defaultIngressJson<Trait::type_>();
+  json[ingress::BIND].Clear();
+  BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
 
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
-                          verifyException<PichiError::BAD_JSON>);
+BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
+{
+  auto verifyMandatoryField = [](auto key) {
+    auto json = defaultIngressJson<Trait::type_>();
+    json.RemoveMember(key);
+    BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  };
+  if (Trait::credential_ == Present::MANDATORY) verifyMandatoryField(ingress::CREDENTIAL);
+  if (Trait::option_ == Present::MANDATORY) verifyMandatoryField(ingress::OPTION);
+  if (Trait::tls_ == Present::MANDATORY) verifyMandatoryField(ingress::TLS);
+  if (Trait::websocket_ == Present::MANDATORY) verifyMandatoryField(ingress::WEBSOCKET);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Optional_Fields, Trait, AllAdapterTraits)
+{
+  constexpr auto type = Trait::type_;
+  if constexpr (Trait::credential_ == Present::OPTIONAL) {
+    using Credential = typename Trait::Credential;
+    auto ingress = defaultIngress<type>();
+    ingress.credential_ = defaultCredential<Credential>();
+    BOOST_CHECK(parse<Ingress>(defaultIngressJson<type>().AddMember(
+                    ingress::CREDENTIAL, defaultCredentialJson<Credential>(), alloc)) == ingress);
+  }
+  if constexpr (Trait::option_ == Present::OPTIONAL) {
+    using Option = typename Trait::Option;
+    auto ingress = defaultIngress<type>();
+    ingress.opt_ = defaultOption<Option>();
+    BOOST_CHECK(parse<Ingress>(defaultIngressJson<type>().AddMember(
+                    ingress::OPTION, defaultOptionJson<Option>(), alloc)) == ingress);
+  }
+  if constexpr (Trait::tls_ == Present::OPTIONAL) {
+    auto ingress = defaultIngress<type>();
+    ingress.tls_ = defaultOption<TlsIngressOption>();
+    BOOST_CHECK(parse<Ingress>(defaultIngressJson<type>().AddMember(
+                    ingress::TLS, defaultOptionJson<TlsIngressOption>(), alloc)) == ingress);
+  }
+  if constexpr (Trait::websocket_ == Present::OPTIONAL) {
+    auto ingress = defaultIngress<type>();
+    ingress.websocket_ = defaultOption<WebsocketOption>();
+    BOOST_CHECK(parse<Ingress>(defaultIngressJson<type>().AddMember(
+                    ingress::WEBSOCKET, defaultOptionJson<WebsocketOption>(), alloc)) == ingress);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_HTTP_SOCKS5_Credentials)
+BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Unused_Fields, Trait, AllAdapterTraits)
 {
-  for (auto type : {AdapterType::SOCKS5, AdapterType::HTTP}) {
-    auto credentials = Value{};
-    credentials.SetObject();
-    credentials.AddMember(ph, ph, alloc);
+  auto json = defaultIngressJson<Trait::type_>();
+  if (Trait::credential_ == Present::UNUSED)
+    json.AddMember(ingress::CREDENTIAL, Value{kObjectType}, alloc);
+  if (Trait::option_ == Present::UNUSED) json.AddMember(ingress::OPTION, Value{kObjectType}, alloc);
+  if (Trait::tls_ == Present::UNUSED) json.AddMember(ingress::TLS, Value{kObjectType}, alloc);
+  if (Trait::websocket_ == Present::UNUSED)
+    json.AddMember(ingress::WEBSOCKET, Value{kObjectType}, alloc);
+  BOOST_CHECK(parse<Ingress>(json) == defaultIngress<Trait::type_>());
+}
 
-    auto json = defaultIngressJson(type);
-    json.AddMember(vo::ingress::CREDENTIALS, credentials, alloc);
+BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Default_Ones, Trait, AllAdapterTraits)
+{
+  BOOST_CHECK(defaultIngressJson<Trait::type_>() == toJson(defaultIngress<Trait::type_>(), alloc));
+}
 
-    auto ivo = parse<vo::Ingress>(json);
-    BOOST_CHECK_EQUAL(1_sz, ivo.credentials_.size());
-    auto it = ivo.credentials_.find(ph);
-    BOOST_CHECK(it != cend(ivo.credentials_));
-    BOOST_CHECK_EQUAL(ph, it->first);
-    BOOST_CHECK_EQUAL(ph, it->second);
+BOOST_AUTO_TEST_CASE(toJson_Invalid_Adapter_Type)
+{
+  for (auto type : {AdapterType::DIRECT, AdapterType::REJECT}) {
+    auto ingress = Ingress{};
+    ingress.type_ = type;
+    ingress.bind_.push_back(DEFAULT_ENDPOINT);
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Additional_Fields)
+BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Empty_Bind, Trait, AllAdapterTraits)
 {
-  auto json = defaultIngressJson(AdapterType::SS);
-  json.AddMember(vo::ingress::TLS, false, alloc);
-  json.AddMember(vo::ingress::CERT_FILE, toJson(ph, alloc), alloc);
-  json.AddMember(vo::ingress::KEY_FILE, toJson(ph, alloc), alloc);
-  BOOST_CHECK(defaultIngressVO(AdapterType::SS) == parse<vo::Ingress>(json));
+  auto ingress = defaultIngress<Trait::type_>();
+  ingress.bind_.clear();
+  BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_SS_Empty_Fields)
+BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Mandatory_Fields, Trait, AllAdapterTraits)
 {
-  auto origin = defaultIngressVO(AdapterType::SS);
-  auto holder = parse<vo::Ingress>(toString(origin));
-
-  auto noMethod = origin;
-  noMethod.method_.reset();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noMethod)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto noPassword = origin;
-  noPassword.password_.reset();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noPassword)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto emptyPassword = origin;
-  emptyPassword.password_->clear();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(emptyPassword)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Mandatory_Field)
-{
-  for (auto k : {vo::ingress::PASSWORDS, vo::ingress::REMOTE_HOST, vo::ingress::REMOTE_PORT,
-                 vo::ingress::CERT_FILE, vo::ingress::KEY_FILE}) {
-    auto json = defaultIngressJson(AdapterType::TROJAN);
-    json.RemoveMember(k);
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
-                          verifyException<PichiError::BAD_JSON>);
+  if constexpr (Trait::credential_ == Present::MANDATORY) {
+    auto ingress = defaultIngress<Trait::type_>();
+    ingress.credential_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+  }
+  if constexpr (Trait::option_ == Present::MANDATORY) {
+    auto ingress = defaultIngress<Trait::type_>();
+    ingress.opt_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+  }
+  if constexpr (Trait::tls_ == Present::MANDATORY) {
+    auto ingress = defaultIngress<Trait::type_>();
+    ingress.tls_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+  }
+  if constexpr (Trait::websocket_ == Present::MANDATORY) {
+    auto ingress = defaultIngress<Trait::type_>();
+    ingress.websocket_.reset();
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Non_Empty_Field)
+BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Optional_Fields, Trait, AllAdapterTraits)
 {
-  for (auto k : {vo::ingress::REMOTE_HOST, vo::ingress::CERT_FILE, vo::ingress::KEY_FILE}) {
-    auto json = defaultIngressJson(AdapterType::TROJAN);
-    json[k].SetString("");
-    BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception,
-                          verifyException<PichiError::BAD_JSON>);
+  auto ingress = defaultIngress<Trait::type_>();
+  auto json = defaultIngressJson<Trait::type_>();
+
+  if constexpr (Trait::credential_ == Present::OPTIONAL) {
+    ingress.credential_ = defaultCredential<typename Trait::Credential>();
+    json.AddMember(ingress::CREDENTIAL, defaultCredentialJson<typename Trait::Credential>(), alloc);
   }
-  auto json = defaultIngressJson(AdapterType::TROJAN);
-  for (auto&& pwd : json[vo::ingress::PASSWORDS].GetArray()) pwd.SetString("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TROJAN_Non_Empty_Passwords)
-{
-  auto json = defaultIngressJson(AdapterType::TROJAN);
-  json[vo::ingress::PASSWORDS].Clear();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Mandatory_Fields)
-{
-  auto noDest = defaultIngressJson(AdapterType::TUNNEL);
-  noDest.RemoveMember(vo::ingress::DESTINATIONS);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noDest)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto noBalance = defaultIngressJson(AdapterType::TUNNEL);
-  noBalance.RemoveMember(vo::ingress::BALANCE);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(noBalance)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Empty_Destinations)
-{
-  auto json = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(json.HasMember(vo::ingress::DESTINATIONS));
-  json[vo::ingress::DESTINATIONS].RemoveAllMembers();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(json)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Destinations_Empty_Host)
-{
-  auto json = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(json.HasMember(vo::ingress::DESTINATIONS));
-  json[vo::ingress::DESTINATIONS].AddMember("", 1, alloc);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(json)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Destinations_Non_Integer_Value)
-{
-  auto host = "localhost";
-
-  auto bValue = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(bValue.HasMember(vo::ingress::DESTINATIONS));
-  bValue[vo::ingress::DESTINATIONS][host] = true;
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(bValue)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto sValue = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(sValue.HasMember(vo::ingress::DESTINATIONS));
-  sValue[vo::ingress::DESTINATIONS][host] = ph;
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(sValue)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto dValue = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(dValue.HasMember(vo::ingress::DESTINATIONS));
-  dValue[vo::ingress::DESTINATIONS][host] = 0.0;
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(dValue)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto oValue = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(oValue.HasMember(vo::ingress::DESTINATIONS));
-  oValue[vo::ingress::DESTINATIONS][host] = Value{}.SetObject();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(oValue)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto aValue = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(aValue.HasMember(vo::ingress::DESTINATIONS));
-  aValue[vo::ingress::DESTINATIONS][host] = Value{}.SetArray();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(aValue)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Destinations_Invalid_Port)
-{
-  auto negative = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(negative.HasMember(vo::ingress::DESTINATIONS));
-  negative[vo::ingress::DESTINATIONS].AddMember(ph, -1, alloc);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(negative)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto huge = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(huge.HasMember(vo::ingress::DESTINATIONS));
-  huge[vo::ingress::DESTINATIONS].AddMember(ph, 65536, alloc);
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(huge)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Invalid_Balance_Type)
-{
-  auto b = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(b.HasMember(vo::ingress::BALANCE));
-  b[vo::ingress::BALANCE] = true;
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(b)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto i = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(b.HasMember(vo::ingress::BALANCE));
-  i[vo::ingress::BALANCE] = 0;
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(i)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto d = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(d.HasMember(vo::ingress::BALANCE));
-  d[vo::ingress::BALANCE] = 0.0;
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(d)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto o = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(o.HasMember(vo::ingress::BALANCE));
-  o[vo::ingress::BALANCE] = Value{}.SetObject();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(o)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto a = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(a.HasMember(vo::ingress::BALANCE));
-  a[vo::ingress::BALANCE] = Value{}.SetArray();
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(a)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Invalid_Balance_String)
-{
-  auto empty = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(empty.HasMember(vo::ingress::BALANCE));
-  empty[vo::ingress::BALANCE] = "";
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(empty)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-
-  auto invalid = defaultIngressJson(AdapterType::TUNNEL);
-  BOOST_CHECK(invalid.HasMember(vo::ingress::BALANCE));
-  invalid[vo::ingress::BALANCE] = "invalid balance";
-  BOOST_CHECK_EXCEPTION(parse<vo::Ingress>(toString(invalid)), Exception,
-                        verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parse_IngressVO_TUNNEL_Balance)
-{
-  for (auto p : {make_pair(vo::balance::RANDOM, BalanceType::RANDOM),
-                 make_pair(vo::balance::ROUND_ROBIN, BalanceType::ROUND_ROBIN),
-                 make_pair(vo::balance::LEAST_CONN, BalanceType::LEAST_CONN)}) {
-    auto&& [s, v] = p;
-
-    auto json = defaultIngressJson(AdapterType::TUNNEL);
-    BOOST_CHECK(json.HasMember(vo::ingress::BALANCE));
-    json[vo::ingress::BALANCE].SetString(s, alloc);
-
-    auto vo = defaultIngressVO(AdapterType::TUNNEL);
-    vo.balance_ = v;
-
-    BOOST_CHECK(vo == parse<vo::Ingress>(toString(json)));
+  if constexpr (Trait::option_ == Present::OPTIONAL) {
+    ingress.opt_ = defaultOption<typename Trait::Option>();
+    json.AddMember(ingress::OPTION, defaultOptionJson<typename Trait::Option>(), alloc);
   }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Invalid_Type)
-{
-  for (auto t : {AdapterType::DIRECT, AdapterType::REJECT})
-    BOOST_CHECK_EXCEPTION(toJson(vo::Ingress{t}, alloc), Exception,
-                          verifyException<PichiError::MISC>);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Default_Ones)
-{
-  for (auto t : {AdapterType::HTTP, AdapterType::SOCKS5, AdapterType::SS, AdapterType::TUNNEL,
-                 AdapterType::TROJAN}) {
-    BOOST_CHECK(defaultIngressJson(t) == toJson(defaultIngressVO(t), alloc));
+  if constexpr (Trait::tls_ == Present::OPTIONAL) {
+    ingress.tls_ = defaultOption<TlsIngressOption>();
+    json.AddMember(ingress::TLS, defaultOptionJson<TlsIngressOption>(), alloc);
   }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_Mandatory_Fields)
-{
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto normal = defaultIngressVO(type);
-    toJson(normal, alloc);
-
-    auto noTls = normal;
-    noTls.tls_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(noTls, alloc), Exception, verifyException<PichiError::MISC>);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_Additional_Fields)
-{
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto vo = defaultIngressVO(type);
-    vo.method_ = CryptoMethod::RC4_MD5;
-    vo.password_ = ph;
-    vo.certFile_ = ph;
-    vo.keyFile_ = ph;
-    BOOST_CHECK(defaultIngressJson(type) == toJson(vo, alloc));
-  }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_TLS_Mandatory_Fields)
-{
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto vo = defaultIngressVO(type);
-    vo.tls_ = true;
-    vo.certFile_ = ph;
-    vo.keyFile_ = ph;
-
-    auto noCertFile = vo;
-    noCertFile.certFile_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(noCertFile, alloc), Exception, verifyException<PichiError::MISC>);
-
-    auto emptyCertFile = vo;
-    emptyCertFile.certFile_->clear();
-    BOOST_CHECK_EXCEPTION(toJson(emptyCertFile, alloc), Exception,
-                          verifyException<PichiError::MISC>);
-
-    auto noKeyFile = vo;
-    noKeyFile.keyFile_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(noKeyFile, alloc), Exception, verifyException<PichiError::MISC>);
-
-    auto emptyKeyFile = vo;
-    emptyKeyFile.keyFile_->clear();
-    BOOST_CHECK_EXCEPTION(toJson(emptyKeyFile, alloc), Exception,
-                          verifyException<PichiError::MISC>);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_TLS_Additional_Fields)
-{
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto vo = defaultIngressVO(type);
-    vo.tls_ = true;
-    vo.certFile_ = ph;
-    vo.keyFile_ = ph;
-    vo.method_ = CryptoMethod::RC4_MD5;
-    vo.password_ = ph;
-
-    auto json = defaultIngressJson(type);
-    json[vo::ingress::TLS] = true;
-    json.AddMember(vo::ingress::CERT_FILE, ph, alloc);
-    json.AddMember(vo::ingress::KEY_FILE, ph, alloc);
-
-    BOOST_CHECK(json == toJson(vo, alloc));
-  }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_With_Too_Long_Name)
-{
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto vo = defaultIngressVO(type);
-    vo.credentials_ = unordered_map<string, string>{{string(256_sz, 'n'), ph}};
-
-    BOOST_CHECK_EXCEPTION(toJson(vo, alloc), Exception, verifyException<PichiError::MISC>);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_With_Too_Long_Password)
-{
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto vo = defaultIngressVO(type);
-    vo.credentials_ = unordered_map<string, string>{{ph, string(256_sz, 'n')}};
-
-    BOOST_CHECK_EXCEPTION(toJson(vo, alloc), Exception, verifyException<PichiError::MISC>);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_HTTP_SOCKS5_With_Credentials)
-{
-  for (auto type : {AdapterType::HTTP, AdapterType::SOCKS5}) {
-    auto vo = defaultIngressVO(type);
-    vo.credentials_ = unordered_map<string, string>{{ph, ph}};
-
-    auto credentials = Value{};
-    credentials.SetObject();
-    credentials.AddMember(ph, ph, alloc);
-    auto json = defaultIngressJson(type);
-    json.AddMember(vo::ingress::CREDENTIALS, credentials, alloc);
-
-    BOOST_CHECK(json == toJson(vo, alloc));
-  }
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Mandatory_Fields)
-{
-  auto origin = defaultIngressVO(AdapterType::SS);
-  toJson(origin, alloc);
-
-  auto noMethod = origin;
-  noMethod.method_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noMethod, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto noPassword = origin;
-  noPassword.password_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noPassword, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto emptyPassword = origin;
-  emptyPassword.password_->clear();
-  BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_SS_Additional_Fields)
-{
-  auto vo = defaultIngressVO(AdapterType::SS);
-  vo.tls_ = true;
-  vo.certFile_ = ph;
-  vo.keyFile_ = ph;
-  BOOST_CHECK(defaultIngressJson(AdapterType::SS) == toJson(vo, alloc));
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_TROJAN_Mandatory_Fields)
-{
-  auto origin = defaultIngressVO(AdapterType::TROJAN);
-  toJson(origin, alloc);
-
-  auto noRemote = origin;
-  noRemote.remote_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noRemote, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto noRemoteHost = origin;
-  noRemoteHost.remote_->host_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(noRemoteHost, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto noPasswords = origin;
-  noPasswords.passwords_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(noPasswords, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto emptyPassword = origin;
-  emptyPassword.passwords_.insert(""s);
-  BOOST_CHECK_EXCEPTION(toJson(emptyPassword, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto noCertFile = origin;
-  noCertFile.certFile_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noCertFile, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto emptyCertFile = origin;
-  emptyCertFile.certFile_->clear();
-  BOOST_CHECK_EXCEPTION(toJson(emptyCertFile, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto noKeyFile = origin;
-  noKeyFile.keyFile_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noKeyFile, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto emptyKeyFile = origin;
-  emptyKeyFile.keyFile_->clear();
-  BOOST_CHECK_EXCEPTION(toJson(emptyKeyFile, alloc), Exception, verifyException<PichiError::MISC>);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_TUNNEL_Mandatory_Fields)
-{
-  auto origin = defaultIngressVO(AdapterType::TUNNEL);
-  toJson(origin, alloc);
-
-  auto noDest = origin;
-  noDest.destinations_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(noDest, alloc), Exception, verifyException<PichiError::MISC>);
-
-  auto noBalance = origin;
-  noBalance.balance_.reset();
-  BOOST_CHECK_EXCEPTION(toJson(noBalance, alloc), Exception, verifyException<PichiError::MISC>);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Empty_Pack)
-{
-  auto empty = unordered_map<string, vo::Ingress>{};
-  auto expect = Value{kObjectType};
-
-  auto fact = toJson(begin(empty), end(empty), alloc);
-  BOOST_CHECK(expect == fact);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack_Empty_Name)
-{
-  auto src = unordered_map<string, vo::Ingress>{{"", {AdapterType::DIRECT}}};
-  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
-                        verifyException<PichiError::MISC>);
-}
-
-BOOST_AUTO_TEST_CASE(toJson_IngressVO_Pack)
-{
-  auto src = unordered_map<string, vo::Ingress>{};
-  auto expect = Value{kObjectType};
-  for (auto i = 0; i < 10; ++i) {
-    expect.AddMember(Value{to_string(i).data(), alloc}, defaultIngressJson(AdapterType::HTTP),
-                     alloc);
-    src[to_string(i)] = defaultIngressVO(AdapterType::HTTP);
+  if constexpr (Trait::websocket_ == Present::OPTIONAL) {
+    ingress.websocket_ = defaultOption<WebsocketOption>();
+    json.AddMember(ingress::WEBSOCKET, defaultOptionJson<WebsocketOption>(), alloc);
   }
 
-  auto fact = toJson(begin(src), end(src), alloc);
+  BOOST_CHECK(toJson(ingress, alloc) == json);
+}
 
-  BOOST_CHECK(expect == fact);
+BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Unused_Fields, Trait, AllAdapterTraits)
+{
+  auto ingress = defaultIngress<Trait::type_>();
+  if constexpr (Trait::credential_ == Present::UNUSED)
+    ingress.credential_ = defaultCredential<up::IngressCredential>();
+  if constexpr (Trait::option_ == Present::UNUSED) ingress.opt_ = defaultOption<TunnelOption>();
+  if constexpr (Trait::tls_ == Present::UNUSED) ingress.tls_ = defaultOption<TlsIngressOption>();
+  if constexpr (Trait::websocket_ == Present::UNUSED)
+    ingress.websocket_ = defaultOption<WebsocketOption>();
+  BOOST_CHECK(toJson(ingress, alloc) == defaultIngressJson<Trait::type_>());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

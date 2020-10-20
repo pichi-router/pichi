@@ -54,8 +54,10 @@ json::Value toJson(AdapterType type, Allocator& alloc)
     return toJson(type::TUNNEL, alloc);
   case AdapterType::TROJAN:
     return toJson(type::TROJAN, alloc);
+  case AdapterType::VMESS:
+    return toJson(type::VMESS, alloc);
   default:
-    fail(PichiError::MISC);
+    fail();
   }
 }
 

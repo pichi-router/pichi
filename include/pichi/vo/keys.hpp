@@ -14,6 +14,7 @@ inline decltype(auto) HTTP = "http";
 inline decltype(auto) SS = "ss";
 inline decltype(auto) TUNNEL = "tunnel";
 inline decltype(auto) TROJAN = "trojan";
+inline decltype(auto) VMESS = "vmess";
 
 }  // namespace type
 
@@ -116,17 +117,10 @@ namespace ingress {
 
 inline decltype(auto) TYPE = "type";
 inline decltype(auto) BIND = "bind";
-inline decltype(auto) METHOD = "method";
-inline decltype(auto) PASSWORD = "password";
-inline decltype(auto) CREDENTIALS = "credentials";
+inline decltype(auto) OPTION = "option";
 inline decltype(auto) TLS = "tls";
-inline decltype(auto) CERT_FILE = "cert_file";
-inline decltype(auto) KEY_FILE = "key_file";
-inline decltype(auto) DESTINATIONS = "destinations";
-inline decltype(auto) BALANCE = "balance";
-inline decltype(auto) REMOTE_HOST = "remote_host";
-inline decltype(auto) REMOTE_PORT = "remote_port";
-inline decltype(auto) PASSWORDS = "passwords";
+inline decltype(auto) CREDENTIAL = "credential";
+inline decltype(auto) WEBSOCKET = "websocket";
 
 }  // namespace ingress
 
