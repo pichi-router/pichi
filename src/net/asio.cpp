@@ -60,23 +60,24 @@ static auto createTlsContext(vo::TlsIngressOption const& option)
   return ctx;
 }
 
-static auto createTlsContext(vo::Egress const& vo)
+static auto createTlsContext(vo::TlsEgressOption const& option, string const& serverName)
 {
+  // TODO SNI not supported yet
   auto ctx = ssl::context{ssl::context::tls_client};
-  if (*vo.insecure_) {
+  if (option.insecure_) {
     ctx.set_verify_mode(ssl::context::verify_none);
     return ctx;
   }
 
   ctx.set_verify_mode(ssl::context::verify_peer);
-  if (vo.caFile_.has_value())
-    ctx.load_verify_file(*vo.caFile_);
+  if (option.caFile_.has_value())
+    ctx.load_verify_file(*option.caFile_);
   else {
     ctx.set_default_verify_paths();
 #ifdef DEPRECATED_RFC2818_CLASS
-    ctx.set_verify_callback(ssl::host_name_verification{*vo.host_});
+    ctx.set_verify_callback(ssl::host_name_verification{option.serverName_.value_or(serverName)});
 #else   // DEPRECATED_RFC2818_CLASS
-    ctx.set_verify_callback(ssl::rfc2818_verification{*vo.host_});
+    ctx.set_verify_callback(ssl::rfc2818_verification{option.serverName_.value_or(serverName)});
 #endif  // DEPRECATED_RFC2818_CLASS
   }
   return ctx;
@@ -147,6 +148,84 @@ unique_ptr<Ingress> createShadowsocksIngress(Socket&& s, vo::ShadowsocksOption c
   case CryptoMethod::XCHACHA20_IETF_POLY1305:
     return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, Socket>>(
         psk, forward<Socket>(s));
+  default:
+    fail(PichiError::BAD_PROTO);
+  }
+}
+
+static unique_ptr<Egress> createShadowsocksEgress(vo::ShadowsocksOption const& option,
+                                                  asio::io_context& io)
+{
+  auto container = array<uint8_t, 1024>{};
+  auto len = crypto::generateKey(option.method_, ConstBuffer<uint8_t>{option.password_}, container);
+  auto psk = MutableBuffer<uint8_t>{container, len};
+
+  switch (option.method_) {
+  case CryptoMethod::RC4_MD5:
+    return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5, TcpSocket>>(psk, io);
+  case CryptoMethod::BF_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_128_CTR:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_192_CTR:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CTR, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_256_CTR:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CTR, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_128_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CFB, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_192_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CFB, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_256_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CFB, TcpSocket>>(psk, io);
+  case CryptoMethod::CAMELLIA_128_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB, TcpSocket>>(psk, io);
+  case CryptoMethod::CAMELLIA_192_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB, TcpSocket>>(psk, io);
+  case CryptoMethod::CAMELLIA_256_CFB:
+    return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB, TcpSocket>>(psk, io);
+  case CryptoMethod::CHACHA20:
+    return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20, TcpSocket>>(psk, io);
+  case CryptoMethod::SALSA20:
+    return make_unique<SSStreamAdapter<CryptoMethod::SALSA20, TcpSocket>>(psk, io);
+  case CryptoMethod::CHACHA20_IETF:
+    return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_128_GCM:
+    return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_192_GCM:
+    return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM, TcpSocket>>(psk, io);
+  case CryptoMethod::AES_256_GCM:
+    return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM, TcpSocket>>(psk, io);
+  case CryptoMethod::CHACHA20_IETF_POLY1305:
+    return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, TcpSocket>>(psk, io);
+  case CryptoMethod::XCHACHA20_IETF_POLY1305:
+    return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, TcpSocket>>(psk, io);
+  default:
+    fail(PichiError::BAD_PROTO);
+  }
+}
+
+template <template <typename> typename Egress>
+unique_ptr<pichi::Egress> makeHttpOrSocks5Egress(vo::Egress const& vo, asio::io_context& io)
+{
+  using NoCredential = optional<pair<string, string>>;
+  auto cred = vo.credential_.has_value() ? get<vo::UpEgressCredential>(*vo.credential_).credential_
+                                         : NoCredential{};
+#ifdef ENABLE_TLS
+  if (vo.tls_.has_value())
+    return make_unique<Egress<TLSStream>>(move(cred), createTlsContext(*vo.tls_, vo.server_->host_),
+                                          io);
+  else
+#endif  // ENABLE_TLS
+    return make_unique<Egress<TcpSocket>>(move(cred), io);
+}
+
+static auto makeRejectEgress(vo::RejectOption const& option, asio::io_context& io)
+{
+  switch (option.mode_) {
+  case DelayMode::RANDOM:
+    return make_unique<RejectEgress>(io);
+  case DelayMode::FIXED:
+    return make_unique<RejectEgress>(io, *option.delay_);
   default:
     fail(PichiError::BAD_PROTO);
   }
@@ -272,80 +351,21 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
 
 unique_ptr<Egress> makeEgress(vo::Egress const& vo, asio::io_context& io)
 {
-  auto container = array<uint8_t, 1024>{0};
-  auto psk = MutableBuffer<uint8_t>{container};
   switch (vo.type_) {
   case AdapterType::TROJAN:
-    return make_unique<TrojanEgress<TLSStream>>(*vo.password_, createTlsContext(vo), io);
+    return make_unique<TrojanEgress<TLSStream>>(
+        get<vo::TrojanEgressCredential>(*vo.credential_).credential_,
+        createTlsContext(*vo.tls_, vo.server_->host_), io);
   case AdapterType::HTTP:
-#ifdef ENABLE_TLS
-    if (*vo.tls_)
-      return make_unique<HttpEgress<TLSStream>>(vo.credential_, createTlsContext(vo), io);
-    else
-#endif  // ENABLE_TLS
-      return make_unique<HttpEgress<TcpSocket>>(vo.credential_, io);
+    return makeHttpOrSocks5Egress<HttpEgress>(vo, io);
   case AdapterType::SOCKS5:
-#ifdef ENABLE_TLS
-    if (*vo.tls_)
-      return make_unique<Socks5Egress<TLSStream>>(vo.credential_, createTlsContext(vo), io);
-    else
-#endif  // ENABLE_TLS
-      return make_unique<Socks5Egress<tcp::socket>>(vo.credential_, io);
+    return makeHttpOrSocks5Egress<Socks5Egress>(vo, io);
   case AdapterType::DIRECT:
     return make_unique<DirectAdapter>(io);
   case AdapterType::REJECT:
-    switch (*vo.mode_) {
-    case DelayMode::RANDOM:
-      return make_unique<RejectEgress>(io);
-    case DelayMode::FIXED:
-      return make_unique<RejectEgress>(io, *vo.delay_);
-    default:
-      fail(PichiError::BAD_PROTO);
-    }
+    return makeRejectEgress(get<vo::RejectOption>(*vo.opt_), io);
   case AdapterType::SS:
-    psk = {container, generateKey(*vo.method_, ConstBuffer<uint8_t>{*vo.password_}, container)};
-    switch (*vo.method_) {
-    case CryptoMethod::RC4_MD5:
-      return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5, TcpSocket>>(psk, io);
-    case CryptoMethod::BF_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_128_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_192_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CTR, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_256_CTR:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CTR, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_128_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CFB, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_192_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_192_CFB, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_256_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::AES_256_CFB, TcpSocket>>(psk, io);
-    case CryptoMethod::CAMELLIA_128_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_128_CFB, TcpSocket>>(psk, io);
-    case CryptoMethod::CAMELLIA_192_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_192_CFB, TcpSocket>>(psk, io);
-    case CryptoMethod::CAMELLIA_256_CFB:
-      return make_unique<SSStreamAdapter<CryptoMethod::CAMELLIA_256_CFB, TcpSocket>>(psk, io);
-    case CryptoMethod::CHACHA20:
-      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20, TcpSocket>>(psk, io);
-    case CryptoMethod::SALSA20:
-      return make_unique<SSStreamAdapter<CryptoMethod::SALSA20, TcpSocket>>(psk, io);
-    case CryptoMethod::CHACHA20_IETF:
-      return make_unique<SSStreamAdapter<CryptoMethod::CHACHA20_IETF, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_128_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_128_GCM, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_192_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_192_GCM, TcpSocket>>(psk, io);
-    case CryptoMethod::AES_256_GCM:
-      return make_unique<SSAeadAdapter<CryptoMethod::AES_256_GCM, TcpSocket>>(psk, io);
-    case CryptoMethod::CHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, TcpSocket>>(psk, io);
-    case CryptoMethod::XCHACHA20_IETF_POLY1305:
-      return make_unique<SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, TcpSocket>>(psk, io);
-    default:
-      fail(PichiError::BAD_PROTO);
-    }
+    return createShadowsocksEgress(get<vo::ShadowsocksOption>(*vo.opt_), io);
   default:
     fail(PichiError::BAD_PROTO);
   }

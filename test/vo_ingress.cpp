@@ -9,7 +9,6 @@
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
-#include <sstream>
 
 using namespace std;
 using namespace rapidjson;
@@ -180,10 +179,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
     json.RemoveMember(key);
     BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
   };
-  if (Trait::credential_ == Present::MANDATORY) verifyMandatoryField(ingress::CREDENTIAL);
-  if (Trait::option_ == Present::MANDATORY) verifyMandatoryField(ingress::OPTION);
-  if (Trait::tls_ == Present::MANDATORY) verifyMandatoryField(ingress::TLS);
-  if (Trait::websocket_ == Present::MANDATORY) verifyMandatoryField(ingress::WEBSOCKET);
+  if constexpr (Trait::credential_ == Present::MANDATORY) verifyMandatoryField(ingress::CREDENTIAL);
+  if constexpr (Trait::option_ == Present::MANDATORY) verifyMandatoryField(ingress::OPTION);
+  if constexpr (Trait::tls_ == Present::MANDATORY) verifyMandatoryField(ingress::TLS);
+  if constexpr (Trait::websocket_ == Present::MANDATORY) verifyMandatoryField(ingress::WEBSOCKET);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Optional_Fields, Trait, AllAdapterTraits)
@@ -220,12 +219,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Optional_Fields, Trait, AllAdapterTraits)
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Unused_Fields, Trait, AllAdapterTraits)
 {
   auto json = defaultIngressJson<Trait::type_>();
-  if (Trait::credential_ == Present::UNUSED)
+  if constexpr (Trait::credential_ == Present::UNUSED)
     json.AddMember(ingress::CREDENTIAL, Value{kObjectType}, alloc);
-  if (Trait::option_ == Present::UNUSED) json.AddMember(ingress::OPTION, Value{kObjectType}, alloc);
-  if (Trait::tls_ == Present::UNUSED) json.AddMember(ingress::TLS, Value{kObjectType}, alloc);
-  if (Trait::websocket_ == Present::UNUSED)
-    json.AddMember(ingress::WEBSOCKET, Value{kObjectType}, alloc);
+  if constexpr (Trait::option_ == Present::UNUSED)
+    json.AddMember(ingress::OPTION, Value{kObjectType}, alloc);
+  if constexpr (Trait::tls_ == Present::UNUSED)
+    json.AddMember(ingress::TLS, defaultOptionJson<TlsIngressOption>(), alloc);
+  if constexpr (Trait::websocket_ == Present::UNUSED)
+    json.AddMember(ingress::WEBSOCKET, defaultOptionJson<WebsocketOption>(), alloc);
   BOOST_CHECK(parse<Ingress>(json) == defaultIngress<Trait::type_>());
 }
 

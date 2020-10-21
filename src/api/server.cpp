@@ -27,10 +27,19 @@ using tcp = ip::tcp;
 
 namespace pichi::api {
 
-static auto const IMMEDIATE_REJECTOR =
-    vo::Egress{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
-static auto const RANDOM_REJECTOR =
-    vo::Egress{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
+static auto createRejectEgressVO(DelayMode mode)
+{
+  auto option = vo::RejectOption{};
+  option.mode_ = mode;
+  if (mode == DelayMode::FIXED) option.delay_ = 0_u16;
+  auto egress = vo::Egress{};
+  egress.type_ = AdapterType::REJECT;
+  egress.opt_ = move(option);
+  return egress;
+}
+
+static auto const IMMEDIATE_REJECTOR = createRejectEgressVO(DelayMode::FIXED);
+static auto const RANDOM_REJECTOR = createRejectEgressVO(DelayMode::RANDOM);
 static auto const IV_EXPIRE_TIME = 1h;
 
 static auto resolve(Endpoint const& remote, asio::io_context& io, asio::yield_context yield)
@@ -115,7 +124,7 @@ void Server::listen(Acceptor& acceptor, string_view iname, IngressHolder& holder
             if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
               session->start(remote);
             else
-              session->start(remote, makeEndpoint(*evo.host_, *evo.port_));
+              session->start(remote, *evo.server_);
           }
         },
         [ingress = p](auto eptr, auto yield) noexcept { ingress->disconnect(eptr, yield); });

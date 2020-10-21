@@ -39,9 +39,6 @@ template <typename Option> Option defaultOption();
 extern rapidjson::Document::AllocatorType& alloc;
 extern Endpoint const DEFAULT_ENDPOINT;
 
-extern vo::Egress defaultEgressVO(AdapterType);
-extern rapidjson::Value defaultEgressJson(AdapterType);
-
 template <typename Modifier> rapidjson::Value createJsonObject(Modifier&& modify)
 {
   static_assert(std::is_invocable_v<Modifier, rapidjson::Value&>);

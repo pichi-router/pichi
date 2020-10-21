@@ -127,16 +127,11 @@ inline decltype(auto) WEBSOCKET = "websocket";
 namespace egress {
 
 inline decltype(auto) TYPE = "type";
-inline decltype(auto) HOST = "host";
-inline decltype(auto) PORT = "port";
-inline decltype(auto) METHOD = "method";
-inline decltype(auto) PASSWORD = "password";
-inline decltype(auto) MODE = "mode";
-inline decltype(auto) DELAY = "delay";
+inline decltype(auto) SERVER = "server";
 inline decltype(auto) CREDENTIAL = "credential";
+inline decltype(auto) OPTION = "option";
 inline decltype(auto) TLS = "tls";
-inline decltype(auto) INSECURE = "insecure";
-inline decltype(auto) CA_FILE = "ca_file";
+inline decltype(auto) WEBSOCKET = "websocket";
 
 }  // namespace egress
 
