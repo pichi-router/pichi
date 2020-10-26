@@ -36,7 +36,7 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
     if (ingress.tls_.has_value()) ret.AddMember(ingress::TLS, toJson(*ingress.tls_, alloc), alloc);
     if (ingress.credential_.has_value())
       ret.AddMember(ingress::CREDENTIAL,
-                    toJson(get<up::IngressCredential>(*ingress.credential_), alloc), alloc);
+                    toJson(get<UpIngressCredential>(*ingress.credential_), alloc), alloc);
     break;
   case AdapterType::SS:
     assertTrue(ingress.opt_.has_value());
@@ -49,14 +49,14 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
     ret.AddMember(ingress::OPTION, toJson(get<TrojanOption>(*ingress.opt_), alloc), alloc);
     ret.AddMember(ingress::TLS, toJson(*ingress.tls_, alloc), alloc);
     ret.AddMember(ingress::CREDENTIAL,
-                  toJson(get<trojan::IngressCredential>(*ingress.credential_), alloc), alloc);
+                  toJson(get<TrojanIngressCredential>(*ingress.credential_), alloc), alloc);
     if (ingress.websocket_.has_value())
       ret.AddMember(ingress::WEBSOCKET, toJson(*ingress.websocket_, alloc), alloc);
     break;
   case AdapterType::VMESS:
     assertTrue(ingress.credential_.has_value());
     ret.AddMember(ingress::CREDENTIAL,
-                  toJson(get<vmess::IngressCredential>(*ingress.credential_), alloc), alloc);
+                  toJson(get<VMessIngressCredential>(*ingress.credential_), alloc), alloc);
     if (ingress.tls_.has_value()) ret.AddMember(ingress::TLS, toJson(*ingress.tls_, alloc), alloc);
     if (ingress.websocket_.has_value())
       ret.AddMember(ingress::WEBSOCKET, toJson(*ingress.websocket_, alloc), alloc);
@@ -94,7 +94,7 @@ template <> Ingress parse(json::Value const& v)
   case AdapterType::SOCKS5:
     if (v.HasMember(ingress::TLS)) ingress.tls_ = parse<TlsIngressOption>(v[ingress::TLS]);
     if (v.HasMember(ingress::CREDENTIAL))
-      ingress.credential_ = parse<up::IngressCredential>(v[ingress::CREDENTIAL]);
+      ingress.credential_ = parse<UpIngressCredential>(v[ingress::CREDENTIAL]);
     break;
   case AdapterType::SS:
     assertTrue(v.HasMember(ingress::OPTION), PichiError::BAD_JSON, msg::MISSING_OPTION_FIELD);
@@ -104,7 +104,7 @@ template <> Ingress parse(json::Value const& v)
     assertTrue(v.HasMember(ingress::CREDENTIAL), PichiError::BAD_JSON, msg::MISSING_CRED_FIELD);
     assertTrue(v.HasMember(ingress::OPTION), PichiError::BAD_JSON, msg::MISSING_OPTION_FIELD);
     assertTrue(v.HasMember(ingress::TLS), PichiError::BAD_JSON, msg::MISSING_TLS_FIELD);
-    ingress.credential_ = parse<trojan::IngressCredential>(v[ingress::CREDENTIAL]);
+    ingress.credential_ = parse<TrojanIngressCredential>(v[ingress::CREDENTIAL]);
     ingress.opt_ = parse<TrojanOption>(v[ingress::OPTION]);
     ingress.tls_ = parse<TlsIngressOption>(v[ingress::TLS]);
     if (v.HasMember(ingress::WEBSOCKET))
@@ -112,7 +112,7 @@ template <> Ingress parse(json::Value const& v)
     break;
   case AdapterType::VMESS:
     assertTrue(v.HasMember(ingress::CREDENTIAL), PichiError::BAD_JSON, msg::MISSING_CRED_FIELD);
-    ingress.credential_ = parse<vmess::IngressCredential>(v[ingress::CREDENTIAL]);
+    ingress.credential_ = parse<VMessIngressCredential>(v[ingress::CREDENTIAL]);
     if (v.HasMember(ingress::TLS)) ingress.tls_ = parse<TlsIngressOption>(v[ingress::TLS]);
     if (v.HasMember(ingress::WEBSOCKET))
       ingress.websocket_ = parse<WebsocketOption>(v[ingress::WEBSOCKET]);
@@ -124,19 +124,6 @@ template <> Ingress parse(json::Value const& v)
   return ingress;
 }
 
-/*
- * TODO It's unknown that comparing 'optional<detail::Credential>'s will cause compilation errors
- *        if 'operator==' is directly used.
- */
-template <typename Credential, typename Variant>
-bool compare(optional<Variant> const& lhs, optional<Variant> const& rhs)
-{
-  if (lhs.has_value() && rhs.has_value())
-    return get<Credential>(*lhs) == get<Credential>(*rhs);
-  else
-    return !lhs.has_value() && !rhs.has_value();
-}
-
 bool operator==(Ingress const& lhs, Ingress const& rhs)
 {
   if (lhs.bind_ != rhs.bind_ || lhs.type_ != rhs.type_) return false;
@@ -146,13 +133,13 @@ bool operator==(Ingress const& lhs, Ingress const& rhs)
     return lhs.opt_ == rhs.opt_;
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
-    return lhs.tls_ == rhs.tls_ && compare<up::IngressCredential>(lhs.credential_, rhs.credential_);
+    return lhs.tls_ == rhs.tls_ && lhs.credential_ == rhs.credential_;
   case AdapterType::TROJAN:
-    return compare<trojan::IngressCredential>(lhs.credential_, rhs.credential_) &&
-           lhs.opt_ == rhs.opt_ && lhs.tls_ == rhs.tls_ && lhs.websocket_ == rhs.websocket_;
+    return lhs.credential_ == rhs.credential_ && lhs.opt_ == rhs.opt_ && lhs.tls_ == rhs.tls_ &&
+           lhs.websocket_ == rhs.websocket_;
   case AdapterType::VMESS:
-    return compare<vmess::IngressCredential>(lhs.credential_, rhs.credential_) &&
-           lhs.tls_ == rhs.tls_ && lhs.websocket_ == rhs.websocket_;
+    return lhs.credential_ == rhs.credential_ && lhs.tls_ == rhs.tls_ &&
+           lhs.websocket_ == rhs.websocket_;
   default:
     fail();
   }

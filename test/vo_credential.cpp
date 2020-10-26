@@ -59,14 +59,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Mandatory_Fields, Credenti
                               IngressCredentials)
 {
   auto keys = vector<string>{};
-  if constexpr (is_same_v<Credential, up::IngressCredential>) {
+  if constexpr (is_same_v<Credential, UpIngressCredential>) {
     keys.push_back(credential::USERNAME);
     keys.push_back(credential::PASSWORD);
   }
-  else if constexpr (is_same_v<Credential, trojan::IngressCredential>) {
+  else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     keys.push_back(credential::PASSWORD);
   }
-  else if constexpr (is_same_v<Credential, vmess::IngressCredential>) {
+  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
     keys.push_back(credential::UUID);
   }
   for (auto&& key : keys) {
@@ -81,15 +81,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Duplicated_Key, Credential
                               IngressCredentials)
 {
   auto modify = function<void(Value&)>{};
-  if constexpr (is_same_v<Credential, up::IngressCredential>) {
+  if constexpr (is_same_v<Credential, UpIngressCredential>) {
     modify = [](auto&& item) {
       item.AddMember(credential::USERNAME, ph, alloc).AddMember(credential::PASSWORD, ph, alloc);
     };
   }
-  else if constexpr (is_same_v<Credential, trojan::IngressCredential>) {
+  else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     modify = [](auto&& item) { item.AddMember(credential::PASSWORD, ph, alloc); };
   }
-  else if constexpr (is_same_v<Credential, vmess::IngressCredential>) {
+  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
     modify = [](auto&& item) { item.AddMember(credential::UUID, ph, alloc); };
   }
   auto json = defaultCredentialJson<Credential>();
@@ -101,13 +101,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Duplicated_Key, Credential
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Empty_Key, Credential, IngressCredentials)
 {
   auto key = ""s;
-  if constexpr (is_same_v<Credential, up::IngressCredential>) {
+  if constexpr (is_same_v<Credential, UpIngressCredential>) {
     key = credential::USERNAME;
   }
-  else if constexpr (is_same_v<Credential, trojan::IngressCredential>) {
+  else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     key = credential::PASSWORD;
   }
-  else if constexpr (is_same_v<Credential, vmess::IngressCredential>) {
+  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
     key = credential::UUID;
   }
   auto empty = defaultCredentialJson<Credential>();
@@ -133,14 +133,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_EgressCredential_Mandatory_Fields, Credentia
                               EgressCredentials)
 {
   auto keys = vector<string>{};
-  if constexpr (is_same_v<Credential, up::EgressCredential>) {
+  if constexpr (is_same_v<Credential, UpEgressCredential>) {
     keys.push_back(credential::USERNAME);
     keys.push_back(credential::PASSWORD);
   }
-  else if constexpr (is_same_v<Credential, trojan::EgressCredential>) {
+  else if constexpr (is_same_v<Credential, TrojanEgressCredential>) {
     keys.push_back(credential::PASSWORD);
   }
-  else if constexpr (is_same_v<Credential, vmess::EgressCredential>) {
+  else if constexpr (is_same_v<Credential, VMessEgressCredential>) {
     keys.push_back(credential::UUID);
   }
   for (auto&& key : keys) {
@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_EgressCredential_Mandatory_Fields, Credentia
 
 BOOST_AUTO_TEST_CASE(parse_vmess_EgressCredential_Default_Fields)
 {
-  using Credential = vmess::EgressCredential;
+  using Credential = VMessEgressCredential;
 
   auto alterId = defaultCredentialJson<Credential>();
   alterId.RemoveMember(credential::ALTER_ID);

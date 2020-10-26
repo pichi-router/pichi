@@ -32,7 +32,7 @@ template <> struct AdapterTrait<AdapterType::HTTP> {
   static const Present option_ = Present::UNUSED;
   static const Present tls_ = Present::OPTIONAL;
   static const Present websocket_ = Present::UNUSED;
-  using Credential = up::IngressCredential;
+  using Credential = UpIngressCredential;
 };
 
 template <> struct AdapterTrait<AdapterType::SOCKS5> {
@@ -41,7 +41,7 @@ template <> struct AdapterTrait<AdapterType::SOCKS5> {
   static const Present option_ = Present::UNUSED;
   static const Present tls_ = Present::OPTIONAL;
   static const Present websocket_ = Present::UNUSED;
-  using Credential = up::IngressCredential;
+  using Credential = UpIngressCredential;
   using Tls = TlsIngressOption;
 };
 
@@ -69,7 +69,7 @@ template <> struct AdapterTrait<AdapterType::TROJAN> {
   static const Present option_ = Present::MANDATORY;
   static const Present tls_ = Present::MANDATORY;
   static const Present websocket_ = Present::OPTIONAL;
-  using Credential = trojan::IngressCredential;
+  using Credential = TrojanIngressCredential;
   using Option = TrojanOption;
 };
 
@@ -79,7 +79,7 @@ template <> struct AdapterTrait<AdapterType::VMESS> {
   static const Present option_ = Present::UNUSED;
   static const Present tls_ = Present::OPTIONAL;
   static const Present websocket_ = Present::OPTIONAL;
-  using Credential = vmess::IngressCredential;
+  using Credential = VMessIngressCredential;
 };
 
 using AllAdapterTraits =
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Unused_Fields, Trait, AllAdapterTraits)
 {
   auto ingress = defaultIngress<Trait::type_>();
   if constexpr (Trait::credential_ == Present::UNUSED)
-    ingress.credential_ = defaultCredential<up::IngressCredential>();
+    ingress.credential_ = defaultCredential<UpIngressCredential>();
   if constexpr (Trait::option_ == Present::UNUSED) ingress.opt_ = defaultOption<TunnelOption>();
   if constexpr (Trait::tls_ == Present::UNUSED) ingress.tls_ = defaultOption<TlsIngressOption>();
   if constexpr (Trait::websocket_ == Present::UNUSED)

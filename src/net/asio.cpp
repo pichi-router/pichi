@@ -226,8 +226,8 @@ template <typename Socket> unique_ptr<Ingress> makeIngress(api::IngressHolder& h
   case AdapterType::TROJAN:
     return make_unique<TrojanIngress<TLSStream>>(
         get<vo::TrojanOption>(*vo.opt_).remote_,
-        cbegin(get<vo::trojan::IngressCredential>(*vo.credential_).credential_),
-        cend(get<vo::trojan::IngressCredential>(*vo.credential_).credential_),
+        cbegin(get<vo::TrojanIngressCredential>(*vo.credential_).credential_),
+        cend(get<vo::TrojanIngressCredential>(*vo.credential_).credential_),
         createTlsContext(*vo.tls_), forward<Socket>(s));
   case AdapterType::HTTP:
     // FIXME credential is disabled

@@ -13,15 +13,15 @@
 
 namespace pichi::unit_test {
 
-using AllCredentials = boost::mpl::set<vo::up::IngressCredential, vo::trojan::IngressCredential,
-                                       vo::vmess::IngressCredential, vo::up::EgressCredential,
-                                       vo::trojan::EgressCredential, vo::vmess::EgressCredential>;
+using AllCredentials = boost::mpl::set<vo::UpIngressCredential, vo::TrojanIngressCredential,
+                                       vo::VMessIngressCredential, vo::UpEgressCredential,
+                                       vo::TrojanEgressCredential, vo::VMessEgressCredential>;
 
-using IngressCredentials = boost::mpl::set<vo::up::IngressCredential, vo::trojan::IngressCredential,
-                                           vo::vmess::IngressCredential>;
+using IngressCredentials = boost::mpl::set<vo::UpIngressCredential, vo::TrojanIngressCredential,
+                                           vo::VMessIngressCredential>;
 
-using EgressCredentials = boost::mpl::set<vo::up::EgressCredential, vo::trojan::EgressCredential,
-                                          vo::vmess::EgressCredential>;
+using EgressCredentials =
+    boost::mpl::set<vo::UpEgressCredential, vo::TrojanEgressCredential, vo::VMessEgressCredential>;
 
 template <typename Credential> Credential defaultCredential();
 template <typename Credential> rapidjson::Value defaultCredentialJson();

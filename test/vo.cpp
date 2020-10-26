@@ -20,59 +20,59 @@ Endpoint const DEFAULT_ENDPOINT = makeEndpoint(ph, 0_u16);
 template <typename Credential> Credential defaultCredential()
 {
   static_assert(HasKey<Credential, AllCredentials>);
-  if constexpr (is_same_v<Credential, up::IngressCredential>) {
-    return up::IngressCredential{{{ph, ph}}};
+  if constexpr (is_same_v<Credential, UpIngressCredential>) {
+    return UpIngressCredential{{{ph, ph}}};
   }
-  else if constexpr (is_same_v<Credential, trojan::IngressCredential>) {
-    return trojan::IngressCredential{{ph}};
+  else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
+    return TrojanIngressCredential{{ph}};
   }
-  else if constexpr (is_same_v<Credential, vmess::IngressCredential>) {
-    return vmess::IngressCredential{{{ph, 0_u16}}};
+  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
+    return VMessIngressCredential{{{ph, 0_u16}}};
   }
-  else if constexpr (is_same_v<Credential, up::EgressCredential>) {
-    return up::EgressCredential{make_pair(ph, ph)};
+  else if constexpr (is_same_v<Credential, UpEgressCredential>) {
+    return UpEgressCredential{make_pair(ph, ph)};
   }
-  else if constexpr (is_same_v<Credential, trojan::EgressCredential>) {
-    return trojan::EgressCredential{ph};
+  else if constexpr (is_same_v<Credential, TrojanEgressCredential>) {
+    return TrojanEgressCredential{ph};
   }
-  else if constexpr (is_same_v<Credential, vmess::EgressCredential>) {
-    return vmess::EgressCredential{ph, 0_u16, VMessSecurity::AUTO};
+  else if constexpr (is_same_v<Credential, VMessEgressCredential>) {
+    return VMessEgressCredential{ph, 0_u16, VMessSecurity::AUTO};
   }
   return {};
 }
 
-template up::IngressCredential defaultCredential();
-template trojan::IngressCredential defaultCredential();
-template vmess::IngressCredential defaultCredential();
-template up::EgressCredential defaultCredential();
-template trojan::EgressCredential defaultCredential();
-template vmess::EgressCredential defaultCredential();
+template UpIngressCredential defaultCredential();
+template TrojanIngressCredential defaultCredential();
+template VMessIngressCredential defaultCredential();
+template UpEgressCredential defaultCredential();
+template TrojanEgressCredential defaultCredential();
+template VMessEgressCredential defaultCredential();
 
 template <typename Credential> Value defaultCredentialJson()
 {
   static_assert(HasKey<Credential, AllCredentials>);
-  if constexpr (is_same_v<Credential, up::IngressCredential>) {
+  if constexpr (is_same_v<Credential, UpIngressCredential>) {
     return createJsonArray([](auto&& item) {
       item.AddMember(credential::USERNAME, ph, alloc).AddMember(credential::PASSWORD, ph, alloc);
     });
   }
-  else if constexpr (is_same_v<Credential, trojan::IngressCredential>) {
+  else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     return createJsonArray([](auto&& item) { item.AddMember(credential::PASSWORD, ph, alloc); });
   }
-  else if constexpr (is_same_v<Credential, vmess::IngressCredential>) {
+  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
     return createJsonArray([](auto&& item) {
       item.AddMember(credential::UUID, ph, alloc).AddMember(credential::ALTER_ID, Value{0}, alloc);
     });
   }
-  else if constexpr (is_same_v<Credential, up::EgressCredential>) {
+  else if constexpr (is_same_v<Credential, UpEgressCredential>) {
     return createJsonObject([](auto&& item) {
       item.AddMember(credential::USERNAME, ph, alloc).AddMember(credential::PASSWORD, ph, alloc);
     });
   }
-  else if constexpr (is_same_v<Credential, trojan::EgressCredential>) {
+  else if constexpr (is_same_v<Credential, TrojanEgressCredential>) {
     return createJsonObject([](auto&& item) { item.AddMember(credential::PASSWORD, ph, alloc); });
   }
-  else if constexpr (is_same_v<Credential, vmess::EgressCredential>) {
+  else if constexpr (is_same_v<Credential, VMessEgressCredential>) {
     return createJsonObject([](auto&& item) {
       item.AddMember(credential::UUID, ph, alloc)
           .AddMember(credential::ALTER_ID, Value{0}, alloc)
@@ -82,12 +82,12 @@ template <typename Credential> Value defaultCredentialJson()
   return {};
 }
 
-template Value defaultCredentialJson<up::IngressCredential>();
-template Value defaultCredentialJson<trojan::IngressCredential>();
-template Value defaultCredentialJson<vmess::IngressCredential>();
-template Value defaultCredentialJson<up::EgressCredential>();
-template Value defaultCredentialJson<trojan::EgressCredential>();
-template Value defaultCredentialJson<vmess::EgressCredential>();
+template Value defaultCredentialJson<UpIngressCredential>();
+template Value defaultCredentialJson<TrojanIngressCredential>();
+template Value defaultCredentialJson<VMessIngressCredential>();
+template Value defaultCredentialJson<UpEgressCredential>();
+template Value defaultCredentialJson<TrojanEgressCredential>();
+template Value defaultCredentialJson<VMessEgressCredential>();
 
 template <typename Option> Value defaultOptionJson()
 {

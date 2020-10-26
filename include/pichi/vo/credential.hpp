@@ -9,62 +9,47 @@
 
 namespace pichi::vo {
 
-namespace up {
-
-struct IngressCredential {
+struct UpIngressCredential {
   std::unordered_map<std::string, std::string> credential_;
 };
 
-struct EgressCredential {
+struct UpEgressCredential {
   std::pair<std::string, std::string> credential_;
 };
 
-}  // namespace up
+extern rapidjson::Value toJson(UpIngressCredential const&, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(UpEgressCredential const&, rapidjson::Document::AllocatorType&);
 
-extern rapidjson::Value toJson(up::IngressCredential const&, rapidjson::Document::AllocatorType&);
-extern rapidjson::Value toJson(up::EgressCredential const&, rapidjson::Document::AllocatorType&);
-
-namespace trojan {
-
-struct IngressCredential {
+struct TrojanIngressCredential {
   std::unordered_set<std::string> credential_;
 };
 
-struct EgressCredential {
+struct TrojanEgressCredential {
   std::string credential_;
 };
 
-}  // namespace trojan
+extern rapidjson::Value toJson(TrojanIngressCredential const&, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(TrojanEgressCredential const&, rapidjson::Document::AllocatorType&);
 
-extern rapidjson::Value toJson(trojan::IngressCredential const&,
-                               rapidjson::Document::AllocatorType&);
-extern rapidjson::Value toJson(trojan::EgressCredential const&,
-                               rapidjson::Document::AllocatorType&);
-
-namespace vmess {
-
-struct IngressCredential {
+struct VMessIngressCredential {
   std::unordered_map<std::string, uint16_t> credential_;
 };
 
-struct EgressCredential {
+struct VMessEgressCredential {
   std::string uuid_;
   uint16_t alter_id_;
   VMessSecurity security_;
 };
 
-}  // namespace vmess
+extern rapidjson::Value toJson(VMessIngressCredential const&, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(VMessEgressCredential const&, rapidjson::Document::AllocatorType&);
 
-extern rapidjson::Value toJson(vmess::IngressCredential const&,
-                               rapidjson::Document::AllocatorType&);
-extern rapidjson::Value toJson(vmess::EgressCredential const&, rapidjson::Document::AllocatorType&);
-
-extern bool operator==(up::IngressCredential const&, up::IngressCredential const&);
-extern bool operator==(up::EgressCredential const&, up::EgressCredential const&);
-extern bool operator==(trojan::IngressCredential const&, trojan::IngressCredential const&);
-extern bool operator==(trojan::EgressCredential const&, trojan::EgressCredential const&);
-extern bool operator==(vmess::IngressCredential const&, vmess::IngressCredential const&);
-extern bool operator==(vmess::EgressCredential const&, vmess::EgressCredential const&);
+extern bool operator==(UpIngressCredential const&, UpIngressCredential const&);
+extern bool operator==(UpEgressCredential const&, UpEgressCredential const&);
+extern bool operator==(TrojanIngressCredential const&, TrojanIngressCredential const&);
+extern bool operator==(TrojanEgressCredential const&, TrojanEgressCredential const&);
+extern bool operator==(VMessIngressCredential const&, VMessIngressCredential const&);
+extern bool operator==(VMessEgressCredential const&, VMessEgressCredential const&);
 
 }  // namespace pichi::vo
 
