@@ -28,6 +28,7 @@ static std::string_view const MISSING_PORT_FIELD = "Missing port field";
 static std::string_view const MISSING_METHOD_FIELD = "Missing method field";
 static std::string_view const MISSING_UN_FIELD = "Missing username field";
 static std::string_view const MISSING_PW_FIELD = "Missing password field";
+static std::string_view const MISSING_MODE_FIELD = "Missing mode field";
 static std::string_view const MISSING_DELAY_FIELD = "Missing delay field";
 static std::string_view const MISSING_CERT_FILE_FIELD = "Missing cert_file field";
 static std::string_view const MISSING_KEY_FILE_FIELD = "Missing key_file field";

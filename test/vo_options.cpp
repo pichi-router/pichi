@@ -101,7 +101,9 @@ BOOST_AUTO_TEST_CASE(parse_RejectOption_Delay_Out_Of_Range)
 
 BOOST_AUTO_TEST_CASE(parse_RejectOption_Default_Fields)
 {
-  auto def = parse<RejectOption>(Value{kObjectType});
+  auto json = Value{kObjectType};
+  json.AddMember(option::MODE, toJson(DelayMode::FIXED, alloc), alloc);
+  auto def = parse<RejectOption>(json);
   BOOST_CHECK(def.mode_ == DelayMode::FIXED);
   BOOST_CHECK(def.delay_.has_value());
   BOOST_CHECK_EQUAL(*def.delay_, 0_u16);

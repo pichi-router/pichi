@@ -434,7 +434,6 @@ components:
           enum:
             - fixed
             - random
-          default: 'fixed'
         delay:
           description: 'Dealy seconds to reject the connection'
           type: integer

@@ -71,8 +71,9 @@ bool operator==(TunnelOption const& lhs, TunnelOption const& rhs)
 template <> RejectOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
-  auto ret = RejectOption{DelayMode::FIXED, {}};
-  if (v.HasMember(option::MODE)) ret.mode_ = parse<DelayMode>(v[option::MODE]);
+  assertTrue(v.HasMember(option::MODE), PichiError::BAD_JSON, msg::MISSING_MODE_FIELD);
+  auto ret = RejectOption{};
+  ret.mode_ = parse<DelayMode>(v[option::MODE]);
   if (ret.mode_ == DelayMode::FIXED) {
     ret.delay_ = v.HasMember(option::DELAY) ? parse<uint16_t>(v[option::DELAY]) : 0_u16;
     assertTrue(ret.delay_ <= 300_u16, PichiError::BAD_JSON, msg::DELAY_OUT_OF_RANGE);
