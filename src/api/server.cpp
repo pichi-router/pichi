@@ -97,7 +97,7 @@ void Server::listen(string_view address, uint16_t port)
 template <typename Acceptor, typename Yield>
 void Server::listen(Acceptor& acceptor, string_view iname, IngressHolder& holder, Yield yield)
 {
-  while (acceptor.is_open()) {
+  while (true) {
     auto ingress = net::makeIngress(holder, acceptor.async_accept(yield));
     auto p = ingress.get();
     // FIXME Not copying for ingress because net::spawn ensures that
@@ -171,18 +171,15 @@ vo::Egress const& Server::route(Endpoint const& remote, string_view iname, Adapt
 
 void Server::startIngress(string_view iname, IngressHolder& holder)
 {
-  net::spawn(
-      strand_,
-      [this, iname, &holder](auto yield) {
-        for (auto&& acceptor : holder.acceptors_) {
-          listen(acceptor, iname, holder, yield);
-        }
-      },
-      /*
-       * IngressVO named `iname` has already been inserted into `ingresses_`.
-       * It should be removed if exception occurs.
-       */
-      [this, iname](auto eptr, auto) noexcept { removeIngress(eptr, iname); });
+  for_each(begin(holder.acceptors_), end(holder.acceptors_),
+           [this, iname, &holder](auto&& acceptor) {
+             net::spawn(
+                 strand_,
+                 [this, iname, &acceptor, &holder](auto yield) {
+                   this->listen(acceptor, iname, holder, yield);
+                 },
+                 [this, iname](auto eptr, auto) noexcept { this->removeIngress(eptr, iname); });
+           });
 }
 
 }  // namespace pichi::api
