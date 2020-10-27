@@ -14,7 +14,8 @@
 #include <pichi/api/server.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/adapter.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/spawn.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <rapidjson/document.h>

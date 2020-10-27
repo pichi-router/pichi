@@ -10,9 +10,9 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/base64.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/http.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/test_stream.hpp>
 
 using namespace std;
 namespace asio = boost::asio;

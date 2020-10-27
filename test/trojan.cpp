@@ -7,8 +7,8 @@
 #include <initializer_list>
 #include <memory>
 #include <pichi/common/literals.hpp>
-#include <pichi/net/asio.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/helper.hpp>
+#include <pichi/net/test_stream.hpp>
 #include <pichi/net/trojan.hpp>
 #include <vector>
 

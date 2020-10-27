@@ -11,13 +11,14 @@
 #include <pichi/common/enumerations.hpp>
 #include <pichi/crypto/key.hpp>
 #include <pichi/net/adapter.hpp>
+#include <pichi/net/asio.hpp>
 #include <pichi/net/direct.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/net/reject.hpp>
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/tls_stream.hpp>
 #include <pichi/net/trojan.hpp>
 #include <pichi/net/tunnel.hpp>
 #include <pichi/vo/credential.hpp>

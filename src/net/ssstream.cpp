@@ -5,9 +5,9 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/constants.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/ssstream.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/test_stream.hpp>
 #include <utility>
 
 using namespace std;

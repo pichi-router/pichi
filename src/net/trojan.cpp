@@ -8,8 +8,9 @@
 #include <pichi/common/enumerations.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
-#include <pichi/net/asio.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/helper.hpp>
+#include <pichi/net/test_stream.hpp>
+#include <pichi/net/tls_stream.hpp>
 #include <pichi/net/trojan.hpp>
 #include <utility>
 

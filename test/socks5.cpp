@@ -7,9 +7,9 @@
 #include <initializer_list>
 #include <memory>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/socks5.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/test_stream.hpp>
 #include <unordered_map>
 #include <vector>
 

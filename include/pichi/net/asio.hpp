@@ -1,144 +1,117 @@
-#ifndef PICHI_NET_ASIO_HPP
-#define PICHI_NET_ASIO_HPP
+#ifndef PICHI_NET_STREAM_HPP
+#define PICHI_NET_STREAM_HPP
 
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/asio/ssl/stream_base.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/beast/http/read.hpp>
-#include <boost/beast/http/write.hpp>
-#include <pichi/common/adapter.hpp>
-#include <pichi/common/buffer.hpp>
-#include <pichi/common/literals.hpp>
-#include <pichi/net/stream.hpp>
+#include <boost/asio/async_result.hpp>
+#include <functional>
 #include <type_traits>
+#include <utility>
+
+namespace pichi::net {
+
+template <typename Stream> struct AsyncStream : public std::true_type {
+};
+
+template <typename Stream> struct RawStream : public std::true_type {
+};
+
+template <typename Stream> inline constexpr bool IsRawStream = RawStream<Stream>::value;
+template <typename Stream> inline constexpr bool IsAsyncStream = AsyncStream<Stream>::value;
+
+}  // namespace pichi::net
 
 namespace boost::asio {
 
-template <typename PodType> inline mutable_buffer buffer(pichi::MutableBuffer<PodType> origin)
+namespace detail {
+
+template <typename Stream, typename Iterator, typename ConnectHandler>
+struct IteratorConnectOperator {
+  IteratorConnectOperator(Stream& s, Iterator it, ConnectHandler const& h) : s_{s}, it_{it}, h_{h}
+  {
+  }
+
+  void operator()(boost::system::error_code ec)
+  {
+    if (!ec) {
+      post(get_associated_executor(h_), [h = h_, ec]() mutable { std::invoke(h, ec); });
+      return;
+    }
+    if (++it_ == Iterator{}) {
+      post(get_associated_executor(h_), [h = h_, ec]() mutable { std::invoke(h, ec); });
+      return;
+    }
+    s_.close(ec);
+    s_.async_connect(*it_, IteratorConnectOperator(s_, it_, h_));
+  }
+
+  Stream& s_;
+  Iterator it_;
+  ConnectHandler h_;
+};
+
+}  // namespace detail
+
+template <typename Stream, typename Iterator, typename ConnectHandler>
+bool asio_handler_is_continuation(
+    detail::IteratorConnectOperator<Stream, Iterator, ConnectHandler>*)
 {
-  return {origin.data(), origin.size() * sizeof(PodType)};
+  return true;
 }
 
-template <typename PodType>
-inline mutable_buffer buffer(pichi::MutableBuffer<PodType> origin, size_t size)
+template <typename F, typename Stream, typename Iterator, typename ConnectHandler>
+void asio_handler_invoke(F&& f, detail::IteratorConnectOperator<Stream, Iterator, ConnectHandler>*)
 {
-  assert(size <= origin.size());
-  return {origin.data(), size * sizeof(PodType)};
+  std::invoke(std::forward<F>(f));
 }
 
-template <typename PodType> inline const_buffer buffer(pichi::ConstBuffer<PodType> origin)
+template <typename Stream, typename Iterator, typename ConnectHandler>
+struct associated_executor<detail::IteratorConnectOperator<Stream, Iterator, ConnectHandler>> {
+  using type = executor;
+
+  static type get(detail::IteratorConnectOperator<Stream, Iterator, ConnectHandler> const& h,
+                  executor const& = executor{}) BOOST_ASIO_NOEXCEPT
+  {
+    return get_associated_executor(h.h_);
+  }
+};
+
+// TODO Boost.Asio provides async_initiate function template from 1.70.0.
+template <typename Signature, typename Initiation, typename CompletionToken, typename... Args>
+auto asyncInitiate(Initiation&& initiation, CompletionToken&& token, Args&&... args)
 {
-  return {origin.data(), origin.size() * sizeof(PodType)};
+  auto t = std::forward<CompletionToken>(token);
+  auto init = async_completion<std::decay_t<CompletionToken>, Signature>{t};
+  std::invoke(std::forward<Initiation>(initiation), init.completion_handler,
+              std::forward<Args>(args)...);
+  return init.result.get();
 }
 
-template <typename PodType>
-inline const_buffer buffer(pichi::ConstBuffer<PodType> origin, size_t size)
+/*
+ *  boost::asio::async_connect only supports basic_socket, so asyncConnect is
+ * intended to support all the stream classes with async_connect member function
+ * template.
+ */
+template <typename Stream, typename Results, typename ConnectHandler>
+auto asyncConnect(Stream& stream, Results results, ConnectHandler&& handler)
 {
-  assert(size <= origin.size());
-  return {origin.data(), size * sizeof(PodType)};
+  // FIXME the life term of results should be extended until all of the
+  // async-ops are accomplished,
+  //   but according to the implementation of ResolveResults::iterator, the
+  //   iterator will fulfill the extension. So, keep it this way here.
+  return asyncInitiate<void(boost::system::error_code)>(
+      [](auto&& h, auto& stream, auto results) {
+        using Handler = decltype(h);
+        static_assert(std::is_invocable_v<Handler, boost::system::error_code const&>);
+        if (results.empty()) {
+          post(get_associated_executor(h),
+               [h = std::forward<Handler>(h)]() mutable { std::invoke(h, error::host_not_found); });
+          return;
+        }
+        auto first = std::cbegin(results);
+        stream.async_connect(*first, detail::IteratorConnectOperator{stream, first, h});
+      },
+      std::forward<ConnectHandler>(handler), stream, std::move(results));
 }
 
 }  // namespace boost::asio
 
-namespace pichi::net {
-
-template <typename Stream, typename Results, typename Yield>
-void connect(Results next, Stream& stream, Yield yield)
-{
-  suppressC4100(next, yield);
-  if constexpr (IsAsyncStream<Stream>)
-    asyncConnect(stream, next, yield);
-  else
-    stream.connect();
-  if constexpr (!IsRawStream<Stream>) {
-    stream.async_handshake(yield);
-  }
-}
-
-template <typename Stream, typename Yield> void handshake(Stream& stream, Yield yield)
-{
-  suppressC4100(stream, yield);
-  if constexpr (!IsRawStream<Stream>) {
-    static_assert(IsAsyncStream<Stream>);
-    stream.async_accept(yield);
-  }
-}
-
-template <typename Stream, typename Yield>
-void read(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
-{
-  suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
-    boost::asio::async_read(stream, boost::asio::buffer(buf), yield);
-  else
-    boost::asio::read(stream, boost::asio::buffer(buf));
-}
-
-template <typename Stream, typename Yield>
-size_t readSome(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
-{
-  suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
-    return stream.async_read_some(boost::asio::buffer(buf), yield);
-  else
-    return stream.read_some(boost::asio::buffer(buf));
-}
-
-template <typename Stream, typename Parser, typename DynamicBuffer, typename Yield>
-size_t readHttpHeader(Stream& stream, DynamicBuffer& buf, Parser& parser, Yield yield)
-{
-  suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
-    return boost::beast::http::async_read_header(stream, buf, parser, yield);
-  else
-    return boost::beast::http::read_header(stream, buf, parser);
-}
-
-template <typename Stream, typename Yield>
-void write(Stream& stream, ConstBuffer<uint8_t> buf, Yield yield)
-{
-  suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
-    boost::asio::async_write(stream, boost::asio::buffer(buf), yield);
-  else
-    boost::asio::write(stream, boost::asio::buffer(buf));
-}
-
-template <typename Stream, typename Message, typename Yield>
-void writeHttp(Stream& stream, Message& msg, Yield yield)
-{
-  suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
-    boost::beast::http::async_write(stream, msg, yield);
-  else
-    boost::beast::http::write(stream, msg);
-}
-
-template <typename Stream, typename Serializer, typename Yield>
-void writeHttpHeader(Stream& stream, Serializer&& sr, Yield yield)
-{
-  suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
-    boost::beast::http::async_write_header(stream, sr, yield);
-  else
-    boost::beast::http::write_header(stream, sr);
-}
-
-template <typename Stream, typename Yield> void close(Stream& stream, Yield yield)
-{
-  // This function is supposed to be 'noexcept' because it's always invoked in
-  // the desturctors.
-
-  static_assert(!std::is_const_v<Stream>);
-  suppressC4100(yield);
-
-  // TODO log the errors
-  auto ec = boost::system::error_code{};
-  if constexpr (!IsRawStream<Stream>) stream.async_shutdown(yield[ec]);
-  stream.close(ec);
-}
-
-}  // namespace pichi::net
-
-#endif  // PICHI_NET_ASIO_HPP
+#endif  // PICHI_NET_STREAM_HPP

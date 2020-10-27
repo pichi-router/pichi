@@ -5,9 +5,10 @@
 #include <boost/asio/ssl/stream.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/socks5.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/test_stream.hpp>
+#include <pichi/net/tls_stream.hpp>
 #include <utility>
 
 using namespace std;

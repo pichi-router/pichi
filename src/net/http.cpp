@@ -10,9 +10,10 @@
 #include <pichi/common/literals.hpp>
 #include <pichi/common/uri.hpp>
 #include <pichi/crypto/base64.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/http.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/test_stream.hpp>
+#include <pichi/net/tls_stream.hpp>
 #include <regex>
 #include <sstream>
 
