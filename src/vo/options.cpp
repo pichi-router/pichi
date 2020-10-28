@@ -76,7 +76,7 @@ template <> RejectOption parse(json::Value const& v)
   ret.mode_ = parse<DelayMode>(v[option::MODE]);
   if (ret.mode_ == DelayMode::FIXED) {
     ret.delay_ = v.HasMember(option::DELAY) ? parse<uint16_t>(v[option::DELAY]) : 0_u16;
-    assertTrue(ret.delay_ <= 300_u16, PichiError::BAD_JSON, msg::DELAY_OUT_OF_RANGE);
+    assertTrue(ret.delay_ <= 300_u16, PichiError::BAD_JSON, msg::DL_INVALID);
   }
   return ret;
 }
