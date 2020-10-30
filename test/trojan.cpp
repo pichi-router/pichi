@@ -8,8 +8,8 @@
 #include <memory>
 #include <pichi/common/literals.hpp>
 #include <pichi/net/helper.hpp>
-#include <pichi/net/test_stream.hpp>
 #include <pichi/net/trojan.hpp>
+#include <pichi/stream/test.hpp>
 #include <vector>
 
 using namespace std;
@@ -19,9 +19,9 @@ namespace pichi::unit_test {
 namespace asio = boost::asio;
 namespace sys = boost::system;
 
-using Socket = net::TestSocket;
-using Ingress = net::TrojanIngress<net::TestStream>;
-using Egress = net::TrojanEgress<net::TestStream>;
+using Socket = stream::TestSocket;
+using Ingress = net::TrojanIngress<stream::TestStream>;
+using Egress = net::TrojanEgress<stream::TestStream>;
 
 static auto const PASSWORDS = vector{"pichi"s};
 static auto const HASHED_PASSWORDS = []() {

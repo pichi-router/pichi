@@ -1,5 +1,5 @@
-#ifndef PICHI_NET_ASIO_HPP
-#define PICHI_NET_ASIO_HPP
+#ifndef PICHI_NET_HELPER_HPP
+#define PICHI_NET_HELPER_HPP
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/read.hpp>
@@ -8,7 +8,8 @@
 #include <boost/beast/http/write.hpp>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/stream/asio.hpp>
+#include <pichi/stream/traits.hpp>
 #include <type_traits>
 
 namespace boost::asio {
@@ -45,11 +46,11 @@ template <typename Stream, typename Results, typename Yield>
 void connect(Results next, Stream& stream, Yield yield)
 {
   suppressC4100(next, yield);
-  if constexpr (IsAsyncStream<Stream>)
+  if constexpr (stream::IsAsyncStream<Stream>)
     boost::asio::asyncConnect(stream, next, yield);
   else
     stream.connect();
-  if constexpr (!IsRawStream<Stream>) {
+  if constexpr (!stream::IsRawStream<Stream>) {
     stream.async_handshake(yield);
   }
 }
@@ -57,8 +58,8 @@ void connect(Results next, Stream& stream, Yield yield)
 template <typename Stream, typename Yield> void handshake(Stream& stream, Yield yield)
 {
   suppressC4100(stream, yield);
-  if constexpr (!IsRawStream<Stream>) {
-    static_assert(IsAsyncStream<Stream>);
+  if constexpr (!stream::IsRawStream<Stream>) {
+    static_assert(stream::IsAsyncStream<Stream>);
     stream.async_accept(yield);
   }
 }
@@ -67,7 +68,7 @@ template <typename Stream, typename Yield>
 void read(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
 {
   suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
+  if constexpr (stream::IsAsyncStream<Stream>)
     boost::asio::async_read(stream, boost::asio::buffer(buf), yield);
   else
     boost::asio::read(stream, boost::asio::buffer(buf));
@@ -77,7 +78,7 @@ template <typename Stream, typename Yield>
 size_t readSome(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
 {
   suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
+  if constexpr (stream::IsAsyncStream<Stream>)
     return stream.async_read_some(boost::asio::buffer(buf), yield);
   else
     return stream.read_some(boost::asio::buffer(buf));
@@ -87,7 +88,7 @@ template <typename Stream, typename Parser, typename DynamicBuffer, typename Yie
 size_t readHttpHeader(Stream& stream, DynamicBuffer& buf, Parser& parser, Yield yield)
 {
   suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
+  if constexpr (stream::IsAsyncStream<Stream>)
     return boost::beast::http::async_read_header(stream, buf, parser, yield);
   else
     return boost::beast::http::read_header(stream, buf, parser);
@@ -97,7 +98,7 @@ template <typename Stream, typename Yield>
 void write(Stream& stream, ConstBuffer<uint8_t> buf, Yield yield)
 {
   suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
+  if constexpr (stream::IsAsyncStream<Stream>)
     boost::asio::async_write(stream, boost::asio::buffer(buf), yield);
   else
     boost::asio::write(stream, boost::asio::buffer(buf));
@@ -107,7 +108,7 @@ template <typename Stream, typename Message, typename Yield>
 void writeHttp(Stream& stream, Message& msg, Yield yield)
 {
   suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
+  if constexpr (stream::IsAsyncStream<Stream>)
     boost::beast::http::async_write(stream, msg, yield);
   else
     boost::beast::http::write(stream, msg);
@@ -117,7 +118,7 @@ template <typename Stream, typename Serializer, typename Yield>
 void writeHttpHeader(Stream& stream, Serializer&& sr, Yield yield)
 {
   suppressC4100(yield);
-  if constexpr (IsAsyncStream<Stream>)
+  if constexpr (stream::IsAsyncStream<Stream>)
     boost::beast::http::async_write_header(stream, sr, yield);
   else
     boost::beast::http::write_header(stream, sr);
@@ -133,10 +134,10 @@ template <typename Stream, typename Yield> void close(Stream& stream, Yield yiel
 
   // TODO log the errors
   auto ec = boost::system::error_code{};
-  if constexpr (!IsRawStream<Stream>) stream.async_shutdown(yield[ec]);
+  if constexpr (!stream::IsRawStream<Stream>) stream.async_shutdown(yield[ec]);
   stream.close(ec);
 }
 
 }  // namespace pichi::net
 
-#endif  // PICHI_NET_ASIO_HPP
+#endif  // PICHI_NET_HELPER_HPP

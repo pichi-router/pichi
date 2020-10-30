@@ -9,9 +9,9 @@
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <pichi/net/helper.hpp>
-#include <pichi/net/test_stream.hpp>
-#include <pichi/net/tls_stream.hpp>
 #include <pichi/net/trojan.hpp>
+#include <pichi/stream/test.hpp>
+#include <pichi/stream/tls.hpp>
 #include <utility>
 
 using namespace std;
@@ -191,12 +191,12 @@ void TrojanEgress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
   write(stream_, {buf.data(), written(p)}, yield);
 }
 
-template class TrojanIngress<TlsStream<tcp::socket>>;
-template class TrojanEgress<TlsStream<tcp::socket>>;
+template class TrojanIngress<stream::TlsStream<tcp::socket>>;
+template class TrojanEgress<stream::TlsStream<tcp::socket>>;
 
 #ifdef BUILD_TEST
-template class TrojanIngress<TestStream>;
-template class TrojanEgress<TestStream>;
+template class TrojanIngress<stream::TestStream>;
+template class TrojanEgress<stream::TestStream>;
 #endif  // BUILD_TEST
 
 }  // namespace pichi::net

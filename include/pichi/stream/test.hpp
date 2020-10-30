@@ -1,5 +1,5 @@
-#ifndef PICHI_NET_TEST_STREAM_HPP
-#define PICHI_NET_TEST_STREAM_HPP
+#ifndef PICHI_STREAM_TEST_HPP
+#define PICHI_STREAM_TEST_HPP
 
 #include <algorithm>
 #include <boost/asio/buffers_iterator.hpp>
@@ -7,9 +7,9 @@
 #include <deque>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/buffer.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/stream/traits.hpp>
 
-namespace pichi::net {
+namespace pichi::stream {
 
 class TestSocket {
 private:
@@ -126,6 +126,6 @@ private:
 template <> struct AsyncStream<TestStream> : public std::false_type {
 };
 
-}  // namespace pichi::net
+}  // namespace pichi::stream
 
-#endif  // PICHI_NET_TEST_STREAM_HPP
+#endif  // PICHI_STREAM_TEST_HPP

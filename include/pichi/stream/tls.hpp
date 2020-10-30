@@ -1,13 +1,12 @@
-#ifndef PICHI_NET_TLS_STREAM_HPP
-#define PICHI_NET_TLS_STREAM_HPP
+#ifndef PICHI_STREAM_TLS_HPP
+#define PICHI_STREAM_TLS_HPP
 
-#include <boost/asio/spawn2.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/stream/traits.hpp>
 #include <type_traits>
 
-namespace pichi::net {
+namespace pichi::stream {
 
 /*
  *  1. TlsStream is about to implement both of AsyncReadStream and
@@ -21,7 +20,6 @@ template <typename Socket> class TlsStream {
 private:
   static_assert(std::is_same_v<std::decay_t<Socket>, Socket>);
 
-  using Yield = boost::asio::yield_context;
   using Context = boost::asio::ssl::context;
   using Stream = boost::asio::ssl::stream<Socket>;
   using ErrorCode = boost::system::error_code;
@@ -93,6 +91,6 @@ private:
 template <typename Socket> struct RawStream<TlsStream<Socket>> : public std::false_type {
 };
 
-}  // namespace pichi::net
+}  // namespace pichi::stream
 
-#endif  // PICHI_NET_TLS_STREAM_HPP
+#endif  // PICHI_STREAM_TLS_HPP

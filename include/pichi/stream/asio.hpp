@@ -1,23 +1,11 @@
-#ifndef PICHI_NET_STREAM_HPP
-#define PICHI_NET_STREAM_HPP
+#ifndef PICHI_STREAM_STREAM_HPP
+#define PICHI_STREAM_STREAM_HPP
 
+#include <boost/asio/associated_executor.hpp>
 #include <boost/asio/async_result.hpp>
 #include <functional>
 #include <type_traits>
 #include <utility>
-
-namespace pichi::net {
-
-template <typename Stream> struct AsyncStream : public std::true_type {
-};
-
-template <typename Stream> struct RawStream : public std::true_type {
-};
-
-template <typename Stream> inline constexpr bool IsRawStream = RawStream<Stream>::value;
-template <typename Stream> inline constexpr bool IsAsyncStream = AsyncStream<Stream>::value;
-
-}  // namespace pichi::net
 
 namespace boost::asio {
 
@@ -114,4 +102,4 @@ auto asyncConnect(Stream& stream, Results results, ConnectHandler&& handler)
 
 }  // namespace boost::asio
 
-#endif  // PICHI_NET_STREAM_HPP
+#endif  // PICHI_STREAM_STREAM_HPP

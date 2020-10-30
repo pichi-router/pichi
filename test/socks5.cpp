@@ -9,7 +9,7 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/net/helper.hpp>
 #include <pichi/net/socks5.hpp>
-#include <pichi/net/test_stream.hpp>
+#include <pichi/stream/test.hpp>
 #include <unordered_map>
 #include <vector>
 
@@ -19,9 +19,9 @@ namespace sys = boost::system;
 
 namespace pichi::unit_test {
 
-using Socket = net::TestSocket;
-using TestIngress = pichi::net::Socks5Ingress<net::TestStream>;
-using TestEgress = pichi::net::Socks5Egress<net::TestStream>;
+using Socket = stream::TestSocket;
+using TestIngress = pichi::net::Socks5Ingress<stream::TestStream>;
+using TestEgress = pichi::net::Socks5Egress<stream::TestStream>;
 using Credential = optional<pair<string, string>>;
 
 static auto const CREDENTIAL = make_pair("pichi"s, "pichi"s);

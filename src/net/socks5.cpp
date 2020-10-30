@@ -7,8 +7,8 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/net/helper.hpp>
 #include <pichi/net/socks5.hpp>
-#include <pichi/net/test_stream.hpp>
-#include <pichi/net/tls_stream.hpp>
+#include <pichi/stream/test.hpp>
+#include <pichi/stream/tls.hpp>
 #include <utility>
 
 using namespace std;
@@ -198,10 +198,10 @@ template <typename Stream> void Socks5Ingress<Stream>::disconnect(exception_ptr 
 
 template class Socks5Ingress<tcp::socket>;
 
-template class Socks5Ingress<TlsStream<tcp::socket>>;
+template class Socks5Ingress<stream::TlsStream<tcp::socket>>;
 
 #ifdef BUILD_TEST
-template class Socks5Ingress<TestStream>;
+template class Socks5Ingress<stream::TestStream>;
 #endif  // BUILD_TEST
 
 template <typename Stream>
@@ -279,10 +279,10 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
 
 template class Socks5Egress<tcp::socket>;
 
-template class Socks5Egress<TlsStream<tcp::socket>>;
+template class Socks5Egress<stream::TlsStream<tcp::socket>>;
 
 #ifdef BUILD_TEST
-template class Socks5Egress<TestStream>;
+template class Socks5Egress<stream::TestStream>;
 #endif  // BUILD_TEST
 
 }  // namespace pichi::net

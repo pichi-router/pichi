@@ -12,8 +12,8 @@
 #include <pichi/crypto/base64.hpp>
 #include <pichi/net/helper.hpp>
 #include <pichi/net/http.hpp>
-#include <pichi/net/test_stream.hpp>
-#include <pichi/net/tls_stream.hpp>
+#include <pichi/stream/test.hpp>
+#include <pichi/stream/tls.hpp>
 #include <regex>
 #include <sstream>
 
@@ -431,13 +431,13 @@ using TcpSocket = tcp::socket;
 template class HttpIngress<TcpSocket>;
 template class HttpEgress<TcpSocket>;
 
-using TLSStream = TlsStream<TcpSocket>;
+using TLSStream = stream::TlsStream<TcpSocket>;
 template class HttpIngress<TLSStream>;
 template class HttpEgress<TLSStream>;
 
 #ifdef BUILD_TEST
-template class HttpIngress<TestStream>;
-template class HttpEgress<TestStream>;
+template class HttpIngress<stream::TestStream>;
+template class HttpEgress<stream::TestStream>;
 #endif  // BUILD_TEST
 
 }  // namespace pichi::net

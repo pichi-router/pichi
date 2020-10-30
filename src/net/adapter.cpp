@@ -11,16 +11,15 @@
 #include <pichi/common/enumerations.hpp>
 #include <pichi/crypto/key.hpp>
 #include <pichi/net/adapter.hpp>
-#include <pichi/net/asio.hpp>
 #include <pichi/net/direct.hpp>
 #include <pichi/net/http.hpp>
 #include <pichi/net/reject.hpp>
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
-#include <pichi/net/tls_stream.hpp>
 #include <pichi/net/trojan.hpp>
 #include <pichi/net/tunnel.hpp>
+#include <pichi/stream/tls.hpp>
 #include <pichi/vo/credential.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
@@ -40,7 +39,7 @@ namespace ssl = asio::ssl;
 namespace pichi::net {
 
 using TCPSocket = asio::ip::tcp::socket;
-using TLSStream = TlsStream<TCPSocket>;
+using TLSStream = stream::TlsStream<TCPSocket>;
 
 static auto createTlsContext(vo::TlsIngressOption const& option)
 {
