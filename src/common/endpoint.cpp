@@ -2,6 +2,7 @@
 // Include config.hpp first
 #include <array>
 #include <boost/asio/ip/address.hpp>
+#include <charconv>
 #include <limits>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
@@ -41,24 +42,9 @@ template <typename AddressType> struct AddressHelper {
 using IPv4 = AddressHelper<ip::address_v4>;
 using IPv6 = AddressHelper<ip::address_v6>;
 
-static string bytes2Port(ConstBuffer<uint8_t> bytes)
-{
-  return to_string(ntoh<uint16_t>({bytes, sizeof(uint16_t)}));
-}
-
-static size_t port2Bytes(string const& port, MutableBuffer<uint8_t> dst)
-{
-  auto i = stoi(port);
-  assertTrue(i > 0, PichiError::MISC);
-  assertTrue(i <= numeric_limits<uint16_t>::max(), PichiError::MISC);
-  hton(static_cast<uint16_t>(i), dst);
-  return sizeof(uint16_t);
-}
-
 size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer<uint8_t> target)
 {
-  assertFalse(endpoint.host_.empty(), PichiError::MISC);
-  assertFalse(endpoint.port_.empty(), PichiError::MISC);
+  assertFalse(endpoint.host_.empty());
   auto pos = target.begin();
   switch (endpoint.type_) {
   case EndpointType::DOMAIN_NAME:
@@ -102,7 +88,8 @@ size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer<uint8_t> target
   default:
     fail(PichiError::BAD_PROTO);
   }
-  pos += port2Bytes(endpoint.port_, {pos, sizeof(uint16_t)});
+  hton<uint16_t>(endpoint.port_, {pos, sizeof(uint16_t)});
+  pos += sizeof(uint16_t);
 
   return pos - target.begin();
 }
@@ -117,7 +104,7 @@ Endpoint parseEndpoint(function<void(MutableBuffer<uint8_t>)> read)
   case 0x01:
     read({buf, IPv4::BYTES_SIZE + sizeof(uint16_t)});
     return Endpoint{EndpointType::IPV4, IPv4::bytes2Ip(buf),
-                    bytes2Port({buf.data() + IPv4::BYTES_SIZE, sizeof(uint16_t)})};
+                    ntoh<uint16_t>({buf.data() + IPv4::BYTES_SIZE, sizeof(uint16_t)})};
   case 0x03:
     read({buf, 1});
     len = buf.front();
@@ -126,11 +113,11 @@ Endpoint parseEndpoint(function<void(MutableBuffer<uint8_t>)> read)
     read({buf, static_cast<size_t>(len + 2)});
     return Endpoint{EndpointType::DOMAIN_NAME,
                     {cbegin(buf), cbegin(buf) + len},
-                    bytes2Port({buf.data() + len, sizeof(uint16_t)})};
+                    ntoh<uint16_t>({buf.data() + len, sizeof(uint16_t)})};
   case 0x04:
     read({buf, IPv6::BYTES_SIZE + sizeof(uint16_t)});
     return Endpoint{EndpointType::IPV6, IPv6::bytes2Ip(buf),
-                    bytes2Port({buf.data() + IPv6::BYTES_SIZE, sizeof(uint16_t)})};
+                    ntoh<uint16_t>({buf.data() + IPv6::BYTES_SIZE, sizeof(uint16_t)})};
   default:
     fail(PichiError::BAD_PROTO);
   }
@@ -147,12 +134,18 @@ EndpointType detectHostType(string_view host)
 
 Endpoint makeEndpoint(string_view host, uint16_t port)
 {
-  return {detectHostType(host), to_string(host), to_string(port)};
+  return {detectHostType(host), to_string(host), port};
 }
 
 Endpoint makeEndpoint(string_view host, string_view port)
 {
-  return {detectHostType(host), to_string(host), to_string(port)};
+  auto p = 0;
+  auto [ptr, ec] = from_chars(port.data(), port.data() + port.size(), p);
+  assertTrue(ec == errc{});
+  assertTrue(ptr == port.data() + port.size());
+  assertTrue(p >= 0);
+  assertTrue(p <= numeric_limits<uint16_t>::max());
+  return {detectHostType(host), to_string(host), static_cast<uint16_t>(p)};
 }
 
 bool operator==(Endpoint const& lhs, Endpoint const& rhs)

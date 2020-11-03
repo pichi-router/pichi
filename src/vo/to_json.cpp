@@ -54,8 +54,10 @@ json::Value toJson(AdapterType type, Allocator& alloc)
     return toJson(type::TUNNEL, alloc);
   case AdapterType::TROJAN:
     return toJson(type::TROJAN, alloc);
+  case AdapterType::VMESS:
+    return toJson(type::VMESS, alloc);
   default:
-    fail(PichiError::MISC);
+    fail();
   }
 }
 
@@ -117,6 +119,30 @@ json::Value toJson(BalanceType selector, Allocator& alloc)
   default:
     fail();
   }
+}
+
+json::Value toJson(VMessSecurity security, Allocator& alloc)
+{
+  switch (security) {
+  case VMessSecurity::AUTO:
+    return toJson(security::AUTO, alloc);
+  case VMessSecurity::NONE:
+    return toJson(security::NONE, alloc);
+  case VMessSecurity::CHACHA20_IETF_POLY1305:
+    return toJson(security::CHACHA20_IETF_POLY1305, alloc);
+  case VMessSecurity::AES_128_GCM:
+    return toJson(security::AES_128_GCM, alloc);
+  default:
+    fail();
+  }
+}
+
+json::Value toJson(Endpoint const& endpoint, Allocator& alloc)
+{
+  auto ret = json::Value{json::kObjectType};
+  ret.AddMember(endpoint::HOST, toJson(endpoint.host_, alloc), alloc);
+  ret.AddMember(endpoint::PORT, endpoint.port_, alloc);
+  return ret;
 }
 
 string toString(json::Value const& v)

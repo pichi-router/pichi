@@ -14,6 +14,7 @@ inline decltype(auto) HTTP = "http";
 inline decltype(auto) SS = "ss";
 inline decltype(auto) TUNNEL = "tunnel";
 inline decltype(auto) TROJAN = "trojan";
+inline decltype(auto) VMESS = "vmess";
 
 }  // namespace type
 
@@ -56,38 +57,81 @@ inline decltype(auto) LEAST_CONN = "least_conn";
 
 }  // namespace balance
 
+namespace security {
+
+inline decltype(auto) AUTO = "auto";
+inline decltype(auto) NONE = "auto";
+inline decltype(auto) CHACHA20_IETF_POLY1305 = "chacha20-ietf-poly1305";
+inline decltype(auto) AES_128_GCM = "aes-128-gcm";
+
+}  // namespace security
+
+namespace endpoint {
+
+inline decltype(auto) HOST = "host";
+inline decltype(auto) PORT = "port";
+
+}  // namespace endpoint
+
+namespace credential {
+
+inline decltype(auto) USERNAME = "username";
+inline decltype(auto) PASSWORD = "password";
+inline decltype(auto) UUID = "uuid";
+inline decltype(auto) ALTER_ID = "alter_id";
+inline decltype(auto) SECURITY = "security";
+
+}  // namespace credential
+
+namespace option {
+
+inline decltype(auto) PASSWORD = "password";
+inline decltype(auto) METHOD = "method";
+inline decltype(auto) DESTINATIONS = "destinations";
+inline decltype(auto) BALANCE = "balance";
+inline decltype(auto) MODE = "mode";
+inline decltype(auto) DELAY = "delay";
+inline decltype(auto) REMOTE = "remote";
+
+}  // namespace option
+
+namespace tls {
+
+inline decltype(auto) CERT_FILE = "cert_file";
+inline decltype(auto) KEY_FILE = "key_file";
+inline decltype(auto) INSECURE = "insecure";
+inline decltype(auto) CA_FILE = "ca_file";
+inline decltype(auto) SERVER_NAME = "server_name";
+inline decltype(auto) SNI = "sni";
+
+}  // namespace tls
+
+namespace websocket {
+
+inline decltype(auto) PATH = "path";
+inline decltype(auto) HOST = "host";
+
+}  // namespace websocket
+
 namespace ingress {
 
 inline decltype(auto) TYPE = "type";
 inline decltype(auto) BIND = "bind";
-inline decltype(auto) PORT = "port";
-inline decltype(auto) METHOD = "method";
-inline decltype(auto) PASSWORD = "password";
-inline decltype(auto) CREDENTIALS = "credentials";
+inline decltype(auto) OPTION = "option";
 inline decltype(auto) TLS = "tls";
-inline decltype(auto) CERT_FILE = "cert_file";
-inline decltype(auto) KEY_FILE = "key_file";
-inline decltype(auto) DESTINATIONS = "destinations";
-inline decltype(auto) BALANCE = "balance";
-inline decltype(auto) REMOTE_HOST = "remote_host";
-inline decltype(auto) REMOTE_PORT = "remote_port";
-inline decltype(auto) PASSWORDS = "passwords";
+inline decltype(auto) CREDENTIAL = "credential";
+inline decltype(auto) WEBSOCKET = "websocket";
 
 }  // namespace ingress
 
 namespace egress {
 
 inline decltype(auto) TYPE = "type";
-inline decltype(auto) HOST = "host";
-inline decltype(auto) PORT = "port";
-inline decltype(auto) METHOD = "method";
-inline decltype(auto) PASSWORD = "password";
-inline decltype(auto) MODE = "mode";
-inline decltype(auto) DELAY = "delay";
+inline decltype(auto) SERVER = "server";
 inline decltype(auto) CREDENTIAL = "credential";
+inline decltype(auto) OPTION = "option";
 inline decltype(auto) TLS = "tls";
-inline decltype(auto) INSECURE = "insecure";
-inline decltype(auto) CA_FILE = "ca_file";
+inline decltype(auto) WEBSOCKET = "websocket";
 
 }  // namespace egress
 

@@ -29,6 +29,7 @@ auto const CONNECTION_REFUSED =
 auto const ADDRESS_TYPE_NOT_SUPPORTED =
     array{0x05_u8, 0x08_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
 static auto const AUTH_FAILURE = array{0x01_u8, 0xff_u8};
+static auto const AUTH_SUCCESS = array{0x01_u8, 0x00_u8};
 static auto const METHOD_FAILURE = array{0x05_u8, 0xff_u8};
 #else   // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 uint8_t const NETWORK_UNREACHABLE[] = {0x05_u8, 0x03_u8, 0x00_u8, 0x01_u8, 0x00_u8,
@@ -40,6 +41,7 @@ uint8_t const CONNECTION_REFUSED[] = {0x05_u8, 0x05_u8, 0x00_u8, 0x01_u8, 0x00_u
 uint8_t const ADDRESS_TYPE_NOT_SUPPORTED[] = {0x05_u8, 0x08_u8, 0x00_u8, 0x01_u8, 0x00_u8,
                                               0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
 static uint8_t const AUTH_FAILURE[] = {0x01_u8, 0xff_u8};
+static uint8_t const AUTH_SUCCESS[] = {0x01_u8, 0x00_u8};
 static uint8_t const METHOD_FAILURE[] = {0x05_u8, 0xff_u8};
 #endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 
@@ -72,7 +74,14 @@ static ConstBuffer<uint8_t> errorToBuffer(sys::error_code ec)
 
 template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
 {
-  auto buf = HeaderBuffer<uint8_t>{};
+  auto readString = [](auto&& stream, auto yield) {
+    auto len = 0_u8;
+    read(stream, {&len, 1}, yield);
+    assertFalse(len == 0, PichiError::BAD_PROTO);
+    auto buf = HeaderBuffer<uint8_t>{};
+    read(stream, {buf, len}, yield);
+    return string{cbegin(buf), cbegin(buf) + len};
+  };
 
   /*
    * Request:
@@ -82,22 +91,14 @@ template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
    * | 1  |  1   | 1 to 255 |  1   | 1 to 255 |
    * +----+------+----------+------+----------+
    */
-  read(stream_, {buf, 2}, yield);
-  assertTrue(buf.front() == 0x01_u8, PichiError::BAD_PROTO);
+  auto ver = 0_u8;
+  read(stream_, {&ver, 1}, yield);
+  assertTrue(ver == 0x01_u8, PichiError::BAD_PROTO);
 
-  auto len = static_cast<size_t>(buf[1]);
-  assertFalse(len == 0, PichiError::BAD_PROTO);
-  read(stream_, {buf, len + 1}, yield);
-  auto name = string{cbegin(buf), cbegin(buf) + len};
+  auto u = readString(stream_, yield);
+  auto p = readString(stream_, yield);
 
-  len = static_cast<size_t>(buf[len]);
-  assertFalse(len == 0, PichiError::BAD_PROTO);
-  read(stream_, {buf, len}, yield);
-  auto pass = string{cbegin(buf), cbegin(buf) + len};
-
-  auto it = credentials_.find(name);
-  assertFalse(it == cend(credentials_), PichiError::UNAUTHENTICATED);
-  assertTrue(it->second == pass, PichiError::UNAUTHENTICATED);
+  assertTrue(invoke(*auth_, u, p), PichiError::UNAUTHENTICATED);
 
   /*
    * Response:
@@ -107,9 +108,7 @@ template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
    * | 1  |   1    |
    * +----+--------+
    */
-  buf[0] = 0x01_u8;
-  buf[1] = 0x00_u8;
-  write(stream_, {buf, 2}, yield);
+  write(stream_, AUTH_SUCCESS, yield);
 }
 
 template <typename Stream>
@@ -153,15 +152,14 @@ template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yiel
   uint8_t len = buf[1];
   read(stream_, {buf, len}, yield);
 
-  auto needAuth = !credentials_.empty();
-  auto m = needAuth ? 0x02_u8 : 0x00_u8;
+  auto m = auth_.has_value() ? 0x02_u8 : 0x00_u8;
   assertFalse(find(cbegin(buf), cbegin(buf) + len, m) == cbegin(buf) + len,
               PichiError::BAD_AUTH_METHOD);
   buf[0] = 0x05_u8;
   buf[1] = m;
   write(stream_, {buf, 2}, yield);
 
-  if (needAuth) authenticate(yield);
+  if (auth_.has_value()) authenticate(yield);
 
   read(stream_, {buf, 3}, yield);
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
@@ -275,7 +273,7 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
   read(stream_, {buf, 3}, yield);
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
   assertTrue(buf[1] == 0x00, PichiError::CONN_FAILURE,
-             "Failed to establish connection with " + remote.host_ + ":" + remote.port_);
+             "Failed to establish connection with " + remote.host_ + ":" + to_string(remote.port_));
   assertTrue(buf[2] == 0x00, PichiError::BAD_PROTO);
   parseEndpoint([this, yield](auto dst) { read(stream_, dst, yield); });
 }

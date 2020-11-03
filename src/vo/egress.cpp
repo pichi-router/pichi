@@ -12,67 +12,60 @@ using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {
 
-json::Value toJson(Egress const& evo, Allocator& alloc)
+json::Value toJson(Egress const& egress, Allocator& alloc)
 {
-  auto egress_ = json::Value{};
-  egress_.SetObject();
-  egress_.AddMember(egress::TYPE, toJson(evo.type_, alloc), alloc);
-  if (evo.type_ != AdapterType::DIRECT && evo.type_ != AdapterType::REJECT) {
-    assertTrue(evo.host_.has_value(), PichiError::MISC);
-    assertFalse(evo.host_->empty(), PichiError::MISC);
-    assertTrue(evo.port_.has_value(), PichiError::MISC);
-    assertFalse(*evo.port_ == 0_u16, PichiError::MISC);
-    egress_.AddMember(egress::HOST, toJson(*evo.host_, alloc), alloc);
-    egress_.AddMember(egress::PORT, json::Value{*evo.port_}, alloc);
-  }
-  switch (evo.type_) {
-  case AdapterType::SS:
-    assertTrue(evo.method_.has_value(), PichiError::MISC);
-    assertTrue(evo.password_.has_value(), PichiError::MISC);
-    assertFalse(evo.password_->empty(), PichiError::MISC);
-    egress_.AddMember(egress::METHOD, toJson(*evo.method_, alloc), alloc);
-    egress_.AddMember(egress::PASSWORD, toJson(*evo.password_, alloc), alloc);
-    break;
-  case AdapterType::SOCKS5:
-  case AdapterType::HTTP:
-    assertTrue(evo.tls_.has_value(), PichiError::MISC);
-    egress_.AddMember(egress::TLS, *evo.tls_, alloc);
-    if (*evo.tls_) {
-      assertTrue(evo.insecure_.has_value(), PichiError::MISC);
-      egress_.AddMember(egress::INSECURE, *evo.insecure_, alloc);
-      if (!*evo.insecure_ && evo.caFile_.has_value()) {
-        assertFalse(evo.caFile_->empty());
-        egress_.AddMember(egress::CA_FILE, toJson(*evo.caFile_, alloc), alloc);
-      }
-    }
-    break;
-  case AdapterType::TROJAN:
-    assertTrue(evo.password_.has_value());
-    assertFalse(evo.password_->empty());
-    egress_.AddMember(egress::PASSWORD, toJson(*evo.password_, alloc), alloc);
-    assertTrue(evo.insecure_.has_value());
-    egress_.AddMember(egress::INSECURE, *evo.insecure_, alloc);
-    if (!*evo.insecure_ && evo.caFile_.has_value()) {
-      assertFalse(evo.caFile_->empty());
-      egress_.AddMember(egress::CA_FILE, toJson(*evo.caFile_, alloc), alloc);
-    }
-    break;
-  case AdapterType::REJECT:
-    assertTrue(evo.mode_.has_value());
-    egress_.AddMember(egress::MODE, toJson(*evo.mode_, alloc), alloc);
-    if (*evo.mode_ == DelayMode::FIXED) {
-      assertTrue(evo.delay_.has_value());
-      assertTrue(*evo.delay_ <= 300_u16);
-      egress_.AddMember(egress::DELAY, json::Value{*evo.delay_}, alloc);
-    }
-    break;
+  assertFalse(egress.type_ == AdapterType::TUNNEL);
+
+  auto ret = json::Value{json::kObjectType};
+  ret.AddMember(egress::TYPE, toJson(egress.type_, alloc), alloc);
+
+  switch (egress.type_) {
   case AdapterType::DIRECT:
     break;
+  case AdapterType::REJECT:
+    assertTrue(egress.opt_.has_value());
+    ret.AddMember(egress::OPTION, toJson(get<RejectOption>(*egress.opt_), alloc), alloc);
+    break;
+  case AdapterType::HTTP:
+  case AdapterType::SOCKS5:
+    assertTrue(egress.server_.has_value());
+    ret.AddMember(egress::SERVER, toJson(*egress.server_, alloc), alloc);
+    if (egress.credential_.has_value())
+      ret.AddMember(egress::CREDENTIAL, toJson(get<UpEgressCredential>(*egress.credential_), alloc),
+                    alloc);
+    if (egress.tls_.has_value()) ret.AddMember(egress::TLS, toJson(*egress.tls_, alloc), alloc);
+    break;
+  case AdapterType::SS:
+    assertTrue(egress.server_.has_value());
+    ret.AddMember(egress::SERVER, toJson(*egress.server_, alloc), alloc);
+    assertTrue(egress.opt_.has_value());
+    ret.AddMember(egress::OPTION, toJson(get<ShadowsocksOption>(*egress.opt_), alloc), alloc);
+    break;
+  case AdapterType::TROJAN:
+    assertTrue(egress.server_.has_value());
+    assertTrue(egress.credential_.has_value());
+    assertTrue(egress.tls_.has_value());
+    ret.AddMember(egress::SERVER, toJson(*egress.server_, alloc), alloc);
+    ret.AddMember(egress::CREDENTIAL,
+                  toJson(get<TrojanEgressCredential>(*egress.credential_), alloc), alloc);
+    ret.AddMember(egress::TLS, toJson(*egress.tls_, alloc), alloc);
+    if (egress.websocket_.has_value())
+      ret.AddMember(egress::WEBSOCKET, toJson(*egress.websocket_, alloc), alloc);
+    break;
+  case AdapterType::VMESS:
+    assertTrue(egress.server_.has_value());
+    assertTrue(egress.credential_.has_value());
+    ret.AddMember(egress::SERVER, toJson(*egress.server_, alloc), alloc);
+    ret.AddMember(egress::CREDENTIAL,
+                  toJson(get<VMessEgressCredential>(*egress.credential_), alloc), alloc);
+    if (egress.tls_.has_value()) ret.AddMember(egress::TLS, toJson(*egress.tls_, alloc), alloc);
+    if (egress.websocket_.has_value())
+      ret.AddMember(egress::WEBSOCKET, toJson(*egress.websocket_, alloc), alloc);
+    break;
   default:
-    fail(PichiError::MISC);
+    fail();
   }
-
-  return egress_;
+  return ret;
 }
 
 template <> Egress parse(json::Value const& v)
@@ -80,74 +73,78 @@ template <> Egress parse(json::Value const& v)
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   assertTrue(v.HasMember(egress::TYPE), PichiError::BAD_JSON, msg::MISSING_TYPE_FIELD);
 
-  auto evo = Egress{};
-  evo.type_ = parse<AdapterType>(v[egress::TYPE]);
+  auto egress = Egress{};
+  egress.type_ = parse<AdapterType>(v[egress::TYPE]);
 
-  if (evo.type_ == AdapterType::HTTP || evo.type_ == AdapterType::SOCKS5 ||
-      evo.type_ == AdapterType::SS || evo.type_ == AdapterType::TROJAN) {
-    assertTrue(v.HasMember(egress::HOST), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
-    assertTrue(v.HasMember(egress::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-    evo.host_ = parse<string>(v[egress::HOST]);
-    evo.port_ = parsePort(v[egress::PORT]);
-  }
-
-  switch (evo.type_) {
-  case AdapterType::SS:
-    assertTrue(v.HasMember(egress::METHOD), PichiError::BAD_JSON, msg::MISSING_METHOD_FIELD);
-    assertTrue(v.HasMember(egress::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
-    evo.method_ = parse<CryptoMethod>(v[egress::METHOD]);
-    evo.password_ = parse<string>(v[egress::PASSWORD]);
-    break;
-  case AdapterType::SOCKS5:
-  case AdapterType::HTTP:
-    evo.tls_ = v.HasMember(egress::TLS) && parse<bool>(v[egress::TLS]);
-    if (*evo.tls_) {
-      evo.insecure_ = v.HasMember(egress::INSECURE) && parse<bool>(v[egress::INSECURE]);
-      if (!*evo.insecure_ && v.HasMember(egress::CA_FILE))
-        evo.caFile_ = parse<string>(v[egress::CA_FILE]);
-    }
-    if (v.HasMember(egress::CREDENTIAL)) {
-      evo.credential_ = parsePair(v[egress::CREDENTIAL], parseNameOrPassword);
-    }
-    break;
-  case AdapterType::TROJAN:
-    evo.insecure_ = v.HasMember(egress::INSECURE) && parse<bool>(v[egress::INSECURE]);
-    if (!*evo.insecure_ && v.HasMember(egress::CA_FILE))
-      evo.caFile_ = parse<string>(v[egress::CA_FILE]);
-    assertTrue(v.HasMember(egress::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
-    evo.password_ = parse<string>(v[egress::PASSWORD]);
+  switch (egress.type_) {
+  case AdapterType::DIRECT:
     break;
   case AdapterType::REJECT:
-    if (v.HasMember(egress::MODE)) {
-      evo.mode_ = parse<DelayMode>(v[egress::MODE]);
-      if (evo.mode_ == DelayMode::FIXED) {
-        assertTrue(v.HasMember(egress::DELAY), PichiError::BAD_JSON, msg::MISSING_DELAY_FIELD);
-        assertTrue(v[egress::DELAY].IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
-        auto delay = v[egress::DELAY].GetInt();
-        assertTrue(delay >= 0_u16 && delay <= 300_u16, PichiError::BAD_JSON, msg::DL_INVALID);
-        evo.delay_ = static_cast<uint16_t>(delay);
-      }
-    }
-    else {
-      evo.mode_ = DelayMode::FIXED;
-      evo.delay_ = 0_u16;
-    }
+    assertTrue(v.HasMember(egress::OPTION), PichiError::BAD_JSON, msg::MISSING_OPTION_FIELD);
+    egress.opt_ = parse<RejectOption>(v[egress::OPTION]);
     break;
-  case AdapterType::DIRECT:
+  case AdapterType::HTTP:
+  case AdapterType::SOCKS5:
+    assertTrue(v.HasMember(egress::SERVER), PichiError::BAD_JSON, msg::MISSING_SERVER_FIELD);
+    egress.server_ = parse<Endpoint>(v[egress::SERVER]);
+    if (v.HasMember(egress::CREDENTIAL))
+      egress.credential_ = parse<UpEgressCredential>(v[egress::CREDENTIAL]);
+    if (v.HasMember(egress::TLS)) egress.tls_ = parse<TlsEgressOption>(v[egress::TLS]);
+    break;
+  case AdapterType::SS:
+    assertTrue(v.HasMember(egress::SERVER), PichiError::BAD_JSON, msg::MISSING_SERVER_FIELD);
+    assertTrue(v.HasMember(egress::OPTION), PichiError::BAD_JSON, msg::MISSING_OPTION_FIELD);
+    egress.server_ = parse<Endpoint>(v[egress::SERVER]);
+    egress.opt_ = parse<ShadowsocksOption>(v[egress::OPTION]);
+    break;
+  case AdapterType::TROJAN:
+    assertTrue(v.HasMember(egress::SERVER), PichiError::BAD_JSON, msg::MISSING_SERVER_FIELD);
+    assertTrue(v.HasMember(egress::CREDENTIAL), PichiError::BAD_JSON, msg::MISSING_CRED_FIELD);
+    assertTrue(v.HasMember(egress::TLS), PichiError::BAD_JSON, msg::MISSING_TLS_FIELD);
+    egress.server_ = parse<Endpoint>(v[egress::SERVER]);
+    egress.credential_ = parse<TrojanEgressCredential>(v[egress::CREDENTIAL]);
+    egress.tls_ = parse<TlsEgressOption>(v[egress::TLS]);
+    if (v.HasMember(egress::WEBSOCKET))
+      egress.websocket_ = parse<WebsocketOption>(v[egress::WEBSOCKET]);
+    break;
+  case AdapterType::VMESS:
+    assertTrue(v.HasMember(egress::SERVER), PichiError::BAD_JSON, msg::MISSING_SERVER_FIELD);
+    assertTrue(v.HasMember(egress::CREDENTIAL), PichiError::BAD_JSON, msg::MISSING_CRED_FIELD);
+    egress.server_ = parse<Endpoint>(v[egress::SERVER]);
+    egress.credential_ = parse<VMessEgressCredential>(v[egress::CREDENTIAL]);
+    if (v.HasMember(egress::TLS)) egress.tls_ = parse<TlsEgressOption>(v[egress::TLS]);
+    if (v.HasMember(egress::WEBSOCKET))
+      egress.websocket_ = parse<WebsocketOption>(v[egress::WEBSOCKET]);
     break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
+    break;
   }
-
-  return evo;
+  return egress;
 }
 
 bool operator==(Egress const& lhs, Egress const& rhs)
 {
-  return lhs.type_ == rhs.type_ && lhs.host_ == rhs.host_ && lhs.port_ == rhs.port_ &&
-         lhs.method_ == rhs.method_ && lhs.password_ == rhs.password_ && lhs.mode_ == rhs.mode_ &&
-         lhs.delay_ == rhs.delay_ && lhs.tls_ == rhs.tls_ && lhs.insecure_ == rhs.insecure_ &&
-         lhs.caFile_ == rhs.caFile_;
+  if (lhs.type_ != rhs.type_) return false;
+  switch (lhs.type_) {
+  case AdapterType::DIRECT:
+    return true;
+  case AdapterType::REJECT:
+    return lhs.opt_ == rhs.opt_;
+  case AdapterType::HTTP:
+  case AdapterType::SOCKS5:
+    return lhs.server_ == rhs.server_ && lhs.tls_ == rhs.tls_ && lhs.credential_ == rhs.credential_;
+  case AdapterType::SS:
+    return lhs.server_ == rhs.server_ && lhs.opt_ == rhs.opt_;
+  case AdapterType::TROJAN:
+    return lhs.server_ == rhs.server_ && lhs.credential_ == rhs.credential_ &&
+           lhs.tls_ == rhs.tls_ && lhs.websocket_ == rhs.websocket_;
+  case AdapterType::VMESS:
+    return lhs.server_ == rhs.server_ && lhs.credential_ == rhs.credential_ &&
+           lhs.tls_ == rhs.tls_ && lhs.websocket_ == rhs.websocket_;
+  default:
+    fail();
+  }
 }
 
 }  // namespace pichi::vo

@@ -4,29 +4,25 @@
 #include <optional>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/enumerations.hpp>
+#include <pichi/vo/credential.hpp>
+#include <pichi/vo/options.hpp>
 #include <rapidjson/document.h>
-#include <stdint.h>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
+#include <variant>
 #include <vector>
 
 namespace pichi::vo {
 
 struct Ingress {
+  using Credential =
+      std::variant<UpIngressCredential, TrojanIngressCredential, VMessIngressCredential>;
+  using Options = std::variant<TunnelOption, ShadowsocksOption, TrojanOption>;
+
   AdapterType type_;
-  std::string bind_ = {};
-  uint16_t port_ = 0;
-  std::optional<CryptoMethod> method_ = {};
-  std::optional<std::string> password_ = {};
-  std::unordered_map<std::string, std::string> credentials_ = {};
-  std::optional<bool> tls_ = {};
-  std::optional<std::string> certFile_ = {};
-  std::optional<std::string> keyFile_ = {};
-  std::vector<pichi::Endpoint> destinations_ = {};
-  std::optional<BalanceType> balance_ = {};
-  std::optional<Endpoint> remote_ = {};
-  std::unordered_set<std::string> passwords_ = {};
+  std::vector<Endpoint> bind_ = {};
+  std::optional<Credential> credential_ = {};
+  std::optional<Options> opt_ = {};
+  std::optional<TlsIngressOption> tls_ = {};
+  std::optional<WebsocketOption> websocket_ = {};
 };
 
 extern rapidjson::Value toJson(Ingress const&, rapidjson::Document::AllocatorType&);

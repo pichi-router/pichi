@@ -3,25 +3,24 @@
 
 #include <optional>
 #include <pichi/common/enumerations.hpp>
+#include <pichi/vo/credential.hpp>
+#include <pichi/vo/options.hpp>
 #include <rapidjson/document.h>
-#include <stdint.h>
-#include <string>
-#include <utility>
+#include <variant>
 
 namespace pichi::vo {
 
 struct Egress {
+  using Credential =
+      std::variant<UpEgressCredential, TrojanEgressCredential, VMessEgressCredential>;
+  using Option = std::variant<RejectOption, ShadowsocksOption>;
+
   AdapterType type_;
-  std::optional<std::string> host_ = {};
-  std::optional<uint16_t> port_ = {};
-  std::optional<CryptoMethod> method_ = {};
-  std::optional<std::string> password_ = {};
-  std::optional<DelayMode> mode_ = {};
-  std::optional<uint16_t> delay_ = {};
-  std::optional<std::pair<std::string, std::string>> credential_ = {};
-  std::optional<bool> tls_ = {};
-  std::optional<bool> insecure_ = {};
-  std::optional<std::string> caFile_ = {};
+  std::optional<Endpoint> server_;
+  std::optional<Credential> credential_;
+  std::optional<Option> opt_;
+  std::optional<TlsEgressOption> tls_;
+  std::optional<WebsocketOption> websocket_;
 };
 
 extern rapidjson::Value toJson(Egress const&, rapidjson::Document::AllocatorType&);

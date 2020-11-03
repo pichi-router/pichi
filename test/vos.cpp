@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE pichi vos test
 
 #include "utils.hpp"
+#include "vo.hpp"
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/vo/keys.hpp>
@@ -145,31 +146,45 @@ BOOST_AUTO_TEST_CASE(toJson_DelayMode)
       {{DelayMode::FIXED, vo::delay::FIXED}, {DelayMode::RANDOM, vo::delay::RANDOM}});
 }
 
-BOOST_AUTO_TEST_CASE(parsePort_Incorrect_Type)
+BOOST_AUTO_TEST_CASE(parse_VMessSecurity)
+{
+  verifyParsing<VMessSecurity>(
+      {{vo::security::AUTO, VMessSecurity::AUTO},
+       {vo::security::NONE, VMessSecurity::NONE},
+       {vo::security::CHACHA20_IETF_POLY1305, VMessSecurity::CHACHA20_IETF_POLY1305},
+       {vo::security::AES_128_GCM, VMessSecurity::AES_128_GCM}});
+}
+
+BOOST_AUTO_TEST_CASE(toJson_VMessSecurity)
+{
+  verifyToJson<VMessSecurity>(
+      {{VMessSecurity::AUTO, vo::security::AUTO},
+       {VMessSecurity::NONE, vo::security::NONE},
+       {VMessSecurity::CHACHA20_IETF_POLY1305, vo::security::CHACHA20_IETF_POLY1305},
+       {VMessSecurity::AES_128_GCM, vo::security::AES_128_GCM}});
+}
+
+BOOST_AUTO_TEST_CASE(parse_Uint16_Incorrect_Type)
 {
   for (auto&& v : {Value{0.0}, Value{kStringType}, Value{kNullType}, Value{kTrueType},
                    Value{kFalseType}, Value{kObjectType}, Value{kArrayType}}) {
-    BOOST_CHECK_EXCEPTION(vo::parsePort(v), Exception, verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(vo::parse<uint16_t>(v), Exception, verifyException<PichiError::BAD_JSON>);
   }
 }
 
-BOOST_AUTO_TEST_CASE(parsePort_Out_Of_Range)
+BOOST_AUTO_TEST_CASE(parse_Uint16_Out_Of_Range)
 {
-  BOOST_CHECK_EXCEPTION(vo::parsePort(Value{-1}), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(vo::parse<uint16_t>(Value{-1}), Exception,
+                        verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(
-      vo::parsePort(Value{static_cast<uint32_t>(numeric_limits<uint16_t>::max()) + 1}), Exception,
-      verifyException<PichiError::BAD_JSON>);
+      vo::parse<uint16_t>(Value{static_cast<uint32_t>(numeric_limits<uint16_t>::max()) + 1}),
+      Exception, verifyException<PichiError::BAD_JSON>);
 }
 
-BOOST_AUTO_TEST_CASE(parsePort_No_Random_Port)
+BOOST_AUTO_TEST_CASE(parse_Uint16_All_Numbers)
 {
-  BOOST_CHECK_EXCEPTION(vo::parsePort(Value{0}), Exception, verifyException<PichiError::BAD_JSON>);
-}
-
-BOOST_AUTO_TEST_CASE(parsePort_All_Numbers)
-{
-  for (auto port = 1; port <= numeric_limits<uint16_t>::max(); ++port) {
-    BOOST_CHECK_EQUAL(port, vo::parsePort(Value{port}));
+  for (auto port = 0; port <= numeric_limits<uint16_t>::max(); ++port) {
+    BOOST_CHECK_EQUAL(port, vo::parse<uint16_t>(Value{port}));
   }
 }
 
@@ -206,8 +221,7 @@ BOOST_AUTO_TEST_CASE(parseDestinantions_Empty_Object)
 
 BOOST_AUTO_TEST_CASE(parseDestinations_Incorrect_Port_Type)
 {
-  for (auto&& v :
-       {kNumberType, kStringType, kNullType, kTrueType, kFalseType, kObjectType, kArrayType}) {
+  for (auto&& v : {kStringType, kNullType, kTrueType, kFalseType, kObjectType, kArrayType}) {
     auto json = Value{kObjectType};
     json.AddMember(ph, Value{v}, alloc);
     BOOST_CHECK_EXCEPTION(vo::parseDestinantions(json), Exception,

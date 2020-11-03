@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/endpoint.hpp>
 #include <pichi/common/enumerations.hpp>
 #include <pichi/vo/iterator.hpp>
 #include <rapidjson/document.h>
@@ -17,7 +18,9 @@ extern rapidjson::Value toJson(AdapterType, rapidjson::Document::AllocatorType&)
 extern rapidjson::Value toJson(CryptoMethod, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(DelayMode, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(BalanceType, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(VMessSecurity, rapidjson::Document::AllocatorType&);
 extern rapidjson::Value toJson(std::string_view, rapidjson::Document::AllocatorType&);
+extern rapidjson::Value toJson(Endpoint const&, rapidjson::Document::AllocatorType&);
 
 template <typename InputIt>
 auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& alloc)
@@ -35,7 +38,7 @@ auto toJson(InputIt first, InputIt last, rapidjson::Document::AllocatorType& all
                          Endpoint>) {
     ret.SetObject();
     std::for_each(first, last, [&ret, &alloc](auto&& endpoint) {
-      ret.AddMember(toJson(endpoint.host_, alloc), portToJson(endpoint.port_), alloc);
+      ret.AddMember(toJson(endpoint.host_, alloc), rapidjson::Value{endpoint.port_}, alloc);
     });
   }
   else {

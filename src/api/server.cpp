@@ -27,16 +27,25 @@ using tcp = ip::tcp;
 
 namespace pichi::api {
 
-static auto const IMMEDIATE_REJECTOR =
-    vo::Egress{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::FIXED, 0_u16};
-static auto const RANDOM_REJECTOR =
-    vo::Egress{AdapterType::REJECT, {}, {}, {}, {}, DelayMode::RANDOM};
+static auto createRejectEgressVO(DelayMode mode)
+{
+  auto option = vo::RejectOption{};
+  option.mode_ = mode;
+  if (mode == DelayMode::FIXED) option.delay_ = 0_u16;
+  auto egress = vo::Egress{};
+  egress.type_ = AdapterType::REJECT;
+  egress.opt_ = move(option);
+  return egress;
+}
+
+static auto const IMMEDIATE_REJECTOR = createRejectEgressVO(DelayMode::FIXED);
+static auto const RANDOM_REJECTOR = createRejectEgressVO(DelayMode::RANDOM);
 static auto const IV_EXPIRE_TIME = 1h;
 
 static auto resolve(Endpoint const& remote, asio::io_context& io, asio::yield_context yield)
 {
   auto ec = sys::error_code{};
-  auto r = tcp::resolver{io}.async_resolve(remote.host_, remote.port_, yield[ec]);
+  auto r = tcp::resolver{io}.async_resolve(remote.host_, to_string(remote.port_), yield[ec]);
   return ec ? tcp::resolver::results_type{} : r;
 }
 
@@ -85,10 +94,11 @@ void Server::listen(string_view address, uint16_t port)
   });
 }
 
-template <typename Yield> void Server::listen(string_view iname, IngressHolder& holder, Yield yield)
+template <typename Acceptor, typename Yield>
+void Server::listen(Acceptor& acceptor, string_view iname, IngressHolder& holder, Yield yield)
 {
-  while (holder.acceptor_.is_open()) {
-    auto ingress = net::makeIngress(holder, holder.acceptor_.async_accept(yield));
+  while (true) {
+    auto ingress = net::makeIngress(holder, acceptor.async_accept(yield));
     auto p = ingress.get();
     // FIXME Not copying for ingress because net::spawn ensures that
     //   Function and ExceptionHandler share the same scope.
@@ -114,7 +124,7 @@ template <typename Yield> void Server::listen(string_view iname, IngressHolder& 
             if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
               session->start(remote);
             else
-              session->start(remote, makeEndpoint(*evo.host_, *evo.port_));
+              session->start(remote, *evo.server_);
           }
         },
         [ingress = p](auto eptr, auto yield) noexcept { ingress->disconnect(eptr, yield); });
@@ -161,13 +171,15 @@ vo::Egress const& Server::route(Endpoint const& remote, string_view iname, Adapt
 
 void Server::startIngress(string_view iname, IngressHolder& holder)
 {
-  /*
-   * IngressVO named `iname` has already been inserted into `ingresses_`.
-   * It should be removed if exception occurs.
-   */
-  net::spawn(
-      strand_, [this, iname, &holder](auto yield) { listen(iname, holder, yield); },
-      [this, iname](auto eptr, auto) noexcept { removeIngress(eptr, iname); });
+  for_each(begin(holder.acceptors_), end(holder.acceptors_),
+           [this, iname, &holder](auto&& acceptor) {
+             net::spawn(
+                 strand_,
+                 [this, iname, &acceptor, &holder](auto yield) {
+                   this->listen(acceptor, iname, holder, yield);
+                 },
+                 [this, iname](auto eptr, auto) noexcept { this->removeIngress(eptr, iname); });
+           });
 }
 
 }  // namespace pichi::api

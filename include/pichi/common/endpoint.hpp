@@ -21,7 +21,7 @@ namespace pichi {
 struct Endpoint {
   EndpointType type_;
   std::string host_;
-  std::string port_;
+  uint16_t port_;
 };
 
 template <typename Int> void hton(Int src, MutableBuffer<uint8_t> dst)

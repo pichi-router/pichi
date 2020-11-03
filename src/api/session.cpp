@@ -39,7 +39,8 @@ void Session::start(Endpoint const& remote, Endpoint const& next)
       strand_,
       [=, self = shared_from_this()](auto yield) {
         auto resolver = tcp::resolver{strand_.context()};
-        egress_->connect(remote, resolver.async_resolve(next.host_, next.port_, yield), yield);
+        egress_->connect(remote, resolver.async_resolve(next.host_, to_string(next.port_), yield),
+                         yield);
         ingress_->confirm(yield);
         net::spawn(
             strand_, [self, this](auto yield) { bridge(*ingress_, *egress_, yield); },

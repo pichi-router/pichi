@@ -542,11 +542,11 @@ components:
           type: string
           enum:
             - ss
-        ss:
+        option:
           $ref: '#/components/schemas/ShadowsocksOption'
       required:
         - type
-        - ss
+        - option
     TunnelIngress:
       description: 'Tunnel ingress object'
       type: object
@@ -555,11 +555,11 @@ components:
           type: string
           enum:
             - tunnel
-        tunnel:
+        option:
           $ref: '#/components/schemas/TunnelOption'
       required:
         - type
-        - tunnel
+        - option
     HttpSocks5Ingress:
       description: "HTTP/Socks5 ingress object"
       type: object
@@ -585,7 +585,7 @@ components:
           type: string
           enum:
             - trojan
-        trojan:
+        option:
           description: "The extra options for Trojan ingress"
           type: object
           properties:
@@ -604,7 +604,7 @@ components:
           $ref: '#/components/schemas/WebsocketOption'
       required:
         - type
-        - trojan
+        - option
         - credentials
         - tls
     VMessIngress:
@@ -645,7 +645,7 @@ components:
           type: string
           enum:
             - reject
-        reject:
+        option:
           $ref: '#/components/schemas/RejectOption'
       required:
         - type

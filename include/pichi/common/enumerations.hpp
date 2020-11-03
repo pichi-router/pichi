@@ -5,7 +5,7 @@ namespace pichi {
 
 enum class EndpointType { DOMAIN_NAME, IPV4, IPV6 };
 
-enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS, TUNNEL, TROJAN };
+enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS, TUNNEL, TROJAN, VMESS };
 
 enum class HashAlgorithm { MD5, SHA1, SHA224, SHA256, SHA384, SHA512 };
 
@@ -50,6 +50,7 @@ enum class CryptoMethod {
 
 enum class DelayMode { RANDOM, FIXED };
 enum class BalanceType { RANDOM, ROUND_ROBIN, LEAST_CONN };
+enum class VMessSecurity { AUTO, NONE, CHACHA20_IETF_POLY1305, AES_128_GCM };
 
 enum class PichiError {
   OK = 0,

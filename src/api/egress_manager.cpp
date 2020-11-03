@@ -6,11 +6,14 @@ using namespace std;
 
 namespace pichi::api {
 
-void EgressManager::update(string const& name, VO vo)
+static auto DEFAULT_EGRESS_NAME = "direct";
+
+EgressManager::EgressManager() : c_{{DEFAULT_EGRESS_NAME, {}}}
 {
-  assertFalse(vo.tls_.has_value() && *vo.tls_, PichiError::SEMANTIC_ERROR, "TLS not supported");
-  c_[name] = move(vo);
+  c_[DEFAULT_EGRESS_NAME].type_ = AdapterType::DIRECT;
 }
+
+void EgressManager::update(string const& name, VO vo) { c_[name] = move(vo); }
 
 void EgressManager::erase(string_view name)
 {

@@ -18,7 +18,7 @@ private:
   using ConstIterator = typename Container::const_iterator;
 
 public:
-  EgressManager() = default;
+  EgressManager();
 
   void update(std::string const&, VO);
   void erase(std::string_view);
@@ -28,7 +28,7 @@ public:
   ConstIterator find(std::string_view) const;
 
 private:
-  Container c_ = {{"direct", {AdapterType::DIRECT}}};
+  Container c_;
 };
 
 }  // namespace pichi::api

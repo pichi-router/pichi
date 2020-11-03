@@ -22,7 +22,8 @@ class Server {
 private:
   using ResolveResult = boost::asio::ip::tcp::resolver::results_type;
 
-  template <typename Yield> void listen(std::string_view, IngressHolder&, Yield yield);
+  template <typename Acceptor, typename Yield>
+  void listen(Acceptor&, std::string_view, IngressHolder&, Yield yield);
   template <typename ExceptionPtr> void removeIngress(ExceptionPtr, std::string_view);
   vo::Egress const& route(Endpoint const&, std::string_view ingress, AdapterType,
                           ResolveResult const&);

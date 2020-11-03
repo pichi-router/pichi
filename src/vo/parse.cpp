@@ -42,6 +42,7 @@ template <> AdapterType parse(json::Value const& v)
   if (str == type::SS) return AdapterType::SS;
   if (str == type::TUNNEL) return AdapterType::TUNNEL;
   if (str == type::TROJAN) return AdapterType::TROJAN;
+  if (str == type::VMESS) return AdapterType::VMESS;
   fail(PichiError::BAD_JSON, msg::AT_INVALID);
 }
 
@@ -81,13 +82,32 @@ template <> BalanceType parse(json::Value const& v)
   fail(PichiError::BAD_JSON, msg::BA_INVALID);
 }
 
-uint16_t parsePort(json::Value const& v)
+template <> VMessSecurity parse(json::Value const& v)
+{
+  assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
+  auto str = string_view{v.GetString()};
+  if (str == security::AUTO) return VMessSecurity::AUTO;
+  if (str == security::NONE) return VMessSecurity::NONE;
+  if (str == security::CHACHA20_IETF_POLY1305) return VMessSecurity::CHACHA20_IETF_POLY1305;
+  if (str == security::AES_128_GCM) return VMessSecurity::AES_128_GCM;
+  fail(PichiError::BAD_JSON, msg::SEC_INVALID);
+}
+
+template <> uint16_t parse(json::Value const& v)
 {
   assertTrue(v.IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
-  auto port = v.GetInt();
-  assertTrue(port > 0_u16, PichiError::BAD_JSON, msg::PT_INVALID);
-  assertTrue(port <= numeric_limits<uint16_t>::max(), PichiError::BAD_JSON, msg::PT_INVALID);
-  return static_cast<uint16_t>(port);
+  auto uint16 = v.GetInt();
+  assertTrue(uint16 >= numeric_limits<uint16_t>::min(), PichiError::BAD_JSON, msg::UINT16_INVALID);
+  assertTrue(uint16 <= numeric_limits<uint16_t>::max(), PichiError::BAD_JSON, msg::UINT16_INVALID);
+  return static_cast<uint16_t>(uint16);
+}
+
+template <> Endpoint parse(json::Value const& v)
+{
+  assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
+  assertTrue(v.HasMember(endpoint::HOST), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
+  assertTrue(v.HasMember(endpoint::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
+  return makeEndpoint(parse<string>(v[endpoint::HOST]), parse<uint16_t>(v[endpoint::PORT]));
 }
 
 string parseNameOrPassword(json::Value const& v)
@@ -104,7 +124,7 @@ vector<Endpoint> parseDestinantions(json::Value const& v)
 
   auto ret = vector<Endpoint>{};
   transform(v.MemberBegin(), v.MemberEnd(), back_inserter(ret), [](auto&& item) {
-    return makeEndpoint(parse<string>(item.name), parsePort(item.value));
+    return makeEndpoint(parse<string>(item.name), parse<uint16_t>(item.value));
   });
   return ret;
 }
