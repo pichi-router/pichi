@@ -10,6 +10,12 @@
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 
+#ifdef _MSC_VER
+#ifdef OPTIONAL
+#undef OPTIONAL
+#endif OPTIONAL
+#endif  // _MSC_VER
+
 using namespace std;
 using namespace rapidjson;
 namespace mpl = boost::mpl;
@@ -136,6 +142,13 @@ template <AdapterType type> Egress defaultEgress()
   return egress;
 }
 
+template <AdapterType type, typename Key> void verifyMandatoryField(Key&& key)
+{
+  auto json = defaultEgressJson<type>();
+  json.RemoveMember(key);
+  BOOST_CHECK_EXCEPTION(parse<Egress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
 {
   BOOST_CHECK(defaultEgress<Trait::type_>() == parse<Egress>(defaultEgressJson<Trait::type_>()));
@@ -165,16 +178,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Invalid_Types, Trait, AllAdapterTraits)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
 {
-  auto verifyMandatoryField = [](auto key) {
-    auto json = defaultEgressJson<Trait::type_>();
-    json.RemoveMember(key);
-    BOOST_CHECK_EXCEPTION(parse<Egress>(json), Exception, verifyException<PichiError::BAD_JSON>);
-  };
-  if constexpr (Trait::server_ == Present::MANDATORY) verifyMandatoryField(egress::SERVER);
-  if constexpr (Trait::credential_ == Present::MANDATORY) verifyMandatoryField(egress::CREDENTIAL);
-  if constexpr (Trait::option_ == Present::MANDATORY) verifyMandatoryField(egress::OPTION);
-  if constexpr (Trait::tls_ == Present::MANDATORY) verifyMandatoryField(egress::TLS);
-  if constexpr (Trait::websocket_ == Present::MANDATORY) verifyMandatoryField(egress::WEBSOCKET);
+  if constexpr (Trait::server_ == Present::MANDATORY)
+    verifyMandatoryField<Trait::type_>(egress::SERVER);
+  if constexpr (Trait::credential_ == Present::MANDATORY)
+    verifyMandatoryField<Trait::type_>(egress::CREDENTIAL);
+  if constexpr (Trait::option_ == Present::MANDATORY)
+    verifyMandatoryField<Trait::type_>(egress::OPTION);
+  if constexpr (Trait::tls_ == Present::MANDATORY) verifyMandatoryField<Trait::type_>(egress::TLS);
+  if constexpr (Trait::websocket_ == Present::MANDATORY)
+    verifyMandatoryField<Trait::type_>(egress::WEBSOCKET);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Optional_Fields, Trait, AllAdapterTraits)

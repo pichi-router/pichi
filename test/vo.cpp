@@ -38,7 +38,8 @@ template <typename Credential> Credential defaultCredential()
   else if constexpr (is_same_v<Credential, VMessEgressCredential>) {
     return VMessEgressCredential{ph, 0_u16, VMessSecurity::AUTO};
   }
-  return {};
+  else
+    return {};
 }
 
 template UpIngressCredential defaultCredential();
@@ -79,7 +80,8 @@ template <typename Credential> Value defaultCredentialJson()
           .AddMember(credential::SECURITY, toJson(VMessSecurity::AUTO, alloc), alloc);
     });
   }
-  return {};
+  else
+    return {};
 }
 
 template Value defaultCredentialJson<UpIngressCredential>();
@@ -159,7 +161,8 @@ template <typename Option> Option defaultOption()
   else if constexpr (is_same_v<Option, WebsocketOption>) {
     return {ph, ph};
   }
-  return {};
+  else
+    return {};
 }
 
 template ShadowsocksOption defaultOption<>();

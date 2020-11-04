@@ -10,6 +10,12 @@
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 
+#ifdef _MSC_VER
+#ifdef OPTIONAL
+#undef OPTIONAL
+#endif OPTIONAL
+#endif  // _MSC_VER
+
 using namespace std;
 using namespace rapidjson;
 namespace mpl = boost::mpl;
@@ -122,6 +128,13 @@ template <AdapterType type> Ingress defaultIngress()
   return ingress;
 }
 
+template <AdapterType type, typename Key> void verifyMandatoryField(Key&& key)
+{
+  auto json = defaultIngressJson<type>();
+  json.RemoveMember(key);
+  BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
 {
   BOOST_CHECK(defaultIngress<Trait::type_>() == parse<Ingress>(defaultIngressJson<Trait::type_>()));
@@ -174,44 +187,41 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Empty_Bind, Trait, AllAdapterTraits)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
 {
-  auto verifyMandatoryField = [](auto key) {
-    auto json = defaultIngressJson<Trait::type_>();
-    json.RemoveMember(key);
-    BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
-  };
-  if constexpr (Trait::credential_ == Present::MANDATORY) verifyMandatoryField(ingress::CREDENTIAL);
-  if constexpr (Trait::option_ == Present::MANDATORY) verifyMandatoryField(ingress::OPTION);
-  if constexpr (Trait::tls_ == Present::MANDATORY) verifyMandatoryField(ingress::TLS);
-  if constexpr (Trait::websocket_ == Present::MANDATORY) verifyMandatoryField(ingress::WEBSOCKET);
+  if constexpr (Trait::credential_ == Present::MANDATORY)
+    verifyMandatoryField<Trait::type_>(ingress::CREDENTIAL);
+  if constexpr (Trait::option_ == Present::MANDATORY)
+    verifyMandatoryField<Trait::type_>(ingress::OPTION);
+  if constexpr (Trait::tls_ == Present::MANDATORY) verifyMandatoryField<Trait::type_>(ingress::TLS);
+  if constexpr (Trait::websocket_ == Present::MANDATORY)
+    verifyMandatoryField<Trait::type_>(ingress::WEBSOCKET);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Optional_Fields, Trait, AllAdapterTraits)
 {
-  constexpr auto type = Trait::type_;
   if constexpr (Trait::credential_ == Present::OPTIONAL) {
     using Credential = typename Trait::Credential;
-    auto ingress = defaultIngress<type>();
+    auto ingress = defaultIngress<Trait::type_>();
     ingress.credential_ = defaultCredential<Credential>();
-    BOOST_CHECK(parse<Ingress>(defaultIngressJson<type>().AddMember(
+    BOOST_CHECK(parse<Ingress>(defaultIngressJson<Trait::type_>().AddMember(
                     ingress::CREDENTIAL, defaultCredentialJson<Credential>(), alloc)) == ingress);
   }
   if constexpr (Trait::option_ == Present::OPTIONAL) {
     using Option = typename Trait::Option;
-    auto ingress = defaultIngress<type>();
+    auto ingress = defaultIngress<Trait::type_>();
     ingress.opt_ = defaultOption<Option>();
-    BOOST_CHECK(parse<Ingress>(defaultIngressJson<type>().AddMember(
+    BOOST_CHECK(parse<Ingress>(defaultIngressJson<Trait::type_>().AddMember(
                     ingress::OPTION, defaultOptionJson<Option>(), alloc)) == ingress);
   }
   if constexpr (Trait::tls_ == Present::OPTIONAL) {
-    auto ingress = defaultIngress<type>();
+    auto ingress = defaultIngress<Trait::type_>();
     ingress.tls_ = defaultOption<TlsIngressOption>();
-    BOOST_CHECK(parse<Ingress>(defaultIngressJson<type>().AddMember(
+    BOOST_CHECK(parse<Ingress>(defaultIngressJson<Trait::type_>().AddMember(
                     ingress::TLS, defaultOptionJson<TlsIngressOption>(), alloc)) == ingress);
   }
   if constexpr (Trait::websocket_ == Present::OPTIONAL) {
-    auto ingress = defaultIngress<type>();
+    auto ingress = defaultIngress<Trait::type_>();
     ingress.websocket_ = defaultOption<WebsocketOption>();
-    BOOST_CHECK(parse<Ingress>(defaultIngressJson<type>().AddMember(
+    BOOST_CHECK(parse<Ingress>(defaultIngressJson<Trait::type_>().AddMember(
                     ingress::WEBSOCKET, defaultOptionJson<WebsocketOption>(), alloc)) == ingress);
   }
 }
