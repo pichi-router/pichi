@@ -208,8 +208,8 @@ unique_ptr<pichi::Egress> makeHttpOrSocks5Egress(vo::Egress const& vo, asio::io_
   auto cred = vo.credential_.has_value() ? get<vo::UpEgressCredential>(*vo.credential_).credential_
                                          : NoCredential{};
   if (vo.tls_.has_value())
-    return make_unique<Egress<TLSStream>>(move(cred), createTlsContext(*vo.tls_, vo.server_->host_),
-                                          io);
+    return make_unique<Egress<TLSStream>>(move(cred), vo.tls_->sni_,
+                                          createTlsContext(*vo.tls_, vo.server_->host_), io);
   else
     return make_unique<Egress<TCPSocket>>(move(cred), io);
 }
@@ -254,7 +254,7 @@ unique_ptr<Egress> makeEgress(vo::Egress const& vo, asio::io_context& io)
   switch (vo.type_) {
   case AdapterType::TROJAN:
     return make_unique<TrojanEgress<TLSStream>>(
-        get<vo::TrojanEgressCredential>(*vo.credential_).credential_,
+        get<vo::TrojanEgressCredential>(*vo.credential_).credential_, vo.tls_->sni_,
         createTlsContext(*vo.tls_, vo.server_->host_), io);
   case AdapterType::HTTP:
     return makeHttpOrSocks5Egress<HttpEgress>(vo, io);
