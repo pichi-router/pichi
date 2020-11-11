@@ -26,6 +26,7 @@ private:
 
 public:
   using executor_type = typename Stream::executor_type;
+  using next_layer_type = typename Stream::next_layer_type;
 
   template <typename... Args>
   TlsStream(Context&& ctx, Args&&... args)
@@ -45,11 +46,8 @@ public:
 
   bool is_open() const { return stream_.next_layer().is_open(); }
 
-  template <typename ConnectHandler>
-  auto async_connect(typename Socket::endpoint_type const& peer, ConnectHandler&& handler)
-  {
-    return stream_.next_layer().async_connect(peer, std::forward<ConnectHandler>(handler));
-  }
+  auto& next_layer() { return stream_.next_layer(); }
+  auto const& next_layer() const { return stream_.next_layer(); }
 
   template <typename HandshakeHandler> auto async_handshake(HandshakeHandler&& handler)
   {
@@ -67,8 +65,6 @@ public:
   {
     return stream_.async_shutdown(std::forward<ShutdownHandler>(handler));
   }
-
-  void close(ErrorCode& ec) { stream_.next_layer().close(ec); }
 
   template <typename MutableBufferSequence, typename ReadHandler>
   auto async_read_some(MutableBufferSequence const& buf, ReadHandler&& handler)

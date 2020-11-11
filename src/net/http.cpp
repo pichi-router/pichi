@@ -304,7 +304,7 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr ep
 
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 {
-  handshake(stream_, yield);
+  accept(stream_, yield);
 
   readHttpHeader(stream_, reqCache_, reqParser_, yield);
   auto& req = reqParser_.get();

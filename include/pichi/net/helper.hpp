@@ -2,13 +2,14 @@
 #define PICHI_NET_HELPER_HPP
 
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/connect.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/beast/core/stream_traits.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/write.hpp>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/stream/asio.hpp>
 #include <pichi/stream/traits.hpp>
 #include <type_traits>
 
@@ -47,7 +48,7 @@ void connect(Results next, Stream& stream, Yield yield)
 {
   suppressC4100(next, yield);
   if constexpr (stream::IsAsyncStream<Stream>)
-    boost::asio::asyncConnect(stream, next, yield);
+    boost::asio::async_connect(boost::beast::get_lowest_layer(stream), next, yield);
   else
     stream.connect();
   if constexpr (!stream::IsRawStream<Stream>) {
@@ -55,7 +56,7 @@ void connect(Results next, Stream& stream, Yield yield)
   }
 }
 
-template <typename Stream, typename Yield> void handshake(Stream& stream, Yield yield)
+template <typename Stream, typename Yield> void accept(Stream& stream, Yield yield)
 {
   suppressC4100(stream, yield);
   if constexpr (!stream::IsRawStream<Stream>) {
@@ -129,13 +130,12 @@ template <typename Stream, typename Yield> void close(Stream& stream, Yield yiel
   // This function is supposed to be 'noexcept' because it's always invoked in
   // the desturctors.
 
-  static_assert(!std::is_const_v<Stream>);
   suppressC4100(yield);
 
   // TODO log the errors
   auto ec = boost::system::error_code{};
   if constexpr (!stream::IsRawStream<Stream>) stream.async_shutdown(yield[ec]);
-  stream.close(ec);
+  boost::beast::get_lowest_layer(stream).close(ec);
 }
 
 }  // namespace pichi::net

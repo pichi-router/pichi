@@ -140,7 +140,7 @@ template <typename Stream> bool Socks5Ingress<Stream>::writable() const
 
 template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yield)
 {
-  handshake(stream_, yield);
+  accept(stream_, yield);
 
   auto buf = HeaderBuffer<uint8_t>{};
 

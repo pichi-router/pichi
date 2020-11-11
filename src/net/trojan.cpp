@@ -73,7 +73,7 @@ template <typename Stream> void TrojanIngress<Stream>::confirm(Yield) {}
 
 template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yield)
 {
-  handshake(stream_, yield);
+  accept(stream_, yield);
 
   received_.resize(readSome(stream_, received_, yield));
 
