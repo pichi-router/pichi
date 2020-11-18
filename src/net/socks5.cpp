@@ -139,9 +139,7 @@ template <typename Stream> bool Socks5Ingress<Stream>::writable() const
 
 template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yield)
 {
-  if constexpr (IsTlsStreamV<Stream>) {
-    stream_.async_handshake(asio::ssl::stream_base::server, yield);
-  }
+  handshake(stream_, yield);
 
   auto buf = HeaderBuffer<uint8_t>{};
 

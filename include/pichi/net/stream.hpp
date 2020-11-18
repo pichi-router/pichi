@@ -7,6 +7,8 @@
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/beast/core/flat_buffer.hpp>
+#include <deque>
 #include <functional>
 #include <optional>
 #include <pichi/common/adapter.hpp>
@@ -14,11 +16,6 @@
 #include <pichi/common/buffer.hpp>
 #include <type_traits>
 #include <utility>
-
-#ifdef BUILD_TEST
-#include <boost/beast/core/flat_buffer.hpp>
-#include <deque>
-#endif  // BUILD_TEST
 
 namespace pichi::net {
 
@@ -79,10 +76,11 @@ struct IteratorConnectOperator {
 
 }  // namespace detail
 
-template <typename T> struct IsTlsStream : public std::false_type {
+template <typename Stream> struct AsyncStream : public std::true_type {
 };
 
-template <typename T> inline constexpr bool IsTlsStreamV = IsTlsStream<T>::value;
+template <typename Stream> struct RawStream : public std::true_type {
+};
 
 /*
  *  1. TlsStream is about to implement both of AsyncReadStream and
@@ -128,10 +126,16 @@ public:
     return stream_.next_layer().async_connect(peer, std::forward<ConnectHandler>(handler));
   }
 
-  template <typename HandshakeHandler>
-  auto async_handshake(boost::asio::ssl::stream_base::handshake_type t, HandshakeHandler&& handler)
+  template <typename HandshakeHandler> auto async_handshake(HandshakeHandler&& handler)
   {
-    return stream_.async_handshake(t, std::forward<HandshakeHandler>(handler));
+    return stream_.async_handshake(boost::asio::ssl::stream_base::client,
+                                   std::forward<HandshakeHandler>(handler));
+  }
+
+  template <typename AcceptHandler> auto async_accept(AcceptHandler&& handler)
+  {
+    return stream_.async_handshake(boost::asio::ssl::stream_base::server,
+                                   std::forward<AcceptHandler>(handler));
   }
 
   template <typename ShutdownHandler> auto async_shutdown(ShutdownHandler&& handler)
@@ -159,10 +163,8 @@ private:
   Stream stream_;
 };
 
-template <typename T> struct IsTlsStream<TlsStream<T>> : public std::true_type {
+template <typename Socket> struct RawStream<TlsStream<Socket>> : public std::false_type {
 };
-
-#ifdef BUILD_TEST
 
 class TestSocket {
 private:
@@ -276,7 +278,8 @@ private:
   bool open_;
 };
 
-#endif  // BUILD_TEST
+template <> struct AsyncStream<TestStream> : public std::false_type {
+};
 
 /*
  *  boost::asio::async_connect only supports basic_socket, so asyncConnect is
@@ -306,6 +309,9 @@ auto asyncConnect(Stream& stream, Results results, ConnectHandler&& handler)
       },
       std::forward<ConnectHandler>(handler), stream, std::move(results));
 }
+
+template <typename Stream> inline constexpr bool IsRawStream = RawStream<Stream>::value;
+template <typename Stream> inline constexpr bool IsAsyncStream = AsyncStream<Stream>::value;
 
 }  // namespace pichi::net
 

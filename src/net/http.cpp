@@ -38,44 +38,6 @@ static auto const BASIC_AUTH_PATTERN = regex{"^basic ([a-z0-9+/]+={0,2})", regex
 
 template <bool isRequest> using Serializer = boost::beast::http::serializer<isRequest, Body>;
 
-template <typename Stream, bool isRequest>
-static auto writeHttp(Stream& s, Message<isRequest>& m, asio::yield_context yield)
-{
-  suppressC4100(yield);
-#ifdef BUILD_TEST
-  if constexpr (is_same_v<Stream, TestStream>)
-    return http::write(s, m);
-  else
-#endif  // BUILD_TEST
-    return http::async_write(s, m, yield);
-}
-
-template <typename Stream, bool isRequest>
-static auto writeHttpHeader(Stream& s, Message<isRequest>& m, asio::yield_context yield)
-{
-  suppressC4100(yield);
-  auto sr = Serializer<isRequest>{m};
-#ifdef BUILD_TEST
-  if constexpr (is_same_v<Stream, TestStream>)
-    return http::write_header(s, sr);
-  else
-#endif  // BUILD_TEST
-    return http::async_write_header(s, sr, yield);
-}
-
-template <typename Stream, bool isRequest, typename DynamicBuffer>
-static auto readHttpHeader(Stream& s, DynamicBuffer& buffer, Parser<isRequest>& parser,
-                           asio::yield_context yield)
-{
-  suppressC4100(yield);
-#ifdef BUILD_TEST
-  if constexpr (is_same_v<Stream, TestStream>)
-    return http::read_header(s, buffer, parser);
-  else
-#endif  // BUILD_TEST
-    return http::async_read_header(s, buffer, parser, yield);
-}
-
 static void assertNoError(sys::error_code ec)
 {
   if (ec) throw sys::system_error{ec};
@@ -239,7 +201,7 @@ static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
     addHostToTarget(m);
     addAuthenticationHeader(m, cred);
   }
-  writeHttpHeader(s, m, yield);
+  writeHttpHeader(s, Serializer<isRequest>{m}, yield);
 
   write(s, left, yield);
   cache.consume(cache.size());
@@ -341,9 +303,7 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr ep
 
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
 {
-  if constexpr (IsTlsStreamV<Stream>) {
-    stream_.async_handshake(asio::ssl::stream_base::server, yield);
-  }
+  handshake(stream_, yield);
 
   readHttpHeader(stream_, reqCache_, reqParser_, yield);
   auto& req = reqParser_.get();

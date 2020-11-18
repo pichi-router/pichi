@@ -72,8 +72,7 @@ template <typename Stream> void TrojanIngress<Stream>::confirm(Yield) {}
 
 template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yield)
 {
-  if constexpr (IsTlsStreamV<Stream>)
-    stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
+  handshake(stream_, yield);
 
   received_.resize(readSome(stream_, received_, yield));
 

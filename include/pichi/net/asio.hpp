@@ -5,6 +5,8 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/ssl/stream_base.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/beast/http/read.hpp>
+#include <boost/beast/http/write.hpp>
 #include <pichi/common/adapter.hpp>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/literals.hpp>
@@ -44,72 +46,97 @@ namespace pichi::net {
 template <typename Stream, typename Results, typename Yield>
 void connect(Results next, Stream& stream, Yield yield)
 {
-#ifdef BUILD_TEST
-  if constexpr (std::is_same_v<Stream, TestStream>) {
-    suppressC4100(next);
-    suppressC4100(yield);
-    stream.connect();
-    return;
-  }
-  else {
-#endif  // BUILD_TEST
+  suppressC4100(next, yield);
+  if constexpr (IsAsyncStream<Stream>)
     asyncConnect(stream, next, yield);
-#ifdef BUILD_TEST
+  else
+    stream.connect();
+  if constexpr (!IsRawStream<Stream>) {
+    stream.async_handshake(yield);
   }
-#endif  // BUILD_TEST
-  if constexpr (IsTlsStreamV<Stream>) {
-    stream.async_handshake(boost::asio::ssl::stream_base::client, yield);
+}
+
+template <typename Stream, typename Yield> void handshake(Stream& stream, Yield yield)
+{
+  suppressC4100(stream, yield);
+  if constexpr (!IsRawStream<Stream>) {
+    static_assert(IsAsyncStream<Stream>);
+    stream.async_accept(yield);
   }
 }
 
 template <typename Stream, typename Yield>
 void read(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
 {
-#ifdef BUILD_TEST
-  if constexpr (std::is_same_v<Stream, TestStream>)
-    boost::asio::read(stream, boost::asio::buffer(buf));
-  else
-#endif  // BUILD_TEST
+  suppressC4100(yield);
+  if constexpr (IsAsyncStream<Stream>)
     boost::asio::async_read(stream, boost::asio::buffer(buf), yield);
+  else
+    boost::asio::read(stream, boost::asio::buffer(buf));
 }
 
 template <typename Stream, typename Yield>
 size_t readSome(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
 {
-#ifdef BUILD_TEST
-  if constexpr (std::is_same_v<Stream, TestStream>) {
-    return stream.read_some(boost::asio::buffer(buf));
-  }
-  else
-#endif  // BUILD_TEST
+  suppressC4100(yield);
+  if constexpr (IsAsyncStream<Stream>)
     return stream.async_read_some(boost::asio::buffer(buf), yield);
+  else
+    return stream.read_some(boost::asio::buffer(buf));
+}
+
+template <typename Stream, typename Parser, typename DynamicBuffer, typename Yield>
+size_t readHttpHeader(Stream& stream, DynamicBuffer& buf, Parser& parser, Yield yield)
+{
+  suppressC4100(yield);
+  if constexpr (IsAsyncStream<Stream>)
+    return boost::beast::http::async_read_header(stream, buf, parser, yield);
+  else
+    return boost::beast::http::read_header(stream, buf, parser);
 }
 
 template <typename Stream, typename Yield>
 void write(Stream& stream, ConstBuffer<uint8_t> buf, Yield yield)
 {
-#ifdef BUILD_TEST
-  if constexpr (std::is_same_v<Stream, TestStream>)
-    boost::asio::write(stream, boost::asio::buffer(buf));
-  else
-#endif  // BUILD_TEST
+  suppressC4100(yield);
+  if constexpr (IsAsyncStream<Stream>)
     boost::asio::async_write(stream, boost::asio::buffer(buf), yield);
+  else
+    boost::asio::write(stream, boost::asio::buffer(buf));
+}
+
+template <typename Stream, typename Message, typename Yield>
+void writeHttp(Stream& stream, Message& msg, Yield yield)
+{
+  suppressC4100(yield);
+  if constexpr (IsAsyncStream<Stream>)
+    boost::beast::http::async_write(stream, msg, yield);
+  else
+    boost::beast::http::write(stream, msg);
+}
+
+template <typename Stream, typename Serializer, typename Yield>
+void writeHttpHeader(Stream& stream, Serializer&& sr, Yield yield)
+{
+  suppressC4100(yield);
+  if constexpr (IsAsyncStream<Stream>)
+    boost::beast::http::async_write_header(stream, sr, yield);
+  else
+    boost::beast::http::write_header(stream, sr);
 }
 
 template <typename Stream, typename Yield> void close(Stream& stream, Yield yield)
 {
   // This function is supposed to be 'noexcept' because it's always invoked in
   // the desturctors.
-  // TODO log it
+
+  static_assert(!std::is_const_v<Stream>);
+  suppressC4100(yield);
+
+  // TODO log the errors
   auto ec = boost::system::error_code{};
-  if constexpr (IsTlsStreamV<Stream>) {
-    stream.async_shutdown(yield[ec]);
-    stream.close(ec);
-  }
-  else {
-    suppressC4100(yield);
-    stream.close(ec);
-  }
+  if constexpr (!IsRawStream<Stream>) stream.async_shutdown(yield[ec]);
+  stream.close(ec);
 }
 
 }  // namespace pichi::net
