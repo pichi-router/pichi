@@ -20,6 +20,7 @@
 #include <pichi/net/trojan.hpp>
 #include <pichi/net/tunnel.hpp>
 #include <pichi/stream/tls.hpp>
+#include <pichi/stream/websocket.hpp>
 #include <pichi/vo/credential.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
@@ -39,7 +40,9 @@ namespace ssl = asio::ssl;
 namespace pichi::net {
 
 using TCPSocket = asio::ip::tcp::socket;
-using TLSStream = stream::TlsStream<TCPSocket>;
+using TlsStream = stream::TlsStream<TCPSocket>;
+using WsStream = stream::WsStream<TCPSocket>;
+using WssStream = stream::WsStream<TlsStream>;
 
 static auto createTlsContext(vo::TlsIngressOption const& option)
 {
@@ -195,7 +198,7 @@ template <template <typename> typename Ingress, typename Socket>
 unique_ptr<pichi::Ingress> makeHttpOrSocks5Ingress(vo::Ingress const& vo, Socket&& s)
 {
   if (vo.tls_.has_value())
-    return make_unique<Ingress<TLSStream>>(genAuthenticator(vo.credential_),
+    return make_unique<Ingress<TlsStream>>(genAuthenticator(vo.credential_),
                                            createTlsContext(*vo.tls_), forward<Socket>(s));
   else
     return make_unique<Ingress<TCPSocket>>(genAuthenticator(vo.credential_), forward<Socket>(s));
@@ -208,7 +211,7 @@ unique_ptr<pichi::Egress> makeHttpOrSocks5Egress(vo::Egress const& vo, asio::io_
   auto cred = vo.credential_.has_value() ? get<vo::UpEgressCredential>(*vo.credential_).credential_
                                          : NoCredential{};
   if (vo.tls_.has_value())
-    return make_unique<Egress<TLSStream>>(move(cred), vo.tls_->sni_,
+    return make_unique<Egress<TlsStream>>(move(cred), vo.tls_->sni_,
                                           createTlsContext(*vo.tls_, vo.server_->host_), io);
   else
     return make_unique<Egress<TCPSocket>>(move(cred), io);
@@ -231,11 +234,19 @@ unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, TCPSocket&& s)
   auto& vo = holder.vo_;
   switch (vo.type_) {
   case AdapterType::TROJAN:
-    return make_unique<TrojanIngress<TLSStream>>(
-        get<vo::TrojanOption>(*vo.opt_).remote_,
-        cbegin(get<vo::TrojanIngressCredential>(*vo.credential_).credential_),
-        cend(get<vo::TrojanIngressCredential>(*vo.credential_).credential_),
-        createTlsContext(*vo.tls_), move(s));
+    if (vo.websocket_)
+      return make_unique<TrojanIngress<WssStream>>(
+          get<vo::TrojanOption>(*vo.opt_).remote_,
+          cbegin(get<vo::TrojanIngressCredential>(*vo.credential_).credential_),
+          cend(get<vo::TrojanIngressCredential>(*vo.credential_).credential_), vo.websocket_->path_,
+          vo.websocket_->host_.value_or(vo.bind_.front().host_), createTlsContext(*vo.tls_),
+          move(s));
+    else
+      return make_unique<TrojanIngress<TlsStream>>(
+          get<vo::TrojanOption>(*vo.opt_).remote_,
+          cbegin(get<vo::TrojanIngressCredential>(*vo.credential_).credential_),
+          cend(get<vo::TrojanIngressCredential>(*vo.credential_).credential_),
+          createTlsContext(*vo.tls_), move(s));
   case AdapterType::HTTP:
     return makeHttpOrSocks5Ingress<HttpIngress>(vo, move(s));
   case AdapterType::SOCKS5:
@@ -253,9 +264,15 @@ unique_ptr<Egress> makeEgress(vo::Egress const& vo, asio::io_context& io)
 {
   switch (vo.type_) {
   case AdapterType::TROJAN:
-    return make_unique<TrojanEgress<TLSStream>>(
-        get<vo::TrojanEgressCredential>(*vo.credential_).credential_, vo.tls_->sni_,
-        createTlsContext(*vo.tls_, vo.server_->host_), io);
+    if (vo.websocket_)
+      return make_unique<TrojanEgress<WssStream>>(
+          get<vo::TrojanEgressCredential>(*vo.credential_).credential_, vo.websocket_->path_,
+          vo.websocket_->host_.value_or(vo.server_->host_), vo.tls_->sni_,
+          createTlsContext(*vo.tls_, vo.server_->host_), io);
+    else
+      return make_unique<TrojanEgress<TlsStream>>(
+          get<vo::TrojanEgressCredential>(*vo.credential_).credential_, vo.tls_->sni_,
+          createTlsContext(*vo.tls_, vo.server_->host_), io);
   case AdapterType::HTTP:
     return makeHttpOrSocks5Egress<HttpEgress>(vo, io);
   case AdapterType::SOCKS5:

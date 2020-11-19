@@ -43,6 +43,15 @@ inline const_buffer buffer(pichi::ConstBuffer<PodType> origin, size_t size)
 
 namespace pichi::net {
 
+template <typename Stream, typename Yield> void handshake(Stream& stream, Yield yield)
+{
+  static_assert(stream::IsAsyncStream<Stream>);
+  static_assert(!stream::IsRawStream<Stream>);
+  if constexpr (!stream::IsRawStream<typename Stream::next_layer_type>)
+    handshake(stream.next_layer(), yield);
+  stream.async_handshake(yield);
+}
+
 template <typename Stream, typename Results, typename Yield>
 void connect(Results next, Stream& stream, Yield yield)
 {
@@ -52,7 +61,7 @@ void connect(Results next, Stream& stream, Yield yield)
   else
     stream.connect();
   if constexpr (!stream::IsRawStream<Stream>) {
-    stream.async_handshake(yield);
+    handshake(stream, yield);
   }
 }
 
@@ -61,6 +70,9 @@ template <typename Stream, typename Yield> void accept(Stream& stream, Yield yie
   suppressC4100(stream, yield);
   if constexpr (!stream::IsRawStream<Stream>) {
     static_assert(stream::IsAsyncStream<Stream>);
+    if constexpr (!stream::IsRawStream<typename Stream::next_layer_type>) {
+      accept(stream.next_layer(), yield);
+    }
     stream.async_accept(yield);
   }
 }
