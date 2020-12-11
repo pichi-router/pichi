@@ -106,8 +106,8 @@ template <bool isRequest> static void addCloseHeader(Header<isRequest>& header)
    * FIXME Pichi doesn't actually do active closing. We wish upstream server
    *   could work correctly if we set 'close' header.
    */
-  header.set(http::field::connection, "close"sv);
-  header.set(http::field::proxy_connection, "close"sv);
+  header.set(http::field::connection, "close");
+  header.set(http::field::proxy_connection, "close");
 }
 
 static void addAuthenticationHeader(Header<true>& req, OptCredential const& cred)
