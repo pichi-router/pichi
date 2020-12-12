@@ -5,9 +5,10 @@
 #include <boost/asio/ssl/stream.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/socks5.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/stream/test.hpp>
+#include <pichi/stream/tls.hpp>
 #include <utility>
 
 using namespace std;
@@ -139,9 +140,7 @@ template <typename Stream> bool Socks5Ingress<Stream>::writable() const
 
 template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yield)
 {
-  if constexpr (IsTlsStreamV<Stream>) {
-    stream_.async_handshake(asio::ssl::stream_base::server, yield);
-  }
+  accept(stream_, yield);
 
   auto buf = HeaderBuffer<uint8_t>{};
 
@@ -199,10 +198,10 @@ template <typename Stream> void Socks5Ingress<Stream>::disconnect(exception_ptr 
 
 template class Socks5Ingress<tcp::socket>;
 
-template class Socks5Ingress<TlsStream<tcp::socket>>;
+template class Socks5Ingress<stream::TlsStream<tcp::socket>>;
 
 #ifdef BUILD_TEST
-template class Socks5Ingress<TestStream>;
+template class Socks5Ingress<stream::TestStream>;
 #endif  // BUILD_TEST
 
 template <typename Stream>
@@ -280,10 +279,10 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
 
 template class Socks5Egress<tcp::socket>;
 
-template class Socks5Egress<TlsStream<tcp::socket>>;
+template class Socks5Egress<stream::TlsStream<tcp::socket>>;
 
 #ifdef BUILD_TEST
-template class Socks5Egress<TestStream>;
+template class Socks5Egress<stream::TestStream>;
 #endif  // BUILD_TEST
 
 }  // namespace pichi::net

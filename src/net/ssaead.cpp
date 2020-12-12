@@ -5,9 +5,9 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/constants.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/ssaead.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/stream/test.hpp>
 #include <utility>
 
 using namespace std;
@@ -170,11 +170,11 @@ template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, tcp::socket>;
 template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, tcp::socket>;
 
 #ifdef BUILD_TEST
-template class SSAeadAdapter<CryptoMethod::AES_128_GCM, TestStream>;
-template class SSAeadAdapter<CryptoMethod::AES_192_GCM, TestStream>;
-template class SSAeadAdapter<CryptoMethod::AES_256_GCM, TestStream>;
-template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, TestStream>;
-template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, TestStream>;
+template class SSAeadAdapter<CryptoMethod::AES_128_GCM, stream::TestStream>;
+template class SSAeadAdapter<CryptoMethod::AES_192_GCM, stream::TestStream>;
+template class SSAeadAdapter<CryptoMethod::AES_256_GCM, stream::TestStream>;
+template class SSAeadAdapter<CryptoMethod::CHACHA20_IETF_POLY1305, stream::TestStream>;
+template class SSAeadAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305, stream::TestStream>;
 #endif  // BUILD_TEST
 
 }  // namespace pichi::net

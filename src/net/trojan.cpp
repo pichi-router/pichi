@@ -8,9 +8,11 @@
 #include <pichi/common/enumerations.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
-#include <pichi/net/asio.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/trojan.hpp>
+#include <pichi/stream/test.hpp>
+#include <pichi/stream/tls.hpp>
+#include <pichi/stream/websocket.hpp>
 #include <utility>
 
 using namespace std;
@@ -72,12 +74,9 @@ template <typename Stream> void TrojanIngress<Stream>::confirm(Yield) {}
 
 template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yield)
 {
-  if constexpr (IsTlsStreamV<Stream>)
-    stream_.async_handshake(ssl::stream_base::handshake_type::server, yield);
-
-  received_.resize(readSome(stream_, received_, yield));
-
   try {
+    accept(stream_, yield);
+
     /*
      * To act as a real HTTPS server, like Nginx, the trojan ingress has to read the hashed
      *   password in one time, which is as same as the official trojan.
@@ -89,6 +88,7 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
      *   |          56           | X'0D0A' |  1  |
      *   +-----------------------+---------+-----+
      */
+    received_.resize(readSome(stream_, received_, yield));
     assertTrue(received_.size() > PWD_LEN + 2, PichiError::BAD_PROTO);
 
     auto pwd = string{cbegin(received_), cbegin(received_) + PWD_LEN};
@@ -191,12 +191,16 @@ void TrojanEgress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
   write(stream_, {buf.data(), written(p)}, yield);
 }
 
-template class TrojanIngress<TlsStream<tcp::socket>>;
-template class TrojanEgress<TlsStream<tcp::socket>>;
+using TlsStream = stream::TlsStream<tcp::socket>;
+using WssStream = stream::WsStream<TlsStream>;
+template class TrojanIngress<TlsStream>;
+template class TrojanEgress<TlsStream>;
+template class TrojanIngress<WssStream>;
+template class TrojanEgress<WssStream>;
 
 #ifdef BUILD_TEST
-template class TrojanIngress<TestStream>;
-template class TrojanEgress<TestStream>;
+template class TrojanIngress<stream::TestStream>;
+template class TrojanEgress<stream::TestStream>;
 #endif  // BUILD_TEST
 
 }  // namespace pichi::net

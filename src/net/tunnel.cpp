@@ -2,7 +2,7 @@
 // Include config.hpp first
 #include <boost/asio/ip/tcp.hpp>
 #include <cassert>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/tunnel.hpp>
 #include <vector>
 

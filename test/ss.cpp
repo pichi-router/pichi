@@ -7,10 +7,10 @@
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/stream/test.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
@@ -21,9 +21,10 @@ namespace pichi::unit_test {
 
 using namespace crypto;
 
-using Socket = net::TestSocket;
-template <CryptoMethod method> using StreamAdapter = net::SSStreamAdapter<method, net::TestStream>;
-template <CryptoMethod method> using AeadAdapter = net::SSAeadAdapter<method, net::TestStream>;
+using Socket = stream::TestSocket;
+template <CryptoMethod method>
+using StreamAdapter = net::SSStreamAdapter<method, stream::TestStream>;
+template <CryptoMethod method> using AeadAdapter = net::SSAeadAdapter<method, stream::TestStream>;
 
 using Adapters = mpl::list<
     StreamAdapter<CryptoMethod::RC4_MD5>, StreamAdapter<CryptoMethod::BF_CFB>,

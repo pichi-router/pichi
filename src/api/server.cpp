@@ -13,7 +13,7 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/adapter.hpp>
 #include <pichi/net/spawn.hpp>
 #include <pichi/vo/egress.hpp>
 

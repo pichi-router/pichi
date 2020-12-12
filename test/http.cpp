@@ -10,9 +10,9 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/base64.hpp>
-#include <pichi/net/asio.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/net/http.hpp>
-#include <pichi/net/stream.hpp>
+#include <pichi/stream/test.hpp>
 
 using namespace std;
 namespace asio = boost::asio;
@@ -21,9 +21,9 @@ namespace sys = boost::system;
 
 namespace pichi::unit_test {
 
-using Socket = net::TestSocket;
-using HttpIngress = net::HttpIngress<net::TestStream>;
-using HttpEgress = net::HttpEgress<net::TestStream>;
+using Socket = stream::TestSocket;
+using HttpIngress = net::HttpIngress<stream::TestStream>;
+using HttpEgress = net::HttpEgress<stream::TestStream>;
 
 static auto const HTTPS_ENDPOINT = makeEndpoint("localhost"sv, "443"sv);
 static auto const HTTP_ENDPOINT = makeEndpoint("localhost"sv, "80"sv);
