@@ -275,14 +275,6 @@ inline bool asio_handler_is_continuation(
   return true;
 }
 
-template <typename F, size_t INDEX, typename Executor, typename Fail, typename Succeed,
-          typename... Handlers>
-inline void asio_handler_invoke(
-    F&& f, pichi::stream::detail::AsyncOperation<INDEX, Executor, Fail, Succeed, Handlers...>*)
-{
-  std::invoke(std::forward<F>(f));
-}
-
 template <size_t INDEX, typename Executor, typename Fail, typename Succeed, typename... Handlers>
 struct associated_executor<
     pichi::stream::detail::AsyncOperation<INDEX, Executor, Fail, Succeed, Handlers...>> {

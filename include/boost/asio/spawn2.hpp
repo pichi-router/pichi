@@ -28,7 +28,7 @@ using Pull = typename boost::coroutines2::coroutine<void>::pull_type;
 using Push = typename boost::coroutines2::coroutine<void>::push_type;
 using DefaultAllocator = boost::coroutines2::default_stack;
 
-} // namespace detail
+}  // namespace detail
 
 using yield_context = detail::YieldContext;
 
@@ -202,7 +202,7 @@ private:
   AsyncResultData<T> data_ = {};
 };
 
-} // namespace detail
+}  // namespace detail
 
 template <typename R> struct async_result<yield_context, R()> : public detail::AsyncResult<void> {
   async_result(typename detail::AsyncResult<void>::completion_handler_type& h)
@@ -230,11 +230,6 @@ struct async_result<yield_context, R(E, T)> : public detail::AsyncResult<std::de
 };
 
 template <typename T> bool asio_handler_is_continuation(detail::SpawnHandler<T>*) { return true; }
-
-template <typename F, typename T> void asio_handler_invoke(F&& f, detail::SpawnHandler<T>*)
-{
-  std::invoke(std::forward<F>(f));
-}
 
 template <typename T> struct associated_executor<detail::SpawnHandler<T>> {
   using type = executor;
@@ -291,6 +286,6 @@ void spawn(yield_context yield, Function&& function, StackAllocator&& alloc = St
                      std::forward<StackAllocator>(alloc));
 }
 
-} // namespace boost::asio
+}  // namespace boost::asio
 
-#endif // BOOST_ASIO_SPAWN2_HPP
+#endif  // BOOST_ASIO_SPAWN2_HPP

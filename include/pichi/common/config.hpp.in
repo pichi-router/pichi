@@ -16,16 +16,7 @@
 #cmakedefine HAS_CLOSE
 
 #cmakedefine NO_IGNORED_ATTRIBUTES_FOR_SODIUM
-#cmakedefine RESOLVER_CONSTRUCTED_FROM_EXECUTOR
 #cmakedefine DEPRECATED_RFC2818_CLASS
-
-#cmakedefine NO_RETURN_STD_MOVE_FOR_BOOST_ASIO
-#if defined(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO) && defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-std-move"
-#include <boost/asio/ip/basic_resolver.hpp>
-#pragma clang diagnostic pop
-#endif  // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO && __clang__
 
 #cmakedefine DISABLE_SHORTEN_64_TO_32_WARNING
 #if defined(DISABLE_SHORTEN_64_TO_32_WARNING) && defined(__clang__)
@@ -33,25 +24,26 @@
 #pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #include <boost/asio/basic_socket.hpp>
 #include <boost/asio/ssl/impl/context.ipp>
+#include <boost/beast/zlib/detail/deflate_stream.ipp>
 #pragma clang diagnostic pop
-#endif  // NO_RETURN_STD_MOVE_FOR_BOOST_ASIO && __clang__
+#endif  // DISABLE_SHORTEN_64_TO_32_WARNING && __clang__
 
-#cmakedefine DISABLE_C4702_FOR_BEAST_FIELDS
-#if defined(DISABLE_C4702_FOR_BEAST_FIELDS) && defined(_MSC_VER)
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4702)
 #include <boost/beast/http/fields.hpp>
 #pragma warning(pop)
-#endif  // DISABLE_C4702_FOR_BEAST_FIELDS && _MSC_VER
+#endif  // _MSC_VER
 
-#ifdef __clang__
+#cmakedefine HAS_SP_COUNTED_BASE_CLANG_HPP
+#if defined(HAS_SP_COUNTED_BASE_CLANG_HPP) && defined(__clang__)
 #if !__has_feature(c_atomic)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc11-extensions"
 #include <boost/smart_ptr/detail/sp_counted_base_clang.hpp>
 #pragma clang diagnostic pop
 #endif  // !__has_feature(c_atomic)
-#endif  // __clang__
+#endif  // HAS_SP_COUNTED_BASE_CLANG_HPP && __clang__
 
 #cmakedefine DEPRECATED_ALLOCATOR_VOID
 #if defined(DEPRECATED_ALLOCATOR_VOID) && defined(__clang__)

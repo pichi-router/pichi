@@ -11,7 +11,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 include(ProcessOptions)
 
-find_package(Boost 1.67.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
+find_package(Boost 1.72.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
 find_package(MbedTLS 2.7.0 REQUIRED)
 find_package(Sodium 1.0.12 REQUIRED)
 find_package(MaxmindDB 1.3.0 REQUIRED)

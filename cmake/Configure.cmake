@@ -71,37 +71,18 @@ if (Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
   set(NO_IGNORED_ATTRIBUTES_FOR_SODIUM ON)
 endif ()
 
-if (Boost_VERSION_STRING VERSION_LESS "1.69.0")
-  # Before BOOST 1.69.0, Clang might complain '-Wreturn-std-move' warning
-  #   when dereferencing resolver_results::iterator,
-  #   which should be treated as NRVO after C++17.
-  # TODO check_cxx_compiler_flag command always gets failed when generating for iOS
-  set(NO_RETURN_STD_MOVE_FOR_BOOST_ASIO ON)
-endif ()
-
-# From Boost-Beast 1.70.0, MSVC generates warning C4702(unreachable code) when including
-#   boost/beast/http/fields.hpp. Plz refer to https://github.com/boostorg/beast/issues/1582 .
-# Disable this warning if 1.70.0 or later version are going to be used.
-if (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.70.0")
-  set(DISABLE_C4702_FOR_BEAST_FIELDS ON)
-else ()
-  set(DISABLE_C4702_FOR_BEAST_FIELDS OFF)
-endif ()
-
-if (Boost_VERSION_STRING VERSION_LESS "1.70.0")
-  set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR OFF)
-else ()
-  # From version 1.70.0, Boost.Asio changed the behaviour of resolver::resolver,
-  #   that it's supposed to be constructed from Executor instead of ExecutionContext.
-  set(RESOLVER_CONSTRUCTED_FROM_EXECUTOR ON)
-endif ()
-
 if (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.73.0")
   # From version 1.73.0, boost::asio::ssl::rfc2818_verification is deprecated,
   #   and boost::asio::ssl::host_name_verification takes its place.
   set(DEPRECATED_RFC2818_CLASS ON)
 else ()
   set(DEPRECATED_RFC2818_CLASS OFF)
+endif ()
+
+if (Boost_VERSION_STRING VERSION_LESS "1.74.0")
+  set(HAS_SP_COUNTED_BASE_CLANG_HPP ON)
+else ()
+  set(HAS_SP_COUNTED_BASE_CLANG_HPP OFF)
 endif ()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
