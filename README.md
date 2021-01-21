@@ -350,12 +350,12 @@ Please refer to the [folder](schemas/examples) to find more examples.
 ### Requirements
 
 * C++17
-* [Boost](https://www.boost.org) 1.67.0
+* [Boost](https://www.boost.org) 1.72.0
 * [MbedTLS](https://tls.mbed.org) 2.7.0
 * [libsodium](https://libsodium.org) 1.0.12
 * [RapidJSON](http://rapidjson.org/) 1.1.0
 * [libmaxminddb](http://maxmind.github.io/libmaxminddb/) 1.3.0
-* [OpenSSL](https://www.openssl.org)
+* [OpenSSL](https://www.openssl.org) or [LibreSSL](https://www.libressl.org)
 
 ### CMake options
 
