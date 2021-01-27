@@ -24,6 +24,7 @@
 #include <pichi/vo/credential.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
+#include <pichi/vo/messages.hpp>
 #include <pichi/vo/options.hpp>
 
 #ifdef DEPRECATED_RFC2818_CLASS
@@ -68,7 +69,7 @@ static auto createTlsContext(vo::TlsEgressOption const& option, string const& se
     ctx.set_default_verify_paths();
 #ifdef DEPRECATED_RFC2818_CLASS
     ctx.set_verify_callback(ssl::host_name_verification{option.serverName_.value_or(serverName)});
-#else   // DEPRECATED_RFC2818_CLASS
+#else  // DEPRECATED_RFC2818_CLASS
     ctx.set_verify_callback(ssl::rfc2818_verification{option.serverName_.value_or(serverName)});
 #endif  // DEPRECATED_RFC2818_CLASS
   }
@@ -255,6 +256,8 @@ unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, TCPSocket&& s)
     return makeShadowsocksIngress(move(s), get<vo::ShadowsocksOption>(*vo.opt_));
   case AdapterType::TUNNEL:
     return make_unique<TunnelIngress<api::IngressIterator, TCPSocket>>(*holder.balancer_, move(s));
+  case AdapterType::VMESS:
+    fail(PichiError::SEMANTIC_ERROR, vo::msg::NOT_IMPLEMENTED);
   default:
     fail(PichiError::BAD_PROTO);
   }
@@ -283,6 +286,8 @@ unique_ptr<Egress> makeEgress(vo::Egress const& vo, asio::io_context& io)
     return makeRejectEgress(get<vo::RejectOption>(*vo.opt_), io);
   case AdapterType::SS:
     return makeShadowsocksEgress(get<vo::ShadowsocksOption>(*vo.opt_), io);
+  case AdapterType::VMESS:
+    fail(PichiError::SEMANTIC_ERROR, vo::msg::NOT_IMPLEMENTED);
   default:
     fail(PichiError::BAD_PROTO);
   }
