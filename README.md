@@ -203,7 +203,7 @@ HTTP/1.1 204 No Content
 $ curl -i -X PUT -d '{ \
 >       "type":"ss", \
 >       "server":{"host":"my-ss-server","port":8388}, \
->       "ss":{"method":"rc4-md5","password":"my-password"} \
+>       "option":{"method":"rc4-md5","password":"my-password"} \
 >     }' http://pichi-router:port/egresses/shadowsocks
 HTTP/1.1 204 No Content
 
@@ -263,7 +263,7 @@ $ for((i=20000;i<20100;++i)); do \
 >         \"bind\":[ \
 >           {\"host\":\"::\",\"port\":$i} \
 >         ], \
->         \"ss\":{ \
+>         \"option\":{ \
 >           \"method\":\"rc4-md5\", \
 >           \"password\":\"pw-$i\" \
 >         } \
@@ -321,18 +321,20 @@ HTTP/1.1 204 No Content
 
 ```
 
-#### DNS proxy
+#### DNS-over-TLS proxy
 
 ```
 $ curl -i -X PUT -d '{ \
 >       "type":"tunnel", \
 >       "bind":[ \
->         {"host":"::1","port":53} \
+>         {"host":"::1","port":853} \
 >       ], \
->       "tunnel":{ \
+>       "option":{ \
 >         "destinations": [ \
->           { "host": "1.1.1.1", "port": 53 }, \
->           { "host": "1.0.0.1", "port": 53 } \
+>           { "host": "2606:4700:4700::1111", "port": 853 }, \
+>           { "host": "2606:4700:4700::1001", "port": 853 }, \
+>           { "host": "1.1.1.1", "port": 853 }, \
+>           { "host": "1.0.0.1", "port": 853 } \
 >         ], \
 >         "balance":"random" \
 >       } \
