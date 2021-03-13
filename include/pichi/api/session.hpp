@@ -26,8 +26,8 @@ public:
   // According to Effective Moderm C++, Item 22.
   ~Session();
   explicit Session(boost::asio::io_context& io, IngressPtr&&, EgressPtr&&);
-  void start(Endpoint const&, Endpoint const&);
-  void start(Endpoint const& = {});
+  void start(Endpoint const&, ResolveResults const&);
+  void start();
 
 private:
   Strand strand_;

@@ -128,9 +128,9 @@ void Server::listen(Acceptor& acceptor, string_view iname, IngressHolder& holder
 
             auto session = make_shared<Session>(io, move(ingress), net::makeEgress(evo, io));
             if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
-              session->start(remote);
+              session->start(remote, r);
             else
-              session->start(remote, *evo.server_);
+              session->start(remote, resolve(*evo.server_, io, yield));
           }
         },
         [ingress = p](auto eptr, auto yield) noexcept { ingress->disconnect(eptr, yield); });
