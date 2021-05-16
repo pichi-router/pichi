@@ -1,22 +1,23 @@
 #ifndef PICHI_NET_TUNNEL_HPP
 #define PICHI_NET_TUNNEL_HPP
 
+#include <any>
+#include <memory>
 #include <pichi/api/balancer.hpp>
 #include <pichi/common/adapter.hpp>
 #include <pichi/common/endpoint.hpp>
 
 namespace pichi::net {
 
-template <typename Iterator, typename Socket> class TunnelIngress : public Ingress {
+template <typename Socket> class TunnelIngress : public Ingress {
 private:
-  using Balancer = api::Balancer<Iterator>;
-  using ValueType = typename std::iterator_traits<Iterator>::value_type;
-  static_assert(std::is_same_v<ValueType, Endpoint>);
+  using BalancerPtr = std::shared_ptr<api::Balancer>;
+  using Iterator = api::Balancer::Iterator;
 
 public:
   template <typename... Args>
-  TunnelIngress(Balancer& balancer, Args&&... args)
-    : balancer_{balancer}, socket_{std::forward<Args>(args)...}
+  TunnelIngress(std::any& data, Args&&... args)
+    : pBalancer_{std::any_cast<BalancerPtr>(data)}, socket_{std::forward<Args>(args)...}
   {
   }
 
@@ -36,7 +37,7 @@ public:
   void confirm(Yield) override;
 
 private:
-  Balancer& balancer_;
+  BalancerPtr pBalancer_;
   Socket socket_;
   Iterator it_ = {};
   bool released_ = false;
