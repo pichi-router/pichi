@@ -22,7 +22,7 @@ static auto const BALANCE_TYPES =
 
 static auto const ENDPOINTS = invoke([]() {
   auto ret = array<Endpoint, 100_sz>{};
-  for (auto i = 0_sz; i < ret.size(); ++i) {
+  for (auto i = 0_u16; i < ret.size(); ++i) {
     ret[i] = makeEndpoint("localhost", i);
   }
   return ret;
@@ -49,14 +49,13 @@ BOOST_AUTO_TEST_CASE(select_Wrong_Order)
 
 BOOST_AUTO_TEST_CASE(RANDOM_select_Probability)
 {
-  using Offset = typename iterator_traits<Balancer::Iterator>::difference_type;
   auto const K = 1000;
-  auto data = unordered_map<Offset, int>{};
+  auto data = unordered_map<uint16_t, int>{};
   auto balancer = Balancer{BalanceType::RANDOM, cbegin(ENDPOINTS), cend(ENDPOINTS)};
-  for (auto i = 0_sz; i < N * K; ++i) ++data[distance(Balancer::Iterator{}, balancer.select())];
+  for (auto i = 0_sz; i < N * K; ++i) ++data[balancer.select()->port_];
 
   BOOST_CHECK_EQUAL(N, data.size());
-  for_each(cbegin(data), cend(data), [=, delta = sqrt(N * K) / 2.0](auto&& item) {
+  for_each(cbegin(data), cend(data), [K, delta = sqrt(N * K) / 2.0](auto&& item) {
     BOOST_CHECK_LE(abs(item.second - K), delta);
   });
 }
@@ -64,21 +63,16 @@ BOOST_AUTO_TEST_CASE(RANDOM_select_Probability)
 BOOST_AUTO_TEST_CASE(ROUND_ROBIN_select)
 {
   auto balancer = Balancer{BalanceType::ROUND_ROBIN, cbegin(ENDPOINTS), cend(ENDPOINTS)};
-  auto base = balancer.select();
-  for_each(cbegin(ENDPOINTS) + 1, cend(ENDPOINTS),
-           [it = base, &balancer](auto&&) mutable { BOOST_CHECK(balancer.select() == ++it); });
-  for_each(cbegin(ENDPOINTS), cend(ENDPOINTS),
-           [it = base, &balancer](auto&&) mutable { BOOST_CHECK(balancer.select() == it++); });
+  for (auto i = 0_u16; i < N; ++i) BOOST_CHECK_EQUAL(balancer.select()->port_, i);
+  for (auto i = 0_u16; i < N; ++i) BOOST_CHECK_EQUAL(balancer.select()->port_, i);
 }
 
 BOOST_AUTO_TEST_CASE(LEAST_CONN_select)
 {
-  using Offset = typename iterator_traits<Balancer::Iterator>::difference_type;
-  auto container = unordered_set<Offset>{};
+  auto container = unordered_set<uint16_t>{};
   auto balancer = Balancer{BalanceType::LEAST_CONN, cbegin(ENDPOINTS), cend(ENDPOINTS)};
   for (auto i = 0_sz; i < N; ++i) {
-    generate_n(inserter(container, end(container)), N,
-               [&balancer]() { return distance(Balancer::Iterator{}, balancer.select()); });
+    generate_n(inserter(container, end(container)), N, [&]() { return balancer.select()->port_; });
     BOOST_CHECK_EQUAL(N, container.size());
     container.clear();
   }
