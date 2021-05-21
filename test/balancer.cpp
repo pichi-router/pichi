@@ -6,7 +6,6 @@
 #include <cmath>
 #include <pichi/api/balancer.hpp>
 #include <pichi/common/literals.hpp>
-#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -37,13 +36,6 @@ BOOST_AUTO_TEST_CASE(select_Empty)
   for (auto type : BALANCE_TYPES) {
     BOOST_CHECK_EXCEPTION((Balancer{type, cbegin(ENDPOINTS), cbegin(ENDPOINTS)}), Exception,
                           verifyException<PichiError::MISC>);
-  }
-}
-
-BOOST_AUTO_TEST_CASE(select_Wrong_Order)
-{
-  for (auto type : BALANCE_TYPES) {
-    BOOST_CHECK_THROW((Balancer{type, cend(ENDPOINTS), cbegin(ENDPOINTS)}), length_error);
   }
 }
 
@@ -83,6 +75,7 @@ BOOST_AUTO_TEST_CASE(LEAST_CONN_release_No_Connection_Iterator)
   auto balancer = Balancer{BalanceType::LEAST_CONN, cbegin(ENDPOINTS), cend(ENDPOINTS)};
   auto it = balancer.select();
   balancer.release(it);
+  advance(it, -it->port_);
   for (auto i = 0_sz; i < N; ++i)
     BOOST_CHECK_EXCEPTION(balancer.release(it++), Exception, verifyException<PichiError::MISC>);
 }
