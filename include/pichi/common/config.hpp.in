@@ -50,7 +50,10 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #include <boost/asio/associated_allocator.hpp>
+#include <boost/asio/impl/compose.hpp>
 #include <boost/asio/impl/executor.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/beast/core/async_base.hpp>
 #pragma clang diagnostic pop
 #endif  // DEPRECATED_ALLOCATOR_VOID && __clang__

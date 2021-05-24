@@ -88,7 +88,11 @@ endif ()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
   CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0.0")
   # From clang 11.0.0, using std::allocator<void> triggers -Wdeprecated-declarations
-   set(DEPRECATED_ALLOCATOR_VOID ON)
+  set(DEPRECATED_ALLOCATOR_VOID ON)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" AND
+  CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0.0")
+  # From Apple clang 12.0.0, using std::allocator<void> triggers -Wdeprecated-declarations
+  set(DEPRECATED_ALLOCATOR_VOID ON)
 else ()
   set(DEPRECATED_ALLOCATOR_VOID OFF)
 endif ()
