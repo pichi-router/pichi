@@ -31,16 +31,14 @@ Session::Session(asio::io_context& io, Session::IngressPtr&& ingress, Session::E
 {
 }
 
-void Session::start(Endpoint const& remote, Endpoint const& next)
+void Session::start(Endpoint const& remote, ResolveResults const& next)
 {
   // FIXME Not copying for self because net::spawn ensures that
   //   Function and ExceptionHandler share the same scope.
   net::spawn(
       strand_,
       [=, self = shared_from_this()](auto yield) {
-        auto resolver = tcp::resolver{strand_.context()};
-        egress_->connect(remote, resolver.async_resolve(next.host_, to_string(next.port_), yield),
-                         yield);
+        egress_->connect(remote, next, yield);
         ingress_->confirm(yield);
         net::spawn(
             strand_, [self, this](auto yield) { bridge(*ingress_, *egress_, yield); },
@@ -52,7 +50,7 @@ void Session::start(Endpoint const& remote, Endpoint const& next)
       [this](auto eptr, auto yield) noexcept { ingress_->disconnect(eptr, yield); });
 }
 
-void Session::start(Endpoint const& peer) { start(peer, peer); }
+void Session::start() { start({}, {}); }
 
 template <typename Yield> void Session::close(Yield yield)
 {

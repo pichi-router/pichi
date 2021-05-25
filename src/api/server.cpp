@@ -44,9 +44,15 @@ static auto const IV_EXPIRE_TIME = 1h;
 
 static auto resolve(Endpoint const& remote, asio::io_context& io, asio::yield_context yield)
 {
+  using Results = tcp::resolver::results_type;
+  if (remote.type_ != EndpointType::DOMAIN_NAME) {
+    // FIXME tcp::resolver::results_type::create is not a documented API
+    return Results::create(tcp::endpoint{ip::make_address(remote.host_), remote.port_},
+                           remote.host_, to_string(remote.port_));
+  }
   auto ec = sys::error_code{};
   auto r = tcp::resolver{io}.async_resolve(remote.host_, to_string(remote.port_), yield[ec]);
-  return ec ? tcp::resolver::results_type{} : r;
+  return ec ? Results{} : r;
 }
 
 static auto visitingSelf(tcp::resolver::results_type const& r, string_view bind, uint16_t port)
@@ -122,9 +128,9 @@ void Server::listen(Acceptor& acceptor, string_view iname, IngressHolder& holder
 
             auto session = make_shared<Session>(io, move(ingress), net::makeEgress(evo, io));
             if (evo.type_ == AdapterType::DIRECT || evo.type_ == AdapterType::REJECT)
-              session->start(remote);
+              session->start(remote, r);
             else
-              session->start(remote, *evo.server_);
+              session->start(remote, resolve(*evo.server_, io, yield));
           }
         },
         [ingress = p](auto eptr, auto yield) noexcept { ingress->disconnect(eptr, yield); });
