@@ -146,7 +146,15 @@ template <typename Stream, typename Yield> void close(Stream& stream, Yield yiel
 
   // TODO log the errors
   auto ec = boost::system::error_code{};
+
+  /*
+   *  TODO abort() will be invoked here in Windows even though no exception
+   *       is explicitly thrown. The root cause is unknown for now.
+   */
+#ifndef _MSC_VER
   if constexpr (!stream::IsRawStream<Stream>) stream.async_shutdown(yield[ec]);
+#endif  // _MSC_VER
+
   boost::beast::get_lowest_layer(stream).close(ec);
 }
 
