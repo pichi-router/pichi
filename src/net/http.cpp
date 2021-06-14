@@ -254,28 +254,28 @@ template <typename Stream> void HttpIngress<Stream>::close(Yield yield)
   pichi::net::close(stream_, yield);
 }
 
-template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr eptr, Yield yield)
+template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr eptr, Yield)
 {
-  auto rep = http::response<http::empty_body>{};
-  rep.version(11);
-  rep.set(http::field::connection, "Close");
+  auto rep = make_unique<Response>();
+  rep->version(11);
+  rep->set(http::field::connection, "Close");
   try {
     rethrow_exception(eptr);
   }
   catch (Exception const& e) {
     switch (e.error()) {
     case PichiError::CONN_FAILURE:
-      rep.result(http::status::gateway_timeout);
+      rep->result(http::status::gateway_timeout);
       break;
     case PichiError::BAD_AUTH_METHOD:
-      rep.result(http::status::proxy_authentication_required);
-      rep.set(http::field::proxy_authenticate, "Basic");
+      rep->result(http::status::proxy_authentication_required);
+      rep->set(http::field::proxy_authenticate, "Basic");
       break;
     case PichiError::UNAUTHENTICATED:
-      rep.result(http::status::forbidden);
+      rep->result(http::status::forbidden);
       break;
     default:
-      rep.result(http::status::internal_server_error);
+      rep->result(http::status::internal_server_error);
       break;
     }
   }
@@ -295,11 +295,17 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr ep
 
     using CategoryPtr = http::detail::http_error_category const*;
     auto pCat = dynamic_cast<CategoryPtr>(&e.code().category());
-    rep.result(pCat ? http::status::bad_request : http::status::gateway_timeout);
+    rep->result(pCat ? http::status::bad_request : http::status::gateway_timeout);
   }
-  auto ec = sys::error_code{};
-  // Ignoring all errors here
-  writeHttp(stream_, rep, yield[ec]);
+  /*  FIXME Windows+MSVC2017/2019
+   *  It is supposed to be investigated in the future that the 'rep' on the stack
+   *  has already been destructed before the WriteHandler, 'yield' here, is invoked.
+   *  This case occurs randomly when concurrently writing.
+   */
+  auto& r = *rep;
+  writeHttp(stream_, r, [rep = move(rep)](auto&&, auto) {
+    // ignore all errors here
+  });
 }
 
 template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)

@@ -117,12 +117,12 @@ void write(Stream& stream, ConstBuffer<uint8_t> buf, Yield yield)
     boost::asio::write(stream, boost::asio::buffer(buf));
 }
 
-template <typename Stream, typename Message, typename Yield>
-void writeHttp(Stream& stream, Message& msg, Yield yield)
+template <typename Stream, typename Message, typename WriteHandler>
+void writeHttp(Stream& stream, Message& msg, WriteHandler&& h)
 {
-  suppressC4100(yield);
+  suppressC4100(h);
   if constexpr (stream::IsAsyncStream<Stream>)
-    boost::beast::http::async_write(stream, msg, yield);
+    boost::beast::http::async_write(stream, msg, std::forward<WriteHandler>(h));
   else
     boost::beast::http::write(stream, msg);
 }
