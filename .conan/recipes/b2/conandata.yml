@@ -1,0 +1,4 @@
+sources:
+  4.5.0:
+    sha256: 39c3b51bf9c5f32b1c249d2d405274976b166e1bdca1fc5205b595f1cb5dbac3
+    url: https://github.com/bfgroup/b2/archive/4.5.0.tar.gz

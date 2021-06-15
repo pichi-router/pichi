@@ -4,6 +4,7 @@
 #include "vo.hpp"
 #include <boost/test/unit_test.hpp>
 #include <pichi/common/endpoint.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
@@ -235,7 +236,7 @@ BOOST_AUTO_TEST_CASE(parseDestinations_Correct_One)
   json.AddMember("localhost", 16, alloc);
   auto dests = vo::parseDestinantions(json);
 
-  BOOST_CHECK_EQUAL(1, dests.size());
+  BOOST_CHECK_EQUAL(1_sz, dests.size());
   BOOST_CHECK(makeEndpoint("localhost", 16) == dests.front());
 }
 

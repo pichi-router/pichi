@@ -5,6 +5,12 @@ option(BUILD_SERVER "Build pichi application" ON)
 option(BUILD_TEST "Build unit test cases" ON)
 option(STATIC_LINK "Static linking" ON)
 option(INSTALL_DEVEL "Install files for development" OFF)
+option(ENABLE_CONAN "Enable conan" ON)
+
+if (ENABLE_CONAN)
+  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+  conan_basic_setup()
+endif ()
 
 set(PICHI_LIBRARY pichi_lib)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
