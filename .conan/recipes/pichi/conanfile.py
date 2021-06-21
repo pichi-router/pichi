@@ -17,7 +17,7 @@ class PichiConan(ConanFile):
                       "tls_lib": "libressl"}
   generators = "cmake"
   requires = "boost/[>=1.72.0]@", "mbedtls/[>=2.7.0]@", "libsodium/[>=1.0.12]@", \
-             "libmaxminddb/[>=1.5.0]@pichi/testing", "rapidjson/[>=1.1.0]@"
+             "libmaxminddb/[>=1.5.0]@", "rapidjson/[>=1.1.0]@"
 
   def _configure_cmake(self):
     cmake = CMake(self)
@@ -26,6 +26,7 @@ class PichiConan(ConanFile):
     cmake.definitions["BUILD_TEST"] = "ON" if self.options.build_test else "OFF"
     cmake.definitions["STATIC_LINK"] = "OFF" if self.options.shared else "ON"
     cmake.definitions["INSTALL_DEVEL"] = "ON"
+    cmake.definitions["CMAKE_BUILD_TYPE"] = self.settings.build_type
     return cmake
 
   def config_options(self):
@@ -41,12 +42,14 @@ class PichiConan(ConanFile):
     if self.options.tls_lib == "libressl":
       self.requires("libressl/[>=3.0.0]@")
     else:
-      self.requires("openssl/[>=1.1.0]@")
+      self.requires("openssl/1.1.1k@")
 
   def build(self):
     cmake = self._configure_cmake()
     cmake.configure()
     cmake.build()
+    if self.options.build_test:
+      cmake.test(output_on_failure=True)
   
   def export_sources(self):
     for item in ["CMakeLists.txt", "cmake", "include", "src", "server", "test"]:

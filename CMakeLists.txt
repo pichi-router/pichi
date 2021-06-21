@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
-project(pichi LANGUAGES CXX)
+project(pichi)
 
 option(BUILD_SERVER "Build pichi application" ON)
 option(BUILD_TEST "Build unit test cases" ON)
@@ -9,7 +9,7 @@ option(ENABLE_CONAN "Enable conan" ON)
 
 if (ENABLE_CONAN)
   include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-  conan_basic_setup()
+  conan_basic_setup(KEEP_RPATHS)
 endif ()
 
 set(PICHI_LIBRARY pichi_lib)

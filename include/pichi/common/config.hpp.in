@@ -35,6 +35,13 @@
 #pragma warning(pop)
 #endif  // _MSC_VER
 
+#if defined(__GNUC__) && __GNUC__ >= 8
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#include <rapidjson/document.h>
+#pragma GCC diagnostic pop
+#endif
+
 #cmakedefine HAS_SP_COUNTED_BASE_CLANG_HPP
 #if defined(HAS_SP_COUNTED_BASE_CLANG_HPP) && defined(__clang__)
 #if !__has_feature(c_atomic)
