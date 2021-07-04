@@ -95,10 +95,16 @@ unique_ptr<Ingress> makeShadowsocksIngress(Socket&& s, vo::ShadowsocksOption con
   psk = {container,
          crypto::generateKey(option.method_, ConstBuffer<uint8_t>{option.password_}, container)};
   switch (option.method_) {
+#if MBEDTLS_VERSION_MAJOR < 3
   case CryptoMethod::RC4_MD5:
     return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5, Socket>>(psk, forward<Socket>(s));
   case CryptoMethod::BF_CFB:
     return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB, Socket>>(psk, forward<Socket>(s));
+#else   // MBEDTLS_VERSION_MAJOR < 3
+  case CryptoMethod::RC4_MD5:
+  case CryptoMethod::BF_CFB:
+    fail(PichiError::SEMANTIC_ERROR, vo::msg::DEPRECATED_METHOD);
+#endif  // MBEDTLS_VERSION_MAJOR < 3
   case CryptoMethod::AES_128_CTR:
     return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR, Socket>>(psk, forward<Socket>(s));
   case CryptoMethod::AES_192_CTR:
@@ -152,10 +158,16 @@ static unique_ptr<Egress> makeShadowsocksEgress(vo::ShadowsocksOption const& opt
   auto psk = MutableBuffer<uint8_t>{container, len};
 
   switch (option.method_) {
+#if MBEDTLS_VERSION_MAJOR < 3
   case CryptoMethod::RC4_MD5:
     return make_unique<SSStreamAdapter<CryptoMethod::RC4_MD5, TCPSocket>>(psk, io);
   case CryptoMethod::BF_CFB:
     return make_unique<SSStreamAdapter<CryptoMethod::BF_CFB, TCPSocket>>(psk, io);
+#else   // MBEDTLS_VERSION_MAJOR < 3
+  case CryptoMethod::RC4_MD5:
+  case CryptoMethod::BF_CFB:
+    fail(PichiError::SEMANTIC_ERROR, vo::msg::DEPRECATED_METHOD);
+#endif  // MBEDTLS_VERSION_MAJOR < 3
   case CryptoMethod::AES_128_CTR:
     return make_unique<SSStreamAdapter<CryptoMethod::AES_128_CTR, TCPSocket>>(psk, io);
   case CryptoMethod::AES_192_CTR:
