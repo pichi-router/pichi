@@ -1,5 +1,9 @@
 # C/C++ Macros
 add_compile_definitions(BOOST_ASIO_NO_DEPRECATED)
+if (NOT STATIC_LINK)
+  add_compile_definitions(BOOST_ALL_DYN_LINK)
+  add_compile_definitions(SODIUM_STATIC)
+endif ()
 
 # Find out whether class template argument deduction is supported for std::array
 message(STATUS "Checking P0702R1 feature")
@@ -21,19 +25,6 @@ endif ()
 
 # Options for Microsoft C++
 if (MSVC)
-  # Linking with the correct universal CRT library
-  # https://blogs.msdn.microsoft.com/vcblog/2015/03/03/introducing-the-universal-crt/
-  set(CRT_FLAG "/M")
-  if (STATIC_LINK)
-    set(CRT_FLAG "${CRT_FLAG}T")
-  else ()
-    set(CRT_FLAG "${CRT_FLAG}D")
-  endif ()
-  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CRT_FLAG "${CRT_FLAG}d")
-  endif ()
-  add_compile_options(${CRT_FLAG})
-
   # In MSVC, the default Exception Handling option is /EHsc, Which wouldn't catch exceptions
   #   thrown by boost::context. '/EHs' would make it correctly at least.
   # Further information:

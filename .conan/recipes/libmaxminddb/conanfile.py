@@ -47,7 +47,10 @@ class LibmaxminddbConan(ConanFile):
     tools.replace_in_file(os.path.join(self._source_subfolder, "CMakeLists.txt"),
                           "option(BUILD_TESTING \"Build test programs\" ON)",
                           """option(BUILD_TESTING \"Build test programs\" ON)
-option(BUILD_BIN \"Build mmdblookup programs\" ON)""")
+option(BUILD_BIN \"Build mmdblookup programs\" ON)
+
+include(${CMAKE_BINARY_DIR}/../conanbuildinfo.cmake)
+conan_basic_setup(KEEP_RPATHS)""")
     tools.replace_in_file(os.path.join(self._source_subfolder, "CMakeLists.txt"),
                           "add_subdirectory(bin)",
                           """if (BUILD_BIN)
