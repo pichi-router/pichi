@@ -24,34 +24,28 @@ find_package(MaxmindDB 1.3.0 REQUIRED)
 find_package(Rapidjson 1.1.0 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIR})
-link_libraries(${OPENSSL_LIBRARIES} ${CMAKE_DL_LIBS})
-if (WIN32 AND STATIC_LINK)
-  link_libraries(crypt32)
-endif ()
 
 include(Configure)
 
-include_directories(
-  ${CMAKE_SOURCE_DIR}/include
-  ${CMAKE_BINARY_DIR}/include
-  ${Boost_INCLUDE_DIRS}
-  ${MbedTLS_INCLUDE_DIRS}
-  ${Sodium_INCLUDE_DIRS}
-  ${MaxmindDB_INCLUDE_DIRS}
-  ${Rapidjson_INCLUDE_DIRS}
-)
+list(APPEND ALL_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include
+  ${Boost_INCLUDE_DIRS} ${MbedTLS_INCLUDE_DIRS} ${Sodium_INCLUDE_DIRS}
+  ${MaxmindDB_INCLUDE_DIRS} ${Rapidjson_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR})
 
-link_libraries(
-  ${MbedTLS_LIBRARIES}
-  ${Sodium_LIBRARIES}
-  ${MaxmindDB_LIBRARIES}
-  ${CMAKE_THREAD_LIBS_INIT}
-)
+list(APPEND COMMON_LIBRARIES
+  ${Boost_CONTEXT_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${MbedTLS_LIBRARIES}
+  ${Sodium_LIBRARIES} ${MaxmindDB_LIBRARIES} ${OPENSSL_LIBRARIES})
+list(APPEND EXTRA_LIBRARIES ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+if (WIN32 AND STATIC_LINK)
+  list(APPEND EXTRA_LIBRARIES crypt32)
+endif ()
+
+foreach(LIB IN LISTS COMMON_LIBRARIES)
+  get_filename_component(DIR ${LIB} DIRECTORY)
+  list(APPEND COMMON_LIB_DIRS ${DIR})
+endforeach()
+list(REMOVE_DUPLICATES COMMON_LIB_DIRS)
 
 add_subdirectory(src)
-
-link_libraries(${PICHI_LIBRARY})
 
 if (BUILD_SERVER)
   add_subdirectory(server)
