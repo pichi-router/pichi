@@ -59,38 +59,11 @@ if (Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
   # From libsodium 1.0.17, the declarations of crypto_stream_xxx functions contain
   #   '__attribute__ ((nonnull))', which might let GCC cause '-Wignored-attributes' warning
   #   if using std::is_same to detect function signature equation.
-  set(NO_IGNORED_ATTRIBUTES_FOR_SODIUM ON)
-endif ()
-
-if (Boost_VERSION_STRING VERSION_GREATER_EQUAL "1.73.0")
-  # From version 1.73.0, boost::asio::ssl::rfc2818_verification is deprecated,
-  #   and boost::asio::ssl::host_name_verification takes its place.
-  set(DEPRECATED_RFC2818_CLASS ON)
-else ()
-  set(DEPRECATED_RFC2818_CLASS OFF)
+  set(DISABLE_GCC_IGNORED_ATTRIBUTES ON)
 endif ()
 
 if (Boost_VERSION_STRING VERSION_LESS "1.74.0")
-  set(HAS_SP_COUNTED_BASE_CLANG_HPP ON)
-else ()
-  set(HAS_SP_COUNTED_BASE_CLANG_HPP OFF)
-endif ()
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
-  CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0.0")
-  # From clang 11.0.0, using std::allocator<void> triggers -Wdeprecated-declarations
-  set(DEPRECATED_ALLOCATOR_VOID ON)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" AND
-  CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0.0")
-  # From Apple clang 12.0.0, using std::allocator<void> triggers -Wdeprecated-declarations
-  set(DEPRECATED_ALLOCATOR_VOID ON)
-else ()
-  set(DEPRECATED_ALLOCATOR_VOID OFF)
-endif ()
-
-# TODO check_cxx_compiler_flag command always gets failed when generating for iOS
-if (IOS)
-  set(DISABLE_SHORTEN_64_TO_32_WARNING ON)
+  set(DISABLE_CLANG_C11_EXTENTIONS)
 endif ()
 
 if (BUILD_SERVER)

@@ -1,15 +1,25 @@
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 project(pichi)
 
+# Options
 option(BUILD_SERVER "Build pichi application" ON)
 option(BUILD_TEST "Build unit test cases" ON)
 option(STATIC_LINK "Static linking" ON)
 option(INSTALL_DEVEL "Install files for development" OFF)
 option(ENABLE_CONAN "Enable conan" OFF)
 
+# C++ standard options
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # Preprocessing
+if (ENABLE_CONAN)
+  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+  conan_basic_setup(KEEP_RPATHS)
+endif ()
+
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(ProcessOptions)
 include(HandleDependencies)
 include(Configure)
 

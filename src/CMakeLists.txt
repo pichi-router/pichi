@@ -7,8 +7,7 @@ else ()
 endif ()
 target_include_directories(${PICHI_LIBRARY} PRIVATE ${ALL_INCLUDE_DIRS})
 target_link_directories(${PICHI_LIBRARY} PRIVATE ${COMMON_LIB_DIRS})
-target_link_libraries(${PICHI_LIBRARY} PRIVATE
-  "$<$<NOT:$<BOOL:${STATIC_LINK}>>:${COMMON_LIBRARIES}>")
+target_link_libraries(${PICHI_LIBRARY} PRIVATE ${COMMON_LIBRARIES})
 set_target_properties(${PICHI_LIBRARY} PROPERTIES
   OUTPUT_NAME pichi
   WINDOWS_EXPORT_ALL_SYMBOLS ON

@@ -20,20 +20,9 @@ static size_t sodiumHelper(SodiumFunc&& func, ConstBuffer<uint8_t> key, size_t o
 {
   assertTrue(output.size() >= input.size(), PichiError::MISC);
 
-#ifdef NO_IGNORED_ATTRIBUTES_FOR_SODIUM
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-attributes"
-#endif  // __GNUC__
-#endif  // NO_IGNORED_ATTRIBUTES_FOR_SODIUM
   using IC =
       conditional_t<is_same_v<decay_t<SodiumFunc>, decltype(&crypto_stream_chacha20_ietf_xor_ic)>,
                     uint32_t, uint64_t>;
-#ifdef NO_IGNORED_ATTRIBUTES_FOR_SODIUM
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif  // __GNUC__
-#endif  // NO_IGNORED_ATTRIBUTES_FOR_SODIUM
 
   auto ic = static_cast<IC>(offset / 64);
   auto padding = offset % 64;

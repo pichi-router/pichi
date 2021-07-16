@@ -9,11 +9,6 @@
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 
-// The identifier named 'ignore' is defined in std namespace already
-#ifdef _MSC_VER
-#pragma warning(disable : 4459)
-#endif  // _MSC_VER
-
 using namespace std;
 using namespace rapidjson;
 
