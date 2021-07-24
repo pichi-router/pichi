@@ -10,7 +10,7 @@
       "port": 8388
     }
   ],
-  "ss": {
+  "option": {
     "method": "xchacha20-ietf-poly1305",
     "password": "shadowsocks password"
   }

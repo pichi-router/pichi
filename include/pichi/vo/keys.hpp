@@ -60,7 +60,7 @@ inline decltype(auto) LEAST_CONN = "least_conn";
 namespace security {
 
 inline decltype(auto) AUTO = "auto";
-inline decltype(auto) NONE = "auto";
+inline decltype(auto) NONE = "none";
 inline decltype(auto) CHACHA20_IETF_POLY1305 = "chacha20-ietf-poly1305";
 inline decltype(auto) AES_128_GCM = "aes-128-gcm";
 
@@ -119,7 +119,7 @@ inline decltype(auto) TYPE = "type";
 inline decltype(auto) BIND = "bind";
 inline decltype(auto) OPTION = "option";
 inline decltype(auto) TLS = "tls";
-inline decltype(auto) CREDENTIAL = "credential";
+inline decltype(auto) CREDENTIALS = "credentials";
 inline decltype(auto) WEBSOCKET = "websocket";
 
 }  // namespace ingress

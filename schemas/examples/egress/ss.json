@@ -4,7 +4,7 @@
     "host": "ss.example.com",
     "port": 8388
   },
-  "ss": {
+  "option": {
     "password": "shadowsocks password",
     "method": "rc4-md5"
   }
