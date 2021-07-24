@@ -100,7 +100,7 @@ template <AdapterType type> Value defaultIngressJson()
   ingress.AddMember(ingress::BIND, Value{kArrayType}, alloc);
   ingress[ingress::BIND].PushBack(toJson(DEFAULT_ENDPOINT, alloc), alloc);
   if constexpr (Trait::credential_ == Present::MANDATORY)
-    ingress.AddMember(ingress::CREDENTIAL, defaultCredentialJson<typename Trait::Credential>(),
+    ingress.AddMember(ingress::CREDENTIALS, defaultCredentialJson<typename Trait::Credential>(),
                       alloc);
   if constexpr (Trait::option_ == Present::MANDATORY)
     ingress.AddMember(ingress::OPTION, defaultOptionJson<typename Trait::Option>(), alloc);
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Empty_Bind, Trait, AllAdapterTraits)
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
 {
   if constexpr (Trait::credential_ == Present::MANDATORY)
-    verifyMandatoryField<Trait::type_>(ingress::CREDENTIAL);
+    verifyMandatoryField<Trait::type_>(ingress::CREDENTIALS);
   if constexpr (Trait::option_ == Present::MANDATORY)
     verifyMandatoryField<Trait::type_>(ingress::OPTION);
   if constexpr (Trait::tls_ == Present::MANDATORY) verifyMandatoryField<Trait::type_>(ingress::TLS);
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Optional_Fields, Trait, AllAdapterTraits)
     auto ingress = defaultIngress<Trait::type_>();
     ingress.credential_ = defaultCredential<Credential>();
     BOOST_CHECK(parse<Ingress>(defaultIngressJson<Trait::type_>().AddMember(
-                    ingress::CREDENTIAL, defaultCredentialJson<Credential>(), alloc)) == ingress);
+                    ingress::CREDENTIALS, defaultCredentialJson<Credential>(), alloc)) == ingress);
   }
   if constexpr (Trait::option_ == Present::OPTIONAL) {
     using Option = typename Trait::Option;
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Unused_Fields, Trait, AllAdapterTraits)
 {
   auto json = defaultIngressJson<Trait::type_>();
   if constexpr (Trait::credential_ == Present::UNUSED)
-    json.AddMember(ingress::CREDENTIAL, Value{kObjectType}, alloc);
+    json.AddMember(ingress::CREDENTIALS, Value{kObjectType}, alloc);
   if constexpr (Trait::option_ == Present::UNUSED)
     json.AddMember(ingress::OPTION, Value{kObjectType}, alloc);
   if constexpr (Trait::tls_ == Present::UNUSED)
@@ -293,7 +293,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Optional_Fields, Trait, AllAdapterTraits)
 
   if constexpr (Trait::credential_ == Present::OPTIONAL) {
     ingress.credential_ = defaultCredential<typename Trait::Credential>();
-    json.AddMember(ingress::CREDENTIAL, defaultCredentialJson<typename Trait::Credential>(), alloc);
+    json.AddMember(ingress::CREDENTIALS, defaultCredentialJson<typename Trait::Credential>(),
+                   alloc);
   }
   if constexpr (Trait::option_ == Present::OPTIONAL) {
     ingress.opt_ = defaultOption<typename Trait::Option>();
