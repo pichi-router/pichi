@@ -44,6 +44,7 @@ inline std::string_view const TOO_LONG_NAME_PASSWORD = "Name or password is too 
 inline std::string_view const DUPLICATED_ITEMS = "Duplicated items";
 
 inline std::string_view const NOT_IMPLEMENTED = "Not implemented";
+inline std::string_view const DEPRECATED_METHOD = "rc4-md5 & bf-cfb are deprecated";
 
 }  // namespace pichi::vo::msg
 
