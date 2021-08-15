@@ -100,8 +100,10 @@ void SSStreamAdapter<method, Stream>::connect(Endpoint const& remote, ResolveRes
   send({plain, plen}, yield);
 }
 
+#if MBEDTLS_VERSION_MAJOR < 3
 template class SSStreamAdapter<CryptoMethod::RC4_MD5, tcp::socket>;
 template class SSStreamAdapter<CryptoMethod::BF_CFB, tcp::socket>;
+#endif  // MBEDTLS_VERSION_MAJOR < 3
 template class SSStreamAdapter<CryptoMethod::AES_128_CTR, tcp::socket>;
 template class SSStreamAdapter<CryptoMethod::AES_192_CTR, tcp::socket>;
 template class SSStreamAdapter<CryptoMethod::AES_256_CTR, tcp::socket>;
@@ -116,8 +118,10 @@ template class SSStreamAdapter<CryptoMethod::SALSA20, tcp::socket>;
 template class SSStreamAdapter<CryptoMethod::CHACHA20_IETF, tcp::socket>;
 
 #ifdef BUILD_TEST
+#if MBEDTLS_VERSION_MAJOR < 3
 template class SSStreamAdapter<CryptoMethod::RC4_MD5, stream::TestStream>;
 template class SSStreamAdapter<CryptoMethod::BF_CFB, stream::TestStream>;
+#endif  // MBEDTLS_VERSION_MAJOR < 3
 template class SSStreamAdapter<CryptoMethod::AES_128_CTR, stream::TestStream>;
 template class SSStreamAdapter<CryptoMethod::AES_192_CTR, stream::TestStream>;
 template class SSStreamAdapter<CryptoMethod::AES_256_CTR, stream::TestStream>;

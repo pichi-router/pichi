@@ -4,25 +4,34 @@
 #include <algorithm>
 #include <array>
 #include <mbedtls/aes.h>
-#include <mbedtls/arc4.h>
-#include <mbedtls/blowfish.h>
 #include <mbedtls/camellia.h>
 #include <pichi/common/buffer.hpp>
 #include <pichi/crypto/method.hpp>
 #include <stdint.h>
 
+#if MBEDTLS_VERSION_MAJOR < 3
+#include <mbedtls/arc4.h>
+#include <mbedtls/blowfish.h>
+#endif  // MBEDTLS_VERSION_MAJOR < 3
+
 namespace pichi::crypto {
 
 template <CryptoMethod method>
 using StreamContext = std::conditional_t<
+#if MBEDTLS_VERSION_MAJOR < 3
     detail::isArc<method>(), mbedtls_arc4_context,
     std::conditional_t<
         detail::isBlowfish<method>(), mbedtls_blowfish_context,
         std::conditional_t<
+#endif  // MBEDTLS_VERSION_MAJOR < 3
             detail::isAesCtr<method>() || detail::isAesCfb<method>(), mbedtls_aes_context,
             std::conditional_t<detail::isCamellia<method>(), mbedtls_camellia_context,
                                std::conditional_t<detail::isSodiumStream<method>(),
-                                                  std::array<uint8_t, KEY_SIZE<method>>, void>>>>>;
+                                                  std::array<uint8_t, KEY_SIZE<method>>, void>>>
+#if MBEDTLS_VERSION_MAJOR < 3
+        >>
+#endif  // MBEDTLS_VERSION_MAJOR < 3
+    ;
 
 template <CryptoMethod method>
 inline constexpr size_t BLK_SIZE = detail::isAesCtr<method>() ? 16 : 0;

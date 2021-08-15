@@ -124,17 +124,7 @@ static size_t encrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
   suppressC4100(ctx);
   assertTrue(plain.size() <= cipher.size(), PichiError::CRYPTO_ERROR);
   assertTrue(iv.size() >= IV_SIZE<method> + BLK_SIZE<method>, PichiError::CRYPTO_ERROR);
-  if constexpr (detail::isArc<method>()) {
-    assertTrue(mbedtls_arc4_crypt(&ctx, plain.size(), plain.data(), cipher.data()) == 0,
-               PichiError::CRYPTO_ERROR);
-    offset += plain.size();
-  }
-  else if constexpr (detail::isBlowfish<method>()) {
-    assertTrue(mbedtls_blowfish_crypt_cfb64(&ctx, MBEDTLS_BLOWFISH_ENCRYPT, plain.size(), &offset,
-                                            iv.data(), plain.data(), cipher.data()) == 0,
-               PichiError::CRYPTO_ERROR);
-  }
-  else if constexpr (detail::isAesCtr<method>()) {
+  if constexpr (detail::isAesCtr<method>()) {
     assertTrue(mbedtls_aes_crypt_ctr(&ctx, plain.size(), &offset, iv.data(),
                                      iv.data() + IV_SIZE<method>, plain.data(), cipher.data()) == 0,
                PichiError::CRYPTO_ERROR);
@@ -158,6 +148,18 @@ static size_t encrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
   else if constexpr (method == CryptoMethod::CHACHA20_IETF) {
     offset = sodiumHelper(crypto_stream_chacha20_ietf_xor_ic, ctx, offset, plain, iv, cipher);
   }
+#if MBEDTLS_VERSION_MAJOR < 3
+  else if constexpr (detail::isArc<method>()) {
+    assertTrue(mbedtls_arc4_crypt(&ctx, plain.size(), plain.data(), cipher.data()) == 0,
+               PichiError::CRYPTO_ERROR);
+    offset += plain.size();
+  }
+  else if constexpr (detail::isBlowfish<method>()) {
+    assertTrue(mbedtls_blowfish_crypt_cfb64(&ctx, MBEDTLS_BLOWFISH_ENCRYPT, plain.size(), &offset,
+                                            iv.data(), plain.data(), cipher.data()) == 0,
+               PichiError::CRYPTO_ERROR);
+  }
+#endif  // MBEDTLS_VERSION_MAJOR < 3
   else
     static_assert(detail::DependentFalse<method>::value);
   return offset;
@@ -170,17 +172,7 @@ static size_t decrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
   suppressC4100(ctx);
   assertTrue(plain.size() >= cipher.size(), PichiError::CRYPTO_ERROR);
   assertTrue(iv.size() >= IV_SIZE<method> + BLK_SIZE<method>, PichiError::CRYPTO_ERROR);
-  if constexpr (detail::isArc<method>()) {
-    assertTrue(mbedtls_arc4_crypt(&ctx, cipher.size(), cipher.data(), plain.data()) == 0,
-               PichiError::CRYPTO_ERROR);
-    offset += cipher.size();
-  }
-  else if constexpr (detail::isBlowfish<method>()) {
-    assertTrue(mbedtls_blowfish_crypt_cfb64(&ctx, MBEDTLS_BLOWFISH_DECRYPT, cipher.size(), &offset,
-                                            iv.data(), cipher.data(), plain.data()) == 0,
-               PichiError::CRYPTO_ERROR);
-  }
-  else if constexpr (detail::isAesCtr<method>()) {
+  if constexpr (detail::isAesCtr<method>()) {
     assertTrue(mbedtls_aes_crypt_ctr(&ctx, cipher.size(), &offset, iv.data(),
                                      iv.data() + IV_SIZE<method>, cipher.data(), plain.data()) == 0,
                PichiError::CRYPTO_ERROR);
@@ -204,6 +196,18 @@ static size_t decrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
   else if constexpr (method == CryptoMethod::CHACHA20_IETF) {
     offset = sodiumHelper(crypto_stream_chacha20_ietf_xor_ic, ctx, offset, cipher, iv, plain);
   }
+#if MBEDTLS_VERSION_MAJOR < 3
+  else if constexpr (detail::isArc<method>()) {
+    assertTrue(mbedtls_arc4_crypt(&ctx, cipher.size(), cipher.data(), plain.data()) == 0,
+               PichiError::CRYPTO_ERROR);
+    offset += cipher.size();
+  }
+  else if constexpr (detail::isBlowfish<method>()) {
+    assertTrue(mbedtls_blowfish_crypt_cfb64(&ctx, MBEDTLS_BLOWFISH_DECRYPT, cipher.size(), &offset,
+                                            iv.data(), cipher.data(), plain.data()) == 0,
+               PichiError::CRYPTO_ERROR);
+  }
+#endif  // MBEDTLS_VERSION_MAJOR < 3
   else
     static_assert(detail::DependentFalse<method>::value);
   return offset;
@@ -240,8 +244,10 @@ size_t StreamEncryptor<method>::encrypt(ConstBuffer<uint8_t> plain, MutableBuffe
   return plain.size();
 }
 
+#if MBEDTLS_VERSION_MAJOR < 3
 template class StreamEncryptor<CryptoMethod::RC4_MD5>;
 template class StreamEncryptor<CryptoMethod::BF_CFB>;
+#endif  // MBEDTLS_VERSION_MAJOR < 3
 template class StreamEncryptor<CryptoMethod::AES_128_CTR>;
 template class StreamEncryptor<CryptoMethod::AES_192_CTR>;
 template class StreamEncryptor<CryptoMethod::AES_256_CTR>;
@@ -291,8 +297,10 @@ size_t StreamDecryptor<method>::decrypt(ConstBuffer<uint8_t> cipher, MutableBuff
   return cipher.size();
 }
 
+#if MBEDTLS_VERSION_MAJOR < 3
 template class StreamDecryptor<CryptoMethod::RC4_MD5>;
 template class StreamDecryptor<CryptoMethod::BF_CFB>;
+#endif  // MBEDTLS_VERSION_MAJOR < 3
 template class StreamDecryptor<CryptoMethod::AES_128_CTR>;
 template class StreamDecryptor<CryptoMethod::AES_192_CTR>;
 template class StreamDecryptor<CryptoMethod::AES_256_CTR>;

@@ -55,6 +55,7 @@ template <CryptoMethod method> struct Ciphers {
   static vector<uint8_t> const& IV;
 };
 
+#if MBEDTLS_VERSION_MAJOR < 3
 template <>
 vector<vector<uint8_t>> const Ciphers<CryptoMethod::RC4_MD5>::CIPHERS = {
     hex2bin("cd1695a36fbfb5270d59fcf7153e7dcf"), hex2bin("eca24c0e95c67b736c52e75d66355385"),
@@ -88,6 +89,7 @@ vector<vector<uint8_t>> const Ciphers<CryptoMethod::BF_CFB>::CIPHERS = {
     hex2bin("985445eed87575ffd8f105c70fcc6db9"), hex2bin("cd8fd745369f58")};
 template <> vector<uint8_t> const& Ciphers<CryptoMethod::BF_CFB>::KEY = KeyIv<16>::KEY;
 template <> vector<uint8_t> const& Ciphers<CryptoMethod::BF_CFB>::IV = KeyIv<8>::IV;
+#endif  // MBEDTLS_VERSION_MAJOR < 3
 
 template <>
 vector<vector<uint8_t>> const Ciphers<CryptoMethod::AES_128_CTR>::CIPHERS = {
@@ -442,26 +444,30 @@ vector<uint8_t> const& Ciphers<CryptoMethod::XCHACHA20_IETF_POLY1305>::KEY = Key
 template <>
 vector<uint8_t> const& Ciphers<CryptoMethod::XCHACHA20_IETF_POLY1305>::IV = KeyIv<32>::IV;
 
-using Cases =
-    mpl::list<Ciphers<CryptoMethod::RC4_MD5>, Ciphers<CryptoMethod::BF_CFB>,
-              Ciphers<CryptoMethod::AES_128_CTR>, Ciphers<CryptoMethod::AES_192_CTR>,
-              Ciphers<CryptoMethod::AES_256_CTR>, Ciphers<CryptoMethod::AES_128_CFB>,
-              Ciphers<CryptoMethod::AES_192_CFB>, Ciphers<CryptoMethod::AES_256_CFB>,
-              Ciphers<CryptoMethod::CAMELLIA_128_CFB>, Ciphers<CryptoMethod::CAMELLIA_192_CFB>,
-              Ciphers<CryptoMethod::CAMELLIA_256_CFB>, Ciphers<CryptoMethod::CHACHA20>,
-              Ciphers<CryptoMethod::SALSA20>, Ciphers<CryptoMethod::CHACHA20_IETF>,
-              Ciphers<CryptoMethod::AES_128_GCM>, Ciphers<CryptoMethod::AES_192_GCM>,
-              Ciphers<CryptoMethod::AES_256_GCM>, Ciphers<CryptoMethod::CHACHA20_IETF_POLY1305>,
-              Ciphers<CryptoMethod::XCHACHA20_IETF_POLY1305>>;
+using Cases = mpl::list<
+#if MBEDTLS_VERSION_MAJOR < 3
+    Ciphers<CryptoMethod::RC4_MD5>, Ciphers<CryptoMethod::BF_CFB>,
+#endif  // MBEDTLS_VERSION_MAJOR < 3
+    Ciphers<CryptoMethod::AES_128_CTR>, Ciphers<CryptoMethod::AES_192_CTR>,
+    Ciphers<CryptoMethod::AES_256_CTR>, Ciphers<CryptoMethod::AES_128_CFB>,
+    Ciphers<CryptoMethod::AES_192_CFB>, Ciphers<CryptoMethod::AES_256_CFB>,
+    Ciphers<CryptoMethod::CAMELLIA_128_CFB>, Ciphers<CryptoMethod::CAMELLIA_192_CFB>,
+    Ciphers<CryptoMethod::CAMELLIA_256_CFB>, Ciphers<CryptoMethod::CHACHA20>,
+    Ciphers<CryptoMethod::SALSA20>, Ciphers<CryptoMethod::CHACHA20_IETF>,
+    Ciphers<CryptoMethod::AES_128_GCM>, Ciphers<CryptoMethod::AES_192_GCM>,
+    Ciphers<CryptoMethod::AES_256_GCM>, Ciphers<CryptoMethod::CHACHA20_IETF_POLY1305>,
+    Ciphers<CryptoMethod::XCHACHA20_IETF_POLY1305>>;
 
-using StreamCases =
-    mpl::list<Ciphers<CryptoMethod::RC4_MD5>, Ciphers<CryptoMethod::BF_CFB>,
-              Ciphers<CryptoMethod::AES_128_CTR>, Ciphers<CryptoMethod::AES_192_CTR>,
-              Ciphers<CryptoMethod::AES_256_CTR>, Ciphers<CryptoMethod::AES_128_CFB>,
-              Ciphers<CryptoMethod::AES_192_CFB>, Ciphers<CryptoMethod::AES_256_CFB>,
-              Ciphers<CryptoMethod::CAMELLIA_128_CFB>, Ciphers<CryptoMethod::CAMELLIA_192_CFB>,
-              Ciphers<CryptoMethod::CAMELLIA_256_CFB>, Ciphers<CryptoMethod::CHACHA20>,
-              Ciphers<CryptoMethod::SALSA20>, Ciphers<CryptoMethod::CHACHA20_IETF>>;
+using StreamCases = mpl::list<
+#if MBEDTLS_VERSION_MAJOR < 3
+    Ciphers<CryptoMethod::RC4_MD5>, Ciphers<CryptoMethod::BF_CFB>,
+#endif  // MBEDTLS_VERSION_MAJOR < 3
+    Ciphers<CryptoMethod::AES_128_CTR>, Ciphers<CryptoMethod::AES_192_CTR>,
+    Ciphers<CryptoMethod::AES_256_CTR>, Ciphers<CryptoMethod::AES_128_CFB>,
+    Ciphers<CryptoMethod::AES_192_CFB>, Ciphers<CryptoMethod::AES_256_CFB>,
+    Ciphers<CryptoMethod::CAMELLIA_128_CFB>, Ciphers<CryptoMethod::CAMELLIA_192_CFB>,
+    Ciphers<CryptoMethod::CAMELLIA_256_CFB>, Ciphers<CryptoMethod::CHACHA20>,
+    Ciphers<CryptoMethod::SALSA20>, Ciphers<CryptoMethod::CHACHA20_IETF>>;
 
 BOOST_AUTO_TEST_SUITE(Cryptogram)
 
