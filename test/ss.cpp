@@ -27,7 +27,9 @@ using StreamAdapter = net::SSStreamAdapter<method, stream::TestStream>;
 template <CryptoMethod method> using AeadAdapter = net::SSAeadAdapter<method, stream::TestStream>;
 
 using Adapters = mpl::list<
+#if MBEDTLS_VERSION_MAJOR < 3
     StreamAdapter<CryptoMethod::RC4_MD5>, StreamAdapter<CryptoMethod::BF_CFB>,
+#endif  // MBEDTLS_VERSION_MAJOR < 3
     StreamAdapter<CryptoMethod::AES_128_CTR>, StreamAdapter<CryptoMethod::AES_192_CTR>,
     StreamAdapter<CryptoMethod::AES_256_CTR>, StreamAdapter<CryptoMethod::AES_128_CFB>,
     StreamAdapter<CryptoMethod::AES_192_CFB>, StreamAdapter<CryptoMethod::AES_256_CFB>,

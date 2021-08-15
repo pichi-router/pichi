@@ -8,6 +8,21 @@
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/enumerations.hpp>
 
+#if MBEDTLS_VERSION_MAJOR >= 3
+#define mbedtls_md5_starts_ret mbedtls_md5_starts
+#define mbedtls_sha1_starts_ret mbedtls_sha1_starts
+#define mbedtls_sha256_starts_ret mbedtls_sha256_starts
+#define mbedtls_sha512_starts_ret mbedtls_sha512_starts
+#define mbedtls_md5_update_ret mbedtls_md5_update
+#define mbedtls_sha1_update_ret mbedtls_sha1_update
+#define mbedtls_sha256_update_ret mbedtls_sha256_update
+#define mbedtls_sha512_update_ret mbedtls_sha512_update
+#define mbedtls_md5_finish_ret mbedtls_md5_finish
+#define mbedtls_sha1_finish_ret mbedtls_sha1_finish
+#define mbedtls_sha256_finish_ret mbedtls_sha256_finish
+#define mbedtls_sha512_finish_ret mbedtls_sha512_finish
+#endif  // MBEDTLS_VERSION_MAJOR >= 3
+
 namespace pichi::crypto {
 
 // TODO use lambda if compiler supports
