@@ -43,6 +43,7 @@ template <> AdapterType parse(json::Value const& v)
   if (str == type::TUNNEL) return AdapterType::TUNNEL;
   if (str == type::TROJAN) return AdapterType::TROJAN;
   if (str == type::VMESS) return AdapterType::VMESS;
+  if (str == type::TRANSPARENT) return AdapterType::TRANSPARENT;
   fail(PichiError::BAD_JSON, msg::AT_INVALID);
 }
 
