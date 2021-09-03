@@ -1,0 +1,9 @@
+{
+  "type": "transparent",
+  "bind": [
+    {
+      "host": "::",
+      "port": 1001
+    }
+  ]
+}
