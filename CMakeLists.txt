@@ -5,6 +5,8 @@ option(BUILD_SERVER "Build pichi application" ON)
 option(BUILD_TEST "Build unit test cases" ON)
 option(STATIC_LINK "Static linking" ON)
 option(INSTALL_DEVEL "Install files for development" OFF)
+option(TRANSPARENT_PF "Implement transparent ingress via Packet Filter" OFF)
+option(TRANSPARENT_IPTABLES "Implement transparent ingress via Linux IPTables" OFF)
 
 set(PICHI_LIBRARY pichi_lib)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)

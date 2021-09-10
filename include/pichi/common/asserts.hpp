@@ -11,7 +11,8 @@ extern void assertTrue(bool b, PichiError e, std::string_view msg = "");
 extern void assertTrue(bool b, std::string_view msg = "");
 extern void assertFalse(bool b, PichiError e, std::string_view msg = "");
 extern void assertFalse(bool b, std::string_view msg = "");
+extern void assertSyscallSuccess(int r, PichiError e = PichiError::MISC);
 
-} // namespace pichi
+}  // namespace pichi
 
-#endif // PICHI_COMMON_ASSERTS_HPP
+#endif  // PICHI_COMMON_ASSERTS_HPP

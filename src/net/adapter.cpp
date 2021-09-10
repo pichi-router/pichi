@@ -17,6 +17,7 @@
 #include <pichi/net/socks5.hpp>
 #include <pichi/net/ssaead.hpp>
 #include <pichi/net/ssstream.hpp>
+#include <pichi/net/transparent.hpp>
 #include <pichi/net/trojan.hpp>
 #include <pichi/net/tunnel.hpp>
 #include <pichi/stream/tls.hpp>
@@ -270,6 +271,8 @@ unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, TCPSocket&& s)
     return make_unique<TunnelIngress<TCPSocket>>(holder.data_, move(s));
   case AdapterType::VMESS:
     fail(PichiError::SEMANTIC_ERROR, vo::msg::NOT_IMPLEMENTED);
+  case AdapterType::TRANSPARENT:
+    return make_unique<TransparentIngress<TCPSocket>>(move(s));
   default:
     fail(PichiError::BAD_PROTO);
   }
