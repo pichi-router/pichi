@@ -85,7 +85,6 @@ Transparent proxy is very useful if you want to use some DNS servers which might
 * SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
 * Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
 * Trojan: defined by [trojan-gfw](https://trojan-gfw.github.io/trojan/protocol) and its websocket extension defined by [trojan-go](https://github.com/p4gefau1t/trojan-go)
-* VMess: defined by [V2Ray](https://v2ray.com/developer/protocols/vmess.html)
 
 #### Egress protocols
 
@@ -96,7 +95,6 @@ Transparent proxy is very useful if you want to use some DNS servers which might
 * SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
 * Shadowsocks: defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html)
 * Trojan: defined by [trojan-gfw](https://trojan-gfw.github.io/trojan/protocol) and its websocket extension defined by [trojan-go](https://github.com/p4gefau1t/trojan-go)
-* VMess: defined by [V2Ray](https://v2ray.com/developer/protocols/vmess.html)
 
 **NOTE:** HTTP egress would like to try [HTTP CONNECT](https://www.ietf.org/rfc/rfc2817.txt) first. HTTP proxy will be chosen if the previous handshake is failed.
 
