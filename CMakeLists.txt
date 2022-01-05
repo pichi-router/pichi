@@ -16,7 +16,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Preprocessing
 if (ENABLE_CONAN)
   include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-  conan_basic_setup(KEEP_RPATHS)
+  conan_basic_setup(KEEP_RPATHS TARGETS)
+  if (CMAKE_CROSSCOMPILING)
+    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
+    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+  endif ()
 endif ()
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
