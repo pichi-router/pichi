@@ -19,34 +19,40 @@ function cleanup()
   fi
 }
 
+function patch_recipe()
+{
+  local recipe="${recipes}/$(echo $1 | awk -F'/' '{print $1}')"
+  for file in "$(ls ${recipe})"; do
+    patch -td "${HOME}/.conan/data/$1/_/_/export" < "${recipe}/${file}"
+  done
+}
+
 function do_export_old_deps()
 {
-  recipes="$1"
-
-  conan export "${recipes}/libressl" libressl/3.2.0@
+  conan inspect b2/4.5.0@
+  conan inspect libressl/3.2.0@
   conan inspect openssl/1.1.1m@
-
-  conan export "${recipes}/b2" b2/4.5.0@
-  conan export "${recipes}/libmaxminddb" libmaxminddb/1.5.0@
   conan inspect boost/1.72.0@
   conan inspect mbedtls/2.25.0@
   conan inspect libsodium/1.0.18@
   conan inspect rapidjson/1.1.0@
+  conan export "${recipes}/libmaxminddb" libmaxminddb/1.5.0@
+  patch_recipe b2/4.5.0
+  patch_recipe libressl/3.2.0
 }
 
 function do_export_new_deps()
 {
-  recipes="$1"
-
-  conan export "${recipes}/libressl" libressl/3.2.1@
+  conan inspect b2/4.5.0@
+  conan inspect libressl/3.2.1@
   conan inspect openssl/1.1.1m@
-
-  conan export "${recipes}/b2" b2/4.5.0@
-  conan export "${recipes}/libmaxminddb" libmaxminddb/1.6.0@
   conan inspect boost/1.78.0@
   conan inspect mbedtls/2.25.0@
   conan inspect libsodium/1.0.18@
   conan inspect rapidjson/1.1.0@
+  conan export "${recipes}/libmaxminddb" libmaxminddb/1.6.0@
+  patch_recipe b2/4.5.0
+  patch_recipe libressl/3.2.1
 }
 
 set -o errexit
@@ -62,8 +68,8 @@ for i; do
     -d)
       shift
       case "$1" in
-        old) do_export_old_deps "${recipes}";;
-        new) do_export_new_deps "${recipes}";;
+        old) do_export_old_deps;;
+        new) do_export_new_deps;;
         *) usage; exit 1;;
       esac
       deps_exported="true"

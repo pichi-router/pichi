@@ -1,0 +1,28 @@
+--- conanfile.py	1970-01-01 00:00:00.000000000 +0000
++++ conanfile.py	1970-01-01 00:00:00.000000000 +0000
+@@ -74,16 +74,19 @@
+         os.chdir(build_dir)
+         command = os.path.join(
+             engine_dir, "b2.exe" if use_windows_commands else "b2")
+-        full_command = \
+-            "{0} --ignore-site-config --prefix=../output --abbreviate-paths install b2-install-layout=portable".format(
+-                command)
++        if self.options.toolset != 'auto':
++            full_command = "{0} --ignore-site-config --prefix=../output --abbreviate-paths" \
++                           " toolset={1} install".format(command, self.options.toolset)
++        else:
++            full_command = "{0} --ignore-site-config --prefix=../output --abbreviate-paths" \
++                           " install".format(command)
+         self.run(full_command)
+ 
+     def package(self):
+         self.copy("LICENSE.txt", dst="licenses", src="source")
+-        self.copy(pattern="*b2", dst="bin", src="output")
+-        self.copy(pattern="*b2.exe", dst="bin", src="output")
+-        self.copy(pattern="*.jam", dst="bin", src="output")
++        self.copy(pattern="*b2", dst="bin", src="output/bin")
++        self.copy(pattern="*b2.exe", dst="bin", src="output/bin")
++        self.copy(pattern="*.jam", dst="bin/b2_src", src="output/share/boost-build")
+ 
+     def package_info(self):
+         self.cpp_info.bindirs = ["bin"]
