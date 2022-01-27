@@ -1,0 +1,23 @@
+--- conanfile.py	1970-01-01 00:00:00.000000000 +0000
++++ conanfile.py	1970-01-01 00:00:00.000000000 +0000
+@@ -21,6 +21,11 @@
+ 
+     _cmake = None
+ 
++    def _remove_lib_postfix(self, lib):
++        tools.replace_in_file("%s/%s/CMakeLists.txt" % (self._source_subfolder, lib),
++                              "OUTPUT_NAME %s${%s_POSTFIX}" % (lib, lib.upper()),
++                              "OUTPUT_NAME %s" % lib)
++
+     @property
+     def _source_subfolder(self):
+         return "source_subfolder"
+@@ -39,6 +44,8 @@
+         tools.get(**self.conan_data["sources"][self.version])
+         extracted_dir = self.name + "-" + self.version
+         os.rename(extracted_dir, self._source_subfolder)
++        for lib in ("crypto", "ssl", "tls"):
++            self._remove_lib_postfix(lib)
+ 
+     def _configure_cmake(self):
+         if self._cmake:

@@ -17,11 +17,6 @@
 #include <regex>
 #include <sstream>
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4702)
-#endif  // _MSC_VER
-
 using namespace std;
 namespace asio = boost::asio;
 namespace beast = boost::beast;
@@ -447,7 +442,3 @@ template class HttpEgress<stream::TestStream>;
 #endif  // BUILD_TEST
 
 }  // namespace pichi::net
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif  // _MSC_VER

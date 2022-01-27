@@ -13,7 +13,7 @@
 #ifdef _MSC_VER
 #ifdef OPTIONAL
 #undef OPTIONAL
-#endif OPTIONAL
+#endif  // OPTIONAL
 #endif  // _MSC_VER
 
 using namespace std;

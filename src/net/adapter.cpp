@@ -27,11 +27,12 @@
 #include <pichi/vo/messages.hpp>
 #include <pichi/vo/options.hpp>
 
-#ifdef DEPRECATED_RFC2818_CLASS
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 107300
 #include <boost/asio/ssl/host_name_verification.hpp>
-#else  // DEPRECATED_RFC2818_CLASS
+#else  // BOOST_VERSION >= 107300
 #include <boost/asio/ssl/rfc2818_verification.hpp>
-#endif  // DEPRECATED_RFC2818_CLASS
+#endif  // BOOST_VERSION >= 107300
 
 using namespace std;
 namespace asio = boost::asio;
@@ -67,11 +68,11 @@ static auto createTlsContext(vo::TlsEgressOption const& option, string const& se
     ctx.load_verify_file(*option.caFile_);
   else {
     ctx.set_default_verify_paths();
-#ifdef DEPRECATED_RFC2818_CLASS
+#if BOOST_VERSION >= 107300
     ctx.set_verify_callback(ssl::host_name_verification{option.serverName_.value_or(serverName)});
-#else   // DEPRECATED_RFC2818_CLASS
+#else   // BOOST_VERSION >= 107300
     ctx.set_verify_callback(ssl::rfc2818_verification{option.serverName_.value_or(serverName)});
-#endif  // DEPRECATED_RFC2818_CLASS
+#endif  // BOOST_VERSION >= 107300
   }
   return ctx;
 }
