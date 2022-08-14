@@ -3,15 +3,21 @@
 function usage()
 {
   echo "Usage:"
-  echo "  build.sh [-p platform] [-d] [-o] [-s] [platform specific options] <version>"
-  echo "    -p: available platforms are: windows/freebsd/ios/android"
+  echo "  build.sh <-p platform> [-d] [-o] [-s] [platform specific options] <version>"
+  echo "    -p: available platforms are: windows/freebsd/macos/linux/ios/android"
   echo "          windows:"
   echo "            * 'default' profile is used"
-  echo "            * always building libressl if "
+  echo "            * always building libressl"
   echo "            * -s is forbidden"
   echo "            * no platform specific options"
   echo "          freebsd:"
   echo "            * 'freebsd' profile is used"
+  echo "            * no platform specific options"
+  echo "          macos:"
+  echo "            * 'macos' profile is used"
+  echo "            * no platform specific options"
+  echo "          linux:"
+  echo "            * 'default' profile is used"
   echo "            * no platform specific options"
   echo "          ios:"
   echo "            * 'ios' profile is used"
@@ -21,9 +27,6 @@ function usage()
   echo "            * 'android' profile is used"
   echo "            * -s is forbidden"
   echo "            * available archs are x86/x86_64/armv7/armv7hf/armv8"
-  echo "          otherwise or unspecified:"
-  echo "            * 'default' profile is used"
-  echo "            * no platform specific options"
   echo "    -d: set build_type=Debug if sepecified, otherwise Release"
   echo "    -o: depends on openssl if specified, otherwise libressl"
   echo "    -s: shared=True is set if specified, otherwise False."
@@ -43,9 +46,6 @@ function generate_default_profile()
   fi
   conan profile new --detect default
   conan profile remove settings.build_type default
-  if [ "$(conan profile get settings.compiler default | tr -d '\r')" = 'gcc' ]; then
-    conan profile update settings.compiler.libcxx=libstdc++11 default
-  fi
 }
 
 function copy_profile()
@@ -134,14 +134,6 @@ function build_for_windows()
   build ${args}
 }
 
-function build_for_freebsd()
-{
-  trap - EXIT
-  generate_default_profile
-  copy_profile
-  build -pr freebsd
-}
-
 function build_for_ios()
 {
   validate_arch x86 x86_64 armv7 armv7s armv7k armv8 armv8.3
@@ -180,10 +172,21 @@ function build_for_android()
     -pr android
 }
 
-function build_for_default()
+function build_for_spec_profile()
 {
   trap - EXIT
   generate_default_profile
+  copy_profile
+  build -pr "${platform}"
+}
+
+function build_for_linux()
+{
+  trap - EXIT
+  generate_default_profile
+  if [ "$(conan profile get settings.compiler default | tr -d '\r')" = 'gcc' ]; then
+    conan profile update settings.compiler.libcxx=libstdc++11 default
+  fi
   build
 }
 
@@ -191,10 +194,12 @@ function dispatch_args()
 {
   case "${platform}" in
     windows) build_for_windows;;
-    freebsd) build_for_freebsd;;
+    freebsd) build_for_spec_profile;;
+    macos) build_for_spec_profile;;
+    linux) build_for_linux;;
     ios) build_for_ios;;
     android) build_for_android;;
-    *) build_for_default;;
+    *) false;;
   esac
 }
 

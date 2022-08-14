@@ -383,20 +383,25 @@ $ bash .conan/scripts/export.sh -d new "${PICHI_VERSION}"
 #### Building
 
 ```
-$ # FreeBSD
-$ bash .conan/scripts/build.sh -p freebsd "${PICHI_VERSION}"
-$
+$ # Desktop/Server
 $ # Windows
 $ bash .conan/scripts/build.sh -p windows "${PICHI_VERSION}"
 $
+$ # Macos
+$ bash .conan/scripts/build.sh -p macos "${PICHI_VERSION}"
+$
+$ # Linux
+$ bash .conan/scripts/build.sh -p linux "${PICHI_VERSION}"
+$
+$ # FreeBSD
+$ bash .conan/scripts/build.sh -p freebsd "${PICHI_VERSION}"
+$
+$ # Mobile
 $ # iOS
 $ bash .conan/scripts/build.sh -a armv8.3 -v 15.1 -p ios "${PICHI_VERSION}"
 $
 $ # Android
 $ bash .conan/scripts/build.sh -a armv8 -l 29 -r /path/to/ndk/home -p android "${PICHI_VERSION}"
-$
-$ # Others
-$ bash .conan/scripts/build.sh "${PICHI_VERSION}"
 ```
 
 ### Docker
