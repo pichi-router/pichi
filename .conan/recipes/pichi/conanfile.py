@@ -43,7 +43,7 @@ class PichiConan(ConanFile):
     if self.options.tls_lib == "libressl":
       self.requires("libressl/[>=3.0.0]@")
     else:
-      self.requires("openssl/1.1.1m@")
+      self.requires("openssl/1.1.1q@")
 
   def build(self):
     cmake = self._configure_cmake()

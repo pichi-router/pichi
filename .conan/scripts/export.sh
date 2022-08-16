@@ -29,30 +29,24 @@ function patch_recipe()
 
 function do_export_old_deps()
 {
-  conan inspect b2/4.5.0@
   conan inspect libressl/3.2.0@
-  conan inspect openssl/1.1.1m@
-  conan inspect boost/1.72.0@
+  conan inspect boost/1.77.0@
   conan inspect mbedtls/2.25.0@
   conan inspect libsodium/1.0.18@
   conan inspect rapidjson/1.1.0@
   conan export "${recipes}/libmaxminddb" libmaxminddb/1.5.0@
-  patch_recipe b2/4.5.0
   patch_recipe libressl/3.2.0
 }
 
 function do_export_new_deps()
 {
-  conan inspect b2/4.5.0@
-  conan inspect libressl/3.2.1@
-  conan inspect openssl/1.1.1m@
-  conan inspect boost/1.78.0@
-  conan inspect mbedtls/3.1.0@
+  conan inspect libressl/3.5.3@
+  conan inspect boost/1.79.0@
+  conan inspect mbedtls/3.2.1@
   conan inspect libsodium/1.0.18@
   conan inspect rapidjson/1.1.0@
   conan export "${recipes}/libmaxminddb" libmaxminddb/1.6.0@
-  patch_recipe b2/4.5.0
-  patch_recipe libressl/3.2.1
+  patch_recipe libressl/3.5.3
 }
 
 set -o errexit
