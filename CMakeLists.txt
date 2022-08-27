@@ -7,6 +7,8 @@ option(BUILD_TEST "Build unit test cases" ON)
 option(STATIC_LINK "Static linking" ON)
 option(INSTALL_DEVEL "Install files for development" OFF)
 option(ENABLE_CONAN "Enable conan" OFF)
+option(TRANSPARENT_PF "Implement transparent ingress via Packet Filter" OFF)
+option(TRANSPARENT_IPTABLES "Implement transparent ingress via Linux IPTables" OFF)
 
 # C++ standard options
 set(CMAKE_CXX_STANDARD 17)

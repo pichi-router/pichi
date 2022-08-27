@@ -63,6 +63,8 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
     if (ingress.websocket_.has_value())
       ret.AddMember(ingress::WEBSOCKET, toJson(*ingress.websocket_, alloc), alloc);
     break;
+  case AdapterType::TRANSPARENT:
+    break;
   default:
     fail();
   }
@@ -119,6 +121,8 @@ template <> Ingress parse(json::Value const& v)
     if (v.HasMember(ingress::WEBSOCKET))
       ingress.websocket_ = parse<WebsocketOption>(v[ingress::WEBSOCKET]);
     break;
+  case AdapterType::TRANSPARENT:
+    break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
     break;
@@ -142,6 +146,8 @@ bool operator==(Ingress const& lhs, Ingress const& rhs)
   case AdapterType::VMESS:
     return lhs.credential_ == rhs.credential_ && lhs.tls_ == rhs.tls_ &&
            lhs.websocket_ == rhs.websocket_;
+  case AdapterType::TRANSPARENT:
+    return true;
   default:
     fail();
   }

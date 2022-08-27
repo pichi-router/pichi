@@ -3,3 +3,6 @@ include(boost)
 
 [settings]
 compiler.libcxx=libstdc++11
+
+[options]
+pichi:enable_transparent=iptables

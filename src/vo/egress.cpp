@@ -17,6 +17,7 @@ namespace pichi::vo {
 json::Value toJson(Egress const& egress, Allocator& alloc)
 {
   assertFalse(egress.type_ == AdapterType::TUNNEL);
+  assertFalse(egress.type_ == AdapterType::TRANSPARENT);
 
   auto ret = json::Value{json::kObjectType};
   ret.AddMember(egress::TYPE, toJson(egress.type_, alloc), alloc);

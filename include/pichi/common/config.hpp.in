@@ -3,6 +3,9 @@
 
 #cmakedefine HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 
+#cmakedefine TRANSPARENT_PF
+#cmakedefine TRANSPARENT_IPTABLES
+
 #cmakedefine HAS_UNISTD_H
 #cmakedefine HAS_SIGNAL_H
 #cmakedefine HAS_PWD_H

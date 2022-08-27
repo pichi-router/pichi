@@ -87,10 +87,19 @@ template <> struct AdapterTrait<AdapterType::VMESS> {
   using Credential = VMessIngressCredential;
 };
 
+template <> struct AdapterTrait<AdapterType::TRANSPARENT> {
+  static const AdapterType type_ = AdapterType::TRANSPARENT;
+  static const Present credential_ = Present::UNUSED;
+  static const Present option_ = Present::UNUSED;
+  static const Present tls_ = Present::UNUSED;
+  static const Present websocket_ = Present::UNUSED;
+};
+
 using AllAdapterTraits =
     mpl::set<AdapterTrait<AdapterType::HTTP>, AdapterTrait<AdapterType::SOCKS5>,
              AdapterTrait<AdapterType::TUNNEL>, AdapterTrait<AdapterType::SS>,
-             AdapterTrait<AdapterType::TROJAN>, AdapterTrait<AdapterType::VMESS>>;
+             AdapterTrait<AdapterType::TROJAN>, AdapterTrait<AdapterType::VMESS>,
+             AdapterTrait<AdapterType::TRANSPARENT>>;
 
 template <AdapterType type> Value defaultIngressJson()
 {

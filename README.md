@@ -62,17 +62,24 @@ Pichi can centralize the varies, rather than editing the configuration client by
 
 ![Use Case 1](images/use_case_1.png)
 
-#### Trasparent proxy for DNS
+#### TCP Tunnel for DNS
 
-Transparent proxy is very useful if you want to use some DNS servers which might be already poisoned or blocked. Pichi provides *tunnel* ingress to act as a transparent proxy. Furthermore, the outgoing egress for each destination will be chosen by following the user-defined rules.
+TCP tunnel is very useful if you want to use some DNS servers which might be already poisoned or blocked. Pichi provides *tunnel* ingress to act as a tunnel. Furthermore, the outgoing egress for each destination will be chosen by following the user-defined rules.
 
 ![Use Case 2](images/use_case_2.png)
+
+#### Transparent proxy
+
+The transparent proxies are usually deployed on some internet exit router in the intranet. The difference between the transparent proxy and others is that the clients use no explicit proxy settings. It is engaging for the devices that can't use proxy settings. On the other hand, the con of the transparent proxy is that it usually requires the root privilege of the router. The proxy can also use rule-based routing to forward the requests from the transparent ingress. And it is easy to understand that the domain rules don't make any sense because the transparent ingress can't provide the domain information.
+
+![Use Case 3](images/use_case_3.png)
 
 ### Supported protocols
 
 #### Ingress protocols
 
 * Tunnel: TCP tunnel to multiple destinations to be chosen by pre-defined load balance algorithms
+* Transparent: Transparent proxy for TCP
 * HTTP Proxy: defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt)
 * HTTP Tunnel: defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt)
 * SOCKS5: defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt)
@@ -334,6 +341,34 @@ HTTP/1.1 204 No Content
 
 ```
 
+#### Transparent proxy for a specific device
+
+```
+$ # Using FreeBSD PF
+$ cat transparent.conf
+intranet = "fxp0"
+device_v6 = "the IPv6 address"
+device_v4 = "the IPv4 address"
+rdr pass on $intranet inet proto tcp from $device_v4 to any -> 127.0.0.1 port 1001
+rdr pass on $intranet inet6 proto tcp from $device_v6 to any -> ($intranet) port 1001
+$ sudo pfctl -a transparent -f transparent.conf
+$
+$ # Or using Linux iptables
+$ sudo iptables -t nat -A PREROUTING -i eth0 -p tcp -s "${DEVICE_V4}" -j REDIRECT --to-ports 1001
+$ sudo ip6tables -t nat -A PREROUTING -i eth0 -p tcp -s "${DEVICE_V6}" -j REDIRECT --to-ports 1001
+$
+$ # Creating the ingress
+$ curl -i -X PUT -d '{ \
+>       "type":"transparent" \
+>       "bind":[ \
+>         { \
+>           "host": "::",
+>           "port": 1001
+>         } \
+>       ] \
+>     }' http://pichi-router:port/ingresses/transparent
+```
+
 #### More examples
 
 Please refer to the [folder](schemas/examples) to find more examples.
@@ -356,6 +391,8 @@ Please refer to the [folder](schemas/examples) to find more examples.
 * `BUILD_TEST`: Build unit test cases, the default is **ON**.
 * `STATIC_LINK`: Generate static library, the default is **ON**.
 * `INSTALL_DEVEL`: Install development files, the default is **OFF**.
+* `TRANSPARENT_PF`: Build the transparent ingress implemented by PF, the default is **OFF**.
+* `TRANSPARENT_IPTABLES`: Build the transparent ingress implemented by iptables, the default is **OFF**.
 
 ### Build and run tests with CMake
 

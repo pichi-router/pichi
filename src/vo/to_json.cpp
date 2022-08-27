@@ -58,6 +58,8 @@ json::Value toJson(AdapterType type, Allocator& alloc)
     return toJson(type::TROJAN, alloc);
   case AdapterType::VMESS:
     return toJson(type::VMESS, alloc);
+  case AdapterType::TRANSPARENT:
+    return toJson(type::TRANSPARENT, alloc);
   default:
     fail();
   }
