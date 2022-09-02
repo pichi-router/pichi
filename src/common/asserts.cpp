@@ -32,7 +32,14 @@ void assertSyscallSuccess(int r, PichiError e)
 #if defined(HAS_STRERROR_S)
   strerror_s(msg.data(), msg.size(), errno);
 #elif defined(HAS_STRERROR_R)
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+#endif  // __GNUC__
   strerror_r(errno, msg.data(), msg.size());
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif  // __GNUC__
 #else
   msg = string{strerror(errno)};
 #endif
