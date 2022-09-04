@@ -169,17 +169,18 @@ BOOST_AUTO_TEST_CASE(parse_Uint16_Incorrect_Type)
 {
   for (auto&& v : {Value{0.0}, Value{kStringType}, Value{kNullType}, Value{kTrueType},
                    Value{kFalseType}, Value{kObjectType}, Value{kArrayType}}) {
-    BOOST_CHECK_EXCEPTION(vo::parse<uint16_t>(v), Exception, verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(vo::parse<uint16_t>(v), SystemError,
+                          verifyException<PichiError::BAD_JSON>);
   }
 }
 
 BOOST_AUTO_TEST_CASE(parse_Uint16_Out_Of_Range)
 {
-  BOOST_CHECK_EXCEPTION(vo::parse<uint16_t>(Value{-1}), Exception,
+  BOOST_CHECK_EXCEPTION(vo::parse<uint16_t>(Value{-1}), SystemError,
                         verifyException<PichiError::BAD_JSON>);
   BOOST_CHECK_EXCEPTION(
       vo::parse<uint16_t>(Value{static_cast<uint32_t>(numeric_limits<uint16_t>::max()) + 1}),
-      Exception, verifyException<PichiError::BAD_JSON>);
+      SystemError, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Uint16_All_Numbers)
@@ -192,7 +193,7 @@ BOOST_AUTO_TEST_CASE(parse_Uint16_All_Numbers)
 BOOST_AUTO_TEST_CASE(parseNameOrPassword_Length_Out_Of_Range)
 {
   auto s = string(256, 'a');
-  BOOST_CHECK_EXCEPTION(vo::parseNameOrPassword(createValue(s)), Exception,
+  BOOST_CHECK_EXCEPTION(vo::parseNameOrPassword(createValue(s)), SystemError,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -209,14 +210,14 @@ BOOST_AUTO_TEST_CASE(parseDestinantions_Incorrect_Type)
 {
   for (auto&& v : {Value{0}, Value{0.0}, Value{kStringType}, Value{kNullType}, Value{kTrueType},
                    Value{kFalseType}, Value{kArrayType}}) {
-    BOOST_CHECK_EXCEPTION(vo::parseDestinantions(v), Exception,
+    BOOST_CHECK_EXCEPTION(vo::parseDestinantions(v), SystemError,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
 
 BOOST_AUTO_TEST_CASE(parseDestinantions_Empty_Object)
 {
-  BOOST_CHECK_EXCEPTION(vo::parseDestinantions(Value{kObjectType}), Exception,
+  BOOST_CHECK_EXCEPTION(vo::parseDestinantions(Value{kObjectType}), SystemError,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -225,7 +226,7 @@ BOOST_AUTO_TEST_CASE(parseDestinations_Incorrect_Port_Type)
   for (auto&& v : {kStringType, kNullType, kTrueType, kFalseType, kObjectType, kArrayType}) {
     auto json = Value{kObjectType};
     json.AddMember(ph, Value{v}, alloc);
-    BOOST_CHECK_EXCEPTION(vo::parseDestinantions(json), Exception,
+    BOOST_CHECK_EXCEPTION(vo::parseDestinantions(json), SystemError,
                           verifyException<PichiError::BAD_JSON>);
   }
 }

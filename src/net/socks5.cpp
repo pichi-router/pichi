@@ -5,6 +5,7 @@
 #include <boost/asio/ssl/stream.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
+#include <pichi/common/error.hpp>
 #include <pichi/net/helper.hpp>
 #include <pichi/net/socks5.hpp>
 #include <pichi/stream/test.hpp>
@@ -46,20 +47,6 @@ static uint8_t const AUTH_SUCCESS[] = {0x01_u8, 0x00_u8};
 static uint8_t const METHOD_FAILURE[] = {0x05_u8, 0xff_u8};
 #endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 
-static ConstBuffer<uint8_t> errorToBuffer(PichiError e)
-{
-  switch (e) {
-  case PichiError::CONN_FAILURE:
-    return HOST_UNREACHABLE;
-  case PichiError::BAD_AUTH_METHOD:
-    return METHOD_FAILURE;
-  case PichiError::UNAUTHENTICATED:
-    return AUTH_FAILURE;
-  default:
-    return {};
-  }
-}
-
 static ConstBuffer<uint8_t> errorToBuffer(sys::error_code ec)
 {
   if (ec == asio::error::address_family_not_supported) return ADDRESS_TYPE_NOT_SUPPORTED;
@@ -70,6 +57,9 @@ static ConstBuffer<uint8_t> errorToBuffer(sys::error_code ec)
   if (ec == asio::error::network_down) return NETWORK_UNREACHABLE;
   if (ec == asio::error::network_unreachable) return NETWORK_UNREACHABLE;
   if (ec == asio::error::timed_out) return HOST_UNREACHABLE;
+  if (ec == PichiError::CONN_FAILURE) return HOST_UNREACHABLE;
+  if (ec == PichiError::BAD_AUTH_METHOD) return METHOD_FAILURE;
+  if (ec == PichiError::UNAUTHENTICATED) return AUTH_FAILURE;
   return {};
 }
 
@@ -184,9 +174,6 @@ template <typename Stream> void Socks5Ingress<Stream>::disconnect(exception_ptr 
   auto buf = ConstBuffer<uint8_t>{};
   try {
     rethrow_exception(eptr);
-  }
-  catch (Exception const& e) {
-    buf = errorToBuffer(e.error());
   }
   catch (sys::system_error const& e) {
     buf = errorToBuffer(e.code());

@@ -11,7 +11,6 @@
 using namespace std;
 namespace asio = boost::asio;
 namespace ip = asio::ip;
-namespace sys = boost::system;
 using ResolvedResults = ip::basic_resolver_results<ip::tcp>;
 
 namespace pichi::unit_test {
@@ -32,17 +31,17 @@ BOOST_AUTO_TEST_SUITE(ROUTER_TEST)
 
 BOOST_AUTO_TEST_CASE(matchDomain_Empty_Domains)
 {
-  BOOST_CHECK_EXCEPTION(matchDomain("example.com", ""), Exception,
+  BOOST_CHECK_EXCEPTION(matchDomain("example.com", ""), SystemError,
                         verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK_EXCEPTION(matchDomain("", "example.com"), Exception,
+  BOOST_CHECK_EXCEPTION(matchDomain("", "example.com"), SystemError,
                         verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(matchDomain_Domains_Start_With_Dot)
 {
-  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), Exception, verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(matchDomain(".com", "com"), Exception, verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(matchDomain("example.com", "."), Exception,
+  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), SystemError, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(matchDomain(".com", "com"), SystemError, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(matchDomain("example.com", "."), SystemError,
                         verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(matchDomain("example.com", ".com"));
 }
@@ -124,7 +123,7 @@ BOOST_AUTO_TEST_CASE(Router_Erase_Rule_Used_By_Route)
   router.update(ph, {});
   router.setRoute({{}, {make_pair(vector<string>{ph}, "")}});
 
-  BOOST_CHECK_EXCEPTION(router.erase(ph), Exception, verifyException<PichiError::RES_IN_USE>);
+  BOOST_CHECK_EXCEPTION(router.erase(ph), SystemError, verifyException<PichiError::RES_IN_USE>);
 
   router.setRoute({});
   router.erase(ph);
@@ -162,7 +161,7 @@ BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Rule)
   auto router = Router{fn};
   verifyDefault(router.getRoute());
 
-  BOOST_CHECK_EXCEPTION(router.setRoute({{}, {make_pair(vector<string>{ph}, "")}}), Exception,
+  BOOST_CHECK_EXCEPTION(router.setRoute({{}, {make_pair(vector<string>{ph}, "")}}), SystemError,
                         verifyException<PichiError::SEMANTIC_ERROR>);
   verifyDefault(router.getRoute());
 }
@@ -232,7 +231,7 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Range)
 {
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
-  BOOST_CHECK_EXCEPTION(router.update(ph, {{"Invalid Range"}}), Exception,
+  BOOST_CHECK_EXCEPTION(router.update(ph, {{"Invalid Range"}}), SystemError,
                         verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(begin(router) == end(router));
 }
@@ -241,9 +240,9 @@ BOOST_AUTO_TEST_CASE(Router_update_Invalid_Type)
 {
   auto router = Router{fn};
   BOOST_CHECK(begin(router) == end(router));
-  BOOST_CHECK_EXCEPTION(router.update(ph, {{}, {}, {AdapterType::DIRECT}}), Exception,
+  BOOST_CHECK_EXCEPTION(router.update(ph, {{}, {}, {AdapterType::DIRECT}}), SystemError,
                         verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK_EXCEPTION(router.update(ph, {{}, {}, {AdapterType::REJECT}}), Exception,
+  BOOST_CHECK_EXCEPTION(router.update(ph, {{}, {}, {AdapterType::REJECT}}), SystemError,
                         verifyException<PichiError::SEMANTIC_ERROR>);
   BOOST_CHECK(begin(router) == end(router));
 }

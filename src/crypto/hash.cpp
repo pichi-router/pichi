@@ -4,6 +4,7 @@
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <sodium/utils.h>
+#include <string>
 
 using namespace std;
 

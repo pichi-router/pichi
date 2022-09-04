@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <pichi/common/asserts.hpp>
 #include <stdio.h>
 #ifdef HAS_UNISTD_H
 #include <errno.h>
@@ -30,26 +31,14 @@ extern void run(string const&, uint16_t, string const&, string const&);
 
 #ifdef HAS_UNISTD_H
 
-class Exception : public exception {
-public:
-  explicit Exception(int e) : errno_{e} {}
-
-  char const* what() const noexcept override { return strerror(errno_); }
-
-private:
-  int errno_;
-};
-
-[[noreturn]] static void fail() { throw Exception(errno); }
-
 static void assertTrue(bool b)
 {
-  if (!b) fail();
+  if (!b) pichi::fail(errno);
 }
 
 static void assertFalse(bool b)
 {
-  if (b) fail();
+  if (b) pichi::fail(errno);
 }
 
 #endif  // HAS_UNISTD_H

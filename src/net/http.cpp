@@ -7,6 +7,7 @@
 #include <boost/beast/http/write.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
+#include <pichi/common/error.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/common/uri.hpp>
 #include <pichi/crypto/base64.hpp>
@@ -257,40 +258,38 @@ template <typename Stream> void HttpIngress<Stream>::disconnect(exception_ptr ep
   try {
     rethrow_exception(eptr);
   }
-  catch (Exception const& e) {
-    switch (e.error()) {
-    case PichiError::CONN_FAILURE:
-      rep->result(http::status::gateway_timeout);
-      break;
-    case PichiError::BAD_AUTH_METHOD:
-      rep->result(http::status::proxy_authentication_required);
-      rep->set(http::field::proxy_authenticate, "Basic");
-      break;
-    case PichiError::UNAUTHENTICATED:
-      rep->result(http::status::forbidden);
-      break;
-    default:
-      rep->result(http::status::internal_server_error);
-      break;
-    }
-  }
   catch (sys::system_error const& e) {
     // TODO classify these errors
+    auto ec = e.code();
+    if (ec == PichiError::CONN_FAILURE) {
+      rep->result(http::status::gateway_timeout);
+    }
+    else if (ec == PichiError::BAD_AUTH_METHOD) {
+      rep->result(http::status::proxy_authentication_required);
+      rep->set(http::field::proxy_authenticate, "Basic");
+    }
+    else if (ec == PichiError::UNAUTHENTICATED) {
+      rep->result(http::status::forbidden);
+    }
+    else if (ec.category() == PICHI_CATEGORY) {
+      rep->result(http::status::internal_server_error);
+    }
+    else {
+      /* TODO It's not clear that http::make_error_code() will return error codes
+       * with different categories when its invoker are located in the different
+       * DLLs. As the result, the pre-defined category will never equal to what
+       * comes from Boost.Test. The downcasting at runtime has to be used to
+       * detect the equation here.
+       *
+       * The original code:
+       * static auto const& HTTP_ERROR_CATEGORY =
+       *   http::make_error_code(http::error::end_of_stream).category();
+       */
 
-    /* TODO It's not clear that http::make_error_code() will return error codes
-     * with different categories when its invoker are located in the different
-     * DLLs. As the result, the pre-defined category will never equal to what
-     * comes from Boost.Test. The downcasting at runtime has to be used to
-     * detect the equation here.
-     *
-     * The original code:
-     * static auto const& HTTP_ERROR_CATEGORY =
-     *   http::make_error_code(http::error::end_of_stream).category();
-     */
-
-    using CategoryPtr = http::detail::http_error_category const*;
-    auto pCat = dynamic_cast<CategoryPtr>(&e.code().category());
-    rep->result(pCat ? http::status::bad_request : http::status::gateway_timeout);
+      using CategoryPtr = http::detail::http_error_category const*;
+      auto pCat = dynamic_cast<CategoryPtr>(&e.code().category());
+      rep->result(pCat ? http::status::bad_request : http::status::gateway_timeout);
+    }
   }
   /*  FIXME Windows+MSVC2017/2019
    *  It is supposed to be investigated in the future that the 'rep' on the stack

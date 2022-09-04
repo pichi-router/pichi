@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Correct_Stream)
   socket.fill(CORRECT_DATA);
   BOOST_CHECK(CORRECT_EP == ingress->readRemote(gYield));
   BOOST_CHECK(ingress->readable());
-  BOOST_CHECK_EXCEPTION(ingress->recv({}, gYield), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(ingress->recv({}, gYield), SystemError, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(readRemote_Simulate_HTTP_Server)

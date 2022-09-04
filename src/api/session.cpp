@@ -7,7 +7,6 @@
 #include <pichi/common/adapter.hpp>
 #include <pichi/common/constants.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/common/exception.hpp>
 #include <pichi/net/spawn.hpp>
 
 using namespace std;

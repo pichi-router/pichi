@@ -6,6 +6,7 @@
 #include <iostream>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/enumerations.hpp>
+#include <pichi/common/error.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/hash.hpp>
 #include <pichi/net/helper.hpp>
@@ -137,7 +138,8 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
     received_.erase(cbegin(received_), cend(received_) - left);
     return ret;
   }
-  catch (Exception const& e) {
+  catch (sys::system_error const& e) {
+    if (e.code().category() != PICHI_CATEGORY) throw e;
     cout << "Trojan Error: " << e.what() << endl;
     return remote_;
   }

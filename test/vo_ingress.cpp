@@ -132,7 +132,7 @@ template <AdapterType type, typename Key> void verifyMandatoryField(Key&& key)
 {
   auto json = defaultIngressJson<type>();
   json.RemoveMember(key);
-  BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Ingress>(json), SystemError, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
 BOOST_AUTO_TEST_CASE(parse_Invalid_Json_Type)
 {
   for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kArrayType}) {
-    BOOST_CHECK_EXCEPTION(parse<Ingress>(Value{t}), Exception,
+    BOOST_CHECK_EXCEPTION(parse<Ingress>(Value{t}), SystemError,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -152,11 +152,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Basic_Mandatory_Fields, Trait, AllAdapterTra
 {
   auto noType = defaultIngressJson<Trait::type_>();
   noType.RemoveMember(ingress::TYPE);
-  BOOST_CHECK_EXCEPTION(parse<Ingress>(noType), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Ingress>(noType), SystemError, verifyException<PichiError::BAD_JSON>);
 
   auto noBind = defaultIngressJson<Trait::type_>();
   noBind.RemoveMember(ingress::BIND);
-  BOOST_CHECK_EXCEPTION(parse<Ingress>(noBind), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Ingress>(noBind), SystemError, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Invalid_Types, Trait, AllAdapterTraits)
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Invalid_Types, Trait, AllAdapterTraits)
   for (auto t : {AdapterType::DIRECT, AdapterType::REJECT}) {
     auto invalid = defaultIngressJson<Trait::type_>();
     invalid[ingress::TYPE] = toJson(t, alloc);
-    BOOST_CHECK_EXCEPTION(parse<Ingress>(invalid), Exception,
+    BOOST_CHECK_EXCEPTION(parse<Ingress>(invalid), SystemError,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Invalid_Bind_Type, Trait, AllAdapterTraits)
   for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kObjectType}) {
     auto json = defaultIngressJson<Trait::type_>();
     json[ingress::BIND] = Value{t};
-    BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(parse<Ingress>(json), SystemError, verifyException<PichiError::BAD_JSON>);
   }
 }
 
@@ -182,7 +182,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Empty_Bind, Trait, AllAdapterTraits)
 {
   auto json = defaultIngressJson<Trait::type_>();
   json[ingress::BIND].Clear();
-  BOOST_CHECK_EXCEPTION(parse<Ingress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Ingress>(json), SystemError, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
@@ -251,7 +251,7 @@ BOOST_AUTO_TEST_CASE(toJson_Invalid_Adapter_Type)
     auto ingress = Ingress{};
     ingress.type_ = type;
     ingress.bind_.push_back(DEFAULT_ENDPOINT);
-    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
 }
 
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Empty_Bind, Trait, AllAdapterTraits)
 {
   auto ingress = defaultIngress<Trait::type_>();
   ingress.bind_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), SystemError, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Mandatory_Fields, Trait, AllAdapterTraits)
@@ -267,22 +267,22 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Mandatory_Fields, Trait, AllAdapterTraits)
   if constexpr (Trait::credential_ == Present::MANDATORY) {
     auto ingress = defaultIngress<Trait::type_>();
     ingress.credential_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
   if constexpr (Trait::option_ == Present::MANDATORY) {
     auto ingress = defaultIngress<Trait::type_>();
     ingress.opt_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
   if constexpr (Trait::tls_ == Present::MANDATORY) {
     auto ingress = defaultIngress<Trait::type_>();
     ingress.tls_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
   if constexpr (Trait::websocket_ == Present::MANDATORY) {
     auto ingress = defaultIngress<Trait::type_>();
     ingress.websocket_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(ingress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
 }
 

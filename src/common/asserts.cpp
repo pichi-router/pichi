@@ -1,10 +1,21 @@
+#include <boost/system/system_error.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/error.hpp>
+#include <string>
 
 using namespace std;
+namespace sys = boost::system;
+using ErrorCode = sys::error_code;
+using SystemError = sys::system_error;
 
 namespace pichi {
 
-[[noreturn]] void fail(PichiError e, string_view msg) { throw Exception{e, msg}; }
+[[noreturn]] void fail(int e) { throw SystemError{ErrorCode{e, sys::system_category()}}; }
+
+[[noreturn]] void fail(PichiError e, string_view msg)
+{
+  throw SystemError{makeErrorCode(e), string{cbegin(msg), cend(msg)}};
+}
 
 [[noreturn]] void fail(string_view msg) { fail(PichiError::MISC, msg); }
 

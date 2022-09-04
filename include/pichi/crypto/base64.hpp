@@ -1,9 +1,7 @@
 #ifndef PICHI_CRYPTO_BASE64_HPP
 #define PICHI_CRYPTO_BASE64_HPP
 
-#include <pichi/common/exception.hpp>
-#include <stdint.h>
-#include <string>
+#include <pichi/common/enumerations.hpp>
 #include <string_view>
 
 namespace pichi::crypto {

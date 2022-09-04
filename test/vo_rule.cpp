@@ -43,9 +43,9 @@ BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>("not a json"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>("not a json"), SystemError,
                         verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>("[\"not a json object\"]"), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>("[\"not a json object\"]"), SystemError,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -105,27 +105,27 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Empty_Fields_Content)
 
   auto range = origin;
   range.range_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(range)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(range)), SystemError,
                         verifyException<PichiError::BAD_JSON>);
 
   auto ingress = origin;
   ingress.ingress_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(ingress)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(ingress)), SystemError,
                         verifyException<PichiError::BAD_JSON>);
 
   auto pattern = origin;
   pattern.pattern_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(pattern)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(pattern)), SystemError,
                         verifyException<PichiError::BAD_JSON>);
 
   auto domain = origin;
   domain.domain_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(domain)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(domain)), SystemError,
                         verifyException<PichiError::BAD_JSON>);
 
   auto country = origin;
   country.country_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(country)), Exception,
+  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(country)), SystemError,
                         verifyException<PichiError::BAD_JSON>);
 }
 
@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_Empty_Pack)
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack_Empty_Name)
 {
   auto src = unordered_map<string, vo::Rule>{{"", {}}};
-  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), Exception,
+  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), SystemError,
                         verifyException<PichiError::MISC>);
 }
 

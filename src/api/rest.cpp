@@ -4,6 +4,7 @@
 #include <pichi/api/ingress_manager.hpp>
 #include <pichi/api/rest.hpp>
 #include <pichi/api/router.hpp>
+#include <pichi/common/error.hpp>
 #include <pichi/vo/error.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
@@ -78,24 +79,18 @@ static auto options(initializer_list<http::verb>&& verbs)
   return resp;
 }
 
-static http::status e2c(PichiError e)
-{
-  switch (e) {
-  case PichiError::RES_IN_USE:
-    return http::status::forbidden;
-  case PichiError::BAD_JSON:
-    return http::status::bad_request;
-  case PichiError::SEMANTIC_ERROR:
-    return http::status::unprocessable_entity;
-  default:
-    return http::status::internal_server_error;
-  }
-}
-
 static http::status e2c(sys::error_code e)
 {
-  return e == asio::error::address_in_use ? http::status::locked
-                                          : http::status::internal_server_error;
+  if (e == asio::error::address_in_use)
+    return http::status::locked;
+  else if (e == PichiError::RES_IN_USE)
+    return http::status::forbidden;
+  else if (e == PichiError::BAD_JSON)
+    return http::status::bad_request;
+  else if (e == PichiError::SEMANTIC_ERROR)
+    return http::status::unprocessable_entity;
+  else
+    return http::status::internal_server_error;
 }
 
 Rest::Rest(IngressManager& ingresses, EgressManager& egresses, Router& router)
@@ -179,9 +174,6 @@ Rest::Response Rest::errorResponse(exception_ptr eptr)
 {
   try {
     rethrow_exception(eptr);
-  }
-  catch (Exception const& e) {
-    return genResp(e2c(e.error()), vo::Error{e.what()});
   }
   catch (sys::system_error const& e) {
     return genResp(e2c(e.code()), vo::Error{e.what()});

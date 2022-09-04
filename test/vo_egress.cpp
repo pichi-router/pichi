@@ -146,7 +146,7 @@ template <AdapterType type, typename Key> void verifyMandatoryField(Key&& key)
 {
   auto json = defaultEgressJson<type>();
   json.RemoveMember(key);
-  BOOST_CHECK_EXCEPTION(parse<Egress>(json), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Egress>(json), SystemError, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
 BOOST_AUTO_TEST_CASE(parse_Invalid_Json_Type)
 {
   for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kArrayType}) {
-    BOOST_CHECK_EXCEPTION(parse<Egress>(Value{t}), Exception,
+    BOOST_CHECK_EXCEPTION(parse<Egress>(Value{t}), SystemError,
                           verifyException<PichiError::BAD_JSON>);
   }
 }
@@ -166,14 +166,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Type_Is_Mandatory, Trait, AllAdapterTraits)
 {
   auto noType = defaultEgressJson<Trait::type_>();
   noType.RemoveMember(egress::TYPE);
-  BOOST_CHECK_EXCEPTION(parse<Egress>(noType), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Egress>(noType), SystemError, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Invalid_Types, Trait, AllAdapterTraits)
 {
   auto invalid = defaultEgressJson<Trait::type_>();
   invalid[egress::TYPE] = toJson(AdapterType::TUNNEL, alloc);
-  BOOST_CHECK_EXCEPTION(parse<Egress>(invalid), Exception, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Egress>(invalid), SystemError, verifyException<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE(toJson_Invalid_Adapter_Type)
 {
   auto egress = Egress{};
   egress.type_ = AdapterType::TUNNEL;
-  BOOST_CHECK_EXCEPTION(toJson(egress, alloc), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Mandatory_Fields, Trait, AllAdapterTraits)
@@ -252,27 +252,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Mandatory_Fields, Trait, AllAdapterTraits)
   if constexpr (Trait::server_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.server_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
   if constexpr (Trait::credential_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.credential_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
   if constexpr (Trait::option_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.opt_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
   if constexpr (Trait::tls_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.tls_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
   if constexpr (Trait::websocket_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.websocket_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
   }
 }
 
