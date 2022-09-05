@@ -1,6 +1,21 @@
 # C/C++ Macros
 add_compile_definitions(BOOST_ASIO_NO_DEPRECATED)
 
+if (TRANSPARENT_PF AND APPLE)
+  message(STATUS "Downloading the essential Darwin-XNU header files")
+  file(DOWNLOAD
+    "https://opensource.apple.com/source/xnu/xnu-7195.81.3/libkern/libkern/tree.h"
+    "${CMAKE_BINARY_DIR}/include/libkern/tree.h")
+  file(DOWNLOAD
+    "https://opensource.apple.com/source/xnu/xnu-7195.81.3/bsd/net/pfvar.h"
+    "${CMAKE_BINARY_DIR}/include/net/pfvar.h")
+  file(DOWNLOAD
+    "https://opensource.apple.com/source/xnu/xnu-7195.81.3/bsd/net/radix.h"
+    "${CMAKE_BINARY_DIR}/include/net/radix.h")
+  add_compile_definitions(PRIVATE)
+  message(STATUS "Downloading the essential Darwin-XNU header files -- done")
+endif ()
+
 # Find out whether class template argument deduction is supported for std::array
 message(STATUS "Checking P0702R1 feature")
 try_compile(HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION

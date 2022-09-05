@@ -17,6 +17,8 @@ extern "C" {
 #include <net/pfvar.h>
 }
 
+static decltype(auto) PF_DEVICE = "/dev/pf";
+
 #endif  // TRANSPARENT_PF
 
 #ifdef TRANSPARENT_IPTABLES
@@ -95,13 +97,16 @@ private:
 
 class PfReader {
 public:
-  PfReader() : pf_{open("/dev/pf", O_RDONLY)}
+  PfReader() : pf_{open(PF_DEVICE, O_RDONLY)}
   {
     assertSyscallSuccess(pf_);
 
+#ifndef PRIVATE
+    // DIOCGETSTATUS operation will be failed on Darwin-XNU, so skip checking
     auto status = pf_status{};
     assertSyscallSuccess(ioctl(pf_, DIOCGETSTATUS, &status));
     assertTrue(status.running, "pf is disabled");
+#endif  // PRIVATE
   }
 
   ~PfReader() { ::close(pf_); }
@@ -114,12 +119,26 @@ public:
     pnl.direction = PF_OUT;
     pnl.af = helper.family();
     pnl.proto = IPPROTO_TCP;
-    pnl.sport = htons(src.port());
-    pnl.dport = htons(dst.port());
     helper.address2Buf(src.address(), pnl.saddr.addr8);
     helper.address2Buf(dst.address(), pnl.daddr.addr8);
+
+#ifdef PRIVATE
+    pnl.sxport.port = htons(src.port());
+    pnl.dxport.port = htons(dst.port());
+#else   // PRIVATE
+    pnl.sport = htons(src.port());
+    pnl.dport = htons(dst.port());
+#endif  // PRIVATE
+
     assertSyscallSuccess(ioctl(pf_, DIOCNATLOOK, &pnl));
-    return makeEndpoint(helper.buf2Address(pnl.rdaddr.addr8).to_string(), ntohs(pnl.rdport));
+
+    return makeEndpoint(helper.buf2Address(pnl.rdaddr.addr8).to_string(),
+#ifdef PRIVATE
+                        ntohs(pnl.rdxport.port)
+#else   // PRIVATE
+                        ntohs(pnl.rdport)
+#endif  // PRIVATE
+    );
   }
 
 private:
