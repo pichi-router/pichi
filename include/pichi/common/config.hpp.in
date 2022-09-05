@@ -17,6 +17,8 @@
 #cmakedefine HAS_FORK
 #cmakedefine HAS_SETSID
 #cmakedefine HAS_CLOSE
+#cmakedefine HAS_STRERROR_S
+#cmakedefine HAS_STRERROR_R
 
 #ifdef __GNUC__
 

@@ -95,6 +95,8 @@ if (BUILD_SERVER)
   check_function_exists("fork" HAS_FORK)
   check_function_exists("setsid" HAS_SETSID)
   check_function_exists("close" HAS_CLOSE)
+  check_function_exists("strerror_s" HAS_STRERROR_S)
+  check_function_exists("strerror_r" HAS_STRERROR_R)
 endif ()
 
 configure_file(${CMAKE_SOURCE_DIR}/include/pichi/common/config.hpp.in

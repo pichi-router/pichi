@@ -1,6 +1,12 @@
 #ifndef PICHI_COMMON_ENUMERATIONS_HPP
 #define PICHI_COMMON_ENUMERATIONS_HPP
 
+#ifdef _MSC_VER
+#ifdef TRANSPARENT
+#undef TRANSPARENT
+#endif  // TRANSPARENT
+#endif  // _MSC_VER
+
 namespace pichi {
 
 enum class EndpointType { DOMAIN_NAME, IPV4, IPV6 };

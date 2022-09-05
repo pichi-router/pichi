@@ -1,8 +1,9 @@
-#include <boost/scope_exit.hpp>
-#include <cerrno>
-#include <cstdlib>
-#include <cstring>
+#include <pichi/common/config.hpp>
+// Include config.hpp first
+#include <errno.h>
 #include <pichi/common/asserts.hpp>
+#include <stdlib.h>
+#include <string.h>
 
 using namespace std;
 
@@ -26,9 +27,15 @@ void assertFalse(bool b, string_view msg) { assertTrue(!b, PichiError::MISC, msg
 void assertSyscallSuccess(int r, PichiError e)
 {
   if (r != -1) return;
-  auto msg = strerror(errno);
-  BOOST_SCOPE_EXIT(msg) { free(msg); }
-  BOOST_SCOPE_EXIT_END
+  auto msg = string{};
+  msg.resize(1024);
+#if defined(HAS_STRERROR_S)
+  strerror_s(msg.data(), msg.size(), errno);
+#elif defined(HAS_STRERROR_R)
+  strerror_r(errno, msg.data(), msg.size());
+#else
+  msg = string{strerror(errno)};
+#endif
   fail(e, msg);
 }
 
