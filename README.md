@@ -6,16 +6,16 @@ Pichi is a flexible rule-based proxy.
 
 ### Server/Desktop
 
-| OS | Ubuntu 20.04 | macOS 11 | Windows Server 2019 |
+| OS | Ubuntu 22.04 | macOS 12 | Windows Server 2022 |
 |:---:|:---:|:---:|:---:|
-| Toolchain | GCC 9.3 | Xcode 13.2 | Visual Studio 2019 |
+| Toolchain | GCC 11.2.0 | Xcode 13.4.1 | Visual Studio 2022 |
 | Status | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/5?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=5&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/9?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=9&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/1?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=1&branchName=master) |
 
 ### Mobile
 
 | OS | Android | iOS |
 |:---:|:---:|:---:|
-| Toolchain | Android NDK 21.4 | Xcode 13.2 |
+| Toolchain | Android NDK 25.1 | Xcode 13.4.1 |
 | Status | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/7?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=7&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/8?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=8&branchName=master) |
 
 ## Overview
