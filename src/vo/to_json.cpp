@@ -1,3 +1,5 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/enumerations.hpp>
 #include <pichi/vo/keys.hpp>

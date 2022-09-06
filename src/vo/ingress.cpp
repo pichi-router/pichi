@@ -1,3 +1,5 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <algorithm>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/keys.hpp>

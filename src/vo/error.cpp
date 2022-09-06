@@ -1,3 +1,5 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <pichi/vo/error.hpp>
 #include <pichi/vo/keys.hpp>
 

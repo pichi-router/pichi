@@ -1,3 +1,5 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/egress.hpp>

@@ -1,3 +1,5 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <algorithm>
 #include <iterator>
 #include <numeric>
