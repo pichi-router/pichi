@@ -6,7 +6,7 @@ function usage()
   echo "  build.sh <-p platform> [-d] [-o] [-s] [platform specific options] <version>"
   echo "    -p: available platforms are: windows/freebsd/macos/linux/ios/android"
   echo "          windows:"
-  echo "            * 'default' profile is used"
+  echo "            * 'windows' profile is used"
   echo "            * always building libressl"
   echo "            * -s is forbidden"
   echo "            * no platform specific options"
@@ -17,7 +17,7 @@ function usage()
   echo "            * 'macos' profile is used"
   echo "            * no platform specific options"
   echo "          linux:"
-  echo "            * 'default' profile is used"
+  echo "            * 'linux' profile is used"
   echo "            * no platform specific options"
   echo "          ios:"
   echo "            * 'ios' profile is used"
@@ -48,14 +48,20 @@ function generate_default_profile()
   conan profile remove settings.build_type default
 }
 
-function copy_profile()
+function copy_if_not_exists()
 {
-  local profile="${platform}"
   local src="${recipes}/../profiles"
   local dst="${HOME}/.conan/profiles"
+  local profile="$1"
   if [ ! -f "${dst}/${profile}" ]; then
     cp -f "${src}/${profile}" "${dst}/${profile}"
   fi
+}
+
+function copy_profile()
+{
+  copy_if_not_exists boost
+  copy_if_not_exists "${platform}"
 }
 
 function validate_arch()
@@ -123,6 +129,7 @@ function build_for_windows()
   disable_shared
   trap - EXIT
   generate_default_profile
+  copy_profile
   local args="-b libressl"
   local compiler="$(conan profile get settings.compiler default | tr -d '\r')"
   if [ "${compiler}" = 'Visual Studio' ]; then
@@ -142,7 +149,11 @@ function build_for_ios()
   trap - EXIT
   generate_default_profile
   copy_profile
-  build -s "os=iOS" -s "arch=${arch}" -s "os.version=${ios_ver}" -pr ios
+  local sdk="iphoneos"
+  if [ "${arch:0:3}" = "x86" ]; then
+    sdk="iphonesimulator"
+  fi
+  build -s "os=iOS" -s "arch=${arch}" -s "os.sdk=${sdk}" -s "os.version=${ios_ver}" -pr ios
 }
 
 function build_for_android()
@@ -180,23 +191,13 @@ function build_for_spec_profile()
   build -pr "${platform}"
 }
 
-function build_for_linux()
-{
-  trap - EXIT
-  generate_default_profile
-  if [ "$(conan profile get settings.compiler default | tr -d '\r')" = 'gcc' ]; then
-    conan profile update settings.compiler.libcxx=libstdc++11 default
-  fi
-  build
-}
-
 function dispatch_args()
 {
   case "${platform}" in
     windows) build_for_windows;;
     freebsd) build_for_spec_profile;;
     macos) build_for_spec_profile;;
-    linux) build_for_linux;;
+    linux) build_for_spec_profile;;
     ios) build_for_ios;;
     android) build_for_android;;
     *) false;;
