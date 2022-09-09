@@ -34,8 +34,7 @@ extern "C" {
 
 using namespace std;
 namespace asio = boost::asio;
-namespace ip = asio::ip;
-using ip::tcp;
+using asio::ip::tcp;
 
 namespace pichi::net {
 
@@ -43,7 +42,7 @@ namespace platform {
 
 class AddressHelper {
 private:
-  static bool isV6(ip::address const& addr)
+  static bool isV6(asio::ip::address const& addr)
   {
     if (addr.is_v4() || (addr.is_v6() && addr.to_v6().is_v4_mapped()))
       return false;
@@ -68,9 +67,9 @@ private:
   }
 
 public:
-  AddressHelper(ip::address const& addr) : isV6_{AddressHelper::isV6(addr)} {}
+  AddressHelper(asio::ip::address const& addr) : isV6_{AddressHelper::isV6(addr)} {}
 
-  template <typename T> void address2Buf(ip::address const& src, T* dst)
+  template <typename T> void address2Buf(asio::ip::address const& src, T* dst)
   {
     assertTrue(isV6_ == AddressHelper::isV6(src));
     if (isV6_)
@@ -79,12 +78,12 @@ public:
       a2b(src.to_v4(), dst);
   }
 
-  template <typename T> ip::address buf2Address(T* src)
+  template <typename T> asio::ip::address buf2Address(T* src)
   {
     if (isV6_)
-      return b2a<ip::address_v6>(src);
+      return b2a<asio::ip::address_v6>(src);
     else
-      return b2a<ip::address_v4>(src);
+      return b2a<asio::ip::address_v4>(src);
   }
 
   int family() { return isV6_ ? AF_INET6 : AF_INET; }
