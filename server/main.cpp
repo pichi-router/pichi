@@ -24,24 +24,12 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace sys = boost::system;
 
+using pichi::assertSuccess;
+
 static auto const PID_FILE = (fs::path{PICHI_PREFIX} / "var" / "run" / "pichi.pid");
 static auto const LOG_FILE = (fs::path{PICHI_PREFIX} / "var" / "log" / "pichi.log");
 
 extern void run(string const&, uint16_t, string const&, string const&);
-
-#ifdef HAS_UNISTD_H
-
-static void assertTrue(bool b)
-{
-  if (!b) pichi::fail(errno);
-}
-
-static void assertFalse(bool b)
-{
-  if (b) pichi::fail(errno);
-}
-
-#endif  // HAS_UNISTD_H
 
 int main(int argc, char const* argv[])
 {
@@ -82,9 +70,9 @@ int main(int argc, char const* argv[])
 
 #if defined(HAS_FORK) && defined(HAS_SETSID)
     if (vm.count("daemon")) {
-      assertTrue(chdir(fs::path{PICHI_PREFIX}.root_directory().c_str()) == 0);
+      assertSuccess(chdir(fs::path{PICHI_PREFIX}.root_directory().c_str()));
       auto pid = fork();
-      assertFalse(pid < 0);
+      assertSuccess(pid);
       if (pid > 0) {
         auto ec = sys::error_code{};
         fs::create_directories(PID_FILE.parent_path(), ec);
@@ -100,8 +88,8 @@ int main(int argc, char const* argv[])
       auto ec = sys::error_code{};
       fs::create_directories(LOG_FILE.parent_path(), ec);
       if (!ec) {
-        assertTrue(freopen(LOG_FILE.c_str(), "a", stdout) != nullptr);
-        assertTrue(freopen(LOG_FILE.c_str(), "a", stderr) != nullptr);
+        assertSuccess(freopen(LOG_FILE.c_str(), "a", stdout));
+        assertSuccess(freopen(LOG_FILE.c_str(), "a", stderr));
       }
     }
 #endif  // HAS_FORK && HAS_SETSID
@@ -109,16 +97,16 @@ int main(int argc, char const* argv[])
 #if defined(HAS_SETGID) && defined(HAS_GETGRNAM)
     if (!group.empty()) {
       auto grp = getgrnam(group.c_str());
-      assertFalse(grp == nullptr);
-      assertFalse(setgid(grp->gr_gid) == -1);
+      assertSuccess(grp);
+      assertSuccess(setgid(grp->gr_gid));
     }
 #endif  // HAS_SETGID && HAS_GETGRNAM
 
 #if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
     if (!user.empty()) {
       auto pw = getpwnam(user.c_str());
-      assertFalse(pw == nullptr);
-      assertFalse(setuid(pw->pw_uid) == -1);
+      assertSuccess(pw);
+      assertSuccess(setuid(pw->pw_uid));
     }
 #endif  // HAS_SETUID && HAS_GETPWNAM
 
