@@ -6,22 +6,22 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/spawn2.hpp>
 #include <boost/beast/http/error.hpp>
-#include <pichi/common/exception.hpp>
+#include <pichi/common/error.hpp>
 #include <string_view>
 #include <vector>
 
 namespace pichi::unit_test {
 
-template <PichiError error> bool verifyException(Exception const& e) { return e.error() == error; }
+using SystemError = boost::system::system_error;
 
-template <boost::asio::error::basic_errors error>
-bool verifyException(boost::system::system_error const& e)
+template <PichiError error> bool verifyException(SystemError const& e) { return e.code() == error; }
+
+template <boost::asio::error::basic_errors error> bool verifyException(SystemError const& e)
 {
   return e.code() == error;
 }
 
-template <boost::beast::http::error error>
-bool verifyException(boost::system::system_error const& e)
+template <boost::beast::http::error error> bool verifyException(SystemError const& e)
 {
   auto expect = boost::beast::http::make_error_code(error);
   auto fact = e.code();

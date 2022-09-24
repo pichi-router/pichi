@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Invalid_Version)
     auto ingress = TestIngress{{}, socket, true};
 
     socket.fill({ver, 0x01, 0x00});
-    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
     BOOST_CHECK_EQUAL(0_sz, socket.available());
   }
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Zero_Nmethod)
   auto ingress = TestIngress{{}, socket, true};
 
   socket.fill({0x05, 0x00});
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<PichiError::BAD_PROTO>);
   BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Without_Acceptable_Method)
 
     socket.fill({0x05, len});
     for (auto j = 0; j < len; ++j) socket.fill({len});
-    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                           verifyException<PichiError::BAD_AUTH_METHOD>);
   }
 }
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_Without_Acceptable_Method_Credentials)
 
     socket.fill({0x05, len});
     for (auto j = 0; j < len; ++j) socket.fill({method});
-    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                           verifyException<PichiError::BAD_AUTH_METHOD>);
   }
 }
@@ -113,7 +113,8 @@ BOOST_AUTO_TEST_CASE(readRemote_Handshake_With_Acceptable_Method)
         socket.fill({0x00});
       else
         socket.fill({0xff});
-    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
+                          verifyException<PichiError::MISC>);
 
     auto fact = array<uint8_t, 2>{};
     BOOST_CHECK_EQUAL(2_sz, socket.available());
@@ -137,7 +138,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Invalid_Version)
     fillString(socket, ph);
     fillString(socket, ph);
 
-    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     BOOST_CHECK_EQUAL(2_sz, socket.available());
@@ -160,7 +161,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Empty_Username)
   });
   fillString(socket, ph);
 
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<PichiError::BAD_PROTO>);
 
   BOOST_CHECK_EQUAL(2_sz, socket.available());
@@ -179,7 +180,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Empty_Password)
   fillString(socket, ph);
   socket.fill({0x00});  // Empty password
 
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<PichiError::BAD_PROTO>);
 
   BOOST_CHECK_EQUAL(2_sz, socket.available());
@@ -201,7 +202,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Nonexisting_User)
   });
   fillString(socket, ph);
 
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<PichiError::UNAUTHENTICATED>);
 
   BOOST_CHECK_EQUAL(2_sz, socket.available());
@@ -220,7 +221,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authenticate_With_Incorrect_Password)
   fillString(socket, ph);
   socket.fill({0x01, 0x50});
 
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<PichiError::UNAUTHENTICATED>);
 
   BOOST_CHECK_EQUAL(2_sz, socket.available());
@@ -245,7 +246,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_Version)
         0x01, 0x7f, 0x00, 0x00, 0x01, 0x01, 0xbb  // Endpoint
     });
 
-    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     auto fact = array<uint8_t, 2>{};
@@ -271,7 +272,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_CMD)
         0x01, 0x7f, 0x00, 0x00, 0x01, 0x01, 0xbb  // Endpoint
     });
 
-    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     auto fact = array<uint8_t, 2>{};
@@ -296,7 +297,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Request_With_Invalid_RSV)
         0x01, 0x7f, 0x00, 0x00, 0x01, 0x01, 0xbb  // Endpoint
     });
 
-    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+    BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     auto fact = array<uint8_t, 2>{};
@@ -370,7 +371,7 @@ BOOST_AUTO_TEST_CASE(connect_Handshake_Invalid_Version)
     auto egress = make_unique<TestEgress>(Credential{}, socket);
 
     socket.fill({static_cast<uint8_t>(i), 0x00});
-    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), Exception,
+    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     BOOST_CHECK_EQUAL(3_sz, socket.available());
@@ -389,7 +390,7 @@ BOOST_AUTO_TEST_CASE(connect_Handshake_Without_Acceptable_Method)
     auto egress = make_unique<TestEgress>(Credential{}, socket);
 
     socket.fill({0x05, static_cast<uint8_t>(i)});
-    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), Exception,
+    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     BOOST_CHECK_EQUAL(3_sz, socket.available());
@@ -409,7 +410,7 @@ BOOST_AUTO_TEST_CASE(connect_Handshake_Without_Acceptable_Method_Credential)
     auto egress = make_unique<TestEgress>(CREDENTIAL, socket);
 
     socket.fill({0x05, static_cast<uint8_t>(i)});
-    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), Exception,
+    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     BOOST_CHECK_EQUAL(3_sz, socket.available());
@@ -431,7 +432,7 @@ BOOST_AUTO_TEST_CASE(connect_Authentication_With_Invalid_Version)
     socket.fill({0x05, 0x02});
     socket.fill({static_cast<uint8_t>(i), 0x00});
 
-    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), Exception,
+    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
     BOOST_CHECK_GE(socket.available(), 4_sz);
     auto received = array<uint8_t, 4>{};
@@ -455,7 +456,7 @@ BOOST_AUTO_TEST_CASE(connect_Authentication_Failed)
     socket.fill({0x05, 0x02});
     socket.fill({0x01, static_cast<uint8_t>(i)});
 
-    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), Exception,
+    BOOST_CHECK_EXCEPTION(egress->connect({}, {}, gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
     BOOST_CHECK_GE(socket.available(), 4_sz);
     auto received = array<uint8_t, 4>{};
@@ -483,7 +484,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_With_Invalid_Version)
 
     socket.fill({0x05, 0x00});
     socket.fill({static_cast<uint8_t>(i), 0x00, 0x00});
-    BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, gYield), Exception,
+    BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     BOOST_CHECK_EQUAL(25_sz, socket.available());
@@ -505,7 +506,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Connection_Failure)
 
     socket.fill({0x05, 0x00});
     socket.fill({0x05, static_cast<uint8_t>(i), 0x00});
-    BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, gYield), Exception,
+    BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, gYield), SystemError,
                           verifyException<PichiError::CONN_FAILURE>);
 
     BOOST_CHECK_EQUAL(25_sz, socket.available());
@@ -527,7 +528,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_With_Invalid_RSV)
 
     socket.fill({0x05, 0x00});
     socket.fill({0x05, 0x00, static_cast<uint8_t>(i)});
-    BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, gYield), Exception,
+    BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, gYield), SystemError,
                           verifyException<PichiError::BAD_PROTO>);
 
     BOOST_CHECK_EQUAL(25_sz, socket.available());
@@ -549,7 +550,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Invalid_Endpoint)
   socket.fill({0x05, 0x00});
   socket.fill({0x05, 0x00, 0x00});
   socket.fill({0x00});
-  BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, gYield), Exception,
+  BOOST_CHECK_EXCEPTION(egress->connect(remote, {}, gYield), SystemError,
                         verifyException<PichiError::BAD_PROTO>);
 
   BOOST_CHECK_EQUAL(25_sz, socket.available());
@@ -615,7 +616,7 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Named_Failures)
     auto&& [e, expect] = p;
     auto socket = Socket{};
     auto ingress = TestIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(Exception{e}), gYield);
+    ingress.disconnect(make_exception_ptr(SystemError{e}), gYield);
 
     auto fact = vector<uint8_t>(expect.size(), 0x00_u8);
 
@@ -633,7 +634,7 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Unnamed_Failures)
                  PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
     auto socket = Socket{};
     auto ingress = TestIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(Exception{e}), gYield);
+    ingress.disconnect(make_exception_ptr(SystemError{e}), gYield);
     BOOST_CHECK_EQUAL(0_sz, socket.available());
   }
 }
@@ -662,7 +663,7 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Specific_system_error)
     auto&& [ec, expect] = item;
     auto socket = Socket{};
     auto ingress = TestIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(sys::system_error{ec}), gYield);
+    ingress.disconnect(make_exception_ptr(SystemError{ec}), gYield);
 
     auto fact = vector<uint8_t>(expect.size(), 0x00_u8);
     BOOST_CHECK_EQUAL(fact.size(), socket.available());
@@ -711,7 +712,7 @@ BOOST_AUTO_TEST_CASE(disconnect_For_Unused_system_error)
   for_each(cbegin(ECS), cend(ECS), [](auto&& ec) {
     auto socket = Socket{};
     auto ingress = TestIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(sys::system_error{ec}), gYield);
+    ingress.disconnect(make_exception_ptr(SystemError{ec}), gYield);
     BOOST_CHECK_EQUAL(0_sz, socket.available());
   });
 }

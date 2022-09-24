@@ -15,7 +15,6 @@
 using namespace std;
 namespace asio = boost::asio;
 namespace mpl = boost::mpl;
-namespace sys = boost::system;
 
 namespace pichi::unit_test {
 
@@ -78,7 +77,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(readIV_Duplicated_Read, Ingress, Adapters)
   BOOST_CHECK_EQUAL(IV_SIZE<Ingress::METHOD>, ingress.readIV(iv, gYield));
 
   socket.fill(iv);
-  BOOST_CHECK_EXCEPTION(ingress.readIV(iv, gYield), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(ingress.readIV(iv, gYield), SystemError, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(readIV_Insufficient_Buffer, Ingress, Adapters)
@@ -90,7 +89,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(readIV_Insufficient_Buffer, Ingress, Adapters)
   auto iv = array<uint8_t, IV_SIZE<Ingress::METHOD>>{};
   socket.fill(iv);
 
-  BOOST_CHECK_EXCEPTION(ingress.readIV({iv, iv.size() - 1}, gYield), Exception,
+  BOOST_CHECK_EXCEPTION(ingress.readIV({iv, iv.size() - 1}, gYield), SystemError,
                         verifyException<PichiError::MISC>);
 }
 

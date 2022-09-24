@@ -2,6 +2,7 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/crypto/base64.hpp>
+#include <string>
 
 using namespace std;
 

@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Invalid_HTTP_Header)
   auto ingress = HttpIngress{{}, socket, true};
 
   socket.fill(ConstBuffer<uint8_t>{"Not a legal http header"sv});
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), sys::system_error,
+  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<http::error::bad_version>);
 }
 
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Tunnel_Authentication_Without_Header)
   auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
 
   socket.fill({buf, serializeToBuffer(req, buf)});
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<PichiError::BAD_AUTH_METHOD>);
 }
 
@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Header)
       auto buf = array<uint8_t, 1024>{};
       socket.fill({buf, serializeToBuffer(req, buf)});
 
-      BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+      BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                             verifyException<PichiError::BAD_AUTH_METHOD>);
     }
   }
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Credential)
       auto buf = array<uint8_t, 1024>{};
       socket.fill({buf, serializeToBuffer(req, buf)});
 
-      BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+      BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                             verifyException<PichiError::UNAUTHENTICATED>);
     }
   }
@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Authentication_Tunnel_Correct)
   BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
   BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
   BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
-  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), SystemError, verifyException<PichiError::MISC>);
   BOOST_CHECK_EQUAL(0_sz, socket.available());
 }
 
@@ -272,7 +272,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Tunnel_Correct)
   BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
   BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
   BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
-  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), SystemError, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Host_Field_Only)
@@ -350,7 +350,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Relay_Without_Both_Fields)
   auto ingress = HttpIngress{{}, socket, true};
 
   socket.fill({buf, serializeToBuffer(req, buf)});
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), Exception,
+  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<PichiError::BAD_PROTO>);
 }
 
@@ -391,7 +391,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Tunnel_By_Insufficient_Buffer)
     BOOST_CHECK_EQUAL(1_sz, ingress.recv({buf.data() + i, 1}, gYield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
                                 cbegin(buf) + content.size());
-  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), SystemError, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_Without_Connection_Field)
@@ -495,7 +495,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_By_Insufficient_Buffer)
       data += 1;
     }
   };
-  BOOST_CHECK_EXCEPTION(recv(), Exception, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(recv(), SystemError, verifyException<PichiError::MISC>);
 
   auto received = parseFromBuffer<true, http::string_body>({buf, buf.size() - data.size()});
   BOOST_CHECK_EQUAL("/", received.target());
@@ -547,7 +547,7 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_PichiError)
                  PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
     auto socket = Socket{};
     auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(Exception{e}), gYield);
+    ingress.disconnect(make_exception_ptr(SystemError{e}), gYield);
 
     auto buf = array<uint8_t, 1024>{};
     verifyDisconnectResponse(e, parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)}));
@@ -568,7 +568,7 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_HTTP_Errors)
   for_each(cbegin(ECS), cend(ECS), [](auto&& ec) {
     auto socket = Socket{};
     auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(sys::system_error{ec}), gYield);
+    ingress.disconnect(make_exception_ptr(SystemError{ec}), gYield);
 
     auto buf = array<uint8_t, 1024>{};
     auto resp = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
@@ -623,7 +623,7 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Network_Errors)
   for_each(cbegin(ECS), cend(ECS), [](auto&& ec) {
     auto socket = Socket{};
     auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(sys::system_error{ec}), gYield);
+    ingress.disconnect(make_exception_ptr(SystemError{ec}), gYield);
 
     auto buf = array<uint8_t, 1024>{};
     auto resp = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
@@ -772,7 +772,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Non_HTTP_Request)
   socket.flush(buf);
 
   BOOST_CHECK_EXCEPTION(egress.send(ConstBuffer<uint8_t>{"Non-HTTP request\r\n"sv}, gYield),
-                        sys::system_error, verifyException<http::error::bad_target>);
+                        SystemError, verifyException<http::error::bad_target>);
 }
 
 BOOST_AUTO_TEST_CASE(Egress_send_Relay_HTTP_Request_Without_Upgrade)

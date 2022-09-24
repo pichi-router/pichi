@@ -98,12 +98,12 @@ class PfReader {
 public:
   PfReader() : pf_{open(PF_DEVICE, O_RDONLY)}
   {
-    assertSyscallSuccess(pf_);
+    assertSuccess(pf_);
 
 #ifndef PRIVATE
     // DIOCGETSTATUS operation will be failed on Darwin-XNU, so skip checking
     auto status = pf_status{};
-    assertSyscallSuccess(ioctl(pf_, DIOCGETSTATUS, &status));
+    assertSuccess(ioctl(pf_, DIOCGETSTATUS, &status));
     assertTrue(status.running, "pf is disabled");
 #endif  // PRIVATE
   }
@@ -129,7 +129,7 @@ public:
     pnl.dport = htons(dst.port());
 #endif  // PRIVATE
 
-    assertSyscallSuccess(ioctl(pf_, DIOCNATLOOK, &pnl));
+    assertSuccess(ioctl(pf_, DIOCNATLOOK, &pnl));
 
     return makeEndpoint(helper.buf2Address(pnl.rdaddr.addr8).to_string(),
 #ifdef PRIVATE
@@ -154,13 +154,13 @@ static Endpoint readRemote(tcp::socket& s)
   if (helper.family() == AF_INET) {
     auto sa = sockaddr_in{};
     auto len = socklen_t{sizeof(sa)};
-    assertSyscallSuccess(getsockopt(s.native_handle(), SOL_IP, SO_ORIGINAL_DST, &sa, &len));
+    assertSuccess(getsockopt(s.native_handle(), SOL_IP, SO_ORIGINAL_DST, &sa, &len));
     return makeEndpoint(helper.buf2Address(&sa.sin_addr.s_addr).to_string(), ntohs(sa.sin_port));
   }
   else {
     auto sa = sockaddr_in6{};
     auto len = socklen_t{sizeof(sa)};
-    assertSyscallSuccess(getsockopt(s.native_handle(), SOL_IPV6, IP6T_SO_ORIGINAL_DST, &sa, &len));
+    assertSuccess(getsockopt(s.native_handle(), SOL_IPV6, IP6T_SO_ORIGINAL_DST, &sa, &len));
     return makeEndpoint(helper.buf2Address(&sa.sin6_addr.s6_addr).to_string(), ntohs(sa.sin6_port));
   }
 }

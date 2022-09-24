@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_SUITE(BALANCER)
 BOOST_AUTO_TEST_CASE(select_Empty)
 {
   for (auto type : BALANCE_TYPES) {
-    BOOST_CHECK_EXCEPTION((Balancer{type, cbegin(ENDPOINTS), cbegin(ENDPOINTS)}), Exception,
+    BOOST_CHECK_EXCEPTION((Balancer{type, cbegin(ENDPOINTS), cbegin(ENDPOINTS)}), SystemError,
                           verifyException<PichiError::MISC>);
   }
 }
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(LEAST_CONN_release_No_Connection_Iterator)
   balancer.release(it);
   advance(it, -it->port_);
   for (auto i = 0_sz; i < N; ++i)
-    BOOST_CHECK_EXCEPTION(balancer.release(it++), Exception, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(balancer.release(it++), SystemError, verifyException<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(LEAST_CONN_release)
