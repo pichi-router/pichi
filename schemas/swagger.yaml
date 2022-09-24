@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  version: "1.4"
+  version: '1.5'
   title: 'Pichi API'
   description: 'RESTful API for pichi server'
 tags:
@@ -321,7 +321,7 @@ components:
         - ss
         - tunnel
         - trojan
-        - vmess
+        - transparent
     ShadowsocksMethod:
       description: 'SS method'
       type: string
@@ -345,14 +345,6 @@ components:
         - aes-256-gcm
         - chacha20-ietf-poly1305
         - xchacha20-ietf-poly1305
-    VMessSecurity:
-      description: 'The security option for VMess protocol'
-      type: string
-      enum:
-        - auto
-        - none
-        - chacha20-poly1305
-        - aes-128-gcm
     Endpoint:
       description: 'The endpoint object'
       type: object
@@ -481,7 +473,7 @@ components:
       required:
         - insecure
     WebsocketOption:
-      description: 'Websocket options for Trojan/VMess adapter'
+      description: 'Websocket options for Trojan adapter'
       type: object
       properties:
         path:
@@ -513,26 +505,6 @@ components:
           type: string
       required:
         - password
-    VMessCredential:
-      description: 'Credential object for VMess adapter'
-      type: object
-      properties:
-        uuid:
-          description: 'VMess UUID string'
-          type: string
-          example: 'f2096007-5315-49dd-a623-1d3ed7ab891c'
-        alter_id:
-          description: 'The number of extra alternative IDs'
-          type: integer
-          format: int32
-          minimum: 0
-          maximum: 65535
-          example: 4
-        security:
-          $ref: '#/components/schemas/VMessSecurity'
-      required:
-        - uuid
-        - alter_id
     ShadowsocksAdapter:
       description: 'Shadowsocks ingress object'
       type: object
@@ -559,6 +531,16 @@ components:
       required:
         - type
         - option
+    TransparentIngress:
+      description: 'Transparent ingress object'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - transparent
+      required:
+        - type
     HttpSocks5Ingress:
       description: "HTTP/Socks5 ingress object"
       type: object
@@ -606,26 +588,6 @@ components:
         - option
         - credentials
         - tls
-    VMessIngress:
-      description: 'VMess ingress object'
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - vmess
-        credentials:
-          type: array
-          items:
-            $ref: '#/components/schemas/VMessCredential'
-          minLength: 1
-        tls:
-          $ref: '#/components/schemas/TlsForIngress'
-        websocket:
-          $ref: '#/components/schemas/WebsocketOption'
-      required:
-        - type
-        - credentials
     DirectEgress:
       description: "Direct egress object"
       type: object
@@ -681,23 +643,6 @@ components:
         - type
         - credential
         - tls
-    VMessEgress:
-      description: 'VMess egress object'
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - vmess
-        credential:
-          $ref: '#/components/schemas/VMessCredential'
-        tls:
-          $ref: '#/components/schemas/TlsForEgress'
-        websocket:
-          $ref: '#/components/schemas/WebsocketOption'
-      required:
-        - type
-        - credential
     ProxyEgress:
       description: 'Proxy egress object'
       type: object
@@ -707,7 +652,6 @@ components:
           - $ref: '#/components/schemas/HttpSocks5Egress'
           - $ref: '#/components/schemas/ShadowsocksAdapter'
           - $ref: '#/components/schemas/TrojanEgress'
-          - $ref: '#/components/schemas/VMessEgress'
     Ingress:
       description: 'Ingress object'
       type: object
@@ -715,10 +659,10 @@ components:
         - $ref: '#/components/schemas/Bind'
         - oneOf:
           - $ref: '#/components/schemas/TunnelIngress'
+          - $ref: '#/components/schemas/TransparentIngress'
           - $ref: '#/components/schemas/HttpSocks5Ingress'
           - $ref: '#/components/schemas/ShadowsocksAdapter'
           - $ref: '#/components/schemas/TrojanIngress'
-          - $ref: '#/components/schemas/VMessIngress'
     Egress:
         oneOf:
           - $ref: '#/components/schemas/DirectEgress'

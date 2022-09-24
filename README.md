@@ -9,14 +9,14 @@ Pichi is a flexible rule-based proxy.
 | OS | Ubuntu 22.04 | macOS 12 | Windows Server 2022 |
 |:---:|:---:|:---:|:---:|
 | Toolchain | GCC 11.2.0 | Xcode 13.4.1 | Visual Studio 2022 |
-| Status | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/5?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=5&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/9?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=9&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/1?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=1&branchName=master) |
+| Status | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/5?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=5&branchName=main) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/9?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=9&branchName=main) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/1?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=1&branchName=main) |
 
 ### Mobile
 
 | OS | Android | iOS |
 |:---:|:---:|:---:|
 | Toolchain | Android NDK 25.1 | Xcode 13.4.1 |
-| Status | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/7?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=7&branchName=master) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/8?label=Azure&branchName=master)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=8&branchName=master) |
+| Status | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/7?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=7&branchName=main) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/8?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=8&branchName=main) |
 
 ## Overview
 
@@ -73,6 +73,41 @@ TCP tunnel is very useful if you want to use some DNS servers which might be alr
 The transparent proxies are usually deployed on some internet exit router in the intranet. The difference between the transparent proxy and others is that the clients use no explicit proxy settings. It is engaging for the devices that can't use proxy settings. On the other hand, the con of the transparent proxy is that it usually requires the root privilege of the router. The proxy can also use rule-based routing to forward the requests from the transparent ingress. And it is easy to understand that the domain rules don't make any sense because the transparent ingress can't provide the domain information.
 
 ![Use Case 3](images/use_case_3.png)
+
+To enable the transparent proxy, it's necessary to enable the IP packet redirection on the router. When a redirected packet received, the transparent ingress can read its original destination IP address and TCP port from the firewall, if pichi has enough privilege. Pichi supports [netfilter/iptables](https://www.netfilter.org/) on Linux and [PF](https://en.wikipedia.org/wiki/PF_(firewall)) on macOS/[FreeBSD](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf)/[OpenBSD](https://www.openbsd.org/faq/pf/). For instance, if pichi is running with the transparent ingress configured as below:
+
+```
+# curl -s http://pichi-router/ingresses | jq .example
+{
+  "type": "transparent",
+  "bind": [
+    {
+      "host": "0.0.0.0",
+      "port": 1726
+    }
+  ]
+}
+```
+
+we can configure the firewall on Linux like:
+
+```
+# iptables -t nat -A PREROUTING -i eth0 -p tcp -j REDIRECT --to-ports 1726
+```
+
+, on macOS/FreeBSD like:
+
+```
+rdr pass on fxp0 inet proto tcp from fxp0:network to any -> 127.0.0.1 port 1726
+```
+
+, on OpenBSD like:
+
+```
+pass in on fxp0 inet proto tcp from fxp0:network to any rdr-to 127.0.0.1 port 1726
+```
+
+BTW, Here's an assumption that pichi is running on the host enabling the packet redirection with the correct privilege.
 
 ### Supported protocols
 
@@ -183,7 +218,7 @@ Furthermore, Pichi server reloads JSON configuration on `SIGHUP` received if OS 
 
 ### API Specification
 
-[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.4)
+[Pichi API](https://app.swaggerhub.com/apis/pichi-router/pichi-api/1.5)
 
 ### Examples
 
