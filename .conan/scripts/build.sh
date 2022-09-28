@@ -8,7 +8,6 @@ function usage()
   echo "          windows:"
   echo "            * 'windows' profile is used"
   echo "            * always building libressl"
-  echo "            * -s is forbidden"
   echo "            * no platform specific options"
   echo "          freebsd:"
   echo "            * 'freebsd' profile is used"
@@ -114,6 +113,26 @@ function detect_chost()
   esac
 }
 
+function generate_vs_runtime()
+{
+  local recipe="${1}"
+  local arg=""
+  if [ -z "${recipe}" ]; then
+    arg="-s compiler.runtime=M"
+  else
+    arg="-s ${recipe}:compiler.runtime=M"
+  fi
+  if [ "${shared}" = "True" ] && [ -z "${recipe}" ]; then
+    arg="${arg}D"
+  else
+    arg="${arg}T"
+  fi
+  if [ "${build_type}" = "Debug" ]; then
+    arg="${arg}d"
+  fi
+  echo "${arg}"
+}
+
 function build()
 {
   conan install -b missing \
@@ -126,17 +145,13 @@ function build()
 
 function build_for_windows()
 {
-  disable_shared
   trap - EXIT
   generate_default_profile
   copy_profile
-  local args="-b libressl"
+  local args="-b libressl -o mbedtls:shared=False"
   local compiler="$(conan profile get settings.compiler default | tr -d '\r')"
   if [ "${compiler}" = 'Visual Studio' ]; then
-    args="${args} -s compiler.runtime=MT"
-    if [ "${build_type}" = "Debug" ]; then
-      args="${args}d"
-    fi
+    args="${args} $(generate_vs_runtime) $(generate_vs_runtime mbedtls)"
   fi
   build ${args}
 }
