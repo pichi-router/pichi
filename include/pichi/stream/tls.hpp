@@ -3,6 +3,7 @@
 
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <pichi/crypto/fingerprint.hpp>
 #include <pichi/stream/traits.hpp>
 #include <type_traits>
 
@@ -40,6 +41,7 @@ public:
   {
     if (sni.has_value())
       assertTrue(SSL_set_tlsext_host_name(stream_.native_handle(), sni->c_str()) == 1);
+    crypto::setupTlsFingerprint(stream_.native_handle());
   }
 
   auto get_executor() { return stream_.get_executor(); }

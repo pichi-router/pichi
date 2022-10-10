@@ -9,6 +9,7 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/enumerations.hpp>
+#include <pichi/crypto/fingerprint.hpp>
 #include <pichi/crypto/key.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/direct.hpp>
@@ -57,8 +58,8 @@ static auto createTlsContext(vo::TlsIngressOption const& option)
 
 static auto createTlsContext(vo::TlsEgressOption const& option, string const& serverName)
 {
-  // TODO SNI not supported yet
   auto ctx = ssl::context{ssl::context::tls_client};
+  crypto::setupTlsFingerprint(ctx.native_handle());
   if (option.insecure_) {
     ctx.set_verify_mode(ssl::context::verify_none);
     return ctx;

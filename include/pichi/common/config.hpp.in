@@ -5,6 +5,7 @@
 
 #cmakedefine TRANSPARENT_PF
 #cmakedefine TRANSPARENT_IPTABLES
+#cmakedefine ENABLE_TLS_FINGERPRINT
 
 #cmakedefine HAS_UNISTD_H
 #cmakedefine HAS_SIGNAL_H
