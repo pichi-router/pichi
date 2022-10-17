@@ -1,3 +1,5 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <boost/system/system_error.hpp>
 #include <errno.h>
 #include <pichi/common/asserts.hpp>

@@ -1,3 +1,5 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <boost/system/error_category.hpp>
 #include <boost/system/error_condition.hpp>
 #include <pichi/common/error.hpp>
