@@ -20,6 +20,27 @@ endif()
 
 find_package(Boost 1.77.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
 
+if(BUILD_TEST)
+  # TODO Because Boost_USE_STATIC_LIB=OFF doesn't ensure boost libraries are shared ones,
+  # the additional detection is mandatory here to determine
+  # whether BOOST_ALL_DYN_LINK is necessary or not.
+  message(STATUS "Detecting Boost libraries type")
+  try_compile(Boost_TEST_STATIC
+    ${CMAKE_BINARY_DIR}/cmake ${CMAKE_SOURCE_DIR}/cmake/test/boost-test-type.cpp
+    CMAKE_FLAGS -DINCLUDE_DIRECTORIES=${Boost_INCLUDE_DIRS}
+    COMPILE_DEFINITIONS -DBOOST_ALL_NO_LIB
+    LINK_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+  )
+
+  if(Boost_TEST_STATIC)
+    message(STATUS "Detecting Boost libraries type - STATIC")
+  else()
+    set_target_properties(Boost::unit_test_framework PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS "BOOST_UNIT_TEST_FRAMEWORK_DYN_LINK")
+    message(STATUS "Detecting Boost libraries type - SHARED")
+  endif()
+endif()
+
 # To find other necessary dependencies
 if(UNIX)
   if(NOT BUILD_SHARED_LIBS)
@@ -50,6 +71,18 @@ if(TLS_FINGERPRINT)
   find_package(Brotli REQUIRED)
 else()
   find_package(OpenSSL REQUIRED)
+endif()
+
+# Patch OpenSSL::Crypto target when building on windows & dynamic linking
+if(WIN32 AND NOT BUILD_SHARED_LIBS)
+  get_target_property(deps OpenSSL::Crypto INTERFACE_LINK_LIBRARIES)
+
+  if(NOT deps)
+    unset(deps)
+  endif()
+
+  list(APPEND deps crypt32 bcrypt)
+  set_target_properties(OpenSSL::Crypto PROPERTIES INTERFACE_LINK_LIBRARIES "${deps}")
 endif()
 
 find_package(Threads REQUIRED)

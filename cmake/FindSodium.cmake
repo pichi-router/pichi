@@ -24,4 +24,23 @@ find_package_handle_standard_args(Sodium
 if(Sodium_FOUND)
   include(AddFoundTarget)
   _add_found_target(Sodium::sodium "${Sodium_INCLUDE_DIRS}" "${Sodium_LIBRARY}")
+
+  # According to libsodium's manual https://libsodium.gitbook.io/doc/usage,
+  # SODIUM_STATIC=1 & SODIUM_EXPORT are mandatory when MSVC & static linking.
+  if(MSVC)
+    message(STATUS "Detecting Sodium libraries type")
+    try_compile(Sodium_SHARED
+      ${CMAKE_BINARY_DIR}/cmake ${CMAKE_SOURCE_DIR}/cmake/test/sodium-type.c
+      CMAKE_FLAGS -DINCLUDE_DIRECTORIES=${Sodium_INCLUDE_DIRS}
+      LINK_LIBRARIES ${Sodium_LIBRARIES}
+    )
+
+    if(Sodium_SHARED)
+      message(STATUS "Detecting Sodium libraries type - SHARED")
+    else()
+      set_target_properties(Sodium::sodium PROPERTIES
+        INTERFACE_COMPILE_DEFINITIONS "SODIUM_STATIC=1;SODIUM_EXPORT")
+      message(STATUS "Detecting Sodium libraries type - STATIC")
+    endif()
+  endif()
 endif()
