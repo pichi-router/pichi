@@ -147,12 +147,12 @@ function build_for_windows()
   trap - EXIT
   generate_default_profile
   copy_profile
+  args="-pr windows"
   local compiler="$(conan profile get settings.compiler default | tr -d '\r')"
   if [ "${compiler}" = 'Visual Studio' ]; then
-    build $(generate_vs_runtime) $(generate_vs_runtime mbedtls) $(generate_vs_runtime boringssl)
-  else
-    build
+    args="${args} $(generate_vs_runtime)"
   fi
+  build ${args}
 }
 
 function build_for_ios()
@@ -172,7 +172,7 @@ function build_for_ios()
 
 function build_for_android()
 {
-  validate_arch x86 x86_64 armv7 armv7hf armv8
+  validate_arch x86 armv7 armv8
   check_mandatory_arg "-l api_level" "${api_level}"
   check_mandatory_arg "-r ndk_root" "${ndk}"
   disable_shared
