@@ -3,7 +3,7 @@
 function usage()
 {
   echo "Usage:"
-  echo "  build.sh <-p platform> [-d] [-s] [-t] [platform specific options] <version>"
+  echo "  build.sh <-p platform> [-d] [-o] [-s] [platform specific options] <version>"
   echo "    -p: available platforms are: windows/freebsd/macos/linux/ios/android"
   echo "          windows:"
   echo "            * 'windows' profile is used"
@@ -26,8 +26,8 @@ function usage()
   echo "            * -s is forbidden"
   echo "            * available archs are x86/x86_64/armv7/armv7hf/armv8"
   echo "    -d: set build_type=Debug if sepecified, otherwise Release"
+  echo "    -o: tls_fingerprint=False is set if specified, otherwise True."
   echo "    -s: shared=True is set if specified, otherwise False."
-  echo "    -t: tls_fingerprint=True is set if specified, otherwise False."
   echo "    version: pichi version"
   echo "  platform specific options:"
   echo "    -a arch       : settings.arch, mandatory for ios/android"
@@ -147,12 +147,12 @@ function build_for_windows()
   trap - EXIT
   generate_default_profile
   copy_profile
-  local args="-o mbedtls:shared=False"
   local compiler="$(conan profile get settings.compiler default | tr -d '\r')"
   if [ "${compiler}" = 'Visual Studio' ]; then
-    args="${args} $(generate_vs_runtime) $(generate_vs_runtime mbedtls)"
+    build $(generate_vs_runtime) $(generate_vs_runtime mbedtls) $(generate_vs_runtime boringssl)
+  else
+    build
   fi
-  build ${args}
 }
 
 function build_for_ios()
@@ -228,7 +228,7 @@ fingerprint="True"
 platform="unspecified"
 
 trap usage EXIT
-args=`getopt a:dl:p:r:stv: $*`
+args=`getopt a:dl:op:r:sv: $*`
 set -- $args
 for i; do
   case "$i" in
@@ -256,13 +256,13 @@ for i; do
       ndk="$1"
       shift
       ;;
+    -o)
+      shift
+      fingerprint="False"
+      ;;
     -s)
       shift
       shared="True"
-      ;;
-    -t)
-      shift
-      fingerprint="True"
       ;;
     -v)
       shift

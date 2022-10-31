@@ -7,6 +7,7 @@ os=Android
 
 b2:os=Linux
 b2:arch=x86_64
+mbedtls:build_type=Debug
 
 [options]
 pichi:build_test=False

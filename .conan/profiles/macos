@@ -2,4 +2,4 @@ include(default)
 include(boost)
 
 [options]
-pichi:enable_transparent=pf
+pichi:transparent=pf

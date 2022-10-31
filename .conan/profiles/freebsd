@@ -3,4 +3,4 @@ include(boost)
 
 [options]
 b2:toolset=clang
-pichi:enable_transparent=pf
+pichi:transparent=pf

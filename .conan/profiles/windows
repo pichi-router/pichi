@@ -1,2 +1,6 @@
 include(default)
 include(boost)
+
+[options]
+mbedtls:shared=False
+boringssl:shared=False

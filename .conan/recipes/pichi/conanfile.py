@@ -16,7 +16,7 @@ class PichiConan(ConanFile):
              "tls_fingerprint": [True, False],
              "transparent": ["none", "pf", "iptables"]}
   default_options = {"shared": False, "fPIC": True, "build_test": True, "build_server": True,
-                     "tls_fingerprint": True, "transparent": "none"}
+                     "tls_fingerprint": False, "transparent": "none"}
   generators = "cmake"
   requires = "boost/[>=1.72.0]@", "mbedtls/[>=2.7.0]@", "libsodium/[>=1.0.12]@", \
              "libmaxminddb/[>=1.5.0]@", "rapidjson/[>=1.1.0]@"
