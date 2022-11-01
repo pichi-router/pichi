@@ -5,9 +5,6 @@ include(boost)
 b2:os=Macos
 b2:arch=x86_64
 
-[build_requires]
-darwin-toolchain/1.0.8@theodelrieu/stable
-
 [options]
 pichi:build_test=False
 pichi:build_server=False

@@ -41,7 +41,7 @@ function do_export_old_deps()
 function do_export_new_deps()
 {
   conan inspect libressl/3.5.3@
-  conan inspect boost/1.79.0@
+  conan inspect boost/1.80.0@
   conan inspect mbedtls/3.2.1@
   conan inspect libsodium/1.0.18@
   conan inspect rapidjson/1.1.0@
@@ -54,7 +54,7 @@ trap cleanup EXIT
 show_help="true"
 
 recipes="$(dirname $0)/../recipes"
-args=`getopt d:i $*`
+args=`getopt d: $*`
 set -- $args
 unset show_help
 for i; do
@@ -68,14 +68,6 @@ for i; do
       esac
       deps_exported="true"
       shift
-      ;;
-    -i)
-      shift
-      darwin="$(mktemp -d)"
-      git clone -b release/1.0.8 \
-        https://github.com/theodelrieu/conan-darwin-toolchain.git "${darwin}"
-      conan export "${darwin}" darwin-toolchain/1.0.8@theodelrieu/stable
-      rm -rf "${darwin}"
       ;;
     --)
       show_help="true"
