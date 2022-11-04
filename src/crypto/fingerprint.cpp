@@ -34,7 +34,7 @@ void setupTlsFingerprint(::SSL_CTX* ctx)
   ::SSL_CTX_enable_ocsp_stapling(ctx);
   ::SSL_CTX_set_cipher_list(ctx, CIPHER_SUITES);
   ::SSL_CTX_enable_signed_cert_timestamps(ctx);
-  ::SSL_CTX_set_alpn_protos(ctx, ALPN.data(), ALPN.size());
+  ::SSL_CTX_set_alpn_protos(ctx, ALPN.data(), static_cast<unsigned>(ALPN.size()));
   ::SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
   ::SSL_CTX_set1_sigalgs(ctx, ALGORITHMS.data(), ALGORITHMS.size());
   ::SSL_CTX_add_cert_compression_alg(ctx, TLSEXT_cert_compression_brotli, nullptr,
