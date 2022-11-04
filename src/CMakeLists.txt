@@ -1,10 +1,6 @@
 file(GLOB_RECURSE SRCS *.cpp)
 
-if(STATIC_LINK)
-  add_library(${PICHI_LIBRARY} STATIC ${SRCS})
-else()
-  add_library(${PICHI_LIBRARY} SHARED ${SRCS})
-endif()
+add_library(${PICHI_LIBRARY} ${SRCS})
 
 target_include_directories(${PICHI_LIBRARY} PRIVATE ${ALL_INCLUDE_DIRS})
 target_link_directories(${PICHI_LIBRARY} PRIVATE ${COMMON_LIB_DIRS})
@@ -21,7 +17,7 @@ if(VERSION)
   set_target_properties(${PICHI_LIBRARY} PROPERTIES VERSION ${VERSION})
 endif()
 
-if(NOT STATIC_LINK)
+if(BUILD_SHARED_LIBS)
   install(TARGETS ${PICHI_LIBRARY} LIBRARY DESTINATION lib RUNTIME DESTINATION bin)
 elseif(INSTALL_DEVEL)
   install(TARGETS ${PICHI_LIBRARY} ARCHIVE DESTINATION lib)

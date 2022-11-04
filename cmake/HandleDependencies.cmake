@@ -1,6 +1,6 @@
 list(APPEND BOOST_COMPONENTS context system thread)
 
-if(WIN32 AND NOT STATIC_LINK)
+if(WIN32 AND BUILD_SHARED_LIBS)
   list(APPEND BOOST_COMPONENTS date_time)
 endif()
 
@@ -12,22 +12,36 @@ if(BUILD_TEST)
   list(APPEND BOOST_COMPONENTS unit_test_framework)
 endif()
 
-# Unify the library types of the dependencies
+find_package(Threads REQUIRED)
+
+set(Boost_NO_SYSTEM_PATHS ${ENABLE_CONAN})
+
+if(BUILD_SHARED_LIBS)
+  set(Boost_USE_STATIC_LIBS OFF)
+else()
+  set(Boost_USE_STATIC_LIBS ON)
+endif()
+
+find_package(Boost 1.77.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
+
 if(UNIX)
-  if(STATIC_LINK)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+  if(NOT BUILD_SHARED_LIBS)
+    list(PREPEND CMAKE_FIND_LIBRARY_SUFFIXES .a)
   elseif(APPLE)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .dylib)
+    list(PREPEND CMAKE_FIND_LIBRARY_SUFFIXES .dylib)
   else()
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .so)
+    list(PREPEND CMAKE_FIND_LIBRARY_SUFFIXES .so)
   endif()
 endif()
 
-set(Boost_USE_STATIC_LIBS ${STATIC_LINK})
-set(Boost_NO_SYSTEM_PATHS ${ENABLE_CONAN})
+list(REMOVE_DUPLICATES CMAKE_FIND_LIBRARY_SUFFIXES)
 
-find_package(Threads REQUIRED)
-find_package(Boost 1.77.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
+if(ENABLE_CONAN)
+  set(CMAKE_FIND_USE_CMAKE_SYSTEM_PATH OFF)
+else()
+  set(CMAKE_FIND_USE_CMAKE_SYSTEM_PATH ON)
+endif()
+
 find_package(MbedTLS 2.7.0 REQUIRED)
 find_package(Sodium 1.0.12 REQUIRED)
 find_package(MaxmindDB 1.3.0 REQUIRED)
@@ -64,6 +78,6 @@ list(REMOVE_DUPLICATES COMMON_LIB_DIRS)
 
 list(APPEND EXTRA_LIBRARIES ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
-if(WIN32 AND STATIC_LINK)
+if(WIN32 AND NOT BUILD_SHARED_LIBS)
   list(APPEND EXTRA_LIBRARIES crypt32 bcrypt)
 endif()

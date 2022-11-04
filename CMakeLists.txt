@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
+cmake_policy(SET CMP0091 NEW)
 project(pichi)
 
 # Options
 option(BUILD_SERVER "Build pichi application" ON)
 option(BUILD_TEST "Build unit test cases" ON)
-option(STATIC_LINK "Static linking" ON)
+option(BUILD_SHARED_LIBS "Build shared library" OFF)
 option(INSTALL_DEVEL "Install files for development" OFF)
 option(ENABLE_CONAN "Enable conan" OFF)
 option(TRANSPARENT_PF "Implement transparent ingress via Packet Filter" OFF)
@@ -37,7 +38,7 @@ include(Configure)
 # MSVC_CRT:         the correct library name for target property MSVC_RUNTIME_LIBRARY
 set(PICHI_LIBRARY pichi_lib)
 set(INSTALL_RPATH "$<IF:$<BOOL:${APPLE}>,@executable_path/../lib,$ORIGIN/../lib>")
-set(MSVC_CRT "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<NOT:$<BOOL:${STATIC_LINK}>>:DLL>")
+set(MSVC_CRT "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<BOOL:${BUILD_SHARED_LIBS}>:DLL>")
 
 # Setup the targets
 add_subdirectory(src)

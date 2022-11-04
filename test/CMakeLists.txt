@@ -1,5 +1,5 @@
 list(APPEND RAW_TESTS keys hash hmac hkdf base64 method cryptogram router uri endpoint
-      socks5 http ss balancer trojan)
+  socks5 http ss balancer trojan)
 list(APPEND VO_TESTS vos vo_credential vo_ingress vo_egress vo_rule vo_route vo_options)
 
 configure_file(geo.mmdb ${CMAKE_CURRENT_BINARY_DIR}/geo.mmdb COPYONLY)
@@ -10,9 +10,11 @@ set(VO_SRC vo.cpp)
 foreach(CASE IN LISTS RAW_TESTS)
   add_executable(${CASE} "${CASE}.cpp" ${UTILS_SRC})
 endforeach()
+
 foreach(CASE IN LISTS VO_TESTS)
-  add_executable(${CASE} "${CASE}.cpp" ${UTILS_SRC} ${VO_SRC})  
+  add_executable(${CASE} "${CASE}.cpp" ${UTILS_SRC} ${VO_SRC})
 endforeach()
+
 foreach(CASE IN LISTS RAW_TESTS VO_TESTS)
   add_test(NAME ${CASE} COMMAND ${CASE})
   target_include_directories(${CASE} PRIVATE ${ALL_INCLUDE_DIRS})
@@ -21,20 +23,21 @@ foreach(CASE IN LISTS RAW_TESTS VO_TESTS)
   set_target_properties(${CASE} PROPERTIES MSVC_RUNTIME_LIBRARY ${MSVC_CRT})
 endforeach()
 
-if (ENABLE_CONAN AND NOT STATIC_LINK)
-  if (WIN32)
+if(ENABLE_CONAN AND BUILD_SHARED_LIBS)
+  if(WIN32)
     foreach(LIB_DIR IN LISTS COMMON_LIB_DIRS)
       cmake_path(GET LIB_DIR PARENT_PATH BASE_DIR)
       cmake_path(APPEND BASE_DIR "bin" OUTPUT_VARIABLE BIN_DIR)
       list(APPEND TEST_PATH ${BIN_DIR})
     endforeach()
+
     set_tests_properties(${RAW_TESTS} ${VO_TESTS} PROPERTIES ENVIRONMENT
       "PATH=$<TARGET_FILE_DIR:${PICHI_LIBRARY}>\;$<JOIN:${TEST_PATH},\;>")
-  elseif (APPLE)
+  elseif(APPLE)
     set_tests_properties(${RAW_TESTS} ${VO_TESTS} PROPERTIES ENVIRONMENT
       "DYLD_LIBRARY_PATH=$<TARGET_FILE_DIR:${PICHI_LIBRARY}>:$<JOIN:${COMMON_LIB_DIRS},:>")
-  else ()
+  else()
     set_tests_properties(${RAW_TESTS} ${VO_TESTS} PROPERTIES ENVIRONMENT
       "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:${PICHI_LIBRARY}>:$<JOIN:${COMMON_LIB_DIRS},:>")
-  endif ()
-endif ()
+  endif()
+endif()
