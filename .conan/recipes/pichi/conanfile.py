@@ -24,6 +24,7 @@ class PichiConan(ConanFile):
   def _configure_cmake(self):
     cmake = CMake(self)
     cmake.definitions["ENABLE_CONAN"] = True
+    cmake.definitions["VERSION"] = self.version
     cmake.definitions["BUILD_SERVER"] = self.options.build_server
     cmake.definitions["BUILD_TEST"] = self.options.build_test
     cmake.definitions["STATIC_LINK"] = not self.options.shared
