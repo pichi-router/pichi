@@ -26,18 +26,19 @@ endif()
 set(Boost_USE_STATIC_LIBS ${STATIC_LINK})
 set(Boost_NO_SYSTEM_PATHS ${ENABLE_CONAN})
 
-if(ENABLE_TLS_FINGERPRINT)
-  find_package(BoringSSL 12 REQUIRED)
-else()
-  find_package(OpenSSL REQUIRED)
-endif()
-
+find_package(Threads REQUIRED)
 find_package(Boost 1.77.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
 find_package(MbedTLS 2.7.0 REQUIRED)
 find_package(Sodium 1.0.12 REQUIRED)
 find_package(MaxmindDB 1.3.0 REQUIRED)
 find_package(Rapidjson 1.1.0 REQUIRED)
-find_package(Threads REQUIRED)
+
+if(TLS_FINGERPRINT)
+  find_package(BoringSSL 12 REQUIRED)
+  find_package(Brotli REQUIRED)
+else()
+  find_package(OpenSSL REQUIRED)
+endif()
 
 # Setup global variables
 # ALL_INCLUDE_DIRS: the including directories for all targets

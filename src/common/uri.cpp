@@ -1,3 +1,5 @@
+#include <pichi/common/config.hpp>
+// Include config.hpp first
 #include <boost/algorithm/string.hpp>
 #include <cmath>
 #include <pichi/common/asserts.hpp>

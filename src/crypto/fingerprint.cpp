@@ -3,6 +3,7 @@
 #include <array>
 #include <openssl/ssl.h>
 #include <pichi/common/literals.hpp>
+#include <pichi/crypto/brotli.hpp>
 #include <pichi/crypto/fingerprint.hpp>
 
 using namespace std;
@@ -37,9 +38,8 @@ void setupTlsFingerprint(::SSL_CTX* ctx)
   ::SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
   ::SSL_CTX_set1_sigalgs(ctx, ALGORITHMS.data(), ALGORITHMS.size());
   ::SSL_CTX_add_cert_compression_alg(ctx, TLSEXT_cert_compression_brotli, nullptr,
-                                     // Decompression stub
-                                     [](auto, auto, auto, auto, auto) { return 0; });
-#else   // ENABLE_TLS_FINGERPRINT
+                                     &brotliDecompress);
+#else   // TLS_FINGERPRINT
 void setupTlsFingerprint(::SSL_CTX*)
 {
 #endif  // TLS_FINGERPRINT
