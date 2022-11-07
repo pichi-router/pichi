@@ -13,12 +13,10 @@ class PichiConan(ConanFile):
   settings = "os", "compiler", "build_type", "arch"
   options = {"shared": [True, False], "fPIC": [True, False],
              "build_test": [True, False], "build_server": [True, False],
-             "tls_lib": ["libressl", "openssl", "boringssl"],
-             "enable_tls_fingerprint": [True, False],
-             "enable_transparent": ["none", "pf", "iptables"]}
+             "tls_fingerprint": [True, False],
+             "transparent": ["none", "pf", "iptables"]}
   default_options = {"shared": False, "fPIC": True, "build_test": True, "build_server": True,
-                     "tls_lib": "libressl", "enable_tls_fingerprint": False,
-                     "enable_transparent": "none"}
+                     "tls_fingerprint": True, "transparent": "none"}
   generators = "cmake"
   requires = "boost/[>=1.72.0]@", "mbedtls/[>=2.7.0]@", "libsodium/[>=1.0.12]@", \
              "libmaxminddb/[>=1.5.0]@", "rapidjson/[>=1.1.0]@"
@@ -31,9 +29,9 @@ class PichiConan(ConanFile):
     cmake.definitions["STATIC_LINK"] = not self.options.shared
     cmake.definitions["INSTALL_DEVEL"] = True
     cmake.definitions["CMAKE_BUILD_TYPE"] = self.settings.build_type
-    cmake.definitions["TRANSPARENT_PF"] = self.options.enable_transparent == "pf"
-    cmake.definitions["TRANSPARENT_IPTABLES"] = self.options.enable_transparent == "iptables"
-    cmake.definitions["ENABLE_TLS_FINGERPRINT"] = self.options.enable_tls_fingerprint
+    cmake.definitions["TRANSPARENT_PF"] = self.options.transparent == "pf"
+    cmake.definitions["TRANSPARENT_IPTABLES"] = self.options.transparent == "iptables"
+    cmake.definitions["TLS_FINGERPRINT"] = self.options.tls_fingerprint
     return cmake
 
   def config_options(self):
@@ -46,12 +44,9 @@ class PichiConan(ConanFile):
     self.settings.compiler.cppstd = "17"
 
   def requirements(self):
-    if self.options.enable_tls_fingerprint:
-      self.options.tls_lib = "boringssl"
-    if self.options.tls_lib == "boringssl":
+    if self.options.tls_fingerprint:
+      self.requires("brotli/[>=1.0.0]@")
       self.requires("boringssl/[>=12]@")
-    elif self.options.tls_lib == "libressl":
-      self.requires("libressl/[>=3.0.0]@")
     else:
       self.requires("openssl/1.1.1q@")
 

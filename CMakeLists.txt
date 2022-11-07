@@ -9,7 +9,7 @@ option(INSTALL_DEVEL "Install files for development" OFF)
 option(ENABLE_CONAN "Enable conan" OFF)
 option(TRANSPARENT_PF "Implement transparent ingress via Packet Filter" OFF)
 option(TRANSPARENT_IPTABLES "Implement transparent ingress via Linux IPTables" OFF)
-option(ENABLE_TLS_FINGERPRINT "Enable TLS fingerprint" ON)
+option(TLS_FINGERPRINT "Enable TLS fingerprint" ON)
 
 # C++ standard options
 set(CMAKE_CXX_STANDARD 17)

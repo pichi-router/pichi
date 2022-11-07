@@ -1,6 +1,4 @@
-from importlib.metadata import requires
 from conans import ConanFile, CMake, tools
-import os
 
 
 class BoringSSLConan(ConanFile):

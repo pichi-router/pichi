@@ -3,11 +3,10 @@
 function usage()
 {
   echo "Usage:"
-  echo "  build.sh <-p platform> [-d] [-o] [-s] [platform specific options] <version>"
+  echo "  build.sh <-p platform> [-d] [-s] [-t] [platform specific options] <version>"
   echo "    -p: available platforms are: windows/freebsd/macos/linux/ios/android"
   echo "          windows:"
   echo "            * 'windows' profile is used"
-  echo "            * always building libressl"
   echo "            * no platform specific options"
   echo "          freebsd:"
   echo "            * 'freebsd' profile is used"
@@ -27,8 +26,8 @@ function usage()
   echo "            * -s is forbidden"
   echo "            * available archs are x86/x86_64/armv7/armv7hf/armv8"
   echo "    -d: set build_type=Debug if sepecified, otherwise Release"
-  echo "    -o: depends on openssl if specified, otherwise libressl"
   echo "    -s: shared=True is set if specified, otherwise False."
+  echo "    -t: tls_fingerprint=True is set if specified, otherwise False."
   echo "    version: pichi version"
   echo "  platform specific options:"
   echo "    -a arch       : settings.arch, mandatory for ios/android"
@@ -138,7 +137,7 @@ function build()
   conan install -b missing \
     -s build_type="${build_type}" \
     -o "*:shared=${shared}" \
-    -o "pichi:tls_lib=${tlslib}" \
+    -o "pichi:tls_fingerprint=${fingerprint}" \
     "$@" \
     "pichi/${version}@"
 }
@@ -148,7 +147,7 @@ function build_for_windows()
   trap - EXIT
   generate_default_profile
   copy_profile
-  local args="-b libressl -o mbedtls:shared=False"
+  local args="-o mbedtls:shared=False"
   local compiler="$(conan profile get settings.compiler default | tr -d '\r')"
   if [ "${compiler}" = 'Visual Studio' ]; then
     args="${args} $(generate_vs_runtime) $(generate_vs_runtime mbedtls)"
@@ -190,6 +189,7 @@ function build_for_android()
   build -s "compiler.version=$(detect_ndk_compiler_version)" \
     -s "os.api_level=${api_level}" \
     -s "arch=${arch}" \
+    -c "tools.android:ndk_path=${ndk}" \
     -e "PATH=[${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin]" \
     -e "CONAN_CMAKE_TOOLCHAIN_FILE=${ndk}/build/cmake/android.toolchain.cmake" \
     -e "CC=${cc}" \
@@ -224,11 +224,11 @@ set -o errexit
 recipes="$(dirname $0)/../recipes"
 build_type="Release"
 shared="False"
-tlslib="libressl"
+fingerprint="True"
 platform="unspecified"
 
 trap usage EXIT
-args=`getopt a:dl:op:r:sv: $*`
+args=`getopt a:dl:p:r:stv: $*`
 set -- $args
 for i; do
   case "$i" in
@@ -246,10 +246,6 @@ for i; do
       api_level="$1"
       shift
       ;;
-    -o)
-      shift
-      tlslib="openssl"
-      ;;
     -p)
       shift
       platform="$1"
@@ -263,6 +259,10 @@ for i; do
     -s)
       shift
       shared="True"
+      ;;
+    -t)
+      shift
+      fingerprint="True"
       ;;
     -v)
       shift

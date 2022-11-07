@@ -11,7 +11,7 @@ namespace pichi::crypto {
 
 // Simulate the TLS fingerprint according to https://tlsfingerprint.io/id/e47eae8f8c4887b6
 
-#ifdef ENABLE_TLS_FINGERPRINT
+#ifdef TLS_FINGERPRINT
 void setupTlsFingerprint(::SSL_CTX* ctx)
 {
   static decltype(auto) CIPHER_SUITES =
@@ -42,17 +42,17 @@ void setupTlsFingerprint(::SSL_CTX* ctx)
 #else   // ENABLE_TLS_FINGERPRINT
 void setupTlsFingerprint(::SSL_CTX*)
 {
-#endif  // ENABLE_TLS_FINGERPRINT
+#endif  // TLS_FINGERPRINT
 }
 
-#ifdef ENABLE_TLS_FINGERPRINT
+#ifdef TLS_FINGERPRINT
 void setupTlsFingerprint(::SSL* ssl)
 {
   ::SSL_add_application_settings(ssl, reinterpret_cast<uint8_t const*>("h2"), 2, NULL, 0);
-#else   // ENABLE_TLS_FINGERPRINT
+#else   // TLS_FINGERPRINT
 void setupTlsFingerprint(::SSL*)
 {
-#endif  // ENABLE_TLS_FINGERPRINT
+#endif  // TLS_FINGERPRINT
 }
 
 }  // namespace pichi::crypto
