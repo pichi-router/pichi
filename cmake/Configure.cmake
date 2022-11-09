@@ -22,10 +22,6 @@ if(Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
   set(DISABLE_GCC_IGNORED_ATTRIBUTES ON)
 endif()
 
-if(Boost_VERSION_STRING VERSION_LESS "1.74.0")
-  set(DISABLE_CLANG_C11_EXTENTIONS)
-endif()
-
 if(BUILD_SERVER)
   include(CheckIncludeFiles)
   include(CheckFunctionExists)

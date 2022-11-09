@@ -40,11 +40,6 @@
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#cmakedefine DISABLE_CLANG_C11_EXTENTIONS
-#if !__has_feature(c_atomic) && defined(DISABLE_CLANG_C11_EXTENTIONS)
-#pragma clang diagnostic ignored "-Wc11-extensions"
-#endif  // !__has_feature(c_atomic) && defined(DISABLE_CLANG_C11_EXTENTIONS)
-
 #endif  // __clang__
 
 #ifdef _MSC_VER
