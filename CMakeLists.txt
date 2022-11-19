@@ -31,6 +31,7 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(HandleDependencies)
 include(Configure)
+include(GNUInstallDirs)
 
 # Setup global variables
 # PICHI_LIBRARY:    the target name of pichi library
