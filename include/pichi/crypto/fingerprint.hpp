@@ -5,6 +5,7 @@
 
 namespace pichi::crypto {
 
+extern void enableBrotliCompression(::SSL_CTX*);
 extern void setupTlsFingerprint(::SSL_CTX*);
 extern void setupTlsFingerprint(::SSL*);
 

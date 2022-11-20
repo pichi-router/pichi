@@ -10,6 +10,17 @@ using namespace std;
 
 namespace pichi::crypto {
 
+#ifdef TLS_FINGERPRINT
+void enableBrotliCompression(::SSL_CTX* ctx)
+{
+  ::SSL_CTX_add_cert_compression_alg(ctx, TLSEXT_cert_compression_brotli, &brotliCompress<::CBB>,
+                                     nullptr);
+#else   // TLS_FINGERPRINT
+void enableBrotliCompression(::SSL_CTX*)
+{
+#endif  // TLS_FINGERPRINT
+}
+
 // Simulate the TLS fingerprint according to https://tlsfingerprint.io/id/e47eae8f8c4887b6
 
 #ifdef TLS_FINGERPRINT
@@ -38,7 +49,7 @@ void setupTlsFingerprint(::SSL_CTX* ctx)
   ::SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
   ::SSL_CTX_set1_sigalgs(ctx, ALGORITHMS.data(), ALGORITHMS.size());
   ::SSL_CTX_add_cert_compression_alg(ctx, TLSEXT_cert_compression_brotli, nullptr,
-                                     &brotliDecompress);
+                                     &brotliDecompress<::CRYPTO_BUFFER>);
 #else   // TLS_FINGERPRINT
 void setupTlsFingerprint(::SSL_CTX*)
 {

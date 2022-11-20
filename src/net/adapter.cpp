@@ -53,6 +53,7 @@ static auto createTlsContext(vo::TlsIngressOption const& option)
   auto ctx = ssl::context{ssl::context::tls_server};
   ctx.use_certificate_chain_file(option.certFile_);
   ctx.use_private_key_file(option.keyFile_, ssl::context::pem);
+  crypto::enableBrotliCompression(ctx.native_handle());
   return ctx;
 }
 

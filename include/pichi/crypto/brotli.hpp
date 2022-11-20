@@ -3,11 +3,11 @@
 
 #include <openssl/conf.h>
 
-struct crypto_buffer_st;
-
 namespace pichi::crypto {
 
-int brotliDecompress(SSL*, crypto_buffer_st**, size_t, uint8_t const*, size_t);
+template <typename CBB> int brotliCompress(SSL*, CBB*, uint8_t const*, size_t);
+template <typename CRYPTO_BUFFER>
+int brotliDecompress(SSL*, CRYPTO_BUFFER**, size_t, uint8_t const*, size_t);
 
 }  // namespace pichi::crypto
 
