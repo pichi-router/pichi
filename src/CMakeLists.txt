@@ -1,9 +1,8 @@
 file(GLOB_RECURSE SRCS *.cpp)
 
 add_library(${PICHI_LIBRARY} ${SRCS})
-
-target_include_directories(${PICHI_LIBRARY} PRIVATE ${ALL_INCLUDE_DIRS})
-target_link_directories(${PICHI_LIBRARY} PRIVATE ${COMMON_LIB_DIRS})
+target_include_directories(${PICHI_LIBRARY} PUBLIC
+  ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(${PICHI_LIBRARY} PRIVATE ${COMMON_LIBRARIES})
 
 set_target_properties(${PICHI_LIBRARY} PROPERTIES

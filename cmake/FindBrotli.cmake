@@ -22,3 +22,12 @@ find_package_handle_standard_args(Brotli
   Brotli_LIBRARIES Brotli_INCLUDE_DIRS
   VERSION_VAR Brotli_VERSION
 )
+
+if(Brotli_FOUND)
+  include(AddFoundTarget)
+  _add_found_target(Brotli::common "${Brotli_INCLUDE_DIRS}" "${Brotli_COMMON_LIBRARY}")
+  _add_found_target(Brotli::decoder "${Brotli_INCLUDE_DIRS}" "${Brotli_DECODER_LIBRARY}")
+  target_link_libraries(Brotli::decoder INTERFACE Brotli::common)
+  _add_found_target(Brotli::encoder "${Brotli_INCLUDE_DIRS}" "${Brotli_ENCODER_LIBRARY}")
+  target_link_libraries(Brotli::encoder INTERFACE Brotli::common)
+endif()

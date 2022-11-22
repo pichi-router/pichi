@@ -17,11 +17,19 @@ endforeach()
 
 foreach(CASE IN LISTS RAW_TESTS VO_TESTS)
   add_test(NAME ${CASE} COMMAND ${CASE})
-  target_include_directories(${CASE} PRIVATE ${ALL_INCLUDE_DIRS})
   target_link_libraries(${CASE} PRIVATE ${PICHI_LIBRARY}
-    ${COMMON_LIBRARIES} ${EXTRA_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+    ${COMMON_LIBRARIES} Boost::unit_test_framework)
   set_target_properties(${CASE} PROPERTIES MSVC_RUNTIME_LIBRARY ${MSVC_CRT})
 endforeach()
+
+include(GetLibraryDirectories)
+
+foreach(lib IN LISTS COMMON_LIBRARIES)
+  _get_library_directories(dir ${lib})
+  list(APPEND COMMON_LIB_DIRS ${dir})
+endforeach()
+
+list(REMOVE_DUPLICATES COMMON_LIB_DIRS)
 
 if(ENABLE_CONAN AND BUILD_SHARED_LIBS)
   if(WIN32)
