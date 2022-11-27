@@ -94,6 +94,16 @@ check_mandatory_arg()
   fi
 }
 
+convert_ndk_recipe_to_path()
+{
+  local recipe="${1}"
+  conan install "${recipe}" >/dev/null
+  local pkg=$(conan info --paths -n package_folder "${recipe}" | \
+    grep package_folder | \
+    awk '{print $NF}')
+  echo "${pkg}/bin"
+}
+
 detect_ndk_compiler_version()
 {
   ${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --version | \
@@ -179,6 +189,11 @@ build_for_android()
   trap - EXIT
   generate_default_profile
   copy_profile
+
+  if echo "${ndk}" | grep -sq '@$'; then
+    ndk="$(convert_ndk_recipe_to_path ${ndk})"
+  fi
+
   local chost="$(detect_chost)"
   local cc="${chost}${api_level}-clang"
   local cxx="${cc}++"
