@@ -1,4 +1,5 @@
 from conans import ConanFile, CMake, tools
+import os
 
 
 class BoringSSLConan(ConanFile):
@@ -47,10 +48,14 @@ class BoringSSLConan(ConanFile):
     g.checkout(self.conan_data["versions"][self.version])
     cmake = self._cmake
     cmake.configure(build_folder=self._build_subfolder)
-    cmake.build(build_dir=self._build_subfolder)
+    # Only target 'bssl' is necessary for installation
+    cmake.build(build_dir=self._build_subfolder, target="bssl")
 
   def package(self):
-    self._cmake.install(build_dir=self._build_subfolder)
+    # CMake.install invokes 'cmake --target install', which leads to building tests.
+    # As a result, try 'cmake --install' instead
+    self.run("cmake --install %s --config %s" %
+             (os.path.join(self.source_folder, self._build_subfolder), self.settings.build_type))
 
   def package_info(self):
     self.cpp_info.set_property("cmake_find_mode", "both")
