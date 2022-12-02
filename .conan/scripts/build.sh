@@ -1,6 +1,6 @@
-#/usr/bin/env bash
+#/bin/sh
 
-function usage()
+usage()
 {
   echo "Usage:"
   echo "  build.sh <-p platform> [-d] [-o] [-s] [platform specific options] <version>"
@@ -37,7 +37,7 @@ function usage()
   exit 1
 }
 
-function generate_default_profile()
+generate_default_profile()
 {
   if [ -f "${HOME}/.conan/profiles/default" ]; then
     return
@@ -46,7 +46,7 @@ function generate_default_profile()
   conan profile remove settings.build_type default
 }
 
-function copy_if_not_exists()
+copy_if_not_exists()
 {
   local src="${recipes}/../profiles"
   local dst="${HOME}/.conan/profiles"
@@ -56,13 +56,13 @@ function copy_if_not_exists()
   fi
 }
 
-function copy_profile()
+copy_profile()
 {
   copy_if_not_exists boost
   copy_if_not_exists "${platform}"
 }
 
-function validate_arch()
+validate_arch()
 {
   local matched=""
   for i; do
@@ -78,7 +78,7 @@ function validate_arch()
   fi
 }
 
-function disable_shared()
+disable_shared()
 {
   if [ "${shared}" = "True" ]; then
     echo "shared=True is disabled"
@@ -86,7 +86,7 @@ function disable_shared()
   fi
 }
 
-function check_mandatory_arg()
+check_mandatory_arg()
 {
   if [ -z "$2" ]; then
     echo "$1 is mandatory"
@@ -94,13 +94,13 @@ function check_mandatory_arg()
   fi
 }
 
-function detect_ndk_compiler_version()
+detect_ndk_compiler_version()
 {
   ${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --version | \
     sed -n 's/^.* clang version \([0-9][0-9]*\)\..*$/\1/p'
 }
 
-function detect_chost()
+detect_chost()
 {
   case "${arch}" in
     x86) echo "i686-linux-android";;
@@ -112,7 +112,7 @@ function detect_chost()
   esac
 }
 
-function generate_vs_runtime()
+generate_vs_runtime()
 {
   local recipe="${1}"
   local arg=""
@@ -132,7 +132,7 @@ function generate_vs_runtime()
   echo "${arg}"
 }
 
-function build()
+build()
 {
   conan install -b missing \
     -s build_type="${build_type}" \
@@ -142,7 +142,7 @@ function build()
     "pichi/${version}@"
 }
 
-function build_for_windows()
+build_for_windows()
 {
   trap - EXIT
   generate_default_profile
@@ -155,7 +155,7 @@ function build_for_windows()
   build ${args}
 }
 
-function build_for_ios()
+build_for_ios()
 {
   validate_arch x86 x86_64 armv7 armv7s armv7k armv8 armv8.3
   check_mandatory_arg "-v ios_version" "${ios_ver}"
@@ -170,7 +170,7 @@ function build_for_ios()
   build -s "os=iOS" -s "arch=${arch}" -s "os.sdk=${sdk}" -s "os.version=${ios_ver}" -pr ios
 }
 
-function build_for_android()
+build_for_android()
 {
   validate_arch x86 armv7 armv8
   check_mandatory_arg "-l api_level" "${api_level}"
@@ -198,7 +198,7 @@ function build_for_android()
     -pr android
 }
 
-function build_for_spec_profile()
+build_for_spec_profile()
 {
   trap - EXIT
   generate_default_profile
@@ -206,7 +206,7 @@ function build_for_spec_profile()
   build -pr "${platform}"
 }
 
-function dispatch_args()
+dispatch_args()
 {
   case "${platform}" in
     windows) build_for_windows;;

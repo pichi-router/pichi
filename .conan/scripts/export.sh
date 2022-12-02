@@ -1,6 +1,6 @@
-#/usr/bin/env bash
+#/bin/sh
 
-function usage()
+usage()
 {
   echo "Usage:"
   echo "  export.sh -d <dependency version> [-i] <version>"
@@ -11,7 +11,7 @@ function usage()
   echo "    version     : pichi version"
 }
 
-function cleanup()
+cleanup()
 {
   if [ -n "${show_help}" ]; then
     usage
@@ -19,7 +19,7 @@ function cleanup()
   fi
 }
 
-function patch_recipe()
+patch_recipe()
 {
   local recipe="${recipes}/$(echo $1 | awk -F'/' '{print $1}')"
   for file in "$(ls ${recipe})"; do
@@ -27,7 +27,7 @@ function patch_recipe()
   done
 }
 
-function do_export_old_deps()
+do_export_old_deps()
 {
   conan inspect boost/1.77.0@
   conan inspect mbedtls/2.25.0@
@@ -37,7 +37,7 @@ function do_export_old_deps()
   conan export "${recipes}/boringssl" boringssl/17@
 }
 
-function do_export_new_deps()
+do_export_new_deps()
 {
   conan inspect boost/1.79.0@
   conan inspect mbedtls/3.2.1@
