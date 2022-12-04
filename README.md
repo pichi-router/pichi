@@ -8,15 +8,15 @@ Pichi is a flexible rule-based proxy.
 
 | OS | Ubuntu 22.04 | macOS 12 | Windows Server 2022 |
 |:---:|:---:|:---:|:---:|
-| Toolchain | GCC 11.2.0 | Xcode 13.4.1 | Visual Studio 2022 |
-| Status | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/5?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=5&branchName=main) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/9?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=9&branchName=main) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/1?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=1&branchName=main) |
+| Toolchain | GCC 12.1.0 | Xcode 14.0.1 | Visual Studio 2022 |
+| Status | [![Linux](https://github.com/pichi-router/pichi/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/linux.yml) | [![macOS](https://github.com/pichi-router/pichi/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/macos.yml) | [![Windows](https://github.com/pichi-router/pichi/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/windows.yml) |
 
 ### Mobile
 
 | OS | Android | iOS |
 |:---:|:---:|:---:|
-| Toolchain | Android NDK 25.1 | Xcode 13.4.1 |
-| Status | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/7?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=7&branchName=main) | [![Build Status](https://dev.azure.com/pichi-ci/pichi/_apis/build/status/8?label=Azure&branchName=main)](https://dev.azure.com/pichi-ci/pichi/_build/latest?definitionId=8&branchName=main) |
+| Toolchain | Android NDK 25.1 | Xcode 14.0.1 |
+| Status | [![Android](https://github.com/pichi-router/pichi/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/android.yml) | [![iOS](https://github.com/pichi-router/pichi/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/ios.yml) |
 
 ## Overview
 
@@ -142,8 +142,8 @@ BTW, Here's an assumption that pichi is running on the host enabling the packet 
 Please use [Docker](https://www.docker.com):
 
 ```
-$ docker pull pichi/pichi:latest
-$ docker run --rm pichi/pichi:latest pichi <options>
+$ docker pull ghcr.io/pichi-router/pichi:latest
+$ docker run --rm ghcr.io/pichi-router/pichi:latest pichi <options>
 ```
 
 #### macOS
@@ -457,40 +457,40 @@ $ bash .conan/scripts/export.sh -d new "${PICHI_VERSION}"
 ```
 $ # Desktop/Server
 $ # Windows
-$ bash .conan/scripts/build.sh -p windows "${PICHI_VERSION}"
+$ sh .conan/scripts/build.sh -p windows "${PICHI_VERSION}"
 $
 $ # Macos
-$ bash .conan/scripts/build.sh -p macos "${PICHI_VERSION}"
+$ sh .conan/scripts/build.sh -p macos "${PICHI_VERSION}"
 $
 $ # Linux
-$ bash .conan/scripts/build.sh -p linux "${PICHI_VERSION}"
+$ sh .conan/scripts/build.sh -p linux "${PICHI_VERSION}"
 $
 $ # FreeBSD
-$ bash .conan/scripts/build.sh -p freebsd "${PICHI_VERSION}"
+$ sh .conan/scripts/build.sh -p freebsd "${PICHI_VERSION}"
 $
 $ # Mobile
 $ # iOS
-$ bash .conan/scripts/build.sh -a armv8.3 -v 15.1 -p ios "${PICHI_VERSION}"
+$ sh .conan/scripts/build.sh -a armv8.3 -v 16.0 -p ios "${PICHI_VERSION}"
 $
 $ # Android
-$ bash .conan/scripts/build.sh -a armv8 -l 29 -r /path/to/ndk/home -p android "${PICHI_VERSION}"
+$ sh .conan/scripts/build.sh -a armv8 -l 33 -r android-ndk/r25@ -p android "${PICHI_VERSION}"
 ```
 
 ### Docker
 
-The pre-built docker image can be found on [Docker Hub](https://hub.docker.com/r/pichi/pichi),
+The pre-built docker image can be found on [GitHub Package](https://github.com/pichi-router/pichi/pkgs/container/pichi),
 which is automatically generated according to `docker/pichi.dockerfile`.
 Furthermore, `docker/builder.dockerfile` is intended to provide a docker environment
 for development.
 
 ```
-$ docker pull pichi/pichi
-$ docker run -d --name pichi --net host --restart always pichi/pichi \
+$ docker pull ghcr.io/pichi-router/pichi
+$ docker run -d --name pichi --net host --restart always ghcr.io/pichi-router/pichi \
 >   pichi -g /usr/share/pichi/geo.mmdb -p 1024 -l 127.0.0.1
 c51b832bd29dd0333b0d32b0b0563ddc72821f7301c36c7635ae47d00a3bb902
 $ docker ps -n 1
-CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
-c51b832bd29d        pichi/pichi         "pichi -g /usr/share…"   1 seconds ago       Up 1 seconds                            pichi
+CONTAINER ID        IMAGE                              COMMAND                  CREATED             STATUS              PORTS               NAMES
+c51b832bd29d        ghcr.io/pichi-router/pichi         "pichi -g /usr/share…"   1 seconds ago       Up 1 seconds                            pichi
 ```
 
 ## Integration with pichi
