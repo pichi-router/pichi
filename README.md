@@ -18,6 +18,17 @@ Pichi is a flexible rule-based proxy.
 | Toolchain | Android NDK 25.1 | Xcode 14.0.1 |
 | Status | [![Android](https://github.com/pichi-router/pichi/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/android.yml) | [![iOS](https://github.com/pichi-router/pichi/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/ios.yml) |
 
+## Security Alert
+
+According to [the report](https://tlsfingerprint.io/static/frolov2019.pdf), the TLS fingerprint can be used to recognize the type of TLS client for some censorship.
+If you want to avoid being censored, please make sure that
+
+- version [1.5.0](https://github.com/pichi-router/pichi/releases/tag/1.5.0) or later is used,
+- AND CMake option `TLS_FINGERPRINT` was enabled while building,
+- AND `sni` field is set for each TLS egress.
+
+Pichi is trying to simulate TLS fingerprint [e47eae8f8c4887b6](https://tlsfingerprint.io/id/e47eae8f8c4887b6), which is the fingerprint of Google chrome.
+
 ## Overview
 
 Pichi is designed
@@ -418,7 +429,9 @@ Please refer to the [folder](schemas/examples) to find more examples.
 * [libsodium](https://libsodium.org) 1.0.12
 * [RapidJSON](http://rapidjson.org/) 1.1.0
 * [libmaxminddb](http://maxmind.github.io/libmaxminddb/) 1.3.0
-* [OpenSSL](https://www.openssl.org) or [LibreSSL](https://www.libressl.org)
+* one of the following TLS libraries
+  * [OpenSSL](https://www.openssl.org) or [LibreSSL](https://www.libressl.org)
+  * [BoringSSL](https://boringssl.googlesource.com/boringssl/) if `TLS_FINGERPRINT` enabled
 
 ### CMake options
 
@@ -428,6 +441,7 @@ Please refer to the [folder](schemas/examples) to find more examples.
 * `INSTALL_DEVEL`: Install development files, the default is **OFF**.
 * `TRANSPARENT_PF`: Build the transparent ingress implemented by PF, the default is **OFF**.
 * `TRANSPARENT_IPTABLES`: Build the transparent ingress implemented by iptables, the default is **OFF**.
+* `TLS_FINGERPRINT`: Enable TLS fingerprint simulation, which requiring [BoringSSL](https://boringssl.googlesource.com/boringssl/), the default is **ON**.
 
 ### Build and run tests with CMake
 
