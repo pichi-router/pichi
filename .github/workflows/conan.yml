@@ -1,0 +1,37 @@
+name: Build Pichi with Conan
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      os:
+        required: true
+        type: string
+      args:
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ${{ inputs.image }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Conan on macOS
+        if: ${{ inputs.image == 'macos-12' }}
+        run: brew install conan
+      - name: Install Conan on non-macOS
+        if: ${{ inputs.image != 'macos-12' }}
+        uses: turtlebrowser/get-conan@v1.1
+      - name: Install NASM for windows
+        if: ${{ inputs.os == 'windows' }}
+        run: choco install -y nasm
+      - name: Export Conan Recipe
+        run: sh .conan/scripts/export.sh -d new latest
+      - name: Build Pichi Recipe
+        run: >-
+          sh .conan/scripts/build.sh
+          -p ${{ inputs.os }}
+          ${{ inputs.args }}
+          latest

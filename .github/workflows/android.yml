@@ -1,0 +1,15 @@
+name: Android
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  android:
+    uses: ./.github/workflows/conan.yml
+    with:
+      image: ubuntu-22.04
+      os: android
+      args: -r android-ndk/r25@ -l 33 -a armv8

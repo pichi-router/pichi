@@ -1,0 +1,14 @@
+name: macOS
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  macos:
+    uses: ./.github/workflows/conan.yml
+    with:
+      image: macos-12
+      os: macos

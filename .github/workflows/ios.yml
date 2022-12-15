@@ -1,0 +1,15 @@
+name: iOS
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  macos:
+    uses: ./.github/workflows/conan.yml
+    with:
+      image: macos-12
+      os: ios
+      args: -a armv8 -v 16.0

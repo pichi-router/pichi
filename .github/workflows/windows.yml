@@ -1,0 +1,14 @@
+name: Windows
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  macos:
+    uses: ./.github/workflows/conan.yml
+    with:
+      image: windows-2022
+      os: windows
