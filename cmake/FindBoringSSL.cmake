@@ -17,3 +17,6 @@ find_package_handle_standard_args(BoringSSL
   OPENSSL_INCLUDE_DIR OPENSSL_LIBRARIES
   VERSION_VAR OPENSSL_VERSION
 )
+
+add_library(BoringSSL::Crypto ALIAS OpenSSL::Crypto)
+add_library(BoringSSL::SSL ALIAS OpenSSL::SSL)

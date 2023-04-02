@@ -22,5 +22,5 @@ find_package_handle_standard_args(MaxmindDB
 
 if(MaxmindDB_FOUND)
   include(AddFoundTarget)
-  _add_found_target(MaxmindDB::maxmind "${MaxmindDB_INCLUDE_DIRS}" "${MaxmindDB_LIBRARY}")
+  _add_found_target(MaxmindDB::maxminddb "${MaxmindDB_INCLUDE_DIRS}" "${MaxmindDB_LIBRARY}")
 endif()
