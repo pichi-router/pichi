@@ -32,24 +32,48 @@ usage()
   echo "  platform specific options:"
   echo "    -a arch       : settings.arch, mandatory for ios/android"
   echo "    -v ios_version: os.version, mandatory for ios"
-  echo "    -r ndk_root   : specifiy Android NDK root, mandatory for android"
+  echo "    -r ndk_recipe : specifiy Android NDK recipe, mandatory for android"
   echo "    -l api_level  : settings.os.api_level, mandatory for android"
   exit 1
 }
 
+export_deps()
+{
+  for dep in "$@"; do
+    if conan list "${dep}" | grep -sq 'ERROR'; then
+      local name=$(echo "${dep}" | cut -d / -f 1)
+      local ver=$(echo "${dep}" | cut -d / -f 2)
+      conan export --name "${name}" --version "${ver}" "${recipes}/${name}"
+    fi
+  done
+}
+
+download_deps()
+{
+  for dep in "$@"; do
+    if conan list "${dep}" | grep -sq 'ERROR'; then
+      conan download --only-recipe -r conancenter "${dep}"
+    fi
+  done
+}
+
+handle_deps()
+{
+  download_deps ${downloading}
+  export_deps ${exporting}
+}
+
 generate_default_profile()
 {
-  if [ -f "${HOME}/.conan/profiles/default" ]; then
-    return
+  if ! conan profile path default >/dev/null 2>&1; then
+    conan profile detect
   fi
-  conan profile new --detect default
-  conan profile remove settings.build_type default
 }
 
 copy_if_not_exists()
 {
   local src="${recipes}/../profiles"
-  local dst="${HOME}/.conan/profiles"
+  local dst="$(conan config home)/profiles"
   local profile="$1"
   if [ ! -f "${dst}/${profile}" ]; then
     cp -f "${src}/${profile}" "${dst}/${profile}"
@@ -78,14 +102,6 @@ validate_arch()
   fi
 }
 
-disable_shared()
-{
-  if [ "${shared}" = "True" ]; then
-    echo "shared=True is disabled"
-    false
-  fi
-}
-
 check_mandatory_arg()
 {
   if [ -z "$2" ]; then
@@ -94,73 +110,78 @@ check_mandatory_arg()
   fi
 }
 
-convert_ndk_recipe_to_path()
+get_ndk_pid()
 {
-  local recipe="${1}"
-  conan install "${recipe}" >/dev/null
-  local pkg=$(conan info --paths -n package_folder "${recipe}" | \
-    grep package_folder | \
-    awk '{print $NF}')
-  echo "${pkg}/bin"
+  conan list -p os=Linux --format=json "${ndk}#latest:*" | \
+    jq -r "first(.\"Local Cache\".\"${ndk}\".revisions[]) | .packages | keys[0]"
+}
+
+get_ndk_root()
+{
+  if [ "$(get_ndk_pid)" = "null" ]; then
+    conan download -p os=Linux -r conancenter "${ndk}" >/dev/null
+  fi
+  echo "$(conan cache path ${ndk}#latest:$(get_ndk_pid))/bin"
 }
 
 detect_ndk_compiler_version()
 {
-  ${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --version | \
+  ${1}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --version | \
     sed -n 's/^.* clang version \([0-9][0-9]*\)\..*$/\1/p'
 }
 
-detect_chost()
+generate_android_profile()
 {
-  case "${arch}" in
-    x86) echo "i686-linux-android";;
-    x86_64) echo "x86_64-linux-android";;
-    armv7) echo "armv7a-linux-androideabi";;
-    armv7hf) echo "armv7a-linux-androideabi";;
-    armv8) echo "aarch64-linux-android";;
-    *) false;;
-  esac
-}
+  local ndk_root="$(get_ndk_root)"
 
-generate_vs_runtime()
-{
-  local recipe="${1}"
-  local arg=""
-  if [ -z "${recipe}" ]; then
-    arg="-s compiler.runtime=M"
+  echo "include(boost)"
+  echo "[settings]"
+  echo "arch=${arch}"
+  echo "os=Android"
+  echo "os.api_level=${api_level}"
+  echo "compiler=clang"
+  echo "compiler.version=$(detect_ndk_compiler_version ${ndk_root})"
+  if [ "${shared}" = "True" ]; then
+    echo "compiler.libcxx=c++_shared"
   else
-    arg="-s ${recipe}:compiler.runtime=M"
+    echo "compiler.libcxx=c++_static"
   fi
-  if [ "${shared}" = "True" ] && [ -z "${recipe}" ]; then
-    arg="${arg}D"
-  else
-    arg="${arg}T"
-  fi
-  if [ "${build_type}" = "Debug" ]; then
-    arg="${arg}d"
-  fi
-  echo "${arg}"
+  echo "[options]"
+  echo "pichi/*:build_test=False"
+  echo "pichi/*:build_server=False"
+  echo "[tool_requires]"
+  echo "${ndk}"
+  echo "[conf]"
+  echo "tools.android:ndk_path=${ndk_root}"
 }
 
 build()
 {
-  conan install -b missing \
+  conan create --version "${version}" -b missing \
     -s build_type="${build_type}" \
     -o "*:shared=${shared}" \
-    -o "pichi:tls_fingerprint=${fingerprint}" \
+    -o "pichi/*:tls_fingerprint=${fingerprint}" \
     "$@" \
-    "pichi/${version}@"
+    "${code_root}"
 }
 
 build_for_windows()
 {
   trap - EXIT
+  handle_deps
   generate_default_profile
   copy_profile
   args="-pr windows"
-  local compiler="$(conan profile get settings.compiler default | tr -d '\r')"
-  if [ "${compiler}" = 'Visual Studio' ]; then
-    args="${args} $(generate_vs_runtime)"
+  local compiler="$(conan profile show -pr default | \
+                      sed -n 's/^compiler=\(.*\)$/\1/p' | \
+                      head -1 | tr -d '\r')"
+  if [ "${compiler}" = 'msvc' ]; then
+    if [ "${shared}" = "True" ]; then
+      args="${args} -s compiler.runtime=dynamic"
+    else
+      args="${args} -s compiler.runtime=static"
+    fi
+    args="${args} -s compiler.runtime_type=${build_type} $(generate_vs_runtime)"
   fi
   build ${args}
 }
@@ -169,10 +190,10 @@ build_for_ios()
 {
   validate_arch x86 x86_64 armv7 armv7s armv7k armv8 armv8.3
   check_mandatory_arg "-v ios_version" "${ios_ver}"
-  disable_shared
   trap - EXIT
   generate_default_profile
   copy_profile
+  handle_deps
   local sdk="iphoneos"
   if [ "${arch:0:3}" = "x86" ]; then
     sdk="iphonesimulator"
@@ -185,38 +206,20 @@ build_for_android()
   validate_arch x86 armv7 armv8
   check_mandatory_arg "-l api_level" "${api_level}"
   check_mandatory_arg "-r ndk_root" "${ndk}"
-  disable_shared
+
   trap - EXIT
-  generate_default_profile
-  copy_profile
+  handle_deps
+  copy_if_not_exists "boost"
+  generate_android_profile > "$(conan config home)/profiles/android"
 
-  if echo "${ndk}" | grep -sq '@$'; then
-    ndk="$(convert_ndk_recipe_to_path ${ndk})"
-  fi
-
-  local chost="$(detect_chost)"
-  local cc="${chost}${api_level}-clang"
-  local cxx="${cc}++"
-  local as="${chost}-as"
-  if [ "${chost}" = "armv7a-linux-androideabi" ]; then
-    as="arm-linux-androideabi-as"
-  fi
-  build -s "compiler.version=$(detect_ndk_compiler_version)" \
-    -s "os.api_level=${api_level}" \
-    -s "arch=${arch}" \
-    -c "tools.android:ndk_path=${ndk}" \
-    -e "PATH=[${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin]" \
-    -e "CONAN_CMAKE_TOOLCHAIN_FILE=${ndk}/build/cmake/android.toolchain.cmake" \
-    -e "CC=${cc}" \
-    -e "CXX=${cxx}" \
-    -e "AS=${as}" \
-    -pr android
+  build -pr android
 }
 
 build_for_spec_profile()
 {
   trap - EXIT
   generate_default_profile
+  handle_deps
   copy_profile
   build -pr "${platform}"
 }
@@ -236,11 +239,14 @@ dispatch_args()
 
 set -o errexit
 
+code_root="$(dirname $0)/../.."
 recipes="$(dirname $0)/../recipes"
 build_type="Release"
 shared="False"
 fingerprint="True"
 platform="unspecified"
+exporting="libmaxminddb/1.7.1"
+downloading="boost/1.81.0 libsodium/1.0.18 mbedtls/3.2.1 rapidjson/1.1.0"
 
 trap usage EXIT
 args=`getopt a:dl:op:r:sv: $*`
@@ -288,6 +294,12 @@ for i; do
       shift
       check_mandatory_arg "version" "$1"
       version="$1"
+      if [ "${fingerprint}" = "True" ]; then
+        downloading="${downloading} brotli/1.0.9"
+        exporting="${exporting} boringssl/19"
+      else
+        exporting="${exporting} openssl/1.1.1q"
+      fi
       dispatch_args
       ;;
   esac

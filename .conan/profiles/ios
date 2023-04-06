@@ -2,9 +2,7 @@ include(default)
 include(boost)
 
 [settings]
-b2:os=Macos
-b2:arch=x86_64
 
 [options]
-pichi:build_test=False
-pichi:build_server=False
+pichi/*:build_test=False
+pichi/*:build_server=False
