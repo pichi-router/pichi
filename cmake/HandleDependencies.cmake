@@ -56,19 +56,44 @@ if(BUILD_TEST)
   # the additional detection is mandatory here to determine
   # whether BOOST_ALL_DYN_LINK is necessary or not.
   message(STATUS "Detecting Boost libraries type")
-  try_compile(Boost_TEST_STATIC
-    ${CMAKE_BINARY_DIR}/cmake ${CMAKE_SOURCE_DIR}/cmake/test/boost-test-type.cpp
-    CMAKE_FLAGS -DINCLUDE_DIRECTORIES=${Boost_INCLUDE_DIRS}
-    COMPILE_DEFINITIONS -DBOOST_ALL_NO_LIB
-    LINK_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-  )
 
-  if(Boost_TEST_STATIC)
-    message(STATUS "Detecting Boost libraries type - STATIC")
-  else()
-    set_target_properties(Boost::unit_test_framework PROPERTIES
-      INTERFACE_COMPILE_DEFINITIONS "BOOST_UNIT_TEST_FRAMEWORK_DYN_LINK")
+  if(NOT DEFINED _BOOST_SHARED)
+    try_compile(_BOOST_SHARED
+      ${CMAKE_BINARY_DIR}/cmake ${CMAKE_SOURCE_DIR}/cmake/test/boost-test-type.cpp
+      COMPILE_DEFINITIONS -DBOOST_TEST_DYN_LINK
+      LINK_LIBRARIES Boost::boost Boost::unit_test_framework
+    )
+  endif()
+
+  if(_BOOST_SHARED)
     message(STATUS "Detecting Boost libraries type - SHARED")
+    set_target_properties(Boost::unit_test_framework PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS BOOST_TEST_DYN_LINK)
+  else()
+    message(STATUS "Detecting Boost libraries type - STATIC")
+    set_target_properties(Boost::unit_test_framework PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS BOOST_TEST_NO_LIB)
+  endif()
+endif()
+
+if(MSVC)
+  # According to libsodium's manual https://libsodium.gitbook.io/doc/usage,
+  # SODIUM_STATIC=1 & SODIUM_EXPORT are mandatory when MSVC & static linking.
+  message(STATUS "Detecting Sodium libraries type")
+
+  if(NOT DEFINED _SODIUM_SHARED)
+    try_compile(_SODIUM_SHARED
+      ${CMAKE_BINARY_DIR}/cmake ${CMAKE_SOURCE_DIR}/cmake/test/sodium-type.c
+      LINK_LIBRARIES libsodium::libsodium
+    )
+  endif()
+
+  if(_SODIUM_SHARED)
+    message(STATUS "Detecting Sodium libraries type - SHARED")
+  else()
+    set_target_properties(libsodium::libsodium PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS "SODIUM_STATIC=1;SODIUM_EXPORT")
+    message(STATUS "Detecting Sodium libraries type - STATIC")
   endif()
 endif()
 
