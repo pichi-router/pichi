@@ -27,8 +27,6 @@ jobs:
       - name: Install NASM for windows
         if: ${{ inputs.os == 'windows' }}
         run: choco install -y nasm
-      - name: Export Conan Recipe
-        run: sh .conan/scripts/export.sh -d new latest
       - name: Build Pichi Recipe
         run: >-
           sh .conan/scripts/build.sh

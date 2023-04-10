@@ -75,6 +75,7 @@ copy_if_not_exists()
   local src="${recipes}/../profiles"
   local dst="$(conan config home)/profiles"
   local profile="$1"
+  mkdir -p "${dst}"
   if [ ! -f "${dst}/${profile}" ]; then
     cp -f "${src}/${profile}" "${dst}/${profile}"
   fi
@@ -113,12 +114,13 @@ check_mandatory_arg()
 get_ndk_pid()
 {
   conan list -p os=Linux --format=json "${ndk}#latest:*" | \
-    jq -r "first(.\"Local Cache\".\"${ndk}\".revisions[]) | .packages | keys[0]"
+    jq -r "first(.\"Local Cache\".\"${ndk}\".revisions[]) | .packages | keys[0]" 2>/dev/null | \
+    grep -v '^null$'
 }
 
 get_ndk_root()
 {
-  if [ "$(get_ndk_pid)" = "null" ]; then
+  if [ -z "$(get_ndk_pid)" ]; then
     conan download -p os=Linux -r conancenter "${ndk}" >/dev/null
   fi
   echo "$(conan cache path ${ndk}#latest:$(get_ndk_pid))/bin"
@@ -126,7 +128,7 @@ get_ndk_root()
 
 detect_ndk_compiler_version()
 {
-  ${1}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --version | \
+  "${1}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version | \
     sed -n 's/^.* clang version \([0-9][0-9]*\)\..*$/\1/p'
 }
 
@@ -158,7 +160,7 @@ generate_android_profile()
 build()
 {
   conan create --version "${version}" -b missing \
-    -s build_type="${build_type}" \
+    -s "build_type=${build_type}" \
     -o "*:shared=${shared}" \
     -o "pichi/*:tls_fingerprint=${fingerprint}" \
     "$@" \
@@ -171,7 +173,7 @@ build_for_windows()
   handle_deps
   generate_default_profile
   copy_profile
-  args="-pr windows"
+  args="-pr windows -o mbedtls/*:shared=False -s mbedtls/*:compiler.runtime=static"
   local compiler="$(conan profile show -pr default | \
                       sed -n 's/^compiler=\(.*\)$/\1/p' | \
                       head -1 | tr -d '\r')"
@@ -181,7 +183,7 @@ build_for_windows()
     else
       args="${args} -s compiler.runtime=static"
     fi
-    args="${args} -s compiler.runtime_type=${build_type} $(generate_vs_runtime)"
+    args="${args} -s compiler.runtime_type=${build_type}"
   fi
   build ${args}
 }
@@ -209,7 +211,8 @@ build_for_android()
 
   trap - EXIT
   handle_deps
-  copy_if_not_exists "boost"
+  copy_if_not_exists boost
+  generate_default_profile
   generate_android_profile > "$(conan config home)/profiles/android"
 
   build -pr android
