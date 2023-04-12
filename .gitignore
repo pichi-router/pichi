@@ -21,3 +21,7 @@
 build/
 .vscode/
 .clang_complete
+
+# CMake
+CMakePresets.json
+CMakeUserPresets.json

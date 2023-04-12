@@ -1,3 +1,5 @@
-versions:
-  "17": 41eb890f77090ea22e5403dd256fb4a622b79928
-  "18": HEAD
+sources:
+  "18":
+    url: https://boringssl.googlesource.com/boringssl/+archive/97d48dbeb8010365a1d5cb029bee29617261d8a0.tar.gz
+  "19":
+    url: https://boringssl.googlesource.com/boringssl/+archive/d89702704febab30774e8af22450899af297bfb0.tar.gz
