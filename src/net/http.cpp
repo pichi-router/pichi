@@ -365,7 +365,7 @@ template <typename Stream> Endpoint HttpIngress<Stream>::readRemote(Yield yield)
      * relative_path specified;
      *     - relative_path will be forwarded without any change.
      */
-    auto target = req.target().to_string();
+    auto target = string{cbegin(req.target()), cend(req.target())};
     assertFalse(target.empty(), PichiError::BAD_PROTO, "Empty path");
     if (target[0] != '/') {
       // absolute_path specified, so convert it to relative one.
