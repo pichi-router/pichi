@@ -9,7 +9,8 @@ function(_get_library_directories output lib)
 
     if("${type}" STREQUAL "STATIC_LIBRARY" OR
       "${type}" STREQUAL "SHARED_LIBRARY" OR
-      "${type}" STREQUAL "UNKNOWN_LIBRARY")
+      "${type}" STREQUAL "UNKNOWN_LIBRARY" OR
+      "${type}" STREQUAL "INTERFACE_LIBRARY")
       get_target_property(dirs ${lib} INTERFACE_LINK_DIRECTORIES)
 
       if(NOT dirs)
@@ -27,8 +28,10 @@ function(_get_library_directories output lib)
         endif()
       endif()
 
-      get_target_property(lib ${lib} IMPORTED_LOCATION)
-      _get_library_directories(dir ${lib})
+      if(NOT "${type}" STREQUAL "INTERFACE_LIBRARY")
+        get_target_property(lib ${lib} IMPORTED_LOCATION)
+        _get_library_directories(dir ${lib})
+      endif()
 
       if(dirs AND dir)
         list(APPEND dirs ${dir})
