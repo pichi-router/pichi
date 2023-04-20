@@ -1,6 +1,6 @@
 macro(_find_all_dependencies search_mode)
   find_package(Boost 1.77.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED ${search_mode})
-  find_package(MbedTLS 3.0.0 REQUIRED ${search_mode})
+  find_package(MbedTLS REQUIRED ${search_mode})
   find_package(libsodium 1.0.12 REQUIRED ${search_mode})
   find_package(MaxmindDB 1.3.0 REQUIRED ${search_mode})
   find_package(RapidJSON 1.1.0 REQUIRED EXACT ${search_mode})
