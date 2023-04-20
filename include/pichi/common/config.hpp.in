@@ -44,6 +44,11 @@
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
+#cmakedefine DISABLE_CLANG_UNQUALIFIED_STD_CAST_CALL
+#ifdef DISABLE_CLANG_UNQUALIFIED_STD_CAST_CALL
+#pragma clang diagnostic ignored "-Wunqualified-std-cast-call"
+#endif
+
 #endif  // __clang__
 
 #ifdef _MSC_VER
