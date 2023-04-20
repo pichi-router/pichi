@@ -27,6 +27,10 @@
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
 #endif  // __GNUC__ >= 8
 
+#if __GNUC__ >= 10
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#endif  // __GNUC__ >= 10
+
 #cmakedefine DISABLE_GCC_IGNORED_ATTRIBUTES
 #ifdef DISABLE_GCC_IGNORED_ATTRIBUTES
 #pragma GCC diagnostic ignored "-Wignored-attributes"
