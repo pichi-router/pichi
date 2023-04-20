@@ -12,4 +12,4 @@ jobs:
     with:
       image: ubuntu-22.04
       os: android
-      args: -r android-ndk/r25@ -l 33 -a armv8
+      args: -r android-ndk/r25c -l 33 -a armv8

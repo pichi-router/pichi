@@ -1,7 +1,7 @@
-find_path(Rapidjson_INCLUDE_DIRS NAMES rapidjson/rapidjson.h)
+find_path(RapidJSON_INCLUDE_DIRS NAMES rapidjson/rapidjson.h)
 
-if(Rapidjson_INCLUDE_DIRS)
-  file(STRINGS "${Rapidjson_INCLUDE_DIRS}/rapidjson/rapidjson.h" major_version_line
+if(RapidJSON_INCLUDE_DIRS)
+  file(STRINGS "${RapidJSON_INCLUDE_DIRS}/rapidjson/rapidjson.h" major_version_line
     REGEX "^#define[\t ]+RAPIDJSON_MAJOR_VERSION[\t ]+[0-9]*")
 
   if(major_version_line)
@@ -10,7 +10,7 @@ if(Rapidjson_INCLUDE_DIRS)
     unset(major_version_line)
   endif()
 
-  file(STRINGS "${Rapidjson_INCLUDE_DIRS}/rapidjson/rapidjson.h" minor_version_line
+  file(STRINGS "${RapidJSON_INCLUDE_DIRS}/rapidjson/rapidjson.h" minor_version_line
     REGEX "^#define[\t ]+RAPIDJSON_MINOR_VERSION[\t ]+[0-9]*")
 
   if(minor_version_line)
@@ -19,7 +19,7 @@ if(Rapidjson_INCLUDE_DIRS)
     unset(minor_version_line)
   endif()
 
-  file(STRINGS "${Rapidjson_INCLUDE_DIRS}/rapidjson/rapidjson.h" patch_version_line
+  file(STRINGS "${RapidJSON_INCLUDE_DIRS}/rapidjson/rapidjson.h" patch_version_line
     REGEX "^#define[\t ]+RAPIDJSON_PATCH_VERSION[\t ]+[0-9]*")
 
   if(patch_version_line)
@@ -29,7 +29,7 @@ if(Rapidjson_INCLUDE_DIRS)
   endif()
 
   if(DEFINED major_version AND DEFINED minor_version AND DEFINED patch_version)
-    set(Rapidjson_VERSION_STRING "${major_version}.${minor_version}.${patch_version}")
+    set(RapidJSON_VERSION_STRING "${major_version}.${minor_version}.${patch_version}")
   endif()
 
   unset(major_version)
@@ -38,12 +38,12 @@ if(Rapidjson_INCLUDE_DIRS)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(Rapidjson
-  REQUIRED_VARS Rapidjson_INCLUDE_DIRS Rapidjson_VERSION_STRING
-  VERSION_VAR Rapidjson_VERSION_STRING
+find_package_handle_standard_args(RapidJSON
+  REQUIRED_VARS RapidJSON_INCLUDE_DIRS RapidJSON_VERSION_STRING
+  VERSION_VAR RapidJSON_VERSION_STRING
 )
 
-if(Rapidjson_FOUND)
-  add_library(Rapidjson::rapidjson INTERFACE IMPORTED)
-  target_include_directories(Rapidjson::rapidjson INTERFACE ${Rapidjson_INCLUDE_DIRS})
+if(RapidJSON_FOUND)
+  add_library(rapidjson INTERFACE IMPORTED)
+  target_include_directories(rapidjson INTERFACE ${RapidJSON_INCLUDE_DIRS})
 endif()
