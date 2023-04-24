@@ -1,4 +1,4 @@
-FROM alpine:3.16
+FROM alpine:3.17
 
 ARG http_proxy
 ARG https_proxy
@@ -10,9 +10,11 @@ ENV BSSL_DIR /opt/bssl
 
 RUN apk add --no-cache boost-context boost-dev boost-filesystem boost-program_options \
   boost-static boost-system boost-unit_test_framework brotli-static brotli-dev ca-certificates \
-  cmake g++ git go libmaxminddb-dev libmaxminddb-static libsodium-dev libsodium-static \
+  cmake curl g++ go libmaxminddb-dev libmaxminddb-static libsodium-dev libsodium-static \
   mbedtls-dev mbedtls-static ninja perl rapidjson-dev && \
-  git clone https://boringssl.googlesource.com/boringssl "${BSSL_SRC}" && \
+  mkdir -p "${BSSL_SRC}" && \
+  curl -Ls https://boringssl.googlesource.com/boringssl/+archive/master.tar.gz | \
+  tar zxf - -C "${BSSL_SRC}" && \
   cmake -G Ninja -D CMAKE_BUILD_TYPE=MiniSizeRel -D CMAKE_INSTALL_PREFIX="${BSSL_DIR}" \
   -D FUZZ=OFF -D RUST_BINDINGS=OFF -D FIPS=OFF -D BUILD_SHARED_LIBS=OFF \
   -B "${STATIC_DIR}" "${BSSL_SRC}" && \

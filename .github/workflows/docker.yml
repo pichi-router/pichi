@@ -30,7 +30,7 @@ jobs:
         uses: docker/build-push-action@v3.2.0
         with:
           context: .
-          file: .docker/pichi.dockerfile
+          file: docker/pichi.dockerfile
           push: true
           tags: ${{ env.registry }}/${{ env.image }}:${{ github.ref_name }}
       - name: Build & Publish latest Docker Image

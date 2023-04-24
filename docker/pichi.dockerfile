@@ -1,4 +1,4 @@
-FROM alpine:3.16
+FROM alpine:3.17
 
 ARG http_proxy
 ARG https_proxy
@@ -17,8 +17,10 @@ ADD src ${PICHI_SRC}/src
 
 RUN apk add --no-cache g++ cmake ninja mbedtls-dev mbedtls-static libsodium-dev libsodium-static \
   rapidjson-dev libmaxminddb-dev libmaxminddb-static boost-dev boost-static ca-certificates \
-  git go perl brotli-static brotli-dev && \
-  git clone https://boringssl.googlesource.com/boringssl "${BSSL_SRC}" && \
+  curl go perl brotli-static brotli-dev && \
+  mkdir -p "${BSSL_SRC}" && \
+  curl -Ls https://boringssl.googlesource.com/boringssl/+archive/master.tar.gz | \
+  tar zxf - -C "${BSSL_SRC}" && \
   cmake -G Ninja -D CMAKE_BUILD_TYPE=MinSizeRel -D CMAKE_INSTALL_PREFIX="${BSSL_DIR}" \
   -D FUZZ=OFF -D RUST_BINDINGS=OFF -D FIPS=OFF -D BUILD_SHARED_LIBS=OFF \
   -B "${BSSL_BUILD_DIR}" "${BSSL_SRC}" && \
@@ -31,6 +33,6 @@ RUN apk add --no-cache g++ cmake ninja mbedtls-dev mbedtls-static libsodium-dev 
   cmake --install "${PICHI_BUILD_DIR}" --strip && \
   apk del --no-cache g++ cmake ninja mbedtls-dev mbedtls-static libsodium-dev libsodium-static \
   rapidjson-dev libmaxminddb-dev libmaxminddb-static boost-dev boost-static \
-  git go perl brotli-static brotli-dev && \
+  curl go perl brotli-static brotli-dev && \
   apk add --no-cache libstdc++ && \
   rm -fr "${BUILD_DIR}" "${SRC_DIR}" "${BSSL_DIR}"
