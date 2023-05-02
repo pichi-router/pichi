@@ -216,8 +216,9 @@ public:
         [this](auto&& next, auto) {
           auto header = parser_.release();
           detail::assertTrue(header.target() == path_, boost::beast::http::error::bad_target);
-          detail::assertTrue(header[boost::beast::http::field::host] == host_,
-                             boost::beast::http::error::bad_value);
+          if (!host_.empty())
+            detail::assertTrue(header[boost::beast::http::field::host] == host_,
+                               boost::beast::http::error::bad_value);
           delegate_.async_accept(header, next);
         });
   }
