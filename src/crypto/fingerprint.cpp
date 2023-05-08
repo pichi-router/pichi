@@ -41,6 +41,7 @@ void setupTlsFingerprint(::SSL_CTX* ctx)
             NID_sha384, EVP_PKEY_EC,      NID_sha384, EVP_PKEY_RSA_PSS, NID_sha384, EVP_PKEY_RSA,
             NID_sha512, EVP_PKEY_RSA_PSS, NID_sha512, EVP_PKEY_RSA};
 
+  ::SSL_CTX_set_permute_extensions(ctx, 1);
   ::SSL_CTX_set_grease_enabled(ctx, 1);
   ::SSL_CTX_enable_ocsp_stapling(ctx);
   ::SSL_CTX_set_cipher_list(ctx, CIPHER_SUITES);
