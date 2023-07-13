@@ -4,14 +4,17 @@
 #include <algorithm>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/detail/throw_error.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
+#include <boost/beast/core/ostream.hpp>
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/parser.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/websocket/rfc6455.hpp>
 #include <boost/beast/websocket/stream.hpp>
+#include <optional>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/literals.hpp>
 #include <string>
@@ -23,11 +26,10 @@ namespace pichi::stream {
 
 namespace detail {
 
-template <size_t...> struct Sequence {
-};
+template <size_t...> struct Sequence {};
 
-template <size_t N, size_t... Seq> struct SeqGenerator : public SeqGenerator<N - 1, N - 1, Seq...> {
-};
+template <size_t N, size_t... Seq>
+struct SeqGenerator : public SeqGenerator<N - 1, N - 1, Seq...> {};
 
 template <size_t... N> struct SeqGenerator<0, N...> {
   using Seq = Sequence<N...>;
@@ -54,25 +56,6 @@ template <typename... Params> struct ParamSaver {
 template <typename... Params> auto makeParamSaver(Params&&... params)
 {
   return ParamSaver<std::decay_t<Params>...>{std::make_tuple(std::forward<Params>(params)...)};
-}
-
-template <typename Handler, typename Params>
-inline auto makeFail(Handler&& handler, Params&& params)
-{
-  return [h = std::forward<Handler>(handler),
-          p = std::forward<Params>(params)](auto const& ec) mutable {
-    boost::asio::post(boost::asio::get_associated_executor(h), [=]() mutable { p.invoke(h, ec); });
-  };
-}
-
-template <typename Handler> inline auto makeSucceed(Handler&& handler)
-{
-  return [h = std::forward<Handler>(handler)](auto&&... args) mutable {
-    boost::asio::post(boost::asio::get_associated_executor(h),
-                      [h, p = makeParamSaver(std::forward<decltype(args)>(args)...)]() mutable {
-                        p.invoke(h, boost::system::error_code{});
-                      });
-  };
 }
 
 template <size_t INDEX, typename Executor, typename Fail, typename Succeed, typename... Handlers>
@@ -155,6 +138,16 @@ inline void assertTrue(bool b, boost::system::error_code const& ec)
   if (!b) boost::asio::detail::throw_error(ec);
 }
 
+template <typename Handler> inline auto makeSucceed(Handler&& handler)
+{
+  return [h = std::forward<Handler>(handler)](auto&&... args) mutable {
+    boost::asio::post(boost::asio::get_associated_executor(h),
+                      [h, p = makeParamSaver(std::forward<decltype(args)>(args)...)]() mutable {
+                        p.invoke(h, boost::system::error_code{});
+                      });
+  };
+}
+
 }  // namespace detail
 
 template <typename NextLayer> class WsStream {
@@ -164,19 +157,37 @@ private:
   using ErrorCode = boost::system::error_code;
   using Stream = boost::beast::websocket::stream<NextLayer>;
   using Buffer = boost::beast::flat_buffer;
+  using Header = boost::beast::http::request<boost::beast::http::empty_body>;
   using Parser = boost::beast::http::request_parser<boost::beast::http::empty_body>;
+
   template <typename Handler, typename Signature>
   using AsyncCompletion = boost::asio::async_completion<Handler, Signature>;
+
+  template <typename Handler, typename Params> auto makeFail(Handler&& handler, Params&& params)
+  {
+    return [h = std::forward<Handler>(handler), p = std::forward<Params>(params),
+            this](auto const& ec) mutable noexcept {
+      auto err = Buffer{};
+      if (header_.has_value()) boost::beast::ostream(err) << *header_;
+      if (buf_.size() > 0) {
+        boost::asio::buffer_copy(err.prepare(buf_.size()), buf_.cdata());
+        err.commit(buf_.size());
+      }
+      std::swap(err, buf_);
+      boost::asio::post(boost::asio::get_associated_executor(h),
+                        [=]() mutable { p.invoke(h, ec); });
+    };
+  }
 
   template <typename Signature, typename Handler, typename Params, typename... Handlers>
   auto initiate(Handler&& handler, Params&& defaults, Handlers&&... handlers)
   {
     auto init = boost::asio::async_completion<Handler, Signature>{handler};
     auto h = init.completion_handler;
-    boost::asio::post(get_executor(),
-                      detail::makeAsyncOperation(
-                          get_executor(), detail::makeFail(h, std::forward<Params>(defaults)),
-                          detail::makeSucceed(h), std::forward<Handlers>(handlers)...));
+    auto ex = get_executor();
+    boost::asio::post(ex, detail::makeAsyncOperation(
+                              ex, makeFail(h, std::forward<Params>(defaults)),
+                              detail::makeSucceed(h), std::forward<Handlers>(handlers)...));
     return init.result.get();
   }
 
@@ -190,9 +201,12 @@ public:
       host_{host.data(), host.size()},
       delegate_{std::forward<Args>(args)...},
       buf_{},
-      parser_{}
+      parser_{},
+      header_{}
   {
   }
+
+  auto releaseBuffer() { return std::move(buf_); }
 
   auto get_executor() { return delegate_.get_executor(); }
 
@@ -214,12 +228,16 @@ public:
           boost::beast::http::async_read_header(delegate_.next_layer(), buf_, parser_, next);
         },
         [this](auto&& next, auto) {
-          auto header = parser_.release();
-          detail::assertTrue(header.target() == path_, boost::beast::http::error::bad_target);
+          header_ = parser_.release();
+          detail::assertTrue(header_->target() == path_, boost::beast::http::error::bad_target);
           if (!host_.empty())
-            detail::assertTrue(header[boost::beast::http::field::host] == host_,
+            detail::assertTrue((*header_)[boost::beast::http::field::host] == host_,
                                boost::beast::http::error::bad_value);
-          delegate_.async_accept(header, next);
+          delegate_.async_accept(*header_, next);
+        },
+        [this](auto&& next) {
+          header_.reset();
+          next.succeed();
         });
   }
 
@@ -258,10 +276,10 @@ private:
   Stream delegate_;
   Buffer buf_;
   Parser parser_;
+  std::optional<Header> header_;
 };
 
-template <typename NextLayer> struct RawStream<WsStream<NextLayer>> : public std::false_type {
-};
+template <typename NextLayer> struct RawStream<WsStream<NextLayer>> : public std::false_type {};
 
 template <typename Socket> class TlsStream;
 
