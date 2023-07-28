@@ -23,15 +23,6 @@
 
 namespace pichi::stream {
 
-namespace detail {
-
-inline void assertTrue(bool b, boost::system::error_code const& ec)
-{
-  if (!b) boost::asio::detail::throw_error(ec);
-}
-
-}  // namespace detail
-
 template <typename NextLayer> class WsStream {
 private:
   static_assert(std::is_same_v<NextLayer, std::decay_t<NextLayer>>);
@@ -97,10 +88,10 @@ public:
         },
         [this](auto&& next, auto) {
           header_ = parser_.release();
-          detail::assertTrue(header_->target() == path_, boost::beast::http::error::bad_target);
+          assertTrue(header_->target() == path_, boost::beast::http::error::bad_target);
           if (!host_.empty())
-            detail::assertTrue((*header_)[boost::beast::http::field::host] == host_,
-                               boost::beast::http::error::bad_value);
+            assertTrue((*header_)[boost::beast::http::field::host] == host_,
+                       boost::beast::http::error::bad_value);
           delegate_.async_accept(*header_, next);
         },
         [this](auto&& next) {
