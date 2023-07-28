@@ -3,8 +3,6 @@ file(GLOB_RECURSE SRCS *.cpp)
 add_library(${PICHI_LIBRARY} ${SRCS})
 
 # Configure C/C++ macros & compilation options
-list(APPEND PICHI_MACROS BOOST_ASIO_NO_DEPRECATED)
-
 if(TRANSPARENT_PF AND APPLE)
   # "-D" prefix is necessary because "PRIVATE" is a key word
   list(APPEND PICHI_MACROS -DPRIVATE)

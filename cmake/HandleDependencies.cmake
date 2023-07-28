@@ -109,6 +109,17 @@ if(WIN32 AND NOT BUILD_SHARED_LIBS)
   set_target_properties(${SSL_LIB}::Crypto PROPERTIES INTERFACE_LINK_LIBRARIES "${deps}")
 endif()
 
+if(${Boost_VERSION} VERSION_EQUAL "1.81.0")
+  # Boost.Beast 1.81.0 contains an error when BOOST_BEAST_NO_SOURCE_LOCATION enabled
+  set_target_properties(Boost::boost PROPERTIES INTERFACE_COMPILE_DEFINITIONS
+    "BOOST_ASIO_NO_DEPRECATED;BOOST_ASIO_DISABLE_ERROR_LOCATION"
+  )
+else()
+  set_target_properties(Boost::boost PROPERTIES INTERFACE_COMPILE_DEFINITIONS
+    "BOOST_ASIO_NO_DEPRECATED;BOOST_ASIO_DISABLE_ERROR_LOCATION;BOOST_BEAST_NO_SOURCE_LOCATION"
+  )
+endif()
+
 # Setup COMMON_LIBRARIES for later usage
 list(APPEND COMMON_LIBRARIES
   Boost::boost Boost::context Boost::system
