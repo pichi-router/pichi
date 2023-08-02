@@ -21,13 +21,18 @@ Pichi is a flexible rule-based proxy.
 ## Security Alert
 
 According to [the report](https://tlsfingerprint.io/static/frolov2019.pdf), the TLS fingerprint can be used to recognize the type of TLS client for some censorship.
-If you want to avoid being censored, please make sure that
+If you want to avoid being censored, please make sure:
 
-- version [1.5.0](https://github.com/pichi-router/pichi/releases/tag/1.5.0) or later is used,
-- AND CMake option `TLS_FINGERPRINT` was enabled while building,
-- AND `sni` field is set for each TLS egress.
+- Version [1.5.0](https://github.com/pichi-router/pichi/releases/tag/1.5.0) or later is used.
+- On TLS client side,
+  - CMake option `TLS_FINGERPRINT` was enabled while building, and
+  - `sni` field is set for each TLS egress.
+- On TLS server side,
+  - CMake option `TLS_FINGERPRINT` was disabled while building.
 
-Pichi is trying to simulate TLS fingerprint [e47eae8f8c4887b6](https://tlsfingerprint.io/id/e47eae8f8c4887b6), which is the fingerprint of Google chrome.
+[Pichi 1.5.0](https://github.com/pichi-router/pichi/releases/tag/1.5.0) is trying to emulate TLS fingerprint [e47eae8f8c4887b6](https://tlsfingerprint.io/id/e47eae8f8c4887b6), which is the fingerprint of Google Chrome lower than 109.
+
+On the other hand, [Pichi 1.5.1](https://github.com/pichi-router/pichi/releases/tag/1.5.1) or later would randomise TLS extension order to emulate [normailised](https://tlsfingerprint.io/norm_fp) TLS fingerprint [N/ffa2ee96ff7b42d4](https://tlsfingerprint.io/id/N/ffa2ee96ff7b42d4), which is the default behavior of Google Chrome since version 109.
 
 ## Overview
 
@@ -493,7 +498,7 @@ $ sh .conan/scripts/build.sh -a armv8 -l 33 -r android-ndk/r25@ -p android "${PI
 ### Docker
 
 The pre-built docker image can be found on [GitHub Package](https://github.com/pichi-router/pichi/pkgs/container/pichi),
-which is automatically generated according to `docker/pichi.dockerfile`.
+which is automatically generated according to `docker/pichi-openssl.dockerfile`.
 Furthermore, `docker/builder.dockerfile` is intended to provide a docker environment
 for development.
 
