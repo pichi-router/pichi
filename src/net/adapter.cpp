@@ -256,8 +256,7 @@ unique_ptr<Ingress> makeIngress(api::IngressHolder& holder, TCPSocket&& s)
           get<vo::TrojanOption>(*vo.opt_).remote_,
           cbegin(get<vo::TrojanIngressCredential>(*vo.credential_).credential_),
           cend(get<vo::TrojanIngressCredential>(*vo.credential_).credential_), vo.websocket_->path_,
-          vo.websocket_->host_.value_or(vo.bind_.front().host_), createTlsContext(*vo.tls_),
-          move(s));
+          vo.websocket_->host_.value_or(""s), createTlsContext(*vo.tls_), move(s));
     else
       return make_unique<TrojanIngress<TlsStream>>(
           get<vo::TrojanOption>(*vo.opt_).remote_,

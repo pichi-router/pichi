@@ -1,12 +1,12 @@
 #ifndef PICHI_NET_TROJAN_HPP
 #define PICHI_NET_TROJAN_HPP
 
-#include <optional>
+#include <boost/beast/core/flat_buffer.hpp>
+#include <memory>
 #include <pichi/common/adapter.hpp>
 #include <string>
 #include <string_view>
 #include <unordered_set>
-#include <vector>
 
 namespace pichi::net {
 
@@ -16,7 +16,7 @@ template <typename Stream> class TrojanIngress : public Ingress {
 public:
   template <typename InputIt, typename... Args>
   TrojanIngress(Endpoint remote, InputIt first, InputIt last, Args&&... args)
-    : remote_{remote}, passwords_{}, stream_{std::forward<Args>(args)...}, received_(512, '\0')
+    : remote_{remote}, passwords_{}, stream_{std::forward<Args>(args)...}
   {
     std::transform(first, last, std::inserter(passwords_, std::end(passwords_)), &sha224);
   }
@@ -33,7 +33,8 @@ private:
   Endpoint remote_;
   std::unordered_set<std::string> passwords_;
   Stream stream_;
-  std::vector<uint8_t> received_;
+  boost::beast::flat_buffer buf_ = {};
+  std::unique_ptr<Adapter> delegate_ = nullptr;
 };
 
 template <typename Stream> class TrojanEgress : public Egress {
