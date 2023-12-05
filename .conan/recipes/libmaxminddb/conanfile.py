@@ -54,6 +54,6 @@ class LibmaxminddbConan(ConanFile):
   def package_info(self):
     self.cpp_info.set_property("cmake_find_mode", "both")
     self.cpp_info.set_property("cmake_file_name", "MaxmindDB")
-    self.cpp_info.set_property("cmake_target_name", "MaxmindDB::maxminddb")
+    self.cpp_info.set_property("cmake_target_name", "maxminddb::maxminddb")
     self.cpp_info.set_property("pkg_config_name", "libmaxminddb")
     self.cpp_info.libs = ["maxminddb"]

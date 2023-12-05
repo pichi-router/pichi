@@ -123,7 +123,7 @@ endif()
 # Setup COMMON_LIBRARIES for later usage
 list(APPEND COMMON_LIBRARIES
   Boost::boost Boost::context Boost::system
-  MbedTLS::mbedtls libsodium::libsodium MaxmindDB::maxminddb rapidjson
+  MbedTLS::mbedtls libsodium::libsodium maxminddb::maxminddb rapidjson
   Threads::Threads ${CMAKE_DL_LIBS} ${SSL_LIB}::SSL)
 
 if(TLS_FINGERPRINT)
