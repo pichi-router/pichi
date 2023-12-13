@@ -2,4 +2,22 @@ sources:
   "18":
     url: https://boringssl.googlesource.com/boringssl/+archive/97d48dbeb8010365a1d5cb029bee29617261d8a0.tar.gz
   "19":
-    url: https://boringssl.googlesource.com/boringssl/+archive/d89702704febab30774e8af22450899af297bfb0.tar.gz
+    url: https://boringssl.googlesource.com/boringssl/+archive/048d21cc1412429f2fa3c470ac95d2e4b2d2abf9.tar.gz
+  "20":
+    url: https://boringssl.googlesource.com/boringssl/+archive/b1c6f45f1fe6d808555d04a41bb44b322e4f4c1d.tar.gz
+  "21":
+    url: https://boringssl.googlesource.com/boringssl/+archive/335523a2c456e7444297ed0786e65771839931c3.tar.gz
+  "22":
+    url: https://boringssl.googlesource.com/boringssl/+archive/cbb96b4ffd29b7fd280b04f59790cf9b060bc7bc.tar.gz
+  "23":
+    url: https://boringssl.googlesource.com/boringssl/+archive/a36ac0a2e78adc0752a46eb01b7e048272241769.tar.gz
+  "24":
+    url: https://boringssl.googlesource.com/boringssl/+archive/e9f816b12b3e68de575d21e2a9b7d76e4e5c58ac.tar.gz
+  "25":
+    url: https://boringssl.googlesource.com/boringssl/+archive/8dec463a609706480a6ae9057702ec662843acc2.tar.gz
+  "26":
+    url: https://boringssl.googlesource.com/boringssl/+archive/1e3da32f3754b1b9136247ee26308cfd959cbeba.tar.gz
+  "27":
+    url: https://boringssl.googlesource.com/boringssl/+archive/2ba7634b9e2b33875e2a40dec9e04abffe061f2c.tar.gz
+  "28":
+    url: https://boringssl.googlesource.com/boringssl/+archive/20f7eb1430ca03712441b78330ad320cb0134055.tar.gz

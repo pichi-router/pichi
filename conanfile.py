@@ -41,7 +41,7 @@ class PichiConan(ConanFile):
       self.requires("brotli/[>=1.0.0]")
       self.requires("boringssl/[>=18]")
     else:
-      self.requires("openssl/1.1.1q")
+      self.requires("openssl/3.2.0")
 
   def layout(self):
     cmake_layout(self)

@@ -31,9 +31,11 @@ class BoringSSLConan(ConanFile):
     get(self, **self.conan_data["sources"][self.version], verify=False)
     s = "install_if_enabled(TARGETS bssl DESTINATION ${INSTALL_DESTINATION_DEFAULT})"
     a = "set_target_properties(bssl PROPERTIES MACOSX_BUNDLE False)"
-    replace_in_file(self, os.path.join(self.source_folder, "tool", "CMakeLists.txt"),
-                    s, f"{a}\n{s}")
-  
+    replace_in_file(
+      self, os.path.join(self.source_folder, "CMakeLists.txt") if int(
+        self.version) >= 23 else os.path.join(self.source_folder, "tool", "CMakeLists.txt"),
+      s, f"{a}\n{s}")
+
   def generate(self):
     tc = CMakeToolchain(self)
     tc.cache_variables["FUZZ"] = False
@@ -60,15 +62,12 @@ class BoringSSLConan(ConanFile):
     self.cpp_info.set_property("pkg_config_name", "openssl")
 
     # Crypto
-    self.cpp_info.components["crypto"].set_property(
-        "cmake_target_name", "BoringSSL::Crypto")
-    self.cpp_info.components["crypto"].set_property(
-        "pkg_config_name", "libcrypto")
+    self.cpp_info.components["crypto"].set_property("cmake_target_name", "BoringSSL::Crypto")
+    self.cpp_info.components["crypto"].set_property("pkg_config_name", "libcrypto")
     self.cpp_info.components["crypto"].libs = ["crypto"]
 
     # SSL
-    self.cpp_info.components["ssl"].set_property(
-        "cmake_target_name", "BoringSSL::SSL")
+    self.cpp_info.components["ssl"].set_property("cmake_target_name", "BoringSSL::SSL")
     self.cpp_info.components["ssl"].set_property("pkg_config_name", "libssl")
     self.cpp_info.components["ssl"].libs = ["ssl"]
     self.cpp_info.components["ssl"].requires = ["crypto"]

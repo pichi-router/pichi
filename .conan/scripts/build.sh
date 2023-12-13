@@ -248,8 +248,8 @@ build_type="Release"
 shared="False"
 fingerprint="True"
 platform="unspecified"
-exporting="libmaxminddb/1.7.1"
-downloading="boost/1.81.0 libsodium/1.0.18 mbedtls/3.2.1 rapidjson/1.1.0"
+exporting="libmaxminddb/1.8.0"
+downloading="boost/1.83.0 libsodium/1.0.18 mbedtls/3.5.0 rapidjson/1.1.0"
 
 trap usage EXIT
 args=`getopt a:dl:op:r:sv: $*`
@@ -298,10 +298,10 @@ for i; do
       check_mandatory_arg "version" "$1"
       version="$1"
       if [ "${fingerprint}" = "True" ]; then
-        downloading="${downloading} brotli/1.0.9"
-        exporting="${exporting} boringssl/19"
+        downloading="${downloading} brotli/1.1.0"
+        exporting="${exporting} boringssl/27"
       else
-        exporting="${exporting} openssl/1.1.1q"
+        exporting="${exporting} openssl/3.2.0"
       fi
       dispatch_args
       ;;
