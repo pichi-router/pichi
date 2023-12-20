@@ -6,6 +6,7 @@
 #include <iterator>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/enumerations.hpp>
+#include <stdint.h>
 #include <string>
 #include <string_view>
 #include <type_traits>

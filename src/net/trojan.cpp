@@ -29,8 +29,17 @@ namespace pichi::net {
 
 static constexpr size_t PWD_LEN = crypto::HashTraits<HashAlgorithm::SHA224>::length * 2;
 
+#if __GNUC__ >= 13
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-reference"
+#endif  // __GNUC__ >= 13
+
 static auto const& HTTP_ERR_CAT = http::make_error_code(http::error::end_of_stream).category();
 static auto const& WEBSOCKET_ERR_CAT = ws::make_error_code(ws::error::closed).category();
+
+#if __GNUC__ >= 13
+#pragma GCC diagnostic pop
+#endif  // __GNUC__ >= 13
 
 static size_t copyToBuffer(ConstBuffer<uint8_t> src, MutableBuffer<uint8_t> dst)
 {
@@ -48,8 +57,10 @@ string sha224(string_view pwd)
   return crypto::bin2hex(bin);
 }
 
-template <typename T> struct IsWsStream : public std::false_type {};
-template <typename T> struct IsWsStream<stream::WsStream<T>> : public std::true_type {};
+template <typename T> struct IsWsStream : public std::false_type {
+};
+template <typename T> struct IsWsStream<stream::WsStream<T>> : public std::true_type {
+};
 template <typename T> constexpr bool IsWsStreamV = IsWsStream<T>::value;
 
 template <typename Stream> class StreamWrapper : public Adapter {
@@ -177,7 +188,17 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
     return ret;
   }
   catch (sys::system_error const& e) {
+#if __GNUC__ >= 13
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-reference"
+#endif  // __GNUC__ >= 13
+
     auto&& cat = e.code().category();
+
+#if __GNUC__ >= 13
+#pragma GCC diagnostic pop
+#endif  // __GNUC__ >= 13
+
     if (cat != PICHI_CATEGORY && cat != HTTP_ERR_CAT && cat != WEBSOCKET_ERR_CAT) throw e;
 
     cout << "Trojan Error: " << e.what() << endl;
