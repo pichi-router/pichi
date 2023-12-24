@@ -27,9 +27,13 @@ jobs:
       - name: Install NASM for windows
         if: ${{ inputs.os == 'windows' }}
         run: choco install -y nasm
-      - name: Build Pichi Recipe
-        run: >-
-          sh .conan/scripts/build.sh
+      - name: Export BoringSSL recipe into the Conan cache
+        run: .conan/scripts/conan.sh export -k .conan/scripts/latest.lock boringssl
+      - name: Export libmaxminddb recipe into the Conan cache
+        run: .conan/scripts/conan.sh export -k .conan/scripts/latest.lock libmaxminddb
+      - name: Build pichi recipe
+        run: >
+          .conan/scripts/conan.sh build -k .conan/scripts/latest.lock
           -p ${{ inputs.os }}
           ${{ inputs.args }}
           latest

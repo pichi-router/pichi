@@ -12,4 +12,4 @@ jobs:
     with:
       image: macos-12
       os: ios
-      args: -a armv8 -v 16.0
+      args: -a armv8 -v 17.0
