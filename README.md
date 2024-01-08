@@ -15,7 +15,7 @@ Pichi is a flexible rule-based proxy.
 
 | OS | Android | iOS |
 |:---:|:---:|:---:|
-| Toolchain | Android NDK 25.1 | Xcode 14.0.1 |
+| Toolchain | Android NDK 26b | Xcode 14.0.1 |
 | Status | [![Android](https://github.com/pichi-router/pichi/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/android.yml) | [![iOS](https://github.com/pichi-router/pichi/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/ios.yml) |
 
 ## Security Alert
@@ -159,7 +159,7 @@ Please use [Docker](https://www.docker.com):
 
 ```
 $ docker pull ghcr.io/pichi-router/pichi:latest
-$ docker run --rm ghcr.io/pichi-router/pichi:latest pichi <options>
+$ docker run -d ghcr.io/pichi-router/pichi:latest <options>
 ```
 
 #### macOS
@@ -467,40 +467,42 @@ $ cmake --build /path/to/build --target test
 #### Exporting recipes
 
 ```
-$ export PICHI_VERSION=1.5.0
-$ bash .conan/scripts/export.sh -d new "${PICHI_VERSION}"
+$ .conan/scripts/conan.sh export -k .conan/scripts/latest.lock libmaxminddb
+$ # Export BoringSSL if TLS_FINGERPRINT is going to be enabled
+$ .conan/scripts/conan.sh expot -k .conan/scripts/latest.lock boringssl
 ```
 
 #### Building
 
 ```
+$ export VER=latest
+$
 $ # Desktop/Server
 $ # Windows
-$ sh .conan/scripts/build.sh -p windows "${PICHI_VERSION}"
+$ .conan/scripts/conan.sh build -k .conan/scripts/latest.lock -p windows "${VER}"
 $
 $ # Macos
-$ sh .conan/scripts/build.sh -p macos "${PICHI_VERSION}"
+$ .conan/scripts/conan.sh build -k .conan/scripts/latest.lock -p macos "${VER}"
 $
 $ # Linux
-$ sh .conan/scripts/build.sh -p linux "${PICHI_VERSION}"
+$ .conan/scripts/conan.sh build -k .conan/scripts/latest.lock -p linux "${VER}"
 $
 $ # FreeBSD
-$ sh .conan/scripts/build.sh -p freebsd "${PICHI_VERSION}"
+$ .conan/scripts/conan.sh build -k .conan/scripts/latest.lock -p freebsd "${VER}"
 $
 $ # Mobile
 $ # iOS
-$ sh .conan/scripts/build.sh -a armv8.3 -v 16.0 -p ios "${PICHI_VERSION}"
+$ .conan/scripts/conan.sh build -k .conan/scripts/latest.lock -a armv8 -v 17.0 -p ios "${VER}"
 $
 $ # Android
-$ sh .conan/scripts/build.sh -a armv8 -l 33 -r android-ndk/r25@ -p android "${PICHI_VERSION}"
+$ .conan/scripts/conan.sh build -k .conan/scripts/latest.lock -a armv8 -l 34 -r android-ndk/r26b \
+>    -p android "${VER}"
 ```
 
 ### Docker
 
 The pre-built docker image can be found on [GitHub Package](https://github.com/pichi-router/pichi/pkgs/container/pichi),
-which is automatically generated according to `docker/pichi-openssl.dockerfile`.
-Furthermore, `docker/builder.dockerfile` is intended to provide a docker environment
-for development.
+which is automatically generated according to `docker/pichi.dockerfile`.
 
 ```
 $ docker pull ghcr.io/pichi-router/pichi
@@ -510,6 +512,12 @@ c51b832bd29dd0333b0d32b0b0563ddc72821f7301c36c7635ae47d00a3bb902
 $ docker ps -n 1
 CONTAINER ID        IMAGE                              COMMAND                  CREATED             STATUS              PORTS               NAMES
 c51b832bd29d        ghcr.io/pichi-router/pichi         "pichi -g /usr/share…"   1 seconds ago       Up 1 seconds                            pichi
+```
+
+The pre-built image doesn't enable `TLS_FINGERPRINT` feature. Please rebuild it if you want to enable it.
+
+```
+$ docker build --build-arg FINGERPRINT=true -f docker/pichi.dockerfile -t pichi:latest
 ```
 
 ## Integration with pichi
