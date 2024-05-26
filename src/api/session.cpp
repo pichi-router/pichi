@@ -36,7 +36,7 @@ void Session::start(Endpoint const& remote, ResolveResults const& next)
   //   Function and ExceptionHandler share the same scope.
   net::spawn(
       strand_,
-      [=, self = shared_from_this()](auto yield) {
+      [=, this, self = shared_from_this()](auto yield) {
         egress_->connect(remote, next, yield);
         ingress_->confirm(yield);
         net::spawn(

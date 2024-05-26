@@ -2,105 +2,78 @@
 #define PICHI_COMMON_BUFFER_HPP
 
 #include <cassert>
+#include <concepts>
 #include <stddef.h>
 #include <type_traits>
 
 namespace pichi {
 
-template <typename PodType> class Buffer;
+template <typename Pod>
+concept PodType = std::is_standard_layout_v<Pod> && std::is_trivial_v<Pod>;
 
-template <typename PodType> Buffer<PodType> operator+(Buffer<PodType> const&, size_t);
-template <typename PodType> Buffer<PodType> operator+(size_t, Buffer<PodType> const&);
+template <typename C>
+concept PodContainer = requires(C c) {
+  requires std::is_pointer_v<decltype(c.data())>;
+  { c.size() } -> std::convertible_to<size_t>;
+};
+
+template <PodContainer C, typename P = decltype(std::declval<C>().data())>
+using PodContainerValueT = std::remove_pointer_t<P>;
+
+template <PodType Pod> class Buffer;
+
+template <PodType Pod> Buffer<Pod> operator+(Buffer<Pod> const&, size_t);
+template <PodType Pod> Buffer<Pod> operator+(size_t, Buffer<Pod> const&);
 
 // TODO avoid lots of constructors if conditional explicit is supported
-template <typename PodType> class Buffer {
+template <PodType Pod> class Buffer {
 private:
-  static_assert(std::is_pod_v<PodType>, "value type of Buffer must be POD");
-
   enum class ConversionType { IMPLICIT, STATIC, EXPLICIT, UNKNOWN };
 
-  template <typename From, typename To> static constexpr ConversionType detect()
+  template <PodContainer C> static constexpr ConversionType detect()
   {
-    if constexpr (std::is_const_v<From> && !std::is_const_v<To>)
+    using ValueT = PodContainerValueT<C>;
+    if constexpr (std::is_const_v<ValueT> && !std::is_const_v<Pod>)
       return ConversionType::UNKNOWN;
-    else if constexpr (std::is_convertible_v<From*, To*>)
+    else if constexpr (std::is_convertible_v<ValueT*, Pod*>)
       return ConversionType::IMPLICIT;
-    else if constexpr (std::is_same_v<std::decay_t<From>, void>)
+    else if constexpr (std::is_same_v<std::decay_t<ValueT>, void>)
       return ConversionType::STATIC;
-    else if constexpr (sizeof(From) == sizeof(To))
+    else if constexpr (sizeof(ValueT) == sizeof(Pod))
       return ConversionType::EXPLICIT;
     else
       return ConversionType::UNKNOWN;
   }
 
-  template <typename C, typename P = decltype(std::declval<C>().data()),
-            typename S = decltype(std::declval<C>().size())>
-  struct Helper {
-    static_assert(std::is_convertible_v<S, size_t>);
-    static_assert(std::is_pointer_v<P>);
-    using ValueType = std::remove_pointer_t<P>;
-  };
-
 public:
   Buffer() = default;
 
-  Buffer(PodType* data, size_t size) : data_{data}, size_{size} {}
+  Buffer(Pod* data, size_t size) : data_{data}, size_{size} {}
 
-  template <size_t N> Buffer(PodType (&data)[N]) : Buffer{std::decay_t<decltype(data)>(&data), N} {}
+  template <size_t N> Buffer(Pod (&data)[N]) : Buffer{std::decay_t<decltype(data)>(&data), N} {}
 
-  template <typename Container,
-            ConversionType t = detect<typename Helper<Container>::ValueType, PodType>()>
-  Buffer(Container&& c, size_t size, std::enable_if_t<t == ConversionType::IMPLICIT>* = nullptr)
-    : Buffer{c.data(), size}
+  template <typename Container, ConversionType t = detect<Container>()>
+    requires(t != ConversionType::UNKNOWN)
+  explicit(t == ConversionType::EXPLICIT) Buffer(Container&& c, size_t size)
+    : Buffer{reinterpret_cast<Pod*>(c.data()), size}
   {
     assert(size <= c.size());
   }
 
-  template <typename Container,
-            ConversionType t = detect<typename Helper<Container>::ValueType, PodType>()>
-  Buffer(Container&& c, std::enable_if_t<t == ConversionType::IMPLICIT>* = nullptr)
-    : Buffer{std::forward<Container>(c), c.size()}
-  {
-  }
-
-  template <typename Container,
-            ConversionType t = detect<typename Helper<Container>::ValueType, PodType>()>
-  Buffer(Container&& c, size_t size, std::enable_if_t<t == ConversionType::STATIC>* = nullptr)
-    : Buffer{static_cast<PodType*>(c.data()), size}
-  {
-    assert(size <= c.size());
-  }
-
-  template <typename Container,
-            ConversionType t = detect<typename Helper<Container>::ValueType, PodType>()>
-  Buffer(Container&& c, std::enable_if_t<t == ConversionType::STATIC>* = nullptr)
-    : Buffer{std::forward<Container>(c), c.size()}
-  {
-  }
-
-  template <typename Container,
-            ConversionType t = detect<typename Helper<Container>::ValueType, PodType>()>
-  explicit Buffer(Container&& c, size_t size,
-                  std::enable_if_t<t == ConversionType::EXPLICIT>* = nullptr)
-    : Buffer{reinterpret_cast<PodType*>(c.data()), size}
-  {
-    assert(size <= c.size());
-  }
-
-  template <typename Container,
-            ConversionType t = detect<typename Helper<Container>::ValueType, PodType>()>
-  explicit Buffer(Container&& c, std::enable_if_t<t == ConversionType::EXPLICIT>* = nullptr)
+  template <typename Container, ConversionType t = detect<Container>()>
+    requires(t != ConversionType::UNKNOWN)
+  explicit(t == ConversionType::EXPLICIT) Buffer(Container&& c)
     : Buffer{std::forward<Container>(c), c.size()}
   {
   }
 
 public:
-  PodType* data() const { return data_; }
+  Pod* data() const { return data_; }
   size_t size() const { return size_; }
-  PodType* begin() const { return data_; }
-  PodType* end() const { return data_ + size_; }
-  PodType const* cbegin() const { return begin(); }
-  PodType const* cend() const { return end(); }
+  Pod* begin() const { return data_; }
+  Pod* end() const { return data_ + size_; }
+  Pod const* cbegin() const { return begin(); }
+  Pod const* cend() const { return end(); }
   Buffer& operator+=(size_t n)
   {
     n = std::min(n, size_);
@@ -110,25 +83,22 @@ public:
   }
 
 private:
-  PodType* data_ = nullptr;
+  Pod* data_ = nullptr;
   size_t size_ = 0;
 };
 
-template <typename PodType> Buffer<PodType> operator+(Buffer<PodType> const& b, size_t n)
+template <PodType Pod> Buffer<Pod> operator+(Buffer<Pod> const& b, size_t n)
 {
   auto ret = b;
   ret += n;
   return ret;
 }
 
-template <typename PodType> Buffer<PodType> operator+(size_t n, Buffer<PodType> const& b)
-{
-  return b + n;
-}
+template <PodType Pod> Buffer<Pod> operator+(size_t n, Buffer<Pod> const& b) { return b + n; }
 
-template <typename PodType> using ConstBuffer = Buffer<PodType const>;
-template <typename PodType, std::enable_if_t<!std::is_const_v<PodType>, int> = 0>
-using MutableBuffer = Buffer<PodType>;
+template <PodType Pod> using ConstBuffer = Buffer<Pod const>;
+template <PodType Pod, std::enable_if_t<!std::is_const_v<Pod>, int> = 0>
+using MutableBuffer = Buffer<Pod>;
 
 }  // namespace pichi
 

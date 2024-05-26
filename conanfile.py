@@ -30,7 +30,7 @@ class PichiConan(ConanFile):
       self.options.build_test = False
       self.options.build_server = False
       self.options.shared = False
-    self.settings.compiler.cppstd = "17"
+    self.settings.compiler.cppstd = "20"
 
   def configure(self):
     if self.options.shared:

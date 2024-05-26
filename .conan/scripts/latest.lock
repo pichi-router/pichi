@@ -1,7 +1,7 @@
 {
     "version": "0.5",
     "requires": [
-        "boost/1.83.0",
+        "boost/1.85.0",
         "boringssl/28",
         "brotli/1.1.0",
         "libmaxminddb/1.8.0",
