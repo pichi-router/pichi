@@ -149,11 +149,11 @@ template <typename ExceptionPtr> void Server::removeIngress(ExceptionPtr eptr, s
   }
 }
 
-bool Server::isDuplicated(ConstBuffer<uint8_t> raw)
+bool Server::isDuplicated(ConstBuffer raw)
 {
   if (raw.size() == 0) return false;
 
-  auto [it, inserted] = ivs_.insert({raw.cbegin(), raw.cend()});
+  auto [it, inserted] = ivs_.insert({raw.begin(), raw.end()});
   if (!inserted) {
     cout << "Pichi Error: Duplicated IV" << endl;
     return true;

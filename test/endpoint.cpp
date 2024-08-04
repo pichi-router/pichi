@@ -64,7 +64,7 @@ public:
     buffer_.commit(1);
   }
 
-  void read(MutableBuffer<uint8_t> buf)
+  void read(MutableBuffer buf)
   {
     assertTrue(buffer_.size() >= buf.size());
     copy_n(asio::buffers_begin(buffer_.data()), buf.size(), begin(buf));
@@ -380,7 +380,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(serializeEndpoint_Normal, Helper, Helpers)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parseEndpoint_Normal, Helper, Helpers)
 {
-  auto read = [size = size_t{0}](MutableBuffer<uint8_t> buf) mutable {
+  auto read = [size = size_t{0}](MutableBuffer buf) mutable {
     size += buf.size();
     BOOST_CHECK_LE(size, Helper::SIZE);
     fill_n(begin(buf), Helper::SIZE, Helper::CHAR);

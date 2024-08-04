@@ -451,7 +451,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Hmac_Cases, Case, TestCases)
 {
   using HMAC = typename Case::HmacType;
   auto container = array<uint8_t, 128>{};
-  auto fact = MutableBuffer<uint8_t>{container, Case::DIGEST.size()};
+  auto fact = MutableBuffer{container, Case::DIGEST.size()};
 
   fill_n(begin(fact), fact.size(), 0_u8);
   HMAC{Case::KEY}.hash(Case::DATA, fact);

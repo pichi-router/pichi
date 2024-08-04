@@ -50,8 +50,8 @@ public:
   HttpIngress(Authenticator auth, Args&&... args)
     : stream_{std::forward<Args>(args)...},
       confirm_{detail::badInvoking<void, Yield>},
-      send_{detail::badInvoking<void, ConstBuffer<uint8_t>, Yield>},
-      recv_{detail::badInvoking<size_t, MutableBuffer<uint8_t>, Yield>},
+      send_{detail::badInvoking<void, ConstBuffer, Yield>},
+      recv_{detail::badInvoking<size_t, MutableBuffer, Yield>},
       auth_{std::move(auth)}
   {
     reqParser_.header_limit(detail::HEADER_LIMIT);
@@ -60,8 +60,8 @@ public:
     respParser_.body_limit(std::numeric_limits<uint64_t>::max());
   }
 
-  size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  void send(ConstBuffer<uint8_t>, Yield) override;
+  size_t recv(MutableBuffer, Yield) override;
+  void send(ConstBuffer, Yield) override;
 
   void close(Yield) override;
 
@@ -78,8 +78,8 @@ private:
   detail::ResponseParser respParser_;
   detail::Cache respCache_;
   std::function<void(Yield)> confirm_;
-  std::function<void(ConstBuffer<uint8_t>, Yield)> send_;
-  std::function<size_t(MutableBuffer<uint8_t>, Yield)> recv_;
+  std::function<void(ConstBuffer, Yield)> send_;
+  std::function<size_t(MutableBuffer, Yield)> recv_;
   Authenticator auth_;
 };
 
@@ -91,8 +91,8 @@ public:
   template <typename... Args>
   HttpEgress(std::optional<Credential> credential, Args&&... args)
     : stream_{std::forward<Args>(args)...},
-      send_(detail::badInvoking<void, ConstBuffer<uint8_t>, Yield>),
-      recv_(detail::badInvoking<size_t, MutableBuffer<uint8_t>, Yield>),
+      send_(detail::badInvoking<void, ConstBuffer, Yield>),
+      recv_(detail::badInvoking<size_t, MutableBuffer, Yield>),
       credential_{std::move(credential)}
   {
     reqParser_.header_limit(detail::HEADER_LIMIT);
@@ -103,8 +103,8 @@ public:
 
   ~HttpEgress() override = default;
 
-  size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  void send(ConstBuffer<uint8_t>, Yield) override;
+  size_t recv(MutableBuffer, Yield) override;
+  void send(ConstBuffer, Yield) override;
   void close(Yield) override;
   bool readable() const override;
   bool writable() const override;
@@ -112,8 +112,8 @@ public:
 
 private:
   Stream stream_;
-  std::function<void(ConstBuffer<uint8_t>, Yield)> send_;
-  std::function<size_t(MutableBuffer<uint8_t>, Yield)> recv_;
+  std::function<void(ConstBuffer, Yield)> send_;
+  std::function<size_t(MutableBuffer, Yield)> recv_;
   detail::RequestParser reqParser_;
   detail::Cache reqCache_;
   detail::ResponseParser respParser_;

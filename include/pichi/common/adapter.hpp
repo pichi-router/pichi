@@ -30,15 +30,15 @@ struct Adapter {
   Adapter() = default;
   virtual ~Adapter() = default;
 
-  virtual size_t recv(MutableBuffer<uint8_t>, Yield) = 0;
-  virtual void send(ConstBuffer<uint8_t>, Yield) = 0;
+  virtual size_t recv(MutableBuffer, Yield) = 0;
+  virtual void send(ConstBuffer, Yield) = 0;
   virtual void close(Yield) = 0;
   virtual bool readable() const = 0;
   virtual bool writable() const = 0;
 };
 
 struct Ingress : public Adapter {
-  virtual size_t readIV(MutableBuffer<uint8_t>, Yield) { return 0; };
+  virtual size_t readIV(MutableBuffer, Yield) { return 0; };
   virtual Endpoint readRemote(Yield) = 0;
   virtual void confirm(Yield) = 0;
   virtual void disconnect(std::exception_ptr, Yield) {}

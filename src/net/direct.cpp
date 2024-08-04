@@ -11,12 +11,9 @@ namespace pichi::net {
 
 DirectAdapter::DirectAdapter(asio::io_context& io) : socket_{io} {}
 
-size_t DirectAdapter::recv(MutableBuffer<uint8_t> buf, Yield yield)
-{
-  return readSome(socket_, buf, yield);
-}
+size_t DirectAdapter::recv(MutableBuffer buf, Yield yield) { return readSome(socket_, buf, yield); }
 
-void DirectAdapter::send(ConstBuffer<uint8_t> buf, Yield yield) { write(socket_, buf, yield); }
+void DirectAdapter::send(ConstBuffer buf, Yield yield) { write(socket_, buf, yield); }
 
 void DirectAdapter::close(Yield yield) { pichi::net::close(socket_, yield); }
 

@@ -31,14 +31,14 @@ static bool defaultAuthenticator(string const& u, string const& p) { return u ==
 static void fillString(Socket& s, string_view str)
 {
   s.fill({static_cast<uint8_t>(str.size())});
-  s.fill(ConstBuffer<uint8_t>{str});
+  s.fill(str);
 }
 
 static void verifyString(Socket& s, string_view str)
 {
   BOOST_CHECK_GE(s.available(), str.size() + 1);
   auto holder = array<uint8_t, 0x100>{};
-  auto data = MutableBuffer<uint8_t>{holder, str.size() + 1};
+  auto data = MutableBuffer{holder, str.size() + 1};
   s.flush(data);
   BOOST_CHECK_EQUAL(static_cast<uint8_t>(str.size()), *data.data());
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(str), cend(str), cbegin(data) + 1, cend(data));
@@ -475,7 +475,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_With_Invalid_Version)
 {
   auto expect = array<uint8_t, 25>{0x05, 0x01, 0x00, 0x05, 0x01, 0x00};
   auto remote = makeEndpoint("::1"sv, "443"sv);
-  serializeEndpoint(remote, MutableBuffer<uint8_t>{expect} + 6);
+  serializeEndpoint(remote, MutableBuffer{expect} + 6);
 
   for (auto i = 0; i < 0x100; ++i) {
     if (i == 0x05) continue;
@@ -498,7 +498,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Connection_Failure)
 {
   auto expect = array<uint8_t, 25>{0x05, 0x01, 0x00, 0x05, 0x01, 0x00};
   auto remote = makeEndpoint("::1"sv, "443"sv);
-  serializeEndpoint(remote, MutableBuffer<uint8_t>{expect} + 6);
+  serializeEndpoint(remote, MutableBuffer{expect} + 6);
 
   for (auto i = 1; i < 0x100; ++i) {
     auto socket = Socket{};
@@ -520,7 +520,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_With_Invalid_RSV)
 {
   auto expect = array<uint8_t, 25>{0x05, 0x01, 0x00, 0x05, 0x01, 0x00};
   auto remote = makeEndpoint("::1"sv, "443"sv);
-  serializeEndpoint(remote, MutableBuffer<uint8_t>{expect} + 6);
+  serializeEndpoint(remote, MutableBuffer{expect} + 6);
 
   for (auto i = 1; i < 0x100; ++i) {
     auto socket = Socket{};
@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Invalid_Endpoint)
 {
   auto expect = array<uint8_t, 25>{0x05, 0x01, 0x00, 0x05, 0x01, 0x00};
   auto remote = makeEndpoint("::1"sv, "443"sv);
-  serializeEndpoint(remote, MutableBuffer<uint8_t>{expect} + 6);
+  serializeEndpoint(remote, MutableBuffer{expect} + 6);
 
   auto socket = Socket{};
   auto egress = make_unique<TestEgress>(Credential{}, socket);
@@ -563,7 +563,7 @@ BOOST_AUTO_TEST_CASE(connect_Reply_Correct)
 {
   auto expect = array<uint8_t, 25>{0x05, 0x01, 0x00, 0x05, 0x01, 0x00};
   auto remote = makeEndpoint("::1"sv, "443"sv);
-  serializeEndpoint(remote, MutableBuffer<uint8_t>{expect} + 6);
+  serializeEndpoint(remote, MutableBuffer{expect} + 6);
 
   auto socket = Socket{};
   auto egress = make_unique<TestEgress>(Credential{}, socket);
@@ -596,7 +596,7 @@ BOOST_AUTO_TEST_CASE(confirm)
   auto consumed = 0_sz;
   auto len = socket.available();
   socket.flush({buf, len});
-  parseEndpoint([src = ConstBuffer<uint8_t>{buf, len}, &consumed](auto dst) mutable {
+  parseEndpoint([src = ConstBuffer{buf, len}, &consumed](auto dst) mutable {
     BOOST_CHECK_GE(src.size(), dst.size());
     copy_n(cbegin(src), dst.size(), begin(dst));
     src += dst.size();

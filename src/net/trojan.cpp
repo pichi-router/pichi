@@ -41,7 +41,7 @@ static auto const& WEBSOCKET_ERR_CAT = ws::make_error_code(ws::error::closed).ca
 #pragma GCC diagnostic pop
 #endif  // __GNUC__ >= 13
 
-static size_t copyToBuffer(ConstBuffer<uint8_t> src, MutableBuffer<uint8_t> dst)
+static size_t copyToBuffer(ConstBuffer src, MutableBuffer dst)
 {
   if (src.size() == 0 || dst.size() == 0) return 0;
   auto copied = min(src.size(), dst.size());
@@ -53,7 +53,7 @@ string sha224(string_view pwd)
 {
   auto bin = vector(PWD_LEN / 2, 0_u8);
   auto sha224 = crypto::Hash<HashAlgorithm::SHA224>{};
-  sha224.hash(ConstBuffer<uint8_t>{pwd}, bin);
+  sha224.hash(pwd, bin);
   return crypto::bin2hex(bin);
 }
 
@@ -67,12 +67,9 @@ template <typename Stream> class StreamWrapper : public Adapter {
 public:
   StreamWrapper(Stream& stream) : stream_{stream} {}
 
-  size_t recv(MutableBuffer<uint8_t> buf, Yield yield) override
-  {
-    return readSome(stream_, buf, yield);
-  }
+  size_t recv(MutableBuffer buf, Yield yield) override { return readSome(stream_, buf, yield); }
 
-  void send(ConstBuffer<uint8_t> buf, Yield yield) override { write(stream_, buf, yield); }
+  void send(ConstBuffer buf, Yield yield) override { write(stream_, buf, yield); }
 
   void close(Yield yield) override { pichi::net::close(stream_, yield); }
 
@@ -89,8 +86,7 @@ template <typename Stream> auto createStreamWrapper(Stream& stream)
   return make_unique<StreamWrapper<Stream>>(stream);
 }
 
-template <typename Stream>
-size_t TrojanIngress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> size_t TrojanIngress<Stream>::recv(MutableBuffer buf, Yield yield)
 {
   if (buf_.size() == 0) return delegate_->recv(buf, yield);
   auto copied = copyToBuffer(buf_.cdata(), buf);
@@ -98,7 +94,7 @@ size_t TrojanIngress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
   return copied;
 }
 
-template <typename Stream> void TrojanIngress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> void TrojanIngress<Stream>::send(ConstBuffer buf, Yield yield)
 {
   delegate_->send(buf, yield);
 }
@@ -216,13 +212,12 @@ template <typename Stream> Endpoint TrojanIngress<Stream>::readRemote(Yield yiel
   }
 }
 
-template <typename Stream>
-size_t TrojanEgress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> size_t TrojanEgress<Stream>::recv(MutableBuffer buf, Yield yield)
 {
   return readSome(stream_, buf, yield);
 }
 
-template <typename Stream> void TrojanEgress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> void TrojanEgress<Stream>::send(ConstBuffer buf, Yield yield)
 {
   write(stream_, buf, yield);
 }

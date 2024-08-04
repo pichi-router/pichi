@@ -28,8 +28,8 @@ public:
   TunnelIngress& operator=(TunnelIngress const&) = delete;
   TunnelIngress& operator=(TunnelIngress&&) = delete;
 
-  size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  void send(ConstBuffer<uint8_t>, Yield) override;
+  size_t recv(MutableBuffer, Yield) override;
+  void send(ConstBuffer, Yield) override;
   void close(Yield) override;
   bool readable() const override;
   bool writable() const override;

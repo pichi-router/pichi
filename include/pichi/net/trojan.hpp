@@ -21,8 +21,8 @@ public:
     std::transform(first, last, std::inserter(passwords_, std::end(passwords_)), &sha224);
   }
 
-  size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  void send(ConstBuffer<uint8_t>, Yield) override;
+  size_t recv(MutableBuffer, Yield) override;
+  void send(ConstBuffer, Yield) override;
   void close(Yield) override;
   bool readable() const override;
   bool writable() const override;
@@ -45,8 +45,8 @@ public:
   {
   }
 
-  size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  void send(ConstBuffer<uint8_t>, Yield) override;
+  size_t recv(MutableBuffer, Yield) override;
+  void send(ConstBuffer, Yield) override;
   void close(Yield) override;
   bool readable() const override;
   bool writable() const override;

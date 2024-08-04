@@ -28,11 +28,11 @@ public:
   AeadEncryptor& operator=(AeadEncryptor&&) = delete;
 
 public:
-  AeadEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<uint8_t> iv = {});
+  AeadEncryptor(ConstBuffer key, ConstBuffer iv = {});
   ~AeadEncryptor();
 
-  ConstBuffer<uint8_t> getIv() const;
-  size_t encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher);
+  ConstBuffer getIv() const;
+  size_t encrypt(ConstBuffer plain, MutableBuffer cipher);
 
 private:
   std::array<uint8_t, NONCE_SIZE<method>> nonce_;
@@ -50,12 +50,12 @@ public:
   AeadDecryptor& operator=(AeadDecryptor&&) = delete;
 
 public:
-  AeadDecryptor(ConstBuffer<uint8_t> key);
+  AeadDecryptor(ConstBuffer key);
   ~AeadDecryptor();
 
   size_t getIvSize() const;
-  void setIv(ConstBuffer<uint8_t> iv);
-  size_t decrypt(ConstBuffer<uint8_t> cipher, MutableBuffer<uint8_t> plain);
+  void setIv(ConstBuffer iv);
+  size_t decrypt(ConstBuffer cipher, MutableBuffer plain);
 
 private:
   std::array<uint8_t, KEY_SIZE<method>> ikm_;

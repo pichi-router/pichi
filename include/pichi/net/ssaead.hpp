@@ -17,29 +17,29 @@ public:
   inline static constexpr CryptoMethod METHOD = method;
 
   template <typename... Args>
-  SSAeadAdapter(ConstBuffer<uint8_t> psk, Args&&... args)
+  SSAeadAdapter(ConstBuffer psk, Args&&... args)
     : stream_{std::forward<Args>(args)...}, encryptor_{psk}, decryptor_{psk}
   {
   }
   ~SSAeadAdapter() override = default;
 
 public:
-  size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  void send(ConstBuffer<uint8_t>, Yield) override;
+  size_t recv(MutableBuffer, Yield) override;
+  void send(ConstBuffer, Yield) override;
   void close(Yield) override;
   bool readable() const override;
   bool writable() const override;
-  size_t readIV(MutableBuffer<uint8_t>, Yield) override;
+  size_t readIV(MutableBuffer, Yield) override;
   Endpoint readRemote(Yield) override;
   void connect(Endpoint const& remote, ResolveResults next, Yield) override;
   void confirm(Yield) override;
 
 private:
-  MutableBuffer<uint8_t> prepare(size_t n, MutableBuffer<uint8_t> provided);
-  size_t copyTo(MutableBuffer<uint8_t>);
-  void recvBlock(MutableBuffer<uint8_t> block, Yield);
-  size_t recvFrame(MutableBuffer<uint8_t>, Yield);
-  size_t encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher);
+  MutableBuffer prepare(size_t n, MutableBuffer provided);
+  size_t copyTo(MutableBuffer);
+  void recvBlock(MutableBuffer block, Yield);
+  size_t recvFrame(MutableBuffer, Yield);
+  size_t encrypt(ConstBuffer plain, MutableBuffer cipher);
 
 private:
   Stream stream_;

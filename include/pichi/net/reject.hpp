@@ -15,8 +15,8 @@ public:
   explicit RejectEgress(boost::asio::io_context&, uint16_t);
   ~RejectEgress() override = default;
 
-  [[noreturn]] size_t recv(MutableBuffer<uint8_t>, Yield) override;
-  [[noreturn]] void send(ConstBuffer<uint8_t>, Yield) override;
+  [[noreturn]] size_t recv(MutableBuffer, Yield) override;
+  [[noreturn]] void send(ConstBuffer, Yield) override;
   void close(Yield) override;
   [[noreturn]] bool readable() const override;
   [[noreturn]] bool writable() const override;
@@ -26,6 +26,6 @@ private:
   Timer t_;
 };
 
-} // namespace pichi::net
+}  // namespace pichi::net
 
-#endif // PICHI_NET_REJECT_HPP
+#endif  // PICHI_NET_REJECT_HPP

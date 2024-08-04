@@ -51,13 +51,13 @@ public:
     return write(rBufs_.back(), std::cbegin(l), l.size());
   }
 
-  auto fill(ConstBuffer<uint8_t> buf)
+  auto fill(ConstBuffer buf)
   {
     rBufs_.emplace_back();
     return write(rBufs_.back(), std::cbegin(buf), buf.size());
   }
 
-  auto flush(MutableBuffer<uint8_t> buf) { return read(wBuf_, std::cbegin(buf), buf.size()); }
+  auto flush(MutableBuffer buf) { return read(wBuf_, std::cbegin(buf), buf.size()); }
 
   auto available() const { return wBuf_.size(); }
 

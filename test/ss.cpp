@@ -47,8 +47,7 @@ template <CryptoMethod method> static constexpr size_t cipherLength(size_t plain
 }
 
 template <CryptoMethod method>
-static size_t encrypt(Encryptor<method>& encryptor, ConstBuffer<uint8_t> plain,
-                      MutableBuffer<uint8_t> cipher)
+static size_t encrypt(Encryptor<method>& encryptor, ConstBuffer plain, MutableBuffer cipher)
 {
   BOOST_REQUIRE_GE(cipher.size(), cipherLength<method>(plain.size()));
   if constexpr (detail::isStream<method>()) {
@@ -57,7 +56,7 @@ static size_t encrypt(Encryptor<method>& encryptor, ConstBuffer<uint8_t> plain,
   else {
     auto len = static_cast<uint16_t>(plain.size());
     len = ((len & 0xff) << 8) + ((len >> 8) & 0xff);
-    cipher += encryptor.encrypt({reinterpret_cast<uint8_t*>(&len), 2}, cipher);
+    cipher += encryptor.encrypt({reinterpret_cast<uint8_t*>(&len), 2_sz}, cipher);
     encryptor.encrypt(plain, cipher);
   }
   return cipherLength<method>(plain.size());
@@ -200,7 +199,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Ingress_By_Insufficient_Buffer, Ingress, Adap
 
   auto fact = array<uint8_t, 1024>{};
   for (auto i = 0_sz; i < expect.size(); ++i)
-    BOOST_CHECK_EQUAL(1_sz, ingress.recv({fact.data() + i, 1}, gYield));
+    BOOST_CHECK_EQUAL(1_sz, ingress.recv({fact.data() + i, 1_sz}, gYield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
 
@@ -324,7 +323,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(recv_Egress_By_Insufficient_Buffer, Egress, Adapte
 
   auto fact = array<uint8_t, 1024>{};
   for (auto i = 0_sz; i < expect.size(); ++i)
-    BOOST_CHECK_EQUAL(1_sz, egress.recv({fact.data() + i, 1}, gYield));
+    BOOST_CHECK_EQUAL(1_sz, egress.recv({fact.data() + i, 1_sz}, gYield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
 

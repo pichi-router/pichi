@@ -32,8 +32,8 @@ static auto const cases = vector<pair<vector<uint8_t>, vector<uint8_t>>>{
               hex2bin("dbcc9d8a88e5287213bc3556f8f8a4987d38b56b1b662007ed68265a574b7637"))};
 
 template <CryptoMethod method, size_t size> struct MHelper {
-  static auto const METHOD = method;
-  static auto const SIZE = size;
+  static constexpr auto METHOD = method;
+  static constexpr auto SIZE = size;
 };
 
 using Helpers = mpl::list<
@@ -54,9 +54,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(generateKey_Normal, Helper, Helpers)
 {
   for_each(cbegin(cases), cend(cases), [](auto const& pair) {
     auto container = array<uint8_t, 1024>{0};
-    auto pw = ConstBuffer<uint8_t>{pair.first};
-    auto expt = ConstBuffer<uint8_t>{pair.second, Helper::SIZE};
-    auto fact = MutableBuffer<uint8_t>{container, Helper::SIZE};
+    auto pw = ConstBuffer{pair.first};
+    auto expt = ConstBuffer{std::cbegin(pair.second), Helper::SIZE};
+    auto fact = MutableBuffer{std::begin(container), Helper::SIZE};
     BOOST_CHECK(generateKey(Helper::METHOD, pw, fact) == Helper::SIZE);
     BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expt), cend(expt), cbegin(fact), cend(fact));
   });

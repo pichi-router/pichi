@@ -95,9 +95,8 @@ template <typename Socket>
 unique_ptr<Ingress> makeShadowsocksIngress(Socket&& s, vo::ShadowsocksOption const& option)
 {
   auto container = array<uint8_t, 1024>{0};
-  auto psk = MutableBuffer<uint8_t>{container};
-  psk = {container,
-         crypto::generateKey(option.method_, ConstBuffer<uint8_t>{option.password_}, container)};
+  auto psk = MutableBuffer{container};
+  psk = {container, crypto::generateKey(option.method_, option.password_, container)};
   switch (option.method_) {
 #if MBEDTLS_VERSION_MAJOR < 3
   case CryptoMethod::RC4_MD5:
@@ -158,8 +157,8 @@ static unique_ptr<Egress> makeShadowsocksEgress(vo::ShadowsocksOption const& opt
                                                 asio::io_context& io)
 {
   auto container = array<uint8_t, 1024>{};
-  auto len = crypto::generateKey(option.method_, ConstBuffer<uint8_t>{option.password_}, container);
-  auto psk = MutableBuffer<uint8_t>{container, len};
+  auto len = crypto::generateKey(option.method_, option.password_, container);
+  auto psk = MutableBuffer{container, len};
 
   switch (option.method_) {
 #if MBEDTLS_VERSION_MAJOR < 3

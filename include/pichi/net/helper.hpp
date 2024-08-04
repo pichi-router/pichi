@@ -15,28 +15,20 @@
 
 namespace boost::asio {
 
-template <typename PodType> inline mutable_buffer buffer(pichi::MutableBuffer<PodType> origin)
-{
-  return {origin.data(), origin.size() * sizeof(PodType)};
-}
+inline mutable_buffer buffer(pichi::MutableBuffer origin) { return {origin.data(), origin.size()}; }
 
-template <typename PodType>
-inline mutable_buffer buffer(pichi::MutableBuffer<PodType> origin, size_t size)
+inline mutable_buffer buffer(pichi::MutableBuffer origin, size_t size)
 {
   assert(size <= origin.size());
-  return {origin.data(), size * sizeof(PodType)};
+  return {origin.data(), size};
 }
 
-template <typename PodType> inline const_buffer buffer(pichi::ConstBuffer<PodType> origin)
-{
-  return {origin.data(), origin.size() * sizeof(PodType)};
-}
+inline const_buffer buffer(pichi::ConstBuffer origin) { return {origin.data(), origin.size()}; }
 
-template <typename PodType>
-inline const_buffer buffer(pichi::ConstBuffer<PodType> origin, size_t size)
+inline const_buffer buffer(pichi::ConstBuffer origin, size_t size)
 {
   assert(size <= origin.size());
-  return {origin.data(), size * sizeof(PodType)};
+  return {origin.data(), size};
 }
 
 }  // namespace boost::asio
@@ -77,8 +69,7 @@ template <typename Stream, typename Yield> void accept(Stream& stream, Yield yie
   }
 }
 
-template <typename Stream, typename Yield>
-void read(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream, typename Yield> void read(Stream& stream, MutableBuffer buf, Yield yield)
 {
   suppressC4100(yield);
   if constexpr (stream::IsAsyncStream<Stream>)
@@ -88,7 +79,7 @@ void read(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
 }
 
 template <typename Stream, typename Yield>
-size_t readSome(Stream& stream, MutableBuffer<uint8_t> buf, Yield yield)
+size_t readSome(Stream& stream, MutableBuffer buf, Yield yield)
 {
   suppressC4100(yield);
   if constexpr (stream::IsAsyncStream<Stream>)
@@ -107,8 +98,7 @@ size_t readHttpHeader(Stream& stream, DynamicBuffer& buf, Parser& parser, Yield 
     return boost::beast::http::read_header(stream, buf, parser);
 }
 
-template <typename Stream, typename Yield>
-void write(Stream& stream, ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream, typename Yield> void write(Stream& stream, ConstBuffer buf, Yield yield)
 {
   suppressC4100(yield);
   if constexpr (stream::IsAsyncStream<Stream>)

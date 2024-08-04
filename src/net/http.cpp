@@ -41,7 +41,7 @@ static void assertNoError(sys::error_code ec)
 }
 
 template <typename ConstBufferSequence>
-static size_t copyOrCache(ConstBufferSequence const& src, MutableBuffer<uint8_t> dst, Cache& cache)
+static size_t copyOrCache(ConstBufferSequence const& src, MutableBuffer dst, Cache& cache)
 {
   auto first = asio::buffers_begin(src);
   auto n = asio::buffer_size(src);
@@ -55,7 +55,7 @@ static size_t copyOrCache(ConstBufferSequence const& src, MutableBuffer<uint8_t>
 }
 
 template <typename Stream, typename DynamicBuffer, typename Yield>
-static size_t recvRaw(Stream& s, DynamicBuffer& cache, MutableBuffer<uint8_t> buf, Yield yield)
+static size_t recvRaw(Stream& s, DynamicBuffer& cache, MutableBuffer buf, Yield yield)
 {
   if (cache.size() == 0) return readSome(s, buf, yield);
   auto copied = min(buf.size(), cache.size());
@@ -65,8 +65,7 @@ static size_t recvRaw(Stream& s, DynamicBuffer& cache, MutableBuffer<uint8_t> bu
 }
 
 template <bool isRequest, typename DynamicBuffer>
-static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache,
-                         MutableBuffer<uint8_t> buf)
+static size_t recvHeader(Header<isRequest> const& header, DynamicBuffer& cache, MutableBuffer buf)
 {
   auto m = Message<isRequest>{header};
   auto sr = Serializer<isRequest>{m};
@@ -149,8 +148,7 @@ static bool tunnelConnect(Endpoint const& remote, Stream& s, Yield yield,
   return code >= 200 && code < 300;
 }
 
-template <typename DynamicBuffer>
-static auto copyToCache(ConstBuffer<uint8_t> buf, DynamicBuffer& cache)
+template <typename DynamicBuffer> static auto copyToCache(ConstBuffer buf, DynamicBuffer& cache)
 {
   copy(cbegin(buf), cend(buf), asio::buffers_begin(cache.prepare(buf.size())));
   cache.commit(buf.size());
@@ -158,8 +156,7 @@ static auto copyToCache(ConstBuffer<uint8_t> buf, DynamicBuffer& cache)
 }
 
 template <bool isRequest, typename DynamicBuffer>
-static ConstBuffer<uint8_t> parseHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
-                                        ConstBuffer<uint8_t> buf)
+static ConstBuffer parseHeader(Parser<isRequest>& parser, DynamicBuffer& cache, ConstBuffer buf)
 {
   assertFalse(parser.is_header_done());
 
@@ -183,9 +180,8 @@ static ConstBuffer<uint8_t> parseHeader(Parser<isRequest>& parser, DynamicBuffer
 }
 
 template <bool isRequest, typename DynamicBuffer, typename Stream, typename Yield>
-static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache,
-                            ConstBuffer<uint8_t> buf, Stream& s, Yield yield,
-                            OptCredential const& cred = {})
+static bool tryToSendHeader(Parser<isRequest>& parser, DynamicBuffer& cache, ConstBuffer buf,
+                            Stream& s, Yield yield, OptCredential const& cred = {})
 {
   suppressC4100(cred);
 
@@ -226,12 +222,12 @@ template <typename Request> auto getUsernameAndPassword(Request const& req)
 
 using namespace detail;
 
-template <typename Stream> size_t HttpIngress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> size_t HttpIngress<Stream>::recv(MutableBuffer buf, Yield yield)
 {
   return recv_(buf, yield);
 }
 
-template <typename Stream> void HttpIngress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> void HttpIngress<Stream>::send(ConstBuffer buf, Yield yield)
 {
   send_(buf, yield);
 }
@@ -404,12 +400,12 @@ void HttpEgress<Stream>::connect(Endpoint const& remote, ResolveResults next, Yi
   pichi::net::connect(next, stream_, yield);
 }
 
-template <typename Stream> size_t HttpEgress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> size_t HttpEgress<Stream>::recv(MutableBuffer buf, Yield yield)
 {
   return recv_(buf, yield);
 }
 
-template <typename Stream> void HttpEgress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> void HttpEgress<Stream>::send(ConstBuffer buf, Yield yield)
 {
   send_(buf, yield);
 }

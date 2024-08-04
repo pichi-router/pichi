@@ -17,31 +17,31 @@ using boost::asio::ip::tcp;
 namespace pichi::net {
 
 static size_t const MAX_HEADER_SIZE = 512;
-template <typename T> using HeaderBuffer = array<T, MAX_HEADER_SIZE>;
-template <typename T> using FrameBuffer = array<T, MAX_FRAME_SIZE>;
+using HeaderBuffer = array<uint8_t, MAX_HEADER_SIZE>;
+using FrameBuffer = array<uint8_t, MAX_FRAME_SIZE>;
 
 template <CryptoMethod method, typename Stream>
-size_t SSStreamAdapter<method, Stream>::recv(MutableBuffer<uint8_t> plain, Yield yield)
+size_t SSStreamAdapter<method, Stream>::recv(MutableBuffer plain, Yield yield)
 {
   if (!ivReceived_) {
     auto iv = array<uint8_t, IV_SIZE<method>>{};
     readIV(iv, yield);
   }
 
-  auto cipher = FrameBuffer<uint8_t>{};
+  auto cipher = FrameBuffer{};
   auto len = readSome(stream_, {cipher, plain.size()}, yield);
   return decryptor_.decrypt({cipher, len}, plain);
 }
 
 template <CryptoMethod method, typename Stream>
-void SSStreamAdapter<method, Stream>::send(ConstBuffer<uint8_t> plain, Yield yield)
+void SSStreamAdapter<method, Stream>::send(ConstBuffer plain, Yield yield)
 {
   if (!ivSent_) {
     write(stream_, encryptor_.getIv(), yield);
     ivSent_ = true;
   }
 
-  auto cipher = FrameBuffer<uint8_t>{};
+  auto cipher = FrameBuffer{};
   while (plain.size() > 0) {
     auto consumed = min(plain.size(), cipher.size());
     write(stream_, {cipher, encryptor_.encrypt({plain, consumed}, {cipher, consumed})}, yield);
@@ -68,7 +68,7 @@ bool SSStreamAdapter<method, Stream>::writable() const
 }
 
 template <CryptoMethod method, typename Stream>
-size_t SSStreamAdapter<method, Stream>::readIV(MutableBuffer<uint8_t> iv, Yield yield)
+size_t SSStreamAdapter<method, Stream>::readIV(MutableBuffer iv, Yield yield)
 {
   assertFalse(ivReceived_);
   assertTrue(iv.size() >= IV_SIZE<method>);
@@ -94,7 +94,7 @@ void SSStreamAdapter<method, Stream>::connect(Endpoint const& remote, ResolveRes
 {
   pichi::net::connect(next, stream_, yield);
 
-  auto plain = HeaderBuffer<uint8_t>{};
+  auto plain = HeaderBuffer{};
   auto plen = serializeEndpoint(remote, plain);
 
   send({plain, plen}, yield);

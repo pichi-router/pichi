@@ -76,7 +76,7 @@ static auto genRefuseResponse()
 }
 
 template <bool isRequest, typename Body>
-static size_t serializeToBuffer(http::message<isRequest, Body>& m, MutableBuffer<uint8_t> buf)
+static size_t serializeToBuffer(http::message<isRequest, Body>& m, MutableBuffer buf)
 {
   auto left = buf;
   auto sr = http::serializer<isRequest, Body>{m};
@@ -96,7 +96,7 @@ static size_t serializeToBuffer(http::message<isRequest, Body>& m, MutableBuffer
 }
 
 template <bool isRequest, typename Body>
-static http::message<isRequest, Body> parseFromBuffer(ConstBuffer<uint8_t> buf)
+static http::message<isRequest, Body> parseFromBuffer(ConstBuffer buf)
 {
   auto parser = http::parser<isRequest, Body>{};
   auto ec = sys::error_code{};
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Invalid_HTTP_Header)
   auto socket = Socket{};
   auto ingress = HttpIngress{{}, socket, true};
 
-  socket.fill(ConstBuffer<uint8_t>{"Not a legal http header"sv});
+  socket.fill("Not a legal http header"sv);
   BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
                         verifyException<http::error::bad_version>);
 }
@@ -364,7 +364,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Tunnel_With_Sticky_Content)
   auto ingress = HttpIngress{{}, socket, true};
 
   socket.fill({buf, serializeToBuffer(req, buf)});
-  socket.fill(ConstBuffer<uint8_t>{sticky});
+  socket.fill(sticky);
 
   ingress.readRemote(gYield);
 
@@ -385,10 +385,10 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Tunnel_By_Insufficient_Buffer)
   ingress.readRemote(gYield);
 
   auto content = "Very long content"sv;
-  socket.fill(ConstBuffer<uint8_t>{content});
+  socket.fill(content);
 
   for (auto i = 0_sz; i < content.size(); ++i)
-    BOOST_CHECK_EQUAL(1_sz, ingress.recv({buf.data() + i, 1}, gYield));
+    BOOST_CHECK_EQUAL(1_sz, ingress.recv({buf.data() + i, 1_sz}, gYield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
                                 cbegin(buf) + content.size());
   BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), SystemError, verifyException<PichiError::MISC>);
@@ -466,7 +466,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Body)
 
   // Read header on the first ingress.recv, and body on the second ingress.recv
   auto transfered = ingress.recv(buf, gYield);
-  transfered += ingress.recv(MutableBuffer<uint8_t>{buf} + transfered, gYield);
+  transfered += ingress.recv(MutableBuffer{buf} + transfered, gYield);
   auto req = parseFromBuffer<true, http::string_body>({buf, transfered});
   BOOST_CHECK_EQUAL("/", req.target());
 
@@ -488,7 +488,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_By_Insufficient_Buffer)
   ingress.readRemote(gYield);
 
   // Invoke ingress.recv until socket is empty
-  auto data = MutableBuffer<uint8_t>{buf};
+  auto data = MutableBuffer{buf};
   auto recv = [&]() {
     while (true) {
       BOOST_CHECK_EQUAL(1_sz, ingress.recv({data, 1}, gYield));
@@ -647,7 +647,7 @@ BOOST_AUTO_TEST_CASE(Ingress_send_Tunnel)
 
   auto content = "content"sv;
 
-  ingress.send(ConstBuffer<uint8_t>{content}, gYield);
+  ingress.send(content, gYield);
   BOOST_CHECK_EQUAL(content.size(), socket.available());
 
   socket.flush({buf, content.size()});
@@ -771,8 +771,8 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Non_HTTP_Request)
   egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
   socket.flush(buf);
 
-  BOOST_CHECK_EXCEPTION(egress.send(ConstBuffer<uint8_t>{"Non-HTTP request\r\n"sv}, gYield),
-                        SystemError, verifyException<http::error::bad_target>);
+  BOOST_CHECK_EXCEPTION(egress.send("Non-HTTP request\r\n"sv, gYield), SystemError,
+                        verifyException<http::error::bad_target>);
 }
 
 BOOST_AUTO_TEST_CASE(Egress_send_Relay_HTTP_Request_Without_Upgrade)
@@ -837,7 +837,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Multiple_Parts_Header)
 
   auto origin = genRelayReq("/"s);
   for_each(cbegin(buf), cbegin(buf) + serializeToBuffer(origin, buf), [&](auto&& c) {
-    egress.send({addressof(c), 1}, gYield);
+    egress.send({addressof(c), 1_sz}, gYield);
   });
 
   auto sent = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
@@ -863,7 +863,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Request_With_Body)
 
   auto origin = genRelayReqWithBody("/"s);
   for_each(cbegin(buf), cbegin(buf) + serializeToBuffer(origin, buf), [&](auto&& c) {
-    egress.send({addressof(c), 1}, gYield);
+    egress.send({addressof(c), 1_sz}, gYield);
   });
 
   auto sent = parseFromBuffer<true, http::string_body>({buf, socket.flush(buf)});
@@ -893,7 +893,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Relay_Request_With_Extra_Data)
   parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
 
   auto extra = "extra data"sv;
-  egress.send(ConstBuffer<uint8_t>{extra}, gYield);
+  egress.send(extra, gYield);
 
   BOOST_CHECK_EQUAL(extra.size(), socket.flush(buf));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(extra), cend(extra), cbegin(buf),
@@ -912,7 +912,7 @@ BOOST_AUTO_TEST_CASE(Egress_recv_Tunnel)
   socket.flush(buf);
 
   auto content = "content"sv;
-  socket.fill(ConstBuffer<uint8_t>{content});
+  socket.fill(content);
 
   BOOST_CHECK_EQUAL(content.size(), egress.recv(buf, gYield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
@@ -931,7 +931,7 @@ BOOST_AUTO_TEST_CASE(Egress_recv_Relay_Non_HTTP_Data)
   socket.flush(buf);
 
   auto content = "non-HTTP data"sv;
-  socket.fill(ConstBuffer<uint8_t>{content});
+  socket.fill(content);
 
   BOOST_CHECK_EQUAL(content.size(), egress.recv(buf, gYield));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),

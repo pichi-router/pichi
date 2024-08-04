@@ -14,9 +14,8 @@ using namespace std;
 namespace pichi::crypto {
 
 template <typename SodiumFunc>
-static size_t sodiumHelper(SodiumFunc&& func, ConstBuffer<uint8_t> key, size_t offset,
-                           ConstBuffer<uint8_t> input, MutableBuffer<uint8_t> iv,
-                           MutableBuffer<uint8_t> output)
+static size_t sodiumHelper(SodiumFunc&& func, ConstBuffer key, size_t offset, ConstBuffer input,
+                           MutableBuffer iv, MutableBuffer output)
 {
   assertTrue(output.size() >= input.size(), PichiError::MISC);
 
@@ -47,8 +46,7 @@ static size_t sodiumHelper(SodiumFunc&& func, ConstBuffer<uint8_t> key, size_t o
 }
 
 template <CryptoMethod method>
-static void initialize(StreamContext<method>& ctx, ConstBuffer<uint8_t> key,
-                       ConstBuffer<uint8_t> iv)
+static void initialize(StreamContext<method>& ctx, ConstBuffer key, ConstBuffer iv)
 {
   suppressC4100(ctx);
   assertTrue(key.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
@@ -107,8 +105,8 @@ template <CryptoMethod method> static void release(StreamContext<method>& ctx)
 }
 
 template <CryptoMethod method>
-static size_t encrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uint8_t> plain,
-                      MutableBuffer<uint8_t> iv, MutableBuffer<uint8_t> cipher)
+static size_t encrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer plain,
+                      MutableBuffer iv, MutableBuffer cipher)
 {
   suppressC4100(ctx);
   assertTrue(plain.size() <= cipher.size(), PichiError::CRYPTO_ERROR);
@@ -155,8 +153,8 @@ static size_t encrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
 }
 
 template <CryptoMethod method>
-static size_t decrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uint8_t> cipher,
-                      MutableBuffer<uint8_t> iv, MutableBuffer<uint8_t> plain)
+static size_t decrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer cipher,
+                      MutableBuffer iv, MutableBuffer plain)
 {
   suppressC4100(ctx);
   assertTrue(plain.size() >= cipher.size(), PichiError::CRYPTO_ERROR);
@@ -203,7 +201,7 @@ static size_t decrypt(StreamContext<method>& ctx, size_t offset, ConstBuffer<uin
 }
 
 template <CryptoMethod method>
-StreamEncryptor<method>::StreamEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<uint8_t> iv)
+StreamEncryptor<method>::StreamEncryptor(ConstBuffer key, ConstBuffer iv)
 {
   if (iv.size() == 0)
     randombytes_buf(iv_.data(), IV_SIZE<method>);
@@ -219,14 +217,14 @@ template <CryptoMethod method> StreamEncryptor<method>::~StreamEncryptor()
   release<method>(ctx_);
 }
 
-template <CryptoMethod method> ConstBuffer<uint8_t> StreamEncryptor<method>::getIv() const
+template <CryptoMethod method> ConstBuffer StreamEncryptor<method>::getIv() const
 {
   // FIXME iv might be chaged after every invocation of this::encrypt
   return {iv_, IV_SIZE<method>};
 }
 
 template <CryptoMethod method>
-size_t StreamEncryptor<method>::encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher)
+size_t StreamEncryptor<method>::encrypt(ConstBuffer plain, MutableBuffer cipher)
 {
   assertTrue(cipher.size() >= plain.size(), PichiError::CRYPTO_ERROR);
   offset_ = pichi::crypto::encrypt<method>(ctx_, offset_, plain, iv_, cipher);
@@ -250,7 +248,7 @@ template class StreamEncryptor<CryptoMethod::CHACHA20>;
 template class StreamEncryptor<CryptoMethod::SALSA20>;
 template class StreamEncryptor<CryptoMethod::CHACHA20_IETF>;
 
-template <CryptoMethod method> StreamDecryptor<method>::StreamDecryptor(ConstBuffer<uint8_t> key)
+template <CryptoMethod method> StreamDecryptor<method>::StreamDecryptor(ConstBuffer key)
 {
   assertTrue(key.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
   // store the key in IV temporarily
@@ -267,7 +265,7 @@ template <CryptoMethod method> size_t StreamDecryptor<method>::getIvSize() const
   return IV_SIZE<method>;
 }
 
-template <CryptoMethod method> void StreamDecryptor<method>::setIv(ConstBuffer<uint8_t> iv)
+template <CryptoMethod method> void StreamDecryptor<method>::setIv(ConstBuffer iv)
 {
   assertFalse(initialized_, PichiError::MISC);
   assertTrue(iv.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
@@ -279,7 +277,7 @@ template <CryptoMethod method> void StreamDecryptor<method>::setIv(ConstBuffer<u
 }
 
 template <CryptoMethod method>
-size_t StreamDecryptor<method>::decrypt(ConstBuffer<uint8_t> cipher, MutableBuffer<uint8_t> plain)
+size_t StreamDecryptor<method>::decrypt(ConstBuffer cipher, MutableBuffer plain)
 {
   assertTrue(initialized_, PichiError::MISC);
   offset_ = pichi::crypto::decrypt<method>(ctx_, offset_, cipher, iv_, plain);

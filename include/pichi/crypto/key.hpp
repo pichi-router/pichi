@@ -3,11 +3,12 @@
 
 #include <pichi/common/buffer.hpp>
 #include <pichi/crypto/method.hpp>
+#include <span>
 #include <stdint.h>
 
 namespace pichi::crypto {
 
-extern size_t generateKey(CryptoMethod, ConstBuffer<uint8_t>, MutableBuffer<uint8_t>);
+extern size_t generateKey(CryptoMethod, ConstBuffer, MutableBuffer);
 
 }  // namespace pichi::crypto
 

@@ -24,12 +24,12 @@ RejectEgress::RejectEgress(asio::io_context& io, uint16_t delay) : t_{io}
   t_.expires_after(delay * 1s);
 }
 
-[[noreturn]] size_t RejectEgress::recv(MutableBuffer<uint8_t>, Yield)
+[[noreturn]] size_t RejectEgress::recv(MutableBuffer, Yield)
 {
   fail("RejectEgress::recv shouldn't be invoked");
 }
 
-[[noreturn]] void RejectEgress::send(ConstBuffer<uint8_t>, Yield)
+[[noreturn]] void RejectEgress::send(ConstBuffer, Yield)
 {
   fail("RejectEgress::send shouldn't be invoked");
 }

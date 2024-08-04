@@ -2,6 +2,7 @@
 #define PICHI_COMMON_ENDPOINT_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <iterator>
 #include <pichi/common/buffer.hpp>
@@ -25,7 +26,7 @@ struct Endpoint {
   uint16_t port_;
 };
 
-template <typename Int> void hton(Int src, MutableBuffer<uint8_t> dst)
+template <typename Int> void hton(Int src, MutableBuffer dst)
 {
   static_assert(std::is_integral_v<Int>, "input type must be integral.");
   assert(sizeof(Int) <= dst.size());
@@ -33,7 +34,7 @@ template <typename Int> void hton(Int src, MutableBuffer<uint8_t> dst)
   std::reverse_copy(p, p + sizeof(Int), std::begin(dst));
 }
 
-template <typename Int> Int ntoh(ConstBuffer<uint8_t> src)
+template <typename Int> Int ntoh(ConstBuffer src)
 {
   static_assert(std::is_integral_v<Int>, "output type must be integral.");
   assert(src.size() >= sizeof(Int));
@@ -43,8 +44,8 @@ template <typename Int> Int ntoh(ConstBuffer<uint8_t> src)
   return dst;
 }
 
-extern size_t serializeEndpoint(Endpoint const&, MutableBuffer<uint8_t>);
-extern Endpoint parseEndpoint(std::function<void(MutableBuffer<uint8_t>)>);
+extern size_t serializeEndpoint(Endpoint const&, MutableBuffer);
+extern Endpoint parseEndpoint(std::function<void(MutableBuffer)>);
 extern EndpointType detectHostType(std::string_view);
 extern Endpoint makeEndpoint(std::string_view, uint16_t);
 extern Endpoint makeEndpoint(std::string_view, std::string_view);

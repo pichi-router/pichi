@@ -169,14 +169,12 @@ static Endpoint readRemote(tcp::socket& s)
 
 }  // namespace platform
 
-template <typename Socket>
-size_t TransparentIngress<Socket>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Socket> size_t TransparentIngress<Socket>::recv(MutableBuffer buf, Yield yield)
 {
   return pichi::net::readSome(socket_, buf, yield);
 }
 
-template <typename Socket>
-void TransparentIngress<Socket>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Socket> void TransparentIngress<Socket>::send(ConstBuffer buf, Yield yield)
 {
   pichi::net::write(socket_, buf, yield);
 }

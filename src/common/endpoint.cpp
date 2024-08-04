@@ -17,9 +17,9 @@ namespace pichi {
 template <typename AddressType> struct AddressHelper {
   static_assert(is_same_v<AddressType, ip::address_v4> || is_same_v<AddressType, ip::address_v6>);
   using BytesType = typename AddressType::bytes_type;
-  static auto const BYTES_SIZE = sizeof(BytesType);
+  static constexpr auto BYTES_SIZE = sizeof(BytesType);
 
-  static string bytes2Ip(ConstBuffer<uint8_t> bytes)
+  static string bytes2Ip(ConstBuffer bytes)
   {
     auto tmp = BytesType{};
     copy_n(cbegin(bytes), BYTES_SIZE, begin(tmp));
@@ -29,7 +29,7 @@ template <typename AddressType> struct AddressHelper {
       return ip::make_address_v6(tmp).to_string();
   }
 
-  static size_t ip2Bytes(string_view ip, MutableBuffer<uint8_t> dst)
+  static size_t ip2Bytes(string_view ip, MutableBuffer dst)
   {
     if constexpr (is_same_v<AddressType, ip::address_v4>)
       copy_n(cbegin(ip::make_address_v4(ip).to_bytes()), BYTES_SIZE, begin(dst));
@@ -42,7 +42,7 @@ template <typename AddressType> struct AddressHelper {
 using IPv4 = AddressHelper<ip::address_v4>;
 using IPv6 = AddressHelper<ip::address_v6>;
 
-size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer<uint8_t> target)
+size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer target)
 {
   assertFalse(endpoint.host_.empty());
   auto pos = target.begin();
@@ -94,7 +94,7 @@ size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer<uint8_t> target
   return pos - target.begin();
 }
 
-Endpoint parseEndpoint(function<void(MutableBuffer<uint8_t>)> read)
+Endpoint parseEndpoint(function<void(MutableBuffer)> read)
 {
   auto buf = std::array<uint8_t, 512>{};
   auto len = uint8_t{0};

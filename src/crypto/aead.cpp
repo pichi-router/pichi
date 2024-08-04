@@ -13,8 +13,7 @@ using namespace std;
 namespace pichi::crypto {
 
 template <CryptoMethod method>
-static void initialize(AeadContext<method>& ctx, ConstBuffer<uint8_t> ikm,
-                       ConstBuffer<uint8_t> salt)
+static void initialize(AeadContext<method>& ctx, ConstBuffer ikm, ConstBuffer salt)
 {
   suppressC4100(ctx);
   assertTrue(ikm.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
@@ -44,8 +43,8 @@ template <CryptoMethod method> static void release(AeadContext<method>& ctx)
 }
 
 template <CryptoMethod method>
-static void encrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
-                    ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher)
+static void encrypt(AeadContext<method>& ctx, ConstBuffer nonce, ConstBuffer plain,
+                    MutableBuffer cipher)
 {
   suppressC4100(ctx);
   assertTrue(nonce.size() == NONCE_SIZE<method>, PichiError::CRYPTO_ERROR);
@@ -75,8 +74,8 @@ static void encrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
 }
 
 template <CryptoMethod method>
-static void decrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
-                    ConstBuffer<uint8_t> cipher, MutableBuffer<uint8_t> plain)
+static void decrypt(AeadContext<method>& ctx, ConstBuffer nonce, ConstBuffer cipher,
+                    MutableBuffer plain)
 {
   suppressC4100(ctx);
   assertTrue(nonce.size() == NONCE_SIZE<method>, PichiError::CRYPTO_ERROR);
@@ -107,7 +106,7 @@ static void decrypt(AeadContext<method>& ctx, ConstBuffer<uint8_t> nonce,
 }
 
 template <CryptoMethod method>
-AeadEncryptor<method>::AeadEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<uint8_t> salt)
+AeadEncryptor<method>::AeadEncryptor(ConstBuffer key, ConstBuffer salt)
 {
   if (salt.size() == 0) {
     randombytes_buf(salt_.data(), IV_SIZE<method>);
@@ -122,13 +121,10 @@ AeadEncryptor<method>::AeadEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<uint8
 
 template <CryptoMethod method> AeadEncryptor<method>::~AeadEncryptor() { release<method>(ctx_); }
 
-template <CryptoMethod method> ConstBuffer<uint8_t> AeadEncryptor<method>::getIv() const
-{
-  return salt_;
-}
+template <CryptoMethod method> ConstBuffer AeadEncryptor<method>::getIv() const { return salt_; }
 
 template <CryptoMethod method>
-size_t AeadEncryptor<method>::encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher)
+size_t AeadEncryptor<method>::encrypt(ConstBuffer plain, MutableBuffer cipher)
 {
   assertTrue(plain.size() <= 0x3fff, PichiError::CRYPTO_ERROR);
   assertTrue(cipher.size() >= plain.size() + TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
@@ -143,7 +139,7 @@ template class AeadEncryptor<CryptoMethod::AES_256_GCM>;
 template class AeadEncryptor<CryptoMethod::CHACHA20_IETF_POLY1305>;
 template class AeadEncryptor<CryptoMethod::XCHACHA20_IETF_POLY1305>;
 
-template <CryptoMethod method> AeadDecryptor<method>::AeadDecryptor(ConstBuffer<uint8_t> key)
+template <CryptoMethod method> AeadDecryptor<method>::AeadDecryptor(ConstBuffer key)
 {
   assertTrue(key.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
   copy_n(cbegin(key), KEY_SIZE<method>, begin(ikm_));
@@ -160,7 +156,7 @@ template <CryptoMethod method> size_t AeadDecryptor<method>::getIvSize() const
   return IV_SIZE<method>;
 }
 
-template <CryptoMethod method> void AeadDecryptor<method>::setIv(ConstBuffer<uint8_t> iv)
+template <CryptoMethod method> void AeadDecryptor<method>::setIv(ConstBuffer iv)
 {
   assertTrue(iv.size() == IV_SIZE<method>, PichiError::CRYPTO_ERROR);
   initialize<method>(ctx_, ikm_, iv);
@@ -168,7 +164,7 @@ template <CryptoMethod method> void AeadDecryptor<method>::setIv(ConstBuffer<uin
 }
 
 template <CryptoMethod method>
-size_t AeadDecryptor<method>::decrypt(ConstBuffer<uint8_t> cipher, MutableBuffer<uint8_t> plain)
+size_t AeadDecryptor<method>::decrypt(ConstBuffer cipher, MutableBuffer plain)
 {
   assertTrue(cipher.size() > TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(plain.size() >= cipher.size() - TAG_SIZE<method>, PichiError::CRYPTO_ERROR);

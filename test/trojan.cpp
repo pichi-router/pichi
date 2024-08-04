@@ -50,7 +50,7 @@ static auto createIngress(Socket& socket)
   return make_unique<Ingress>(FALIED_EP, cbegin(PASSWORDS), cend(PASSWORDS), socket, true);
 }
 
-static void verifyFailedRequest(Ingress& ingress, ConstBuffer<uint8_t> expect)
+static void verifyFailedRequest(Ingress& ingress, ConstBuffer expect)
 {
   BOOST_CHECK(ingress.readable());
 
@@ -78,8 +78,8 @@ BOOST_AUTO_TEST_CASE(readRemote_Simulate_HTTP_Server)
     auto socket = Socket{};
     auto ingress = createIngress(socket);
 
-    auto data = ConstBuffer<uint8_t>{CORRECT_DATA};
-    socket.fill(ConstBuffer<uint8_t>{data, i});
+    auto data = ConstBuffer{CORRECT_DATA};
+    socket.fill(ConstBuffer{data, i});
 
     data += i;
     socket.fill(data);
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(readRemote_Stream_Separated_From_Trojan_Request)
   for (auto i = PWD_LENGTH + 3; i < data.size(); ++i) {
     auto socket = Socket{};
     auto ingress = createIngress(socket);
-    auto buf = ConstBuffer<uint8_t>{data};
+    auto buf = ConstBuffer{data};
     socket.fill({buf, i});
     buf += i;
     socket.fill(buf);

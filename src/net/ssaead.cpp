@@ -34,7 +34,7 @@ template <CryptoMethod method, typename Stream> bool SSAeadAdapter<method, Strea
 }
 
 template <CryptoMethod method, typename Stream>
-size_t SSAeadAdapter<method, Stream>::recv(MutableBuffer<uint8_t> plain, Yield yield)
+size_t SSAeadAdapter<method, Stream>::recv(MutableBuffer plain, Yield yield)
 {
   if (!ivReceived_) {
     auto iv = array<uint8_t, IV_SIZE<method>>{};
@@ -52,7 +52,7 @@ size_t SSAeadAdapter<method, Stream>::recv(MutableBuffer<uint8_t> plain, Yield y
 }
 
 template <CryptoMethod method, typename Stream>
-void SSAeadAdapter<method, Stream>::send(ConstBuffer<uint8_t> plain, Yield yield)
+void SSAeadAdapter<method, Stream>::send(ConstBuffer plain, Yield yield)
 {
   if (!ivSent_) {
     write(stream_, encryptor_.getIv(), yield);
@@ -80,7 +80,7 @@ void SSAeadAdapter<method, Stream>::connect(Endpoint const& remote, ResolveResul
 }
 
 template <CryptoMethod method, typename Stream>
-size_t SSAeadAdapter<method, Stream>::readIV(MutableBuffer<uint8_t> iv, Yield yield)
+size_t SSAeadAdapter<method, Stream>::readIV(MutableBuffer iv, Yield yield)
 {
   assertFalse(ivReceived_);
   assertTrue(iv.size() >= IV_SIZE<method>);
@@ -104,17 +104,16 @@ template <CryptoMethod method, typename Stream> void SSAeadAdapter<method, Strea
 }
 
 template <CryptoMethod method, typename Stream>
-MutableBuffer<uint8_t> SSAeadAdapter<method, Stream>::prepare(size_t n,
-                                                              MutableBuffer<uint8_t> provided)
+MutableBuffer SSAeadAdapter<method, Stream>::prepare(size_t n, MutableBuffer provided)
 {
   if (n <= provided.size()) return {provided, n};
   auto buf = cache_.prepare(n);
   cache_.commit(n);
-  return {buf};
+  return buf;
 }
 
 template <CryptoMethod method, typename Stream>
-void SSAeadAdapter<method, Stream>::recvBlock(MutableBuffer<uint8_t> block, Yield yield)
+void SSAeadAdapter<method, Stream>::recvBlock(MutableBuffer block, Yield yield)
 {
   using CipherBuffer = array<uint8_t, MAX_FRAME_SIZE + TAG_SIZE<method>>;
 
@@ -125,7 +124,7 @@ void SSAeadAdapter<method, Stream>::recvBlock(MutableBuffer<uint8_t> block, Yiel
 }
 
 template <CryptoMethod method, typename Stream>
-size_t SSAeadAdapter<method, Stream>::recvFrame(MutableBuffer<uint8_t> provided, Yield yield)
+size_t SSAeadAdapter<method, Stream>::recvFrame(MutableBuffer provided, Yield yield)
 {
   auto lb = array<uint8_t, 2>{};
   recvBlock(lb, yield);
@@ -140,7 +139,7 @@ size_t SSAeadAdapter<method, Stream>::recvFrame(MutableBuffer<uint8_t> provided,
 }
 
 template <CryptoMethod method, typename Stream>
-size_t SSAeadAdapter<method, Stream>::copyTo(MutableBuffer<uint8_t> dst)
+size_t SSAeadAdapter<method, Stream>::copyTo(MutableBuffer dst)
 {
   auto copied = asio::buffer_copy(asio::buffer(dst), cache_.data(), dst.size());
   cache_.consume(copied);
@@ -148,8 +147,7 @@ size_t SSAeadAdapter<method, Stream>::copyTo(MutableBuffer<uint8_t> dst)
 }
 
 template <CryptoMethod method, typename Stream>
-size_t SSAeadAdapter<method, Stream>::encrypt(ConstBuffer<uint8_t> plain,
-                                              MutableBuffer<uint8_t> cipher)
+size_t SSAeadAdapter<method, Stream>::encrypt(ConstBuffer plain, MutableBuffer cipher)
 {
   assertTrue(plain.size() <= MAX_FRAME_SIZE, PichiError::BAD_PROTO);
   assertTrue(cipher.size() >= plain.size() + 2 + 2 * TAG_SIZE<method>, PichiError::BAD_PROTO);

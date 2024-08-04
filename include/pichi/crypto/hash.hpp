@@ -136,9 +136,9 @@ public:
   Hash();
   ~Hash();
 
-  void append(ConstBuffer<uint8_t>);
-  size_t hash(MutableBuffer<uint8_t>);
-  size_t hash(ConstBuffer<uint8_t>, MutableBuffer<uint8_t>);
+  void append(ConstBuffer);
+  size_t hash(MutableBuffer);
+  size_t hash(ConstBuffer, MutableBuffer);
 
 private:
   Context ctx_;
@@ -157,10 +157,10 @@ public:
   Hmac(Hmac&&) = default;
 
 public:
-  Hmac(ConstBuffer<uint8_t> key);
-  void append(ConstBuffer<uint8_t>);
-  size_t hash(MutableBuffer<uint8_t>);
-  size_t hash(ConstBuffer<uint8_t>, MutableBuffer<uint8_t>);
+  Hmac(ConstBuffer key);
+  void append(ConstBuffer);
+  size_t hash(MutableBuffer);
+  size_t hash(ConstBuffer, MutableBuffer);
 
 private:
   H i_;
@@ -168,10 +168,10 @@ private:
 };
 
 template <HashAlgorithm algorithm>
-void hkdf(MutableBuffer<uint8_t> okm, ConstBuffer<uint8_t> ikm, ConstBuffer<uint8_t> salt,
-          ConstBuffer<uint8_t> info = {(uint8_t const*)"ss-subkey", 9});
+void hkdf(MutableBuffer okm, ConstBuffer ikm, ConstBuffer salt,
+          ConstBuffer info = std::string_view{"ss-subkey"});
 
-std::string bin2hex(ConstBuffer<uint8_t> bin);
+std::string bin2hex(ConstBuffer bin);
 
 }  // namespace pichi::crypto
 

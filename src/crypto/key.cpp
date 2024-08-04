@@ -6,12 +6,11 @@ using namespace std;
 
 namespace pichi::crypto {
 
-template <CryptoMethod method>
-size_t generateKey(ConstBuffer<uint8_t> pw, MutableBuffer<uint8_t> psk)
+template <CryptoMethod method> size_t generateKey(ConstBuffer pw, MutableBuffer psk)
 {
   assertTrue(psk.size() >= KEY_SIZE<method>, PichiError::MISC);
-  auto ct = ConstBuffer<uint8_t>{};
-  auto mt = MutableBuffer<uint8_t>{psk, KEY_SIZE<method>};
+  auto ct = ConstBuffer{};
+  auto mt = MutableBuffer{psk, KEY_SIZE<method>};
   while (mt.size() != 0) {
     auto md5 = Hash<HashAlgorithm::MD5>{};
     md5.append(ct);
@@ -23,7 +22,7 @@ size_t generateKey(ConstBuffer<uint8_t> pw, MutableBuffer<uint8_t> psk)
   return KEY_SIZE<method>;
 }
 
-size_t generateKey(CryptoMethod method, ConstBuffer<uint8_t> pw, MutableBuffer<uint8_t> psk)
+size_t generateKey(CryptoMethod method, ConstBuffer pw, MutableBuffer psk)
 {
   switch (method) {
   case CryptoMethod::RC4_MD5:

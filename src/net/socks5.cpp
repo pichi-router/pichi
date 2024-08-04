@@ -19,7 +19,7 @@ using tcp = asio::ip::tcp;
 
 namespace pichi::net {
 
-template <typename T> using HeaderBuffer = array<T, 512>;
+using HeaderBuffer = array<uint8_t, 512>;
 
 #ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 auto const NETWORK_UNREACHABLE =
@@ -47,7 +47,7 @@ static uint8_t const AUTH_SUCCESS[] = {0x01_u8, 0x00_u8};
 static uint8_t const METHOD_FAILURE[] = {0x05_u8, 0xff_u8};
 #endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
 
-static ConstBuffer<uint8_t> errorToBuffer(sys::error_code ec)
+static ConstBuffer errorToBuffer(sys::error_code ec)
 {
   if (ec == asio::error::address_family_not_supported) return ADDRESS_TYPE_NOT_SUPPORTED;
   if (ec == asio::error::connection_refused) return CONNECTION_REFUSED;
@@ -67,9 +67,9 @@ template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
 {
   auto readString = [](auto&& stream, auto yield) {
     auto len = 0_u8;
-    read(stream, {&len, 1}, yield);
+    read(stream, {&len, 1_sz}, yield);
     assertFalse(len == 0, PichiError::BAD_PROTO);
-    auto buf = HeaderBuffer<uint8_t>{};
+    auto buf = HeaderBuffer{};
     read(stream, {buf, len}, yield);
     return string{cbegin(buf), cbegin(buf) + len};
   };
@@ -83,7 +83,7 @@ template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
    * +----+------+----------+------+----------+
    */
   auto ver = 0_u8;
-  read(stream_, {&ver, 1}, yield);
+  read(stream_, {&ver, 1_sz}, yield);
   assertTrue(ver == 0x01_u8, PichiError::BAD_PROTO);
 
   auto u = readString(stream_, yield);
@@ -102,13 +102,12 @@ template <typename Stream> void Socks5Ingress<Stream>::authenticate(Yield yield)
   write(stream_, AUTH_SUCCESS, yield);
 }
 
-template <typename Stream>
-size_t Socks5Ingress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> size_t Socks5Ingress<Stream>::recv(MutableBuffer buf, Yield yield)
 {
   return readSome(stream_, buf, yield);
 }
 
-template <typename Stream> void Socks5Ingress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> void Socks5Ingress<Stream>::send(ConstBuffer buf, Yield yield)
 {
   write(stream_, buf, yield);
 }
@@ -132,7 +131,7 @@ template <typename Stream> Endpoint Socks5Ingress<Stream>::readRemote(Yield yiel
 {
   accept(stream_, yield);
 
-  auto buf = HeaderBuffer<uint8_t>{};
+  auto buf = HeaderBuffer{};
 
   read(stream_, {buf, 2}, yield);
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
@@ -171,7 +170,7 @@ template <typename Stream> void Socks5Ingress<Stream>::confirm(Yield yield)
 
 template <typename Stream> void Socks5Ingress<Stream>::disconnect(exception_ptr eptr, Yield yield)
 {
-  auto buf = ConstBuffer<uint8_t>{};
+  auto buf = ConstBuffer{};
   try {
     rethrow_exception(eptr);
   }
@@ -195,15 +194,15 @@ template <typename Stream>
 static void writeString(Stream& stream, asio::yield_context yield, string_view str)
 {
   auto len = static_cast<uint8_t>(str.size());
-  write(stream, {&len, 1}, yield);
-  write(stream, ConstBuffer<uint8_t>{str}, yield);
+  write(stream, {&len, 1_sz}, yield);
+  write(stream, str, yield);
 }
 
 template <typename Stream> void Socks5Egress<Stream>::authenticate(Yield yield)
 {
   static auto const VER = 0x01_u8;
 
-  write(stream_, {&VER, 1}, yield);
+  write(stream_, {&VER, 1_sz}, yield);
   writeString(stream_, yield, credential_->first);
   writeString(stream_, yield, credential_->second);
 
@@ -213,13 +212,12 @@ template <typename Stream> void Socks5Egress<Stream>::authenticate(Yield yield)
   assertTrue(received.back() == 0x00_u8, PichiError::BAD_PROTO);
 }
 
-template <typename Stream>
-size_t Socks5Egress<Stream>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> size_t Socks5Egress<Stream>::recv(MutableBuffer buf, Yield yield)
 {
   return readSome(stream_, buf, yield);
 }
 
-template <typename Stream> void Socks5Egress<Stream>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Stream> void Socks5Egress<Stream>::send(ConstBuffer buf, Yield yield)
 {
   write(stream_, buf, yield);
 }
@@ -239,7 +237,7 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
   pichi::net::connect(next, stream_, yield);
 
   auto method = credential_.has_value() ? 0x02_u8 : 0x00_u8;
-  auto buf = HeaderBuffer<uint8_t>{0x05, 0x01, method};
+  auto buf = HeaderBuffer{0x05, 0x01, method};
 
   write(stream_, {buf, 3}, yield);
 
@@ -253,7 +251,7 @@ void Socks5Egress<Stream>::connect(Endpoint const& remote, ResolveResults next, 
   buf[i++] = 0x05;
   buf[i++] = 0x01;
   buf[i++] = 0x00;
-  i += serializeEndpoint(remote, MutableBuffer<uint8_t>{buf} + i);
+  i += serializeEndpoint(remote, MutableBuffer{buf} + i);
   write(stream_, {buf, i}, yield);
 
   read(stream_, {buf, 3}, yield);

@@ -16,13 +16,12 @@ template <typename Socket> TunnelIngress<Socket>::~TunnelIngress()
   }
 }
 
-template <typename Socket>
-size_t TunnelIngress<Socket>::recv(MutableBuffer<uint8_t> buf, Yield yield)
+template <typename Socket> size_t TunnelIngress<Socket>::recv(MutableBuffer buf, Yield yield)
 {
   return pichi::net::readSome(socket_, buf, yield);
 }
 
-template <typename Socket> void TunnelIngress<Socket>::send(ConstBuffer<uint8_t> buf, Yield yield)
+template <typename Socket> void TunnelIngress<Socket>::send(ConstBuffer buf, Yield yield)
 {
   pichi::net::write(socket_, buf, yield);
 }

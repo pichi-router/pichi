@@ -46,11 +46,11 @@ public:
   StreamEncryptor& operator=(StreamEncryptor&&) = delete;
 
 public:
-  explicit StreamEncryptor(ConstBuffer<uint8_t> key, ConstBuffer<uint8_t> iv = {});
+  explicit StreamEncryptor(ConstBuffer key, ConstBuffer iv = {});
   ~StreamEncryptor();
 
-  ConstBuffer<uint8_t> getIv() const;
-  size_t encrypt(ConstBuffer<uint8_t> plain, MutableBuffer<uint8_t> cipher);
+  ConstBuffer getIv() const;
+  size_t encrypt(ConstBuffer plain, MutableBuffer cipher);
 
 private:
   StreamContext<method> ctx_;
@@ -68,12 +68,12 @@ public:
   StreamDecryptor& operator=(StreamDecryptor&&) = delete;
 
 public:
-  explicit StreamDecryptor(ConstBuffer<uint8_t> key);
+  explicit StreamDecryptor(ConstBuffer key);
   ~StreamDecryptor();
 
   size_t getIvSize() const;
-  void setIv(ConstBuffer<uint8_t> iv);
-  size_t decrypt(ConstBuffer<uint8_t> cipher, MutableBuffer<uint8_t> plain);
+  void setIv(ConstBuffer iv);
+  size_t decrypt(ConstBuffer cipher, MutableBuffer plain);
 
 private:
   StreamContext<method> ctx_;

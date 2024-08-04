@@ -28,13 +28,13 @@ template <HashAlgorithm algorithm> Hash<algorithm>::Hash(Hash&& other)
   Traits::clone(&ctx_, &other.ctx_);
 }
 
-template <HashAlgorithm algorithm> void Hash<algorithm>::append(ConstBuffer<uint8_t> src)
+template <HashAlgorithm algorithm> void Hash<algorithm>::append(ConstBuffer src)
 {
   if (src.size() == 0) return;
   assertTrue(Traits::update(&ctx_, src.data(), src.size()) == 0, PichiError::MISC);
 }
 
-template <HashAlgorithm algorithm> size_t Hash<algorithm>::hash(MutableBuffer<uint8_t> dst)
+template <HashAlgorithm algorithm> size_t Hash<algorithm>::hash(MutableBuffer dst)
 {
   if (dst.size() < Traits::length) {
     auto tmp = array<uint8_t, Traits::length>{};
@@ -46,8 +46,7 @@ template <HashAlgorithm algorithm> size_t Hash<algorithm>::hash(MutableBuffer<ui
   return Traits::length;
 }
 
-template <HashAlgorithm algorithm>
-size_t Hash<algorithm>::hash(ConstBuffer<uint8_t> src, MutableBuffer<uint8_t> dst)
+template <HashAlgorithm algorithm> size_t Hash<algorithm>::hash(ConstBuffer src, MutableBuffer dst)
 {
   append(src);
   return hash(dst);
@@ -60,7 +59,7 @@ template class Hash<HashAlgorithm::SHA256>;
 template class Hash<HashAlgorithm::SHA384>;
 template class Hash<HashAlgorithm::SHA512>;
 
-template <HashAlgorithm algorithm> Hmac<algorithm>::Hmac(ConstBuffer<uint8_t> key)
+template <HashAlgorithm algorithm> Hmac<algorithm>::Hmac(ConstBuffer key)
 {
   auto k = array<uint8_t, Traits::block_size>{0};
   if (key.size() > Traits::block_size)
@@ -77,20 +76,16 @@ template <HashAlgorithm algorithm> Hmac<algorithm>::Hmac(ConstBuffer<uint8_t> ke
   i_.append(padding);
 }
 
-template <HashAlgorithm algorithm> void Hmac<algorithm>::append(ConstBuffer<uint8_t> src)
-{
-  i_.append(src);
-}
+template <HashAlgorithm algorithm> void Hmac<algorithm>::append(ConstBuffer src) { i_.append(src); }
 
-template <HashAlgorithm algorithm> size_t Hmac<algorithm>::hash(MutableBuffer<uint8_t> dst)
+template <HashAlgorithm algorithm> size_t Hmac<algorithm>::hash(MutableBuffer dst)
 {
   auto tmp = array<uint8_t, Traits::length>{};
   i_.hash(tmp);
   return o_.hash(tmp, dst);
 }
 
-template <HashAlgorithm algorithm>
-size_t Hmac<algorithm>::hash(ConstBuffer<uint8_t> src, MutableBuffer<uint8_t> dst)
+template <HashAlgorithm algorithm> size_t Hmac<algorithm>::hash(ConstBuffer src, MutableBuffer dst)
 {
   append(src);
   return hash(dst);
@@ -104,8 +99,7 @@ template class Hmac<HashAlgorithm::SHA384>;
 template class Hmac<HashAlgorithm::SHA512>;
 
 template <HashAlgorithm algorithm>
-void hkdf(MutableBuffer<uint8_t> okm, ConstBuffer<uint8_t> ikm, ConstBuffer<uint8_t> salt,
-          ConstBuffer<uint8_t> info)
+void hkdf(MutableBuffer okm, ConstBuffer ikm, ConstBuffer salt, ConstBuffer info)
 {
   auto prk = array<uint8_t, HashTraits<algorithm>::length>{0};
   Hmac<algorithm>{salt}.hash(ikm, prk);
@@ -120,26 +114,20 @@ void hkdf(MutableBuffer<uint8_t> okm, ConstBuffer<uint8_t> ikm, ConstBuffer<uint
     auto hmac = Hmac<algorithm>{prk};
     hmac.append({prev, static_cast<size_t>(curr - prev)});
     hmac.append(info);
-    hmac.append({&c, 1});
+    hmac.append({&c, 1_sz});
     prev = curr;
     curr += hmac.hash({curr, static_cast<size_t>(okm.data() + okm.size() - curr)});
   }
 }
 
-template void hkdf<HashAlgorithm::MD5>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
-                                       ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
-template void hkdf<HashAlgorithm::SHA1>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
-                                        ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
-template void hkdf<HashAlgorithm::SHA224>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
-                                          ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
-template void hkdf<HashAlgorithm::SHA256>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
-                                          ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
-template void hkdf<HashAlgorithm::SHA384>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
-                                          ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
-template void hkdf<HashAlgorithm::SHA512>(MutableBuffer<uint8_t>, ConstBuffer<uint8_t>,
-                                          ConstBuffer<uint8_t>, ConstBuffer<uint8_t>);
+template void hkdf<HashAlgorithm::MD5>(MutableBuffer, ConstBuffer, ConstBuffer, ConstBuffer);
+template void hkdf<HashAlgorithm::SHA1>(MutableBuffer, ConstBuffer, ConstBuffer, ConstBuffer);
+template void hkdf<HashAlgorithm::SHA224>(MutableBuffer, ConstBuffer, ConstBuffer, ConstBuffer);
+template void hkdf<HashAlgorithm::SHA256>(MutableBuffer, ConstBuffer, ConstBuffer, ConstBuffer);
+template void hkdf<HashAlgorithm::SHA384>(MutableBuffer, ConstBuffer, ConstBuffer, ConstBuffer);
+template void hkdf<HashAlgorithm::SHA512>(MutableBuffer, ConstBuffer, ConstBuffer, ConstBuffer);
 
-string bin2hex(ConstBuffer<uint8_t> bin)
+string bin2hex(ConstBuffer bin)
 {
   auto hex = string(bin.size() * 2 + 1, '\0');
   sodium_bin2hex(hex.data(), hex.size(), bin.data(), bin.size());

@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(rfc5869, Case, RFC5869Cases)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(maxLen, Case, MaxLenCases)
 {
-  auto empty = ConstBuffer<uint8_t>{};
+  auto empty = ConstBuffer{};
   auto okm = array<uint8_t, Case::LEN>{};
   hkdf<Case::ALGORITHM>(okm, empty, empty, empty);
   BOOST_CHECK_EQUAL(Case::FRONT, okm.front());
