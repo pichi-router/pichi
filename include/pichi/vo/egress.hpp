@@ -15,12 +15,12 @@ struct Egress {
       std::variant<UpEgressCredential, TrojanEgressCredential, VMessEgressCredential>;
   using Option = std::variant<RejectOption, ShadowsocksOption>;
 
-  AdapterType type_;
-  std::optional<Endpoint> server_;
-  std::optional<Credential> credential_;
-  std::optional<Option> opt_;
-  std::optional<TlsEgressOption> tls_;
-  std::optional<WebsocketOption> websocket_;
+  AdapterType                    type_;
+  std::optional<Endpoint>        server_     = {};
+  std::optional<Credential>      credential_ = {};
+  std::optional<Option>          opt_        = {};
+  std::optional<TlsEgressOption> tls_        = {};
+  std::optional<WebsocketOption> websocket_  = {};
 };
 
 extern rapidjson::Value toJson(Egress const&, rapidjson::Document::AllocatorType&);

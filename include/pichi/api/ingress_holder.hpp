@@ -17,18 +17,20 @@ namespace pichi::api {
 
 struct IngressHolder {
   explicit IngressHolder(boost::asio::io_context&, vo::Ingress&&);
+  explicit IngressHolder(boost::asio::any_io_executor const&, vo::Ingress&&);
   ~IngressHolder() = default;
 
-  IngressHolder(IngressHolder const&) = delete;
-  IngressHolder(IngressHolder&&) = delete;
+  IngressHolder(IngressHolder const&)            = delete;
+  IngressHolder(IngressHolder&&)                 = delete;
   IngressHolder& operator=(IngressHolder const&) = delete;
-  IngressHolder& operator=(IngressHolder&&) = delete;
+  IngressHolder& operator=(IngressHolder&&)      = delete;
 
   void reset(boost::asio::io_context&, vo::Ingress&&);
+  void reset(boost::asio::any_io_executor const&, vo::Ingress&&);
 
-  vo::Ingress vo_;
+  vo::Ingress                                 vo_;
   std::vector<boost::asio::ip::tcp::acceptor> acceptors_;
-  std::any data_;
+  std::any                                    data_;
 };
 
 }  // namespace pichi::api
