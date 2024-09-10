@@ -16,9 +16,13 @@
 .#*
 .*.swp
 
+# Core dumps
+core
+
 # Editors
 .clang-format
 build/
+out/
 .vscode/
 .clang_complete
 
