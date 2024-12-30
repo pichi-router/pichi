@@ -1,0 +1,32 @@
+#ifndef PICHI_ACTOR_SESSION_HPP
+#define PICHI_ACTOR_SESSION_HPP
+
+#include <boost/asio/ip/tcp.hpp>
+#include <memory>
+#include <pichi/actor/router.hpp>
+#include <pichi/common/coro.hpp>
+#include <pichi/vo/ingress.hpp>
+
+namespace pichi::actor {
+
+class Session {
+private:
+  using RouterPtr = std::shared_ptr<Router>;
+  using Socket    = boost::asio::ip::tcp::socket;
+
+public:
+  template <boost::asio::execution::executor Executor>
+  Session(Executor ex, RouterPtr r) : ex_{std::move(ex)}, router_{std::move(r)}
+  {
+  }
+
+  Awaitable<void> start(vo::Ingress const&, Socket);
+
+private:
+  IOExecutor ex_;
+  RouterPtr  router_;
+};
+
+}  // namespace pichi::actor
+
+#endif  // PICHI_ACTOR_SESSION_HPP

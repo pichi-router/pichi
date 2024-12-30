@@ -2,10 +2,11 @@
 // Include config.hpp first
 #include <algorithm>
 #include <array>
-#include <boost/asio/detached.hpp>
 #include <format>
 #include <iostream>
+#include <pichi/actor/detached.hpp>
 #include <pichi/actor/listener.hpp>
+#include <pichi/actor/session.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
@@ -17,8 +18,10 @@ namespace rngs = std::ranges;
 
 namespace pichi::actor {
 
-Awaitable<void> Listener::listen(std::string_view, ip::tcp::acceptor& ac, std::any&)
+Awaitable<void>
+    Listener::listen(std::string_view, ip::tcp::acceptor& ac, api::IngressHolder& holder)
 {
+  auto ex = strand_.get_inner_executor();
   while (ac.is_open()) {
     auto [ec, s] = co_await redirect(ac.async_accept(asio::use_awaitable));
     if (ec) {
@@ -27,9 +30,13 @@ Awaitable<void> Listener::listen(std::string_view, ip::tcp::acceptor& ac, std::a
       break;
     }
 
-    // TODO copy router_ pointer for future use
-    co_await switch_to(strand_.get_inner_executor());
-    // TODO start session
+    asio::co_spawn(
+        ex,
+        [session = Session{ex, router_}, vo = holder.vo_, s = std::move(*s)]() mutable {
+          return session.start(vo, std::move(s));
+        },
+        detached
+    );
   }
 }
 
@@ -76,8 +83,7 @@ Awaitable<void> Listener::put_ingress(std::string const& name, std::string_view 
   else
     it->second.reset(ex, std::move(vo));
 
-  for (auto& ac : it->second.acceptors_)
-    asio::co_spawn(ex, listen(name, ac, it->second.data_), asio::detached);
+  for (auto& ac : it->second.acceptors_) asio::co_spawn(ex, listen(name, ac, it->second), detached);
 }
 
 }  // namespace pichi::actor

@@ -82,4 +82,9 @@ Router::Pointer Router::put_route(std::string_view value)
   return rt;
 }
 
+Awaitable<vo::Egress> Router::route(Endpoint const&) const
+{
+  co_return vo::Egress{.type_ = AdapterType::DIRECT};
+}
+
 }  // namespace pichi::actor

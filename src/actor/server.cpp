@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <boost/asio/batch.hpp>
-#include <boost/asio/detached.hpp>
 #include <boost/asio/redirect_error.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/read.hpp>
@@ -11,6 +10,7 @@
 #include <format>
 #include <iostream>
 #include <mutex>
+#include <pichi/actor/detached.hpp>
 #include <pichi/actor/server.hpp>
 #include <pichi/common/error.hpp>
 #include <pichi/vo/error.hpp>
@@ -104,7 +104,7 @@ Awaitable<void> Server::serve(ip::tcp::endpoint endpoint)
   co_await switch_to(ex_);
   auto a = ip::tcp::acceptor{ex_, endpoint};
   while (a.is_open()) {
-    asio::co_spawn(ex_, do_session(co_await a.async_accept(await_to(ex_))), asio::detached);
+    asio::co_spawn(ex_, do_session(co_await a.async_accept(await_to(ex_))), detached);
   }
 }
 
@@ -123,6 +123,9 @@ Awaitable<void> Server::do_session(ip::tcp::socket s)
   }
   catch (sys::system_error const& e) {
     std::cout << std::format("API IO Error: {}\n", e.what());
+  }
+  catch (std::exception const& e) {
+    std::clog << std::format("ERROR: {}\n", e.what());
   }
 }
 

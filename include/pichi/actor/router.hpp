@@ -33,7 +33,7 @@ public:
   std::string get_route() const;
   Pointer     put_route(std::string_view);
 
-  Awaitable<vo::Egress> route(vo::Ingress const&) const;
+  Awaitable<vo::Egress> route(Endpoint const&) const;
 
 private:
   IOExecutor ex_;

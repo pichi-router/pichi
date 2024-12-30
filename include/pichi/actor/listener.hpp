@@ -18,7 +18,7 @@ private:
   using RouterPtr = std::shared_ptr<Router>;
   using Strand    = boost::asio::strand<IOExecutor>;
 
-  Awaitable<void> listen(std::string_view, boost::asio::ip::tcp::acceptor&, std::any&);
+  Awaitable<void> listen(std::string_view, boost::asio::ip::tcp::acceptor&, api::IngressHolder&);
 
 public:
   Listener(IOExecutor, RouterPtr const&);
