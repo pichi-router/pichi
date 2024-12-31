@@ -2,6 +2,8 @@
 #define PICHI_ADAPTER_TCP_ADAPTER_HPP
 
 #include <boost/asio/ip/tcp.hpp>
+#include <pichi/adapter/tcp/direct.hpp>
+#include <pichi/adapter/tcp/reject.hpp>
 #include <pichi/adapter/tcp/shadowsocks.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/stream/shadowsocks.hpp>
@@ -26,6 +28,7 @@ using Ingress = std::variant<
     SSAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>>;
 
 using Egress = std::variant<
+    Direct, RejectEgress,
     SSAdapter<CryptoMethod::AES_128_CTR>, Socks5Egress<boost::asio::ip::tcp::socket>,
     SSAdapter<CryptoMethod::AES_192_CTR>, SSAdapter<CryptoMethod::AES_256_CTR>,
     SSAdapter<CryptoMethod::AES_128_CFB>, SSAdapter<CryptoMethod::AES_192_CFB>,

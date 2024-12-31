@@ -77,6 +77,10 @@ Egress create_egress(vo::Egress const& vo, IOExecutor const& ex)
   case AdapterType::SS:
     assertTrue(vo.opt_.has_value());
     return create_ss_adapter<Egress>(std::get<vo::ShadowsocksOption>(*vo.opt_), ex);
+  case AdapterType::DIRECT:
+    return Egress{std::in_place_type<Direct>, ex};
+  case AdapterType::REJECT:
+    return Egress{std::in_place_type<RejectEgress>, vo, ex};
   default:
     fail();
   }
