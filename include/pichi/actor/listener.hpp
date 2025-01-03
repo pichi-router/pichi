@@ -3,9 +3,9 @@
 
 #include <boost/asio/strand.hpp>
 #include <memory>
-#include <pichi/actor/common.hpp>
 #include <pichi/actor/router.hpp>
 #include <pichi/api/ingress_holder.hpp>
+#include <pichi/common/coro.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <string>
 #include <unordered_map>

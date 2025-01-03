@@ -1,7 +1,7 @@
 #ifndef PICHI_ACTOR_ROUTER_HPP
 #define PICHI_ACTOR_ROUTER_HPP
 
-#include <pichi/actor/common.hpp>
+#include <pichi/common/coro.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/route.hpp>

@@ -1,5 +1,5 @@
-#ifndef PICHI_ACTOR_COMMON_HPP
-#define PICHI_ACTOR_COMMON_HPP
+#ifndef PICHI_COMMON_CORO_HPP
+#define PICHI_COMMON_CORO_HPP
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/awaitable.hpp>
@@ -14,7 +14,7 @@
 #include <optional>
 #include <tuple>
 
-namespace pichi::actor {
+namespace pichi {
 
 using IOExecutor = boost::asio::any_io_executor;
 
@@ -105,6 +105,6 @@ Awaitable<void, E> exec_to(Executor const& executor, Awaitable<void, E> a)
   if (ec) throw boost::system::system_error{ec};
 }
 
-}  // namespace pichi::actor
+}  // namespace pichi
 
-#endif  // PICHI_ACTOR_COMMON_HPP
+#endif  // PICHI_COMMON_CORO_HPP

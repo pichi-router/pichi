@@ -7,9 +7,9 @@
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <memory>
-#include <pichi/actor/common.hpp>
 #include <pichi/actor/listener.hpp>
 #include <pichi/actor/router.hpp>
+#include <pichi/common/coro.hpp>
 
 namespace pichi::actor {
 
