@@ -591,6 +591,4 @@ io.run();  // Thread blocked
 
 Please offer me a cup of coffee if you like pichi.
 
-[![Please donate BTC](https://blockchain.info/Resources/buttons/donate_64.png)](
-https://www.blockchain.com/btc/payment_request?address=33CEcNHjKpyHSq4gfVHDhkDjYwWjLQt3Qo
-)
+![Please donate BTC](images/tip.png)
