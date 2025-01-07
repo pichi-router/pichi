@@ -25,9 +25,10 @@ using StreamContext = std::conditional_t<
         std::conditional_t<
 #endif  // MBEDTLS_VERSION_MAJOR < 3
             detail::isAesCtr<method>() || detail::isAesCfb<method>(), mbedtls_aes_context,
-            std::conditional_t<detail::isCamellia<method>(), mbedtls_camellia_context,
-                               std::conditional_t<detail::isSodiumStream<method>(),
-                                                  std::array<uint8_t, KEY_SIZE<method>>, void>>>
+            std::conditional_t<
+                detail::isCamellia<method>(), mbedtls_camellia_context,
+                std::conditional_t<
+                    detail::isSodiumStream<method>(), std::array<uint8_t, KEY_SIZE<method>>, void>>>
 #if MBEDTLS_VERSION_MAJOR < 3
         >>
 #endif  // MBEDTLS_VERSION_MAJOR < 3
@@ -41,21 +42,22 @@ public:
   static_assert(detail::isStream<method>(), "Not a stream crypto method");
 
   StreamEncryptor(StreamEncryptor const&) = delete;
-  StreamEncryptor(StreamEncryptor&&) = delete;
+  StreamEncryptor(StreamEncryptor&&) noexcept;
+
   StreamEncryptor& operator=(StreamEncryptor const&) = delete;
-  StreamEncryptor& operator=(StreamEncryptor&&) = delete;
+  StreamEncryptor& operator=(StreamEncryptor&&) noexcept;
 
 public:
   explicit StreamEncryptor(ConstBuffer key, ConstBuffer iv = {});
   ~StreamEncryptor();
 
   ConstBuffer getIv() const;
-  size_t encrypt(ConstBuffer plain, MutableBuffer cipher);
+  size_t      encrypt(ConstBuffer plain, MutableBuffer cipher);
 
 private:
-  StreamContext<method> ctx_;
+  StreamContext<method>                                   ctx_;
   std::array<uint8_t, IV_SIZE<method> + BLK_SIZE<method>> iv_;
-  size_t offset_ = 0;
+  size_t                                                  offset_ = 0;
 };
 
 template <CryptoMethod method> class StreamDecryptor {
@@ -63,22 +65,23 @@ public:
   static_assert(detail::isStream<method>(), "Not a stream crypto method");
 
   StreamDecryptor(StreamDecryptor const&) = delete;
-  StreamDecryptor(StreamDecryptor&&) = delete;
+  StreamDecryptor(StreamDecryptor&&) noexcept;
+
   StreamDecryptor& operator=(StreamDecryptor const&) = delete;
-  StreamDecryptor& operator=(StreamDecryptor&&) = delete;
+  StreamDecryptor& operator=(StreamDecryptor&&) noexcept;
 
 public:
   explicit StreamDecryptor(ConstBuffer key);
   ~StreamDecryptor();
 
   size_t getIvSize() const;
-  void setIv(ConstBuffer iv);
+  void   setIv(ConstBuffer iv);
   size_t decrypt(ConstBuffer cipher, MutableBuffer plain);
 
 private:
-  StreamContext<method> ctx_;
+  StreamContext<method>                                                               ctx_;
   std::array<uint8_t, std::max(IV_SIZE<method> + BLK_SIZE<method>, KEY_SIZE<method>)> iv_;
-  size_t offset_ = 0;
+  size_t                                                                              offset_ = 0;
   bool initialized_ = false;
 };
 

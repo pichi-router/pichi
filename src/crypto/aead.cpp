@@ -22,9 +22,15 @@ static void initialize(AeadContext<method>& ctx, ConstBuffer ikm, ConstBuffer sa
     auto skey = array<uint8_t, KEY_SIZE<method>>{};
     hkdf<HashAlgorithm::SHA1>(skey, ikm, salt);
     mbedtls_gcm_init(&ctx);
-    assertTrue(mbedtls_gcm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, skey.data(),
-                                  static_cast<unsigned int>(skey.size() * 8)) == 0,
-               PichiError::CRYPTO_ERROR);
+    assertTrue(
+        mbedtls_gcm_setkey(
+            &ctx,
+            MBEDTLS_CIPHER_ID_AES,
+            skey.data(),
+            static_cast<unsigned int>(skey.size() * 8)
+        ) == 0,
+        PichiError::CRYPTO_ERROR
+    );
   }
   else if constexpr (detail::isSodiumAead<method>()) {
     hkdf<HashAlgorithm::SHA1>(ctx, ikm, salt);
@@ -43,63 +49,125 @@ template <CryptoMethod method> static void release(AeadContext<method>& ctx)
 }
 
 template <CryptoMethod method>
-static void encrypt(AeadContext<method>& ctx, ConstBuffer nonce, ConstBuffer plain,
-                    MutableBuffer cipher)
+static void
+    encrypt(AeadContext<method>& ctx, ConstBuffer nonce, ConstBuffer plain, MutableBuffer cipher)
 {
   suppressC4100(ctx);
   assertTrue(nonce.size() == NONCE_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(cipher.size() >= plain.size() + TAG_SIZE<method>, PichiError::CRYPTO_ERROR);
   if constexpr (detail::isGcm<method>()) {
-    assertTrue(mbedtls_gcm_crypt_and_tag(&ctx, MBEDTLS_GCM_ENCRYPT, plain.size(), nonce.data(),
-                                         nonce.size(), nullptr, 0, plain.data(), cipher.data(),
-                                         TAG_SIZE<method>, cipher.data() + plain.size()) == 0,
-               PichiError::CRYPTO_ERROR);
+    assertTrue(
+        mbedtls_gcm_crypt_and_tag(
+            &ctx,
+            MBEDTLS_GCM_ENCRYPT,
+            plain.size(),
+            nonce.data(),
+            nonce.size(),
+            nullptr,
+            0,
+            plain.data(),
+            cipher.data(),
+            TAG_SIZE<method>,
+            cipher.data() + plain.size()
+        ) == 0,
+        PichiError::CRYPTO_ERROR
+    );
   }
   else if constexpr (method == CryptoMethod::CHACHA20_IETF_POLY1305) {
     auto clen = static_cast<unsigned long long>(plain.size() + TAG_SIZE<method>);
-    assertTrue(crypto_aead_chacha20poly1305_ietf_encrypt(cipher.data(), &clen, plain.data(),
-                                                         plain.size(), nullptr, 0, nullptr,
-                                                         nonce.data(), ctx.data()) == 0,
-               PichiError::CRYPTO_ERROR);
+    assertTrue(
+        crypto_aead_chacha20poly1305_ietf_encrypt(
+            cipher.data(),
+            &clen,
+            plain.data(),
+            plain.size(),
+            nullptr,
+            0,
+            nullptr,
+            nonce.data(),
+            ctx.data()
+        ) == 0,
+        PichiError::CRYPTO_ERROR
+    );
   }
   else if constexpr (method == CryptoMethod::XCHACHA20_IETF_POLY1305) {
     auto clen = static_cast<unsigned long long>(plain.size() + TAG_SIZE<method>);
-    assertTrue(crypto_aead_xchacha20poly1305_ietf_encrypt(cipher.data(), &clen, plain.data(),
-                                                          plain.size(), nullptr, 0, nullptr,
-                                                          nonce.data(), ctx.data()) == 0,
-               PichiError::CRYPTO_ERROR);
+    assertTrue(
+        crypto_aead_xchacha20poly1305_ietf_encrypt(
+            cipher.data(),
+            &clen,
+            plain.data(),
+            plain.size(),
+            nullptr,
+            0,
+            nullptr,
+            nonce.data(),
+            ctx.data()
+        ) == 0,
+        PichiError::CRYPTO_ERROR
+    );
   }
   else
     static_assert(detail::DependentFalse<method>::value);
 }
 
 template <CryptoMethod method>
-static void decrypt(AeadContext<method>& ctx, ConstBuffer nonce, ConstBuffer cipher,
-                    MutableBuffer plain)
+static void
+    decrypt(AeadContext<method>& ctx, ConstBuffer nonce, ConstBuffer cipher, MutableBuffer plain)
 {
   suppressC4100(ctx);
   assertTrue(nonce.size() == NONCE_SIZE<method>, PichiError::CRYPTO_ERROR);
   assertTrue(plain.size() + TAG_SIZE<method> >= cipher.size(), PichiError::CRYPTO_ERROR);
   if constexpr (detail::isGcm<method>()) {
-    assertTrue(mbedtls_gcm_auth_decrypt(&ctx, cipher.size() - TAG_SIZE<method>, nonce.data(),
-                                        nonce.size(), nullptr, 0,
-                                        cipher.data() + cipher.size() - TAG_SIZE<method>,
-                                        TAG_SIZE<method>, cipher.data(), plain.data()) == 0,
-               PichiError::CRYPTO_ERROR);
+    assertTrue(
+        mbedtls_gcm_auth_decrypt(
+            &ctx,
+            cipher.size() - TAG_SIZE<method>,
+            nonce.data(),
+            nonce.size(),
+            nullptr,
+            0,
+            cipher.data() + cipher.size() - TAG_SIZE<method>,
+            TAG_SIZE<method>,
+            cipher.data(),
+            plain.data()
+        ) == 0,
+        PichiError::CRYPTO_ERROR
+    );
   }
   else if constexpr (method == CryptoMethod::CHACHA20_IETF_POLY1305) {
     auto mlen = 0ull;
-    assertTrue(crypto_aead_chacha20poly1305_ietf_decrypt(plain.data(), &mlen, nullptr,
-                                                         cipher.data(), cipher.size(), nullptr, 0,
-                                                         nonce.data(), ctx.data()) == 0,
-               PichiError::CRYPTO_ERROR);
+    assertTrue(
+        crypto_aead_chacha20poly1305_ietf_decrypt(
+            plain.data(),
+            &mlen,
+            nullptr,
+            cipher.data(),
+            cipher.size(),
+            nullptr,
+            0,
+            nonce.data(),
+            ctx.data()
+        ) == 0,
+        PichiError::CRYPTO_ERROR
+    );
   }
   else if constexpr (method == CryptoMethod::XCHACHA20_IETF_POLY1305) {
     auto mlen = 0ull;
-    assertTrue(crypto_aead_xchacha20poly1305_ietf_decrypt(plain.data(), &mlen, nullptr,
-                                                          cipher.data(), cipher.size(), nullptr, 0,
-                                                          nonce.data(), ctx.data()) == 0,
-               PichiError::CRYPTO_ERROR);
+    assertTrue(
+        crypto_aead_xchacha20poly1305_ietf_decrypt(
+            plain.data(),
+            &mlen,
+            nullptr,
+            cipher.data(),
+            cipher.size(),
+            nullptr,
+            0,
+            nonce.data(),
+            ctx.data()
+        ) == 0,
+        PichiError::CRYPTO_ERROR
+    );
   }
   else
     static_assert(detail::DependentFalse<method>::value);
@@ -117,6 +185,23 @@ AeadEncryptor<method>::AeadEncryptor(ConstBuffer key, ConstBuffer salt)
   }
   fill_n(begin(nonce_), NONCE_SIZE<method>, 0_u8);
   initialize<method>(ctx_, key, salt_);
+}
+
+template <CryptoMethod method>
+AeadEncryptor<method>::AeadEncryptor(AeadEncryptor&& other) noexcept
+  : nonce_{other.nonce_}, salt_{other.salt_}, ctx_{other.ctx_}
+{
+  memset(&other.ctx_, 0, sizeof(other.ctx_));
+}
+
+template <CryptoMethod method>
+AeadEncryptor<method>& AeadEncryptor<method>::operator=(AeadEncryptor&& other) noexcept
+{
+  nonce_ = other.nonce_;
+  salt_  = other.salt_;
+  ctx_   = other.ctx_;
+  memset(&other.ctx_, 0, sizeof(other.ctx_));
+  return *this;
 }
 
 template <CryptoMethod method> AeadEncryptor<method>::~AeadEncryptor() { release<method>(ctx_); }
@@ -144,6 +229,26 @@ template <CryptoMethod method> AeadDecryptor<method>::AeadDecryptor(ConstBuffer 
   assertTrue(key.size() == KEY_SIZE<method>, PichiError::CRYPTO_ERROR);
   copy_n(cbegin(key), KEY_SIZE<method>, begin(ikm_));
   fill_n(begin(nonce_), NONCE_SIZE<method>, 0_u8);
+}
+
+template <CryptoMethod method>
+AeadDecryptor<method>::AeadDecryptor(AeadDecryptor&& other) noexcept
+  : ikm_{other.ikm_}, nonce_{other.nonce_}, ctx_{other.ctx_}, initialized_{other.initialized_}
+{
+  memset(&other.ctx_, 0, sizeof(other.ctx_));
+  other.initialized_ = false;
+}
+
+template <CryptoMethod method>
+AeadDecryptor<method>& AeadDecryptor<method>::operator=(AeadDecryptor&& other) noexcept
+{
+  ikm_         = other.ikm_;
+  nonce_       = other.nonce_;
+  ctx_         = other.ctx_;
+  initialized_ = other.initialized_;
+  memset(&other.ctx_, 0, sizeof(other.ctx_));
+  other.initialized_ = false;
+  return *this;
 }
 
 template <CryptoMethod method> AeadDecryptor<method>::~AeadDecryptor()

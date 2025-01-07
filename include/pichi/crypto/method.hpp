@@ -93,8 +93,7 @@ template <CryptoMethod method> constexpr bool isAead()
   return isGcm<method>() || isSodiumAead<method>();
 }
 
-template <CryptoMethod method> struct DependentFalse : public std::false_type {
-};
+template <CryptoMethod method> struct DependentFalse : public std::false_type {};
 
 template <CryptoMethod method> constexpr size_t calcKeySize()
 {
@@ -148,32 +147,28 @@ template <CryptoMethod method> constexpr size_t calcNonceSize()
   return method == CryptoMethod::XCHACHA20_IETF_POLY1305 ? 24 : 12;
 }
 
-template <CryptoMethod method> constexpr size_t calcTagSize()
-{
-  static_assert(isAead<method>());
-  return 16;
-}
+template <CryptoMethod method> constexpr size_t calcTagSize() { return isAead<method>() ? 16 : 0; }
 
 }  // namespace detail
 
 template <CryptoMethod method> class StreamEncryptor;
 template <CryptoMethod method> class AeadEncryptor;
 template <CryptoMethod method>
-using Encryptor =
-    std::conditional_t<detail::isStream<method>(), StreamEncryptor<method>,
-                       std::conditional_t<detail::isAead<method>(), AeadEncryptor<method>, void>>;
+using Encryptor = std::conditional_t<
+    detail::isStream<method>(), StreamEncryptor<method>,
+    std::conditional_t<detail::isAead<method>(), AeadEncryptor<method>, void>>;
 
 template <CryptoMethod method> class StreamDecryptor;
 template <CryptoMethod method> class AeadDecryptor;
 template <CryptoMethod method>
-using Decryptor =
-    std::conditional_t<detail::isStream<method>(), StreamDecryptor<method>,
-                       std::conditional_t<detail::isAead<method>(), AeadDecryptor<method>, void>>;
+using Decryptor = std::conditional_t<
+    detail::isStream<method>(), StreamDecryptor<method>,
+    std::conditional_t<detail::isAead<method>(), AeadDecryptor<method>, void>>;
 
-template <CryptoMethod method> inline constexpr size_t KEY_SIZE = detail::calcKeySize<method>();
-template <CryptoMethod method> inline constexpr size_t IV_SIZE = detail::calcIvSize<method>();
+template <CryptoMethod method> inline constexpr size_t KEY_SIZE   = detail::calcKeySize<method>();
+template <CryptoMethod method> inline constexpr size_t IV_SIZE    = detail::calcIvSize<method>();
 template <CryptoMethod method> inline constexpr size_t NONCE_SIZE = detail::calcNonceSize<method>();
-template <CryptoMethod method> inline constexpr size_t TAG_SIZE = detail::calcTagSize<method>();
+template <CryptoMethod method> inline constexpr size_t TAG_SIZE   = detail::calcTagSize<method>();
 
 }  // namespace pichi::crypto
 
