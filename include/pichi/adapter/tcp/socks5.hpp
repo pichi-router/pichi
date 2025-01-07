@@ -44,17 +44,14 @@ private:
   Awaitable<void> authenticate();
 
 public:
-  template <typename Underlying>
-  requires(!stream::TLSStream<Stream>)
-  explicit Socks5Ingress(vo::Ingress const& vo, Underlying underlying)
-    : stream_{std::move(underlying)}, credential_{vo}
-  {
-  }
+  explicit Socks5Ingress(vo::Ingress const&, Stream);
 
   template <typename Underlying>
   requires(std::same_as<Stream, stream::Tls<Underlying>>)
   explicit Socks5Ingress(vo::Ingress const& vo, Underlying underlying)
-    : stream_{stream::tls_context(*vo.tls_), std::move(underlying)}, credential_{vo}
+    : Socks5Ingress{
+          vo, Stream{stream::tls_context(*vo.tls_), std::move(underlying)}
+  }
   {
   }
 
@@ -74,7 +71,7 @@ private:
 template <typename Stream> class Socks5Egress {
 public:
   explicit Socks5Egress(vo::Egress const&, IOExecutor const&)
-  requires(!stream::TLSStream<Stream>);
+  requires(std::constructible_from<Stream, IOExecutor const&>);
 
   explicit Socks5Egress(vo::Egress const&, IOExecutor const&)
   requires(stream::TLSStream<Stream>);

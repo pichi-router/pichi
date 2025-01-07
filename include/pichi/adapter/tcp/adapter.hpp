@@ -3,6 +3,7 @@
 
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/adapter/tcp/direct.hpp>
+#include <pichi/adapter/tcp/http.hpp>
 #include <pichi/adapter/tcp/reject.hpp>
 #include <pichi/adapter/tcp/shadowsocks.hpp>
 #include <pichi/adapter/tcp/socks5.hpp>
@@ -19,6 +20,8 @@ template <CryptoMethod method, typename Socket = boost::asio::ip::tcp::socket>
 using SSAdapter = Shadowsocks<stream::Shadowsocks<method, Socket>>;
 
 using Ingress = std::variant<
+    HttpIngress<boost::asio::ip::tcp::socket>,
+    HttpIngress<stream::Tls<boost::asio::ip::tcp::socket>>,
     Socks5Ingress<boost::asio::ip::tcp::socket>,
     Socks5Ingress<stream::Tls<boost::asio::ip::tcp::socket>>, SSAdapter<CryptoMethod::AES_128_CTR>,
     SSAdapter<CryptoMethod::AES_192_CTR>, SSAdapter<CryptoMethod::AES_256_CTR>,
@@ -32,7 +35,9 @@ using Ingress = std::variant<
     SSAdapter<CryptoMethod::XCHACHA20_IETF_POLY1305>>;
 
 using Egress = std::variant<
-    Direct, RejectEgress, Socks5Egress<boost::asio::ip::tcp::socket>,
+    Direct, RejectEgress, HttpEgress<boost::asio::ip::tcp::socket>,
+    HttpEgress<stream::Tls<boost::asio::ip::tcp::socket>>,
+    Socks5Egress<boost::asio::ip::tcp::socket>,
     Socks5Egress<stream::Tls<boost::asio::ip::tcp::socket>>, SSAdapter<CryptoMethod::AES_128_CTR>,
     SSAdapter<CryptoMethod::AES_192_CTR>, SSAdapter<CryptoMethod::AES_256_CTR>,
     SSAdapter<CryptoMethod::AES_128_CFB>, SSAdapter<CryptoMethod::AES_192_CFB>,

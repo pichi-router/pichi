@@ -69,8 +69,12 @@ template <typename Socket> Ingress create_ingress(vo::Ingress const& vo, Socket 
     return create_ss_adapter<Ingress>(std::get<vo::ShadowsocksOption>(*vo.opt_), std::move(s));
   case AdapterType::SOCKS5:
     return vo.tls_.has_value()
-               ? Ingress{std::in_place_type<Socks5Ingress<Socket>>, vo, std::move(s)}
-               : Ingress{std::in_place_type<Socks5Ingress<stream::Tls<Socket>>>, vo, std::move(s)};
+               ? Ingress{std::in_place_type<Socks5Ingress<stream::Tls<Socket>>>, vo, std::move(s)}
+               : Ingress{std::in_place_type<Socks5Ingress<Socket>>, vo, std::move(s)};
+  case AdapterType::HTTP:
+    return vo.tls_.has_value()
+               ? Ingress{std::in_place_type<HttpIngress<stream::Tls<Socket>>>, vo, std::move(s)}
+               : Ingress{std::in_place_type<HttpIngress<Socket>>, vo, std::move(s)};
   default:
     fail();
   }
@@ -84,12 +88,16 @@ Egress create_egress(vo::Egress const& vo, IOExecutor const& ex)
     return create_ss_adapter<Egress>(std::get<vo::ShadowsocksOption>(*vo.opt_), ex);
   case AdapterType::DIRECT:
     return Egress{std::in_place_type<Direct>, ex};
+  case AdapterType::REJECT:
+    return Egress{std::in_place_type<RejectEgress>, vo, ex};
   case AdapterType::SOCKS5:
     return vo.tls_.has_value()
                ? Egress{std::in_place_type<Socks5Egress<stream::Tls<ip::tcp::socket>>>, vo, ex}
                : Egress{std::in_place_type<Socks5Egress<ip::tcp::socket>>, vo, ex};
-  case AdapterType::REJECT:
-    return Egress{std::in_place_type<RejectEgress>, vo, ex};
+  case AdapterType::HTTP:
+    return vo.tls_.has_value()
+               ? Egress{std::in_place_type<HttpEgress<stream::Tls<ip::tcp::socket>>>, vo, ex}
+               : Egress{std::in_place_type<HttpEgress<ip::tcp::socket>>, vo, ex};
   default:
     fail();
   }

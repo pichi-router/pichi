@@ -152,6 +152,12 @@ ConstBuffer EgressCredential::data() const { return ConstBuffer{data_, len_}; }
 
 }  // namespace socks5
 
+template <typename Stream>
+Socks5Ingress<Stream>::Socks5Ingress(vo::Ingress const& vo, Stream stream)
+  : stream_{std::move(stream)}, credential_{vo}
+{
+}
+
 template <typename Stream> Awaitable<void> Socks5Ingress<Stream>::authenticate()
 {
   /*
@@ -266,7 +272,7 @@ template class Socks5Ingress<stream::Tls<ip::tcp::socket>>;
 
 template <typename Stream>
 Socks5Egress<Stream>::Socks5Egress(vo::Egress const& vo, IOExecutor const& ex)
-requires(!stream::TLSStream<Stream>)
+requires(std::constructible_from<Stream, IOExecutor const&>)
   : stream_{ex}, peer_{*vo.server_}, credential_{vo}
 {
 }
