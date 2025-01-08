@@ -16,6 +16,7 @@
 #include <optional>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/stream/helpers.hpp>
 #include <pichi/stream/operation.hpp>
 #include <string>
 #include <string_view>
@@ -28,10 +29,10 @@ private:
   static_assert(std::is_same_v<NextLayer, std::decay_t<NextLayer>>);
 
   using ErrorCode = boost::system::error_code;
-  using Stream = boost::beast::websocket::stream<NextLayer>;
-  using Buffer = boost::beast::flat_buffer;
-  using Header = boost::beast::http::request<boost::beast::http::empty_body>;
-  using Parser = boost::beast::http::request_parser<boost::beast::http::empty_body>;
+  using Stream    = boost::beast::websocket::stream<NextLayer>;
+  using Buffer    = boost::beast::flat_buffer;
+  using Header    = boost::beast::http::request<boost::beast::http::empty_body>;
+  using Parser    = boost::beast::http::request_parser<boost::beast::http::empty_body>;
 
   template <typename Handler, typename Signature>
   using AsyncCompletion = boost::asio::async_completion<Handler, Signature>;
@@ -50,7 +51,7 @@ private:
   }
 
 public:
-  using executor_type = typename Stream::executor_type;
+  using executor_type   = typename Stream::executor_type;
   using next_layer_type = typename Stream::next_layer_type;
 
   template <typename... Args>
@@ -70,7 +71,7 @@ public:
 
   bool is_open() const { return delegate_.is_open(); }
 
-  auto& next_layer() { return delegate_.next_layer(); }
+  auto&       next_layer() { return delegate_.next_layer(); }
   auto const& next_layer() const { return delegate_.next_layer(); }
 
   template <typename HandshakeHandler> auto async_handshake(HandshakeHandler&& handler)
@@ -81,7 +82,8 @@ public:
   template <typename AcceptToken> auto async_accept(AcceptToken&& token)
   {
     return initiate<void(ErrorCode const&)>(
-        get_executor(), std::forward<AcceptToken>(token),
+        get_executor(),
+        std::forward<AcceptToken>(token),
         [this](auto& complete, auto&& ec) { this->onFailure(complete, ec); },
         [this](auto&& next) {
           boost::beast::http::async_read_header(delegate_.next_layer(), buf_, parser_, next);
@@ -90,27 +92,33 @@ public:
           header_ = parser_.release();
           assertTrue(header_->target() == path_, boost::beast::http::error::bad_target);
           if (!host_.empty())
-            assertTrue((*header_)[boost::beast::http::field::host] == host_,
-                       boost::beast::http::error::bad_value);
+            assertTrue(
+                (*header_)[boost::beast::http::field::host] == host_,
+                boost::beast::http::error::bad_value
+            );
           delegate_.async_accept(*header_, next);
         },
         [this](auto&& next) {
           header_.reset();
           next.succeed();
-        });
+        }
+    );
   }
 
   template <typename ShutdownHandler> auto async_shutdown(ShutdownHandler&& handler)
   {
-    return delegate_.async_close(boost::beast::websocket::normal,
-                                 std::forward<ShutdownHandler>(handler));
+    return delegate_.async_close(
+        boost::beast::websocket::normal,
+        std::forward<ShutdownHandler>(handler)
+    );
   }
 
   template <typename MutableBufferSequence, typename ReadHandler>
   auto async_read_some(MutableBufferSequence const& buf, ReadHandler&& handler)
   {
     return initiate<void(ErrorCode const&, size_t)>(
-        get_executor(), std::forward<ReadHandler>(handler),
+        get_executor(),
+        std::forward<ReadHandler>(handler),
         [this](auto& complete, auto&& ec) { this->onFailure(complete, ec, 0_sz); },
         [this, buf](auto&& next) {
           if (buf_.size() == 0) {
@@ -121,7 +129,8 @@ public:
           boost::asio::buffer_copy(buf_.data(), buf);
           buf_.consume(copied);
           next.succeed(copied);
-        });
+        }
+    );
   }
 
   template <typename ConstBufferSequence, typename WriteHandler>
@@ -132,17 +141,131 @@ public:
   }
 
 private:
+  std::string           path_;
+  std::string           host_;
+  Stream                delegate_;
+  Buffer                buf_;
+  Parser                parser_;
+  std::optional<Header> header_;
+};
+
+template <typename NextLayer> class Websocket {
+private:
+  using ErrorCode = boost::system::error_code;
+  using Stream    = boost::beast::websocket::stream<NextLayer>;
+  using Buffer    = boost::beast::flat_buffer;
+  using Header    = boost::beast::http::request<boost::beast::http::empty_body>;
+  using Parser    = boost::beast::http::request_parser<boost::beast::http::empty_body>;
+
+  Awaitable<void> do_accept()
+  {
+    auto ex     = get_executor();
+    auto parser = Parser{};
+    co_await boost::beast::http::async_read_header(
+        delegate_.next_layer(),
+        buf_,
+        parser,
+        await_to(ex)
+    );
+    auto header = parser.release();
+    assertTrue(header.target() == path_, boost::beast::http::error::bad_target);
+    if (!host_.empty())
+      assertTrue(
+          header[boost::beast::http::field::host] == host_,
+          boost::beast::http::error::bad_value
+      );
+    co_await delegate_.async_accept(header, await_to(ex));
+  }
+
+  template <typename MutableBufferSequence>
+  Awaitable<size_t> do_read(MutableBufferSequence const& b)
+  {
+    if (buf_.size() == 0) {
+      co_return co_await delegate_.async_read_some(b, boost::asio::use_awaitable);
+    }
+
+    auto copied = std::min(buf_.size(), boost::asio::buffer_size(b));
+    boost::asio::buffer_copy(buf_.data(), b);
+    buf_.consume(copied);
+    co_return copied;
+  }
+
+public:
+  using executor_type   = typename Stream::executor_type;
+  using next_layer_type = typename Stream::next_layer_type;
+
+  template <typename... Args>
+  Websocket(std::string_view path, std::string_view host, Args&&... args)
+    : path_{path.data(), path.size()},
+      host_{host.data(), host.size()},
+      delegate_{std::forward<Args>(args)...}
+  {
+  }
+
+  executor_type get_executor() { return delegate_.get_executor(); }
+
+  next_layer_type&       next_layer() { return delegate_.next_layer(); }
+  next_layer_type const& next_layer() const { return delegate_.next_layer(); }
+
+  bool is_open() const { return delegate_.is_open(); }
+
+  template <typename ShutdownToken> auto async_shutdown(ShutdownToken&& token)
+  {
+    return delegate_.async_close(
+        boost::beast::websocket::normal,
+        std::forward<ShutdownToken>(token)
+    );
+  }
+
+  template <typename HandshakeToken> auto async_handshake(HandshakeToken&& token)
+  {
+    return delegate_.async_handshake(host_, path_, std::forward<HandshakeToken>(token));
+  }
+
+  template <typename AcceptToken> auto async_accept(AcceptToken&& token)
+  {
+    return async_initiate<void(ErrorCode const&), AcceptToken, executor_type>(
+        get_executor(),
+        std::forward<AcceptToken>(token),
+        [this]() { return do_accept(); }
+    );
+  }
+
+  template <typename MutableBufferSequence, typename ReadToken>
+  auto async_read_some(MutableBufferSequence const& b, ReadToken&& token)
+  {
+    return async_initiate<void(ErrorCode const&, size_t), ReadToken, executor_type>(
+        get_executor(),
+        std::forward<ReadToken>(token),
+        [this](auto&& b) { return do_read(b); },
+        b
+    );
+  }
+
+  template <typename ConstBufferSequence, typename WriteToken>
+  auto async_write_some(ConstBufferSequence const& b, WriteToken&& token)
+  {
+    delegate_.binary(true);
+    return delegate_.async_write_some(true, b, std::forward<WriteToken>(token));
+  }
+
+private:
   std::string path_;
   std::string host_;
-  Stream delegate_;
-  Buffer buf_;
-  Parser parser_;
-  std::optional<Header> header_;
+  Stream      delegate_;
+  Buffer      buf_ = {};
 };
 
 template <typename NextLayer> struct RawStream<WsStream<NextLayer>> : public std::false_type {};
 
 template <typename Socket> class TlsStream;
+
+template <typename Stream> struct IsWebsocket : public std::false_type {};
+
+template <typename Stream> struct IsWebsocket<Websocket<Stream>> : public std::true_type {};
+
+template <typename Stream>
+concept WebsocketStream = IsWebsocket<Stream>::value;
 
 }  // namespace pichi::stream
 
@@ -152,6 +275,12 @@ template <class Socket, class TeardownHandler>
 void async_teardown(role_type, pichi::stream::TlsStream<Socket>& stream, TeardownHandler&& handler)
 {
   stream.async_shutdown(std::forward<TeardownHandler>(handler));
+}
+
+template <typename Socket, typename TeardownToken>
+void async_teardown(role_type, pichi::stream::Tls<Socket>& stream, TeardownToken&& token)
+{
+  stream.async_shutdown(std::forward<TeardownToken>(token));
 }
 
 }  // namespace boost::beast::websocket
