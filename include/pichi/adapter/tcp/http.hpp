@@ -83,21 +83,13 @@ private:
 
 }  // namespace detail
 
-template <typename Stream> class HttpIngress {
+template <typename Socket> class HttpIngress {
 private:
   using Manner = std::variant<detail::InvalidManner, detail::ConnectManner, detail::ProxyManner>;
+  using Stream = std::variant<stream::Tls<Socket>, Socket>;
 
 public:
-  HttpIngress(vo::Ingress const&, Stream&&);
-
-  template <typename Underlying>
-  requires(std::same_as<Stream, stream::Tls<Underlying>>)
-  explicit HttpIngress(vo::Ingress const& vo, Underlying underlying)
-    : HttpIngress{
-          vo, Stream{stream::tls_context(*vo.tls_), std::move(underlying)}
-  }
-  {
-  }
+  explicit HttpIngress(vo::Ingress const&, Socket);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -117,16 +109,13 @@ private:
   detail::HttpIngressCredential credential_;
 };
 
-template <typename Stream> class HttpEgress {
+template <typename Socket> class HttpEgress {
 private:
   using Credential = std::optional<vo::UpEgressCredential>;
+  using Stream     = std::variant<stream::Tls<Socket>, Socket>;
 
 public:
-  explicit HttpEgress(vo::Egress const&, IOExecutor const&)
-  requires(std::constructible_from<Stream, IOExecutor const&>);
-
-  explicit HttpEgress(vo::Egress const&, IOExecutor const&)
-  requires(stream::TLSStream<Stream>);
+  explicit HttpEgress(vo::Egress const&, IOExecutor const&);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);

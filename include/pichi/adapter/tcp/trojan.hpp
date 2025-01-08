@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
+#include <variant>
 
 namespace pichi::adapter::tcp {
 
@@ -66,40 +67,14 @@ private:
 
 }  // namespace trojan
 
-template <typename Stream> class TrojanIngress {
+template <typename Socket> class TrojanIngress {
 private:
   using Credential = trojan::IngressCredentials;
   using Cache      = trojan::Cache;
-
-  template <typename... Args>
-  requires(std::constructible_from<Stream, Args...>)
-  explicit TrojanIngress(vo::Ingress const& vo, Args&&... args)
-    : stream_{std::forward<Args>(args)...},
-      cred_{vo},
-      remote_{std::get<vo::TrojanOption>(*vo.opt_).remote_}
-  {
-  }
+  using Stream     = std::variant<stream::Tls<Socket>, stream::Websocket<stream::Tls<Socket>>>;
 
 public:
-  template <typename Socket>
-  requires(std::same_as<Stream, stream::Tls<Socket>>)
-  explicit TrojanIngress(vo::Ingress const& vo, Socket s)
-    : TrojanIngress{vo, stream::tls_context(*vo.tls_), std::move(s)}
-  {
-  }
-
-  template <typename Socket>
-  requires(std::same_as<Stream, stream::Websocket<stream::Tls<Socket>>>)
-  explicit TrojanIngress(vo::Ingress const& vo, Socket s)
-    : TrojanIngress{
-          vo,
-          vo.websocket_->path_,
-          vo.websocket_->host_.value_or(""),
-          stream::tls_context(*vo.tls_),
-          std::move(s)
-      }
-  {
-  }
+  explicit TrojanIngress(vo::Ingress const&, Socket);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -116,13 +91,12 @@ private:
   Endpoint   remote_;
 };
 
-template <typename Stream> class TrojanEgress {
-public:
-  explicit TrojanEgress(vo::Egress const&, IOExecutor const&)
-  requires(stream::TLSStream<Stream>);
+template <typename Socket> class TrojanEgress {
+private:
+  using Stream = std::variant<stream::Tls<Socket>, stream::Websocket<stream::Tls<Socket>>>;
 
-  explicit TrojanEgress(vo::Egress const&, IOExecutor const&)
-  requires(stream::WebsocketStream<Stream>);
+public:
+  explicit TrojanEgress(vo::Egress const&, IOExecutor const&);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);

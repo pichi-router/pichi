@@ -18,7 +18,9 @@
 #include <pichi/crypto/aead.hpp>
 #include <pichi/crypto/method.hpp>
 #include <pichi/crypto/stream.hpp>
+#include <pichi/net/helper.hpp>
 #include <pichi/stream/completer.hpp>
+#include <pichi/stream/helpers.hpp>
 
 namespace pichi::stream {
 

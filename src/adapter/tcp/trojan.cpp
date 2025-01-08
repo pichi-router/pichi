@@ -117,25 +117,44 @@ static std::string sha224(std::string_view pwd)
 
 }  // namespace trojan
 
-template <typename Stream> Awaitable<size_t> TrojanIngress<Stream>::recv(MutableBuffer buf)
+template <typename Socket>
+TrojanIngress<Socket>::TrojanIngress(vo::Ingress const& vo, Socket underlying)
+  : stream_{
+    vo.websocket_.has_value()
+    ? Stream{
+      std::in_place_type<stream::Websocket<stream::Tls<Socket>>>,
+      vo.websocket_->path_,
+      vo.websocket_->host_.value_or(""),
+      stream::tls_context(*vo.tls_),
+      std::move(underlying)
+    }
+    : Stream{
+      std::in_place_type<stream::Tls<Socket>>,
+      stream::tls_context(*vo.tls_),
+      std::move(underlying)
+    }
+  }, cred_{vo}, remote_{std::get<vo::TrojanOption>(*vo.opt_).remote_}
+{
+}
+
+template <typename Socket> Awaitable<size_t> TrojanIngress<Socket>::recv(MutableBuffer buf)
 {
   if (cache_.size() == 0) co_return co_await stream::read_some(stream_, buf);
 
   co_return cache_.take(buf);
 }
 
-template <typename Stream> Awaitable<void> TrojanIngress<Stream>::send(ConstBuffer buf)
+template <typename Socket> Awaitable<void> TrojanIngress<Socket>::send(ConstBuffer buf)
 {
-  static_assert(stream::AsyncWritable<Stream>);
   co_await stream::write(stream_, buf);
 }
 
-template <typename Stream> Awaitable<void> TrojanIngress<Stream>::close()
+template <typename Socket> Awaitable<void> TrojanIngress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Stream> Awaitable<Endpoint> TrojanIngress<Stream>::read_remote()
+template <typename Socket> Awaitable<Endpoint> TrojanIngress<Socket>::read_remote()
 {
   try {
     co_await stream::accept(stream_);
@@ -161,7 +180,7 @@ template <typename Stream> Awaitable<Endpoint> TrojanIngress<Stream>::read_remot
     co_return remote;
   }
   catch (...) {
-    if constexpr (stream::TLSStream<Stream>) {
+    if (stream_.index() == 0) {
       cache_.rollback();
       co_return remote_;
     }
@@ -169,56 +188,55 @@ template <typename Stream> Awaitable<Endpoint> TrojanIngress<Stream>::read_remot
   }
 }
 
-template <typename Stream> Awaitable<void> TrojanIngress<Stream>::confirm() { co_return; }
+template <typename Socket> Awaitable<void> TrojanIngress<Socket>::confirm() { co_return; }
 
-template <typename Stream> Awaitable<void> TrojanIngress<Stream>::disconnect(sys::error_code const&)
+template <typename Socket> Awaitable<void> TrojanIngress<Socket>::disconnect(sys::error_code const&)
 {
   co_return;
 }
 
-template class TrojanIngress<stream::Tls<ip::tcp::socket>>;
-template class TrojanIngress<stream::Websocket<stream::Tls<ip::tcp::socket>>>;
+template class TrojanIngress<ip::tcp::socket>;
 
-template <typename Stream>
-TrojanEgress<Stream>::TrojanEgress(vo::Egress const& vo, IOExecutor const& ex)
-requires(stream::TLSStream<Stream>)
-  : cred_{trojan::sha224(std::get<vo::TrojanEgressCredential>(*vo.credential_).credential_)},
-    peer_{*vo.server_},
-    stream_{vo.tls_->sni_, stream::tls_context(*vo.tls_, vo.server_->host_), ex}
-{
-}
-
-template <typename Stream>
-TrojanEgress<Stream>::TrojanEgress(vo::Egress const& vo, IOExecutor const& ex)
-requires(stream::WebsocketStream<Stream>)
+template <typename Socket>
+TrojanEgress<Socket>::TrojanEgress(vo::Egress const& vo, IOExecutor const& ex)
   : cred_{trojan::sha224(std::get<vo::TrojanEgressCredential>(*vo.credential_).credential_)},
     peer_{*vo.server_},
     stream_{
+      vo.websocket_.has_value()
+      ? Stream{
+        std::in_place_type<stream::Websocket<stream::Tls<Socket>>>,
         vo.websocket_->path_,
         vo.websocket_->host_.value_or(""),
         vo.tls_->sni_,
         stream::tls_context(*vo.tls_, vo.server_->host_),
         ex
+      }
+      : Stream{
+        std::in_place_type<stream::Tls<Socket>>,
+        vo.tls_->sni_,
+        stream::tls_context(*vo.tls_, vo.server_->host_),
+        ex
+      }
     }
 {
 }
 
-template <typename Stream> Awaitable<size_t> TrojanEgress<Stream>::recv(MutableBuffer buf)
+template <typename Socket> Awaitable<size_t> TrojanEgress<Socket>::recv(MutableBuffer buf)
 {
   co_return co_await stream::read_some(stream_, buf);
 }
 
-template <typename Stream> Awaitable<void> TrojanEgress<Stream>::send(ConstBuffer buf)
+template <typename Socket> Awaitable<void> TrojanEgress<Socket>::send(ConstBuffer buf)
 {
   co_await stream::write(stream_, buf);
 }
 
-template <typename Stream> Awaitable<void> TrojanEgress<Stream>::close()
+template <typename Socket> Awaitable<void> TrojanEgress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Stream> Awaitable<void> TrojanEgress<Stream>::connect(Endpoint const& remote)
+template <typename Socket> Awaitable<void> TrojanEgress<Socket>::connect(Endpoint const& remote)
 {
   co_await stream::connect(stream_, peer_);
 
@@ -235,7 +253,6 @@ template <typename Stream> Awaitable<void> TrojanEgress<Stream>::connect(Endpoin
   );
 }
 
-template class TrojanEgress<stream::Tls<ip::tcp::socket>>;
-template class TrojanEgress<stream::Websocket<stream::Tls<ip::tcp::socket>>>;
+template class TrojanEgress<ip::tcp::socket>;
 
 }  // namespace pichi::adapter::tcp

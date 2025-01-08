@@ -28,6 +28,27 @@ static uint32_t const HEADER_LIMIT = 1024ul * 1024ul;
 
 static auto const BASIC_AUTH_PATTERN = std::regex{"^basic ([a-z0-9+/]+={0,2})", std::regex::icase};
 
+template <bool isRequest, typename... Streams>
+Awaitable<void> http_write(std::variant<Streams...>& streams, Message<isRequest>& msg)
+{
+  co_await std::visit(
+      [&](auto&& stream) { return http::async_write(stream, msg, asio::use_awaitable); },
+      streams
+  );
+}
+
+template <bool isRequest, typename... Streams>
+Awaitable<void>
+    http_read_header(std::variant<Streams...>& streams, Cache& cache, Parser<isRequest>& parser)
+{
+  co_await std::visit(
+      [&](auto&& stream) {
+        return http::async_read_header(stream, cache, parser, asio::use_awaitable);
+      },
+      streams
+  );
+}
+
 static Endpoint get_remote(Request& req)
 {
   /*
@@ -102,7 +123,7 @@ template <typename Stream> Awaitable<void> ConnectManner::confirm(Stream& stream
   rep.version(11);
   rep.result(http::status::ok);
   rep.reason("Connection Established");
-  co_await http::async_write(stream, rep);
+  co_await detail::http_write(stream, rep);
 }
 
 ProxyManner::ProxyManner(Cache cache, Request req) : cache_{std::move(cache)}
@@ -196,24 +217,32 @@ void HttpEgressCredential::update(Request& req) const
 
 }  // namespace detail
 
-template <typename Stream>
-HttpIngress<Stream>::HttpIngress(vo::Ingress const& vo, Stream&& stream)
-  : stream_(std::move(stream)), credential_{vo}
+template <typename Socket>
+HttpIngress<Socket>::HttpIngress(vo::Ingress const& vo, Socket s)
+  : stream_{
+    vo.tls_.has_value()
+    ? Stream{
+        std::in_place_type<stream::Tls<Socket>>,
+        stream::tls_context(*vo.tls_),
+        std::move(s)
+      }
+    : Stream{std::in_place_type<Socket>, std::move(s)}
+  }, credential_{vo}
 {
   parser_.header_limit(detail::HEADER_LIMIT);
   parser_.body_limit(std::numeric_limits<uint64_t>::max());
 }
 
-template <typename Stream> Awaitable<void> HttpIngress<Stream>::close()
+template <typename Socket> Awaitable<void> HttpIngress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Stream> Awaitable<Endpoint> HttpIngress<Stream>::read_remote()
+template <typename Socket> Awaitable<Endpoint> HttpIngress<Socket>::read_remote()
 {
   co_await stream::accept(stream_);
 
-  co_await http::async_read_header(stream_, cache_, parser_);
+  co_await detail::http_read_header(stream_, cache_, parser_);
 
   auto req = parser_.release();
 
@@ -240,23 +269,23 @@ template <typename Stream> Awaitable<Endpoint> HttpIngress<Stream>::read_remote(
   }
 }
 
-template <typename Stream> Awaitable<size_t> HttpIngress<Stream>::recv(MutableBuffer buf)
+template <typename Socket> Awaitable<size_t> HttpIngress<Socket>::recv(MutableBuffer buf)
 {
   co_return co_await std::visit([buf, this](auto&& m) { return m.recv(stream_, buf); }, manner_);
 }
 
-template <typename Stream> Awaitable<void> HttpIngress<Stream>::send(ConstBuffer buf)
+template <typename Socket> Awaitable<void> HttpIngress<Socket>::send(ConstBuffer buf)
 {
   co_return co_await std::visit([buf, this](auto&& m) { return m.send(stream_, buf); }, manner_);
 }
 
-template <typename Stream> Awaitable<void> HttpIngress<Stream>::confirm()
+template <typename Socket> Awaitable<void> HttpIngress<Socket>::confirm()
 {
   co_return co_await std::visit([this](auto&& m) { return m.confirm(stream_); }, manner_);
 }
 
-template <typename Stream>
-Awaitable<void> HttpIngress<Stream>::disconnect(sys::error_code const& ec)
+template <typename Socket>
+Awaitable<void> HttpIngress<Socket>::disconnect(sys::error_code const& ec)
 {
   if (!ec) co_return;
 
@@ -292,29 +321,26 @@ Awaitable<void> HttpIngress<Stream>::disconnect(sys::error_code const& ec)
     auto pCat         = dynamic_cast<CategoryPtr>(&ec.category());
     rep.result(pCat ? http::status::bad_request : http::status::gateway_timeout);
   }
-  co_await http::async_write(stream_, rep);
+  co_await detail::http_write(stream_, rep);
 }
 
 template class HttpIngress<asio::ip::tcp::socket>;
-template class HttpIngress<stream::Tls<asio::ip::tcp::socket>>;
 
-template <typename Stream>
-HttpEgress<Stream>::HttpEgress(vo::Egress const& vo, IOExecutor const& ex)
-requires(std::constructible_from<Stream, IOExecutor const&>)
-  : stream_{ex}, peer_{*vo.server_}, credential_{vo}
+template <typename Socket>
+HttpEgress<Socket>::HttpEgress(vo::Egress const& vo, IOExecutor const& ex)
+  : stream_{
+    vo.tls_.has_value()
+    ? Stream{
+      std::in_place_type<stream::Tls<Socket>>,
+      stream::tls_context(*vo.tls_, vo.server_->host_),
+      ex
+    }
+    : Stream{std::in_place_type<Socket>, ex}
+  }, peer_{*vo.server_}, credential_{vo}
 {
 }
 
-template <typename Stream>
-HttpEgress<Stream>::HttpEgress(vo::Egress const& vo, IOExecutor const& ex)
-requires(stream::TLSStream<Stream>)
-  : stream_{stream::tls_context(*vo.tls_, vo.server_->host_), ex},
-    peer_{*vo.server_},
-    credential_{vo}
-{
-}
-
-template <typename Stream> Awaitable<size_t> HttpEgress<Stream>::recv(MutableBuffer buf)
+template <typename Socket> Awaitable<size_t> HttpEgress<Socket>::recv(MutableBuffer buf)
 {
   if (cache_.size() == 0) co_return co_await stream::read_some(stream_, buf);
   auto copied = std::min(cache_.size(), buf.size());
@@ -323,17 +349,17 @@ template <typename Stream> Awaitable<size_t> HttpEgress<Stream>::recv(MutableBuf
   co_return copied;
 }
 
-template <typename Stream> Awaitable<void> HttpEgress<Stream>::send(ConstBuffer buf)
+template <typename Socket> Awaitable<void> HttpEgress<Socket>::send(ConstBuffer buf)
 {
   co_await stream::write(stream_, buf);
 }
 
-template <typename Stream> Awaitable<void> HttpEgress<Stream>::close()
+template <typename Socket> Awaitable<void> HttpEgress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Stream> Awaitable<void> HttpEgress<Stream>::connect(Endpoint const& remote)
+template <typename Socket> Awaitable<void> HttpEgress<Socket>::connect(Endpoint const& remote)
 {
   co_await stream::connect(stream_, peer_);
 
@@ -349,15 +375,14 @@ template <typename Stream> Awaitable<void> HttpEgress<Stream>::connect(Endpoint 
   credential_.update(req);
   req.prepare_payload();
 
-  co_await http::async_write(stream_, req, asio::use_awaitable);
+  co_await detail::http_write(stream_, req);
 
   auto parser = detail::ResponseParser{};
-  co_await http::async_read_header(stream_, cache_, parser, asio::use_awaitable);
+  co_await detail::http_read_header(stream_, cache_, parser);
   auto code = parser.release().result_int();
   assertTrue(code >= 200 && code < 300, PichiError::CONN_FAILURE);
 }
 
 template class HttpEgress<asio::ip::tcp::socket>;
-template class HttpEgress<stream::Tls<asio::ip::tcp::socket>>;
 
 }  // namespace pichi::adapter::tcp

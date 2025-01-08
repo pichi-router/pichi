@@ -4,18 +4,26 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/adapter/tcp/shadowsocks.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/net/helper.hpp>
 #include <pichi/stream/helpers.hpp>
-#include <pichi/stream/shadowsocks.hpp>
 
-#define ADAPTER_FUNC(Ret) template <typename Stream> Ret Shadowsocks<Stream>
-#define DECL_ADAPTER(Method)                                                                       \
-  template class Shadowsocks<stream::Shadowsocks<CryptoMethod::Method, asio::ip::tcp::socket>>
+#define ADAPTER_FUNC(Ret)                                                                          \
+  template <CryptoMethod method, typename Socket> Ret Shadowsocks<method, Socket>
+#define DECL_ADAPTER(Method) template class Shadowsocks<CryptoMethod::Method, asio::ip::tcp::socket>
 
 namespace asio = boost::asio;
 namespace sys  = boost::system;
 
 namespace pichi::adapter::tcp {
+
+template <CryptoMethod method, typename Socket>
+Shadowsocks<method, Socket>::Shadowsocks(ConstBuffer psk, Socket s) : stream_{psk, std::move(s)}
+{
+}
+
+template <CryptoMethod method, typename Socket>
+Shadowsocks<method, Socket>::Shadowsocks(ConstBuffer psk, IOExecutor const& ex) : stream_{psk, ex}
+{
+}
 
 ADAPTER_FUNC(Awaitable<size_t>)::recv(MutableBuffer buf)
 {

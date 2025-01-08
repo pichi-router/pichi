@@ -152,13 +152,20 @@ ConstBuffer EgressCredential::data() const { return ConstBuffer{data_, len_}; }
 
 }  // namespace socks5
 
-template <typename Stream>
-Socks5Ingress<Stream>::Socks5Ingress(vo::Ingress const& vo, Stream stream)
-  : stream_{std::move(stream)}, credential_{vo}
+template <typename Socket>
+Socks5Ingress<Socket>::Socks5Ingress(vo::Ingress const& vo, Socket s)
+  : stream_{
+      vo.tls_.has_value()
+      ? Stream{
+          std::in_place_type<stream::Tls<Socket>>,
+          stream::tls_context(*vo.tls_),
+          std::move(s)
+        }
+      : Stream{std::move(s)}}, credential_{vo}
 {
 }
 
-template <typename Stream> Awaitable<void> Socks5Ingress<Stream>::authenticate()
+template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::authenticate()
 {
   /*
    * Request:
@@ -192,22 +199,22 @@ template <typename Stream> Awaitable<void> Socks5Ingress<Stream>::authenticate()
   co_await stream::write(stream_, AUTH_SUCCESS);
 }
 
-template <typename Stream> Awaitable<size_t> Socks5Ingress<Stream>::recv(MutableBuffer buf)
+template <typename Socket> Awaitable<size_t> Socks5Ingress<Socket>::recv(MutableBuffer buf)
 {
   co_return co_await stream::read_some(stream_, buf);
 }
 
-template <typename Stream> Awaitable<void> Socks5Ingress<Stream>::send(ConstBuffer buf)
+template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::send(ConstBuffer buf)
 {
   co_await stream::write(stream_, buf);
 }
 
-template <typename Stream> Awaitable<void> Socks5Ingress<Stream>::close()
+template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Stream> Awaitable<Endpoint> Socks5Ingress<Stream>::read_remote()
+template <typename Socket> Awaitable<Endpoint> Socks5Ingress<Socket>::read_remote()
 {
   co_await stream::accept(stream_);
 
@@ -240,7 +247,7 @@ template <typename Stream> Awaitable<Endpoint> Socks5Ingress<Stream>::read_remot
   });
 }
 
-template <typename Stream> Awaitable<void> Socks5Ingress<Stream>::confirm()
+template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::confirm()
 {
 #ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   static auto const CONFIRM = array{
@@ -261,42 +268,39 @@ template <typename Stream> Awaitable<void> Socks5Ingress<Stream>::confirm()
   co_await stream::write(stream_, CONFIRM);
 }
 
-template <typename Stream>
-Awaitable<void> Socks5Ingress<Stream>::disconnect(sys::error_code const& ec)
+template <typename Socket>
+Awaitable<void> Socks5Ingress<Socket>::disconnect(sys::error_code const& ec)
 {
   co_await redirect(stream::write(stream_, socks5::err_to_buf(ec)));
 }
 
 template class Socks5Ingress<ip::tcp::socket>;
-template class Socks5Ingress<stream::Tls<ip::tcp::socket>>;
 
-template <typename Stream>
-Socks5Egress<Stream>::Socks5Egress(vo::Egress const& vo, IOExecutor const& ex)
-requires(std::constructible_from<Stream, IOExecutor const&>)
-  : stream_{ex}, peer_{*vo.server_}, credential_{vo}
+template <typename Socket>
+Socks5Egress<Socket>::Socks5Egress(vo::Egress const& vo, IOExecutor const& ex)
+  : stream_{
+    vo.tls_.has_value()
+    ? Stream{
+        std::in_place_type<stream::Tls<Socket>>,
+        stream::tls_context(*vo.tls_, vo.server_->host_),
+        ex
+      }
+    : Stream{std::in_place_type<Socket>, ex}
+  }, peer_{*vo.server_}, credential_{vo}
 {
 }
 
-template <typename Stream>
-Socks5Egress<Stream>::Socks5Egress(vo::Egress const& vo, IOExecutor const& ex)
-requires(stream::TLSStream<Stream>)
-  : stream_{stream::tls_context(*vo.tls_, vo.server_->host_), ex},
-    peer_{*vo.server_},
-    credential_{vo}
-{
-}
-
-template <typename Stream> Awaitable<size_t> Socks5Egress<Stream>::recv(MutableBuffer buf)
+template <typename Socket> Awaitable<size_t> Socks5Egress<Socket>::recv(MutableBuffer buf)
 {
   co_return co_await stream::read_some(stream_, buf);
 }
 
-template <typename Stream> Awaitable<void> Socks5Egress<Stream>::send(ConstBuffer buf)
+template <typename Socket> Awaitable<void> Socks5Egress<Socket>::send(ConstBuffer buf)
 {
   co_await stream::write(stream_, buf);
 }
 
-template <typename Stream> Awaitable<void> Socks5Egress<Stream>::close()
+template <typename Socket> Awaitable<void> Socks5Egress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
@@ -342,6 +346,5 @@ template <typename Stream> Awaitable<void> Socks5Egress<Stream>::connect(Endpoin
 }
 
 template class Socks5Egress<ip::tcp::socket>;
-template class Socks5Egress<stream::Tls<ip::tcp::socket>>;
 
 }  // namespace pichi::adapter::tcp

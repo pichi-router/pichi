@@ -7,6 +7,7 @@
 #include <pichi/stream/tls.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
+#include <variant>
 
 namespace pichi::adapter::tcp {
 
@@ -37,23 +38,15 @@ private:
 
 }  // namespace socks5
 
-template <typename Stream> class Socks5Ingress {
+template <typename Socket> class Socks5Ingress {
 private:
   using Credential = socks5::IngressCredential;
+  using Stream     = std::variant<stream::Tls<Socket>, Socket>;
 
   Awaitable<void> authenticate();
 
 public:
-  explicit Socks5Ingress(vo::Ingress const&, Stream);
-
-  template <typename Underlying>
-  requires(std::same_as<Stream, stream::Tls<Underlying>>)
-  explicit Socks5Ingress(vo::Ingress const& vo, Underlying underlying)
-    : Socks5Ingress{
-          vo, Stream{stream::tls_context(*vo.tls_), std::move(underlying)}
-  }
-  {
-  }
+  explicit Socks5Ingress(vo::Ingress const&, Socket);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -68,13 +61,12 @@ private:
   Credential credential_;
 };
 
-template <typename Stream> class Socks5Egress {
-public:
-  explicit Socks5Egress(vo::Egress const&, IOExecutor const&)
-  requires(std::constructible_from<Stream, IOExecutor const&>);
+template <typename Socket> class Socks5Egress {
+private:
+  using Stream = std::variant<stream::Tls<Socket>, Socket>;
 
-  explicit Socks5Egress(vo::Egress const&, IOExecutor const&)
-  requires(stream::TLSStream<Stream>);
+public:
+  explicit Socks5Egress(vo::Egress const&, IOExecutor const&);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);

@@ -4,20 +4,15 @@
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
+#include <pichi/stream/shadowsocks.hpp>
 
 namespace pichi::adapter::tcp {
 
-template <typename Stream> class Shadowsocks {
+template <CryptoMethod method, typename Socket> class Shadowsocks {
 public:
-  template <typename... Args>
-  requires(std::constructible_from<Stream, Args...>)
-  explicit Shadowsocks(Args&&... args) : stream_{std::forward<Args>(args)...}
-  {
-  }
+  explicit Shadowsocks(ConstBuffer, Socket);
 
-  Shadowsocks(Shadowsocks&&) noexcept = default;
-
-  ~Shadowsocks() = default;
+  explicit Shadowsocks(ConstBuffer, IOExecutor const&);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -31,7 +26,7 @@ public:
   Awaitable<void> disconnect(boost::system::error_code const&);
 
 private:
-  Stream stream_;
+  stream::Shadowsocks<method, Socket> stream_;
 };
 
 }  // namespace pichi::adapter::tcp

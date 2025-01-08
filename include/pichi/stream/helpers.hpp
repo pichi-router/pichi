@@ -2,7 +2,6 @@
 #define PICHI_STREAM_HELPERS_HPP
 
 #include <boost/asio/buffer.hpp>
-#include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/spawn2.hpp>
@@ -12,6 +11,7 @@
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/stream/completer.hpp>
+#include <variant>
 
 namespace pichi::stream {
 
@@ -74,11 +74,7 @@ concept HandshakeServer =
       { stream.async_accept(callback) } -> std::same_as<void>;
     };
 
-inline Awaitable<void> close(boost::asio::ip::tcp::socket& s)
-{
-  s.close();
-  co_return;
-}
+extern Awaitable<void> close(boost::asio::ip::tcp::socket&);
 
 template <typename Stream>
 requires(LayeredObject<Stream> && HandshakeBase<Stream>)
@@ -88,23 +84,12 @@ Awaitable<void> close(Stream& stream)
   co_await close(stream.next_layer());
 }
 
-inline Awaitable<void> connect(boost::asio::ip::tcp::socket& s, Endpoint const& peer)
+template <typename... Streams> Awaitable<void> close(std::variant<Streams...>& streams)
 {
-  if (peer.type_ == EndpointType::DOMAIN_NAME) {
-    co_await boost::asio::async_connect(
-        s,
-        co_await boost::asio::ip::tcp::resolver{s.get_executor()}
-            .async_resolve(peer.host_, std::to_string(peer.port_), boost::asio::use_awaitable),
-        boost::asio::use_awaitable
-    );
-  }
-  else {
-    co_await s.async_connect(
-        {boost::asio::ip::make_address(peer.host_), peer.port_},
-        boost::asio::use_awaitable
-    );
-  }
+  co_await std::visit([](auto&& stream) { return close(stream); }, streams);
 }
+
+extern Awaitable<void> connect(boost::asio::ip::tcp::socket&, Endpoint const&);
 
 template <typename Stream>
 requires(LayeredObject<Stream> && HandshakeClient<Stream>)
@@ -114,7 +99,13 @@ Awaitable<void> connect(Stream& stream, Endpoint const& peer)
   co_await stream.async_handshake(boost::asio::use_awaitable);
 }
 
-inline Awaitable<void> accept(boost::asio::ip::tcp::socket&) { co_return; }
+template <typename... Streams>
+Awaitable<void> connect(std::variant<Streams...>& streams, Endpoint const& peer)
+{
+  co_await std::visit([&](auto&& stream) { return connect(stream, peer); }, streams);
+}
+
+extern Awaitable<void> accept(boost::asio::ip::tcp::socket&);
 
 template <typename Stream>
 requires(LayeredObject<Stream> && HandshakeServer<Stream>)
@@ -124,9 +115,20 @@ Awaitable<void> accept(Stream& stream)
   co_await stream.async_accept(boost::asio::use_awaitable);
 }
 
+template <typename... Streams> Awaitable<void> accept(std::variant<Streams...>& streams)
+{
+  co_await std::visit([](auto&& stream) { return accept(stream); }, streams);
+}
+
 Awaitable<void> read(AsyncReadable auto& stream, MutableBuffer buf)
 {
   co_await boost::asio::async_read(stream, boost::asio::buffer(buf), boost::asio::use_awaitable);
+}
+
+template <AsyncReadable... Streams>
+Awaitable<void> read(std::variant<Streams...>& streams, MutableBuffer buf)
+{
+  co_await std::visit([=](auto&& stream) { return read(stream, buf); }, streams);
 }
 
 Awaitable<size_t> read_some(AsyncReadable auto& stream, MutableBuffer buf)
@@ -134,14 +136,32 @@ Awaitable<size_t> read_some(AsyncReadable auto& stream, MutableBuffer buf)
   co_return co_await stream.async_read_some(boost::asio::buffer(buf), boost::asio::use_awaitable);
 }
 
+template <AsyncReadable... Streams>
+Awaitable<size_t> read_some(std::variant<Streams...>& streams, MutableBuffer buf)
+{
+  co_return co_await std::visit([=](auto&& stream) { return read_some(stream, buf); }, streams);
+}
+
 Awaitable<void> write(AsyncWritable auto& stream, ConstBuffer buf)
 {
   co_await boost::asio::async_write(stream, boost::asio::buffer(buf), boost::asio::use_awaitable);
 }
 
+template <AsyncWritable... Streams>
+Awaitable<void> write(std::variant<Streams...>& streams, ConstBuffer buf)
+{
+  co_await std::visit([=](auto&& stream) { return write(stream, buf); }, streams);
+}
+
 Awaitable<size_t> write_some(AsyncWritable auto& stream, ConstBuffer buf)
 {
   co_return co_await stream.async_write_some(boost::asio::buffer(buf), boost::asio::use_awaitable);
+}
+
+template <AsyncWritable... Streams>
+Awaitable<size_t> write_some(std::variant<Streams...>& streams, ConstBuffer buf)
+{
+  co_return co_await std::visit([=](auto&& stream) { return write_some(stream, buf); }, streams);
 }
 
 template <
