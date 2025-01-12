@@ -1,4 +1,4 @@
-FROM alpine:3 AS Builder
+FROM alpine:3.20 AS Builder
 
 ARG FINGERPRINT="false"
 ARG VERSION=latest
@@ -20,7 +20,7 @@ cp -f $("${SRC}/.conan/scripts/conan.sh" path -p linux "${arg}" "${VERSION}")/bi
 strip -s /usr/bin/pichi
 EOF
 
-FROM alpine:3
+FROM alpine:3.20
 
 RUN apk add --no-cache ca-certificates libstdc++
 COPY --from=Builder /usr/bin/pichi /usr/bin
