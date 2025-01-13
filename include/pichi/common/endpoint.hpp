@@ -6,6 +6,7 @@
 #include <functional>
 #include <iterator>
 #include <pichi/common/buffer.hpp>
+#include <pichi/common/coro.hpp>
 #include <pichi/common/enumerations.hpp>
 #include <stdint.h>
 #include <string>
@@ -22,8 +23,8 @@ namespace pichi {
 
 struct Endpoint {
   EndpointType type_;
-  std::string host_;
-  uint16_t port_;
+  std::string  host_;
+  uint16_t     port_;
 };
 
 template <typename Int> void hton(Int src, MutableBuffer dst)
@@ -44,11 +45,12 @@ template <typename Int> Int ntoh(ConstBuffer src)
   return dst;
 }
 
-extern size_t serializeEndpoint(Endpoint const&, MutableBuffer);
-extern Endpoint parseEndpoint(std::function<void(MutableBuffer)>);
-extern EndpointType detectHostType(std::string_view);
-extern Endpoint makeEndpoint(std::string_view, uint16_t);
-extern Endpoint makeEndpoint(std::string_view, std::string_view);
+extern size_t              serializeEndpoint(Endpoint const&, MutableBuffer);
+extern Endpoint            parseEndpoint(std::function<void(MutableBuffer)>);
+extern Awaitable<Endpoint> parse_endpoint(std::function<Awaitable<void>(MutableBuffer)>);
+extern EndpointType        detectHostType(std::string_view);
+extern Endpoint            makeEndpoint(std::string_view, uint16_t);
+extern Endpoint            makeEndpoint(std::string_view, std::string_view);
 
 extern bool operator==(Endpoint const&, Endpoint const&);
 

@@ -9,14 +9,14 @@
 
 using namespace std;
 namespace asio = boost::asio;
-namespace ip = asio::ip;
-namespace sys = boost::system;
+namespace ip   = asio::ip;
+namespace sys  = boost::system;
 
 namespace pichi {
 
 template <typename AddressType> struct AddressHelper {
   static_assert(is_same_v<AddressType, ip::address_v4> || is_same_v<AddressType, ip::address_v6>);
-  using BytesType = typename AddressType::bytes_type;
+  using BytesType                  = typename AddressType::bytes_type;
   static constexpr auto BYTES_SIZE = sizeof(BytesType);
 
   static string bytes2Ip(ConstBuffer bytes)
@@ -59,7 +59,7 @@ size_t serializeEndpoint(Endpoint const& endpoint, MutableBuffer target)
     assertTrue(target.size() >= 4 + endpoint.host_.size(), PichiError::MISC);
     *pos++ = 0x03;
     *pos++ = static_cast<uint8_t>(endpoint.host_.size());
-    pos = copy_n(cbegin(endpoint.host_), endpoint.host_.size(), pos);
+    pos    = copy_n(cbegin(endpoint.host_), endpoint.host_.size(), pos);
     break;
   case EndpointType::IPV4:
     /* Format
@@ -103,21 +103,68 @@ Endpoint parseEndpoint(function<void(MutableBuffer)> read)
   switch (buf[0]) {
   case 0x01:
     read({buf, IPv4::BYTES_SIZE + sizeof(uint16_t)});
-    return Endpoint{EndpointType::IPV4, IPv4::bytes2Ip(buf),
-                    ntoh<uint16_t>({buf.data() + IPv4::BYTES_SIZE, sizeof(uint16_t)})};
+    return Endpoint{
+        EndpointType::IPV4,
+        IPv4::bytes2Ip(buf),
+        ntoh<uint16_t>({buf.data() + IPv4::BYTES_SIZE, sizeof(uint16_t)})
+    };
   case 0x03:
     read({buf, 1});
     len = buf.front();
     assertTrue(len > 0, PichiError::BAD_PROTO);
 
     read({buf, static_cast<size_t>(len + 2)});
-    return Endpoint{EndpointType::DOMAIN_NAME,
-                    {cbegin(buf), cbegin(buf) + len},
-                    ntoh<uint16_t>({buf.data() + len, sizeof(uint16_t)})};
+    return Endpoint{
+        EndpointType::DOMAIN_NAME,
+        {     cbegin(buf), cbegin(buf) + len},
+        ntoh<uint16_t>({buf.data() + len,  sizeof(uint16_t)}
+        )
+    };
   case 0x04:
     read({buf, IPv6::BYTES_SIZE + sizeof(uint16_t)});
-    return Endpoint{EndpointType::IPV6, IPv6::bytes2Ip(buf),
-                    ntoh<uint16_t>({buf.data() + IPv6::BYTES_SIZE, sizeof(uint16_t)})};
+    return Endpoint{
+        EndpointType::IPV6,
+        IPv6::bytes2Ip(buf),
+        ntoh<uint16_t>({buf.data() + IPv6::BYTES_SIZE, sizeof(uint16_t)})
+    };
+  default:
+    fail(PichiError::BAD_PROTO);
+  }
+}
+
+Awaitable<Endpoint> parse_endpoint(function<Awaitable<void>(MutableBuffer)> read)
+{
+  auto buf = std::array<uint8_t, 512>{};
+  auto len = uint8_t{0};
+
+  co_await read({buf, 1});
+  switch (buf[0]) {
+  case 0x01:
+    co_await read({buf, IPv4::BYTES_SIZE + sizeof(uint16_t)});
+    co_return Endpoint{
+        EndpointType::IPV4,
+        IPv4::bytes2Ip(buf),
+        ntoh<uint16_t>({buf.data() + IPv4::BYTES_SIZE, sizeof(uint16_t)})
+    };
+  case 0x03:
+    co_await read({buf, 1});
+    len = buf.front();
+    assertTrue(len > 0, PichiError::BAD_PROTO);
+
+    co_await read({buf, static_cast<size_t>(len + 2)});
+    co_return Endpoint{
+        EndpointType::DOMAIN_NAME,
+        {     cbegin(buf), cbegin(buf) + len},
+        ntoh<uint16_t>({buf.data() + len,  sizeof(uint16_t)}
+        )
+    };
+  case 0x04:
+    co_await read({buf, IPv6::BYTES_SIZE + sizeof(uint16_t)});
+    co_return Endpoint{
+        EndpointType::IPV6,
+        IPv6::bytes2Ip(buf),
+        ntoh<uint16_t>({buf.data() + IPv6::BYTES_SIZE, sizeof(uint16_t)})
+    };
   default:
     fail(PichiError::BAD_PROTO);
   }
@@ -126,7 +173,7 @@ Endpoint parseEndpoint(function<void(MutableBuffer)> read)
 EndpointType detectHostType(string_view host)
 {
   assertFalse(host.empty(), PichiError::MISC);
-  auto ec = sys::error_code{};
+  auto ec      = sys::error_code{};
   auto address = ip::make_address(host, ec);
   if (ec) return EndpointType::DOMAIN_NAME;
   return address.is_v4() ? EndpointType::IPV4 : EndpointType::IPV6;
@@ -139,7 +186,7 @@ Endpoint makeEndpoint(string_view host, uint16_t port)
 
 Endpoint makeEndpoint(string_view host, string_view port)
 {
-  auto p = 0;
+  auto p         = 0;
   auto [ptr, ec] = from_chars(port.data(), port.data() + port.size(), p);
   assertTrue(ec == errc{});
   assertTrue(ptr == port.data() + port.size());
