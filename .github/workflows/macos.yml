@@ -10,5 +10,5 @@ jobs:
   macos:
     uses: ./.github/workflows/conan.yml
     with:
-      image: macos-12
+      image: macos-14
       os: macos
