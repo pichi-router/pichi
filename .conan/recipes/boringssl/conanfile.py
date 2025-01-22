@@ -29,12 +29,18 @@ class BoringSSLConan(ConanFile):
 
   def source(self):
     get(self, **self.conan_data["sources"][self.version], verify=False)
-    s = "install_if_enabled(TARGETS bssl DESTINATION ${INSTALL_DESTINATION_DEFAULT})"
-    a = "set_target_properties(bssl PROPERTIES MACOSX_BUNDLE False)"
-    replace_in_file(
-      self, os.path.join(self.source_folder, "CMakeLists.txt") if int(
-        self.version) >= 23 else os.path.join(self.source_folder, "tool", "CMakeLists.txt"),
-      s, f"{a}\n{s}")
+    if int(self.version) >= 23:
+      s = "add_executable(bssl ${BSSL_SOURCES})"
+      a = "set_target_properties(bssl PROPERTIES MACOSX_BUNDLE False)"
+      replace_in_file(
+        self, os.path.join(self.source_folder, "CMakeLists.txt"),
+        s, f"{s}\n{a}")
+    else:
+      s = "install_if_enabled(TARGETS bssl DESTINATION ${INSTALL_DESTINATION_DEFAULT})"
+      a = "set_target_properties(bssl PROPERTIES MACOSX_BUNDLE False)"
+      replace_in_file(
+        self, os.path.join(self.source_folder, "tool", "CMakeLists.txt"),
+        s, f"{a}\n{s}")
 
   def generate(self):
     tc = CMakeToolchain(self)
