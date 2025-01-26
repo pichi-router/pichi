@@ -6,16 +6,16 @@ Pichi is a flexible rule-based proxy.
 
 ### Server/Desktop
 
-| OS | Ubuntu 22.04 | macOS 12 | Windows Server 2022 |
+| OS | Ubuntu 22.04 | macOS 14 | Windows Server 2022 |
 |:---:|:---:|:---:|:---:|
-| Toolchain | GCC 12.1.0 | Xcode 14.0.1 | Visual Studio 2022 |
+| Toolchain | GCC 12.1.0 | Xcode 16.0 | Visual Studio 2022 |
 | Status | [![Linux](https://github.com/pichi-router/pichi/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/linux.yml) | [![macOS](https://github.com/pichi-router/pichi/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/macos.yml) | [![Windows](https://github.com/pichi-router/pichi/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/windows.yml) |
 
 ### Mobile
 
 | OS | Android | iOS |
 |:---:|:---:|:---:|
-| Toolchain | Android NDK 26b | Xcode 14.0.1 |
+| Toolchain | Android NDK 27c | Xcode 16.0 |
 | Status | [![Android](https://github.com/pichi-router/pichi/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/android.yml) | [![iOS](https://github.com/pichi-router/pichi/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/ios.yml) |
 
 ## Security Alert
@@ -44,7 +44,7 @@ Pichi is designed
 1. **for personal usage**: performance is important, but not the first priority;
 1. **for multiple platforms**: at least Windows, POSIX-compatible, Android and iOS.
 
-![Overview](images/overview.png)
+<img src="images/overview.png" alt="Overview" width="1024"/>
 
 ### Motivation
 
@@ -69,26 +69,26 @@ If an individual user is using a proxy, it's very common that the network traffi
 
 Pichi is an alternative choice for this situation. It separates routing rules from every application.
 
-![Use Case 0](images/use_case_0.png)
+<img src="images/use_case_0.png" alt="Use Case 0" width="1024"/>
 
 #### Unify proxy configuration
 
 If the configuration for remote proxies is volatile, such as changing IP/Port periodically, it's a nightmare that lots of clients are using it.
 Pichi can centralize the varies, rather than editing the configuration client by client.
 
-![Use Case 1](images/use_case_1.png)
+<img src="images/use_case_1.png" alt="Use Case 1" width="1024"/>
 
 #### TCP Tunnel for DNS
 
 TCP tunnel is very useful if you want to use some DNS servers which might be already poisoned or blocked. Pichi provides *tunnel* ingress to act as a tunnel. Furthermore, the outgoing egress for each destination will be chosen by following the user-defined rules.
 
-![Use Case 2](images/use_case_2.png)
+<img src="images/use_case_2.png" alt="Use Case 2" width="1024"/>
 
 #### Transparent proxy
 
 The transparent proxies are usually deployed on some internet exit router in the intranet. The difference between the transparent proxy and others is that the clients use no explicit proxy settings. It is engaging for the devices that can't use proxy settings. On the other hand, the con of the transparent proxy is that it usually requires the root privilege of the router. The proxy can also use rule-based routing to forward the requests from the transparent ingress. And it is easy to understand that the domain rules don't make any sense because the transparent ingress can't provide the domain information.
 
-![Use Case 3](images/use_case_3.png)
+<img src="images/use_case_3.png" alt="Use Case 3" width="1024"/>
 
 To enable the transparent proxy, it's necessary to enable the IP packet redirection on the router. When a redirected packet received, the transparent ingress can read its original destination IP address and TCP port from the firewall, if pichi has enough privilege. Pichi supports [netfilter/iptables](https://www.netfilter.org/) on Linux and [PF](https://en.wikipedia.org/wiki/PF_(firewall)) on macOS/[FreeBSD](https://docs.freebsd.org/en/books/handbook/firewalls/#firewalls-pf)/[OpenBSD](https://www.openbsd.org/faq/pf/). For instance, if pichi is running with the transparent ingress configured as below:
 
@@ -591,4 +591,5 @@ io.run();  // Thread blocked
 
 Please offer me a cup of coffee if you like pichi.
 
-![Please donate BTC](images/tip.png)
+<img src="images/tip.png" alt="Please donate BTC" width="300"/>
+

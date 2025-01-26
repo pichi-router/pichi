@@ -7,7 +7,7 @@ on:
       - develop
 
 jobs:
-  macos:
+  windows:
     uses: ./.github/workflows/conan.yml
     with:
       image: windows-2022
