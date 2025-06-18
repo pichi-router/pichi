@@ -1,11 +1,11 @@
 #ifndef PICHI_COMMON_ENUMERATIONS_HPP
 #define PICHI_COMMON_ENUMERATIONS_HPP
 
-#ifdef _MSC_VER
+#ifdef _WIN32
 #ifdef TRANSPARENT
 #undef TRANSPARENT
 #endif  // TRANSPARENT
-#endif  // _MSC_VER
+#endif  // _WIN32
 
 namespace pichi {
 
