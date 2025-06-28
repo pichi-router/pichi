@@ -383,7 +383,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parseEndpoint_Normal, Helper, Helpers)
   auto read = [size = size_t{0}](MutableBuffer buf) mutable {
     size += buf.size();
     BOOST_CHECK_LE(size, Helper::SIZE);
-    fill_n(begin(buf), Helper::SIZE, Helper::CHAR);
+    fill_n(begin(buf), buf.size(), Helper::CHAR);
   };
   BOOST_CHECK(Helper::ENDPOINT == parseEndpoint(read));
 }
