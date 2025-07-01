@@ -48,6 +48,8 @@ class BoringSSLConan(ConanFile):
     tc.cache_variables["RUST_BINDINGS"] = False
     tc.cache_variables["FIPS"] = False
     tc.cache_variables["BUILD_SHARED_LIBS"] = self.options.shared
+    if self.settings.compiler == "gcc" and int(str(self.settings.compiler.version)) >= 12:
+      tc.cache_variables["CMAKE_CXX_FLAGS"] = "-Wno-stringop-overflow -Wno-array-bounds -Wno-restrict"
     tc.generate()
 
   def build(self):

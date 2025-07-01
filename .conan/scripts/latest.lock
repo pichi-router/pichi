@@ -1,14 +1,14 @@
 {
   "version": "0.5",
   "requires": [
-    "boost/1.85.0",
-    "boringssl/32",
+    "boost/1.88.0",
+    "boringssl/35",
     "brotli/1.1.0",
-    "libmaxminddb/1.10.0",
+    "libmaxminddb/1.12.2",
     "libsodium/1.0.20",
     "mbedtls/3.6.2",
-    "rapidjson/1.1.0",
-    "openssl/3.3.2"
+    "rapidjson/cci.20230929",
+    "openssl/3.5.1"
   ],
   "python_requires": []
 }

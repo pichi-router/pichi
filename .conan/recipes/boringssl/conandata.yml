@@ -30,4 +30,10 @@ sources:
   "32":
     url: https://boringssl.googlesource.com/boringssl/+archive/4ad93a8c50451ee4c7cc31ecc49aeb19200a4e78.tar.gz
   "33":
-    url: https://boringssl.googlesource.com/boringssl/+archive/803062a053a86cff4ef1ffac90d12a82885688f3.tar.gz
+    url: https://boringssl.googlesource.com/boringssl/+archive/7d07002aaee8df5aea2313c51546afa4b76eb6de.tar.gz
+  "34":
+    url: https://boringssl.googlesource.com/boringssl/+archive/e0361867e4bac61616bf5eb1a4e9352fdae30891.tar.gz
+  "35":
+    url: https://boringssl.googlesource.com/boringssl/+archive/a9993612faac4866bc33ca8ff37bfd0659af1c48.tar.gz
+  "36":
+    url: https://boringssl.googlesource.com/boringssl/+archive/f51d8b099832f805022a6ff2e9466dbcacdfb0ab.tar.gz
