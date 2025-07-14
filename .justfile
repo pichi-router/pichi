@@ -196,6 +196,7 @@ _build *args:
     -o "boost/*:without_wave=True" \
     -o "boost/*:zlib=False" \
     -o "mbedtls/*:with_zlib=False" \
+    -o "openssl/*:no_apps=True" \
     -o "openssl/*:no_zlib=True" \
     {{args}} \
     {{workspace}}
