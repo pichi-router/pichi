@@ -7,9 +7,6 @@ on:
         required: true
         type: string
       os:
-        required: true
-        type: string
-      args:
         required: false
         type: string
 
@@ -17,23 +14,22 @@ jobs:
   build:
     runs-on: ${{ inputs.image }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Install Conan on macOS
-        if: ${{ inputs.image == 'macos-14' }}
-        run: brew install conan go
-      - name: Install Conan on non-macOS
-        if: ${{ inputs.image != 'macos-14' }}
-        uses: turtlebrowser/get-conan@v1.1
-      - name: Install NASM for windows
-        if: ${{ inputs.os == 'windows' }}
-        run: choco install -y nasm
-      - name: Export BoringSSL recipe into the Conan cache
-        run: .conan/scripts/conan.sh export -k .conan/scripts/latest.lock boringssl
-      - name: Export libmaxminddb recipe into the Conan cache
-        run: .conan/scripts/conan.sh export -k .conan/scripts/latest.lock libmaxminddb
-      - name: Build pichi recipe
-        run: >
-          .conan/scripts/conan.sh build -k .conan/scripts/latest.lock
-          -p ${{ inputs.os }}
-          ${{ inputs.args }}
-          latest
+      - name: Install Conan
+        uses: conan-io/setup-conan@v1
+      - name: Install Just
+        uses: extractions/setup-just@v3
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.17.0'
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build for Android
+        if:   inputs.os == 'android'
+        run:  just -f .justfile build-android
+      - name: Build for iOS
+        if:   inputs.os == 'ios'
+        run:  just -f .justfile build-ios
+      - name: Build for host
+        if:   inputs.os != 'android' && inputs.os != 'ios'
+        run:  just -f .justfile build

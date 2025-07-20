@@ -43,7 +43,7 @@ remove *recipes: (_execute "remove" recipes)
 [unix]
 _export-recipe recipe:
   #!/bin/sh
-  set -euo pipefail
+  set -eu
 
   name="$(echo '{{recipe}}' | sed -nE 's#^([^/]+)(/.+)*$#\1#p')"
   test -n "${name}"
@@ -278,7 +278,7 @@ build-android-all: \
 [macos]
 build-ios build_type="Release" sdk="iphoneos": export detect-host
   #!/bin/sh
-  set -euo pipefail
+  set -eu
 
   host_arch="{{ if arch() == 'x86_64' { 'x86_64' } else { 'armv8' } }}"
   case "{{sdk}}" in
@@ -321,7 +321,7 @@ build-ios build_type="Release" sdk="iphoneos": export detect-host
 [macos]
 build-ios-all: export detect-host
   #!/bin/sh
-  set -euo pipefail
+  set -eu
 
   for sdk in {"appletvos","iphoneos","watchos"}; do
     ver=`xcrun --sdk "${sdk}" --show-sdk-version`

@@ -10,5 +10,4 @@ jobs:
   windows:
     uses: ./.github/workflows/conan.yml
     with:
-      image: windows-2022
-      os: windows
+      image: windows-2025

@@ -10,5 +10,4 @@ jobs:
   linux:
     uses: ./.github/workflows/conan.yml
     with:
-      image: ubuntu-22.04
-      os: linux
+      image: ubuntu-24.04

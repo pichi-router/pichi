@@ -10,6 +10,5 @@ jobs:
   android:
     uses: ./.github/workflows/conan.yml
     with:
-      image: ubuntu-22.04
+      image: ubuntu-24.04
       os: android
-      args: -r android-ndk/r27c -l 35 -a armv8
