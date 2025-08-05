@@ -23,7 +23,7 @@ macro(_find_all_dependencies search_mode)
 endmacro()
 
 # To find boost
-list(APPEND BOOST_COMPONENTS context system thread)
+list(APPEND BOOST_COMPONENTS context)
 
 if(BUILD_SERVER)
   list(APPEND BOOST_COMPONENTS filesystem program_options)
@@ -128,7 +128,7 @@ endif()
 
 # Setup COMMON_LIBRARIES for later usage
 list(APPEND COMMON_LIBRARIES
-  Boost::boost Boost::context Boost::system
+  Boost::boost Boost::context
   MbedTLS::mbedtls libsodium::libsodium maxminddb::maxminddb rapidjson
   Threads::Threads ${CMAKE_DL_LIBS} ${SSL_LIB}::SSL)
 

@@ -1,8 +1,0 @@
-include(default)
-include(boost)
-
-[settings]
-
-[options]
-pichi/*:build_test=False
-pichi/*:build_server=False

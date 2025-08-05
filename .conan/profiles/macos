@@ -1,5 +1,0 @@
-include(default)
-include(boost)
-
-[options]
-pichi/*:transparent=pf
