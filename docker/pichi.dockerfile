@@ -1,27 +1,28 @@
-FROM alpine:3.20 AS Builder
+FROM alpine:3.22 AS builder
 
-ARG FINGERPRINT="false"
+ARG FINGERPRINT="False"
 ARG VERSION=latest
 ENV SRC=/tmp/pichi
+ENV JUST="just -f ${SRC}/.justfile"
 
-RUN apk add --no-cache cmake g++ git go jq linux-headers make perl py3-pip
+RUN apk add --no-cache cmake g++ git go jq just linux-headers make perl py3-pip
 RUN pip install --break-system-packages conan
 
 RUN --mount="target=${SRC}" <<EOF
-arg="-o"
+set -eu
 if [ "${FINGERPRINT}" = "true" ]; then
-  arg=""
-  "${SRC}/.conan/scripts/conan.sh" export -k "${SRC}/.conan/scripts/latest.lock" boringssl
+  FINGERPRINT=True
 fi
-"${SRC}/.conan/scripts/conan.sh" export -k "${SRC}/.conan/scripts/latest.lock" libmaxminddb
-"${SRC}/.conan/scripts/conan.sh" build -k "${SRC}/.conan/scripts/latest.lock" \
-  -fp linux "${arg}" "${VERSION}"
-cp -f $("${SRC}/.conan/scripts/conan.sh" path -p linux "${arg}" "${VERSION}")/bin/pichi /usr/bin
+${JUST} detect-host
+conan download -r conancenter --only-recipe b2/5.3.3
+conan create --version 5.3.3 -b '*' "$(conan cache path b2/5.3.3)"
+${JUST} build MinSizeRel False ${FINGERPRINT} none ${VERSION}
+cp -f "$(find ${HOME}/.conan2/p/b -name pichi -type f | grep 'bin/pichi$')" /usr/bin
 strip -s /usr/bin/pichi
 EOF
 
-FROM alpine:3.20
+FROM alpine:3.22
 
 RUN apk add --no-cache ca-certificates libstdc++
-COPY --from=Builder /usr/bin/pichi /usr/bin
+COPY --from=builder /usr/bin/pichi /usr/bin
 ENTRYPOINT [ "/usr/bin/pichi" ]
