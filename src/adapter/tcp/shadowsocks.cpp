@@ -21,7 +21,10 @@ Shadowsocks<method, Socket>::Shadowsocks(ConstBuffer psk, Socket s) : stream_{ps
 }
 
 template <CryptoMethod method, typename Socket>
-Shadowsocks<method, Socket>::Shadowsocks(ConstBuffer psk, IOExecutor const& ex) : stream_{psk, ex}
+Shadowsocks<method, Socket>::Shadowsocks(
+    ConstBuffer psk, Endpoint const& proxy, IOExecutor const& ex
+)
+  : stream_{psk, proxy, ex}
 {
 }
 

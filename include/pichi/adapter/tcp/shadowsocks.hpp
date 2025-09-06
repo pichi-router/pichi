@@ -12,7 +12,7 @@ template <CryptoMethod method, typename Socket> class Shadowsocks {
 public:
   explicit Shadowsocks(ConstBuffer, Socket);
 
-  explicit Shadowsocks(ConstBuffer, IOExecutor const&);
+  explicit Shadowsocks(ConstBuffer, Endpoint const&, IOExecutor const&);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);

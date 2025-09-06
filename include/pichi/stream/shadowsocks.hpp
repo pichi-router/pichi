@@ -21,6 +21,7 @@
 #include <pichi/net/helper.hpp>
 #include <pichi/stream/completer.hpp>
 #include <pichi/stream/helpers.hpp>
+#include <utility>
 
 namespace pichi::stream {
 
@@ -31,6 +32,7 @@ private:
   using ErrorCode = boost::system::error_code;
 
   using Cache        = boost::beast::basic_flat_buffer<std::allocator<uint8_t>>;
+  using PlainBuffer  = std::array<uint8_t, MAX_FRAME_SIZE>;
   using CipherBuffer = std::array<uint8_t, MAX_FRAME_SIZE + 2 + 2 * crypto::TAG_SIZE<method>>;
   using IVBuffer     = std::array<uint8_t, crypto::IV_SIZE<method>>;
   using LenBuffer    = std::array<uint8_t, 2>;
@@ -94,6 +96,14 @@ private:
         await_to(get_executor())
     );
     decryptor_.decrypt({cipher, len}, block);
+  }
+
+  Awaitable<void> do_connect(Endpoint const& peer)
+  {
+    co_await connect(socket_, proxy_);
+    auto plain = PlainBuffer{};
+    auto len   = serializeEndpoint(peer, plain);
+    co_await do_write({plain, len});
   }
 
   Awaitable<size_t> do_aead_read(MutableBuffer plain)
@@ -180,10 +190,13 @@ public:
   using executor_type   = typename Socket::executor_type;
   using next_layer_type = Socket;
 
-  template <typename... Args>
-  requires std::constructible_from<Socket, Args...>
-  Shadowsocks(ConstBuffer psk, Args&&... args)
-    : socket_{std::forward<Args>(args)...}, encryptor_{psk}, decryptor_{psk}
+  Shadowsocks(ConstBuffer psk, Socket socket)
+    : socket_{std::move(socket)}, encryptor_{psk}, decryptor_{psk}
+  {
+  }
+
+  Shadowsocks(ConstBuffer psk, Endpoint const& proxy, IOExecutor const& ex)
+    : socket_{ex}, encryptor_{psk}, decryptor_{psk}, proxy_{proxy}
   {
   }
 
@@ -197,15 +210,6 @@ public:
   template <typename ShutdownToken> auto async_shutdown(ShutdownToken&& token)
   {
     return async_initiate<void(ErrorCode)>(std::forward<ShutdownToken>(token), ErrorCode{});
-  }
-
-  template <typename HandshakeToken> auto async_handshake(HandshakeToken&& token)
-  {
-    return async_initiate<void(ErrorCode)>(
-        get_executor(),
-        std::forward<HandshakeToken>(token),
-        [this]() { return write_iv(); }
-    );
   }
 
   template <typename AcceptToken> auto async_accept(AcceptToken&& token)
@@ -239,6 +243,15 @@ public:
     );
   }
 
+  template <typename ConnectToken> auto async_connect(Endpoint const& peer, ConnectToken&& token)
+  {
+    return async_initiate<void(ErrorCode)>(
+        get_executor(),
+        std::forward<ConnectToken>(token),
+        [this, &peer]() { return do_connect(peer); }
+    );
+  }
+
 private:
   Socket    socket_;
   Encryptor encryptor_;
@@ -246,6 +259,7 @@ private:
   bool      ivSent_ = false;
   bool      ivRecv_ = false;
   Cache     cache_  = {};
+  Endpoint  proxy_  = {};
 };
 
 }  // namespace pichi::stream

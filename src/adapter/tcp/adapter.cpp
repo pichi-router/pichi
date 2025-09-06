@@ -8,7 +8,6 @@
 
 namespace asio = boost::asio;
 namespace ip   = asio::ip;
-namespace ssl  = asio::ssl;
 
 using namespace std::literals;
 
@@ -83,7 +82,7 @@ Egress create_egress(vo::Egress const& vo, IOExecutor const& ex)
   switch (vo.type_) {
   case AdapterType::SS:
     assertTrue(vo.opt_.has_value());
-    return create_ss_adapter<Egress>(std::get<vo::ShadowsocksOption>(*vo.opt_), ex);
+    return create_ss_adapter<Egress>(std::get<vo::ShadowsocksOption>(*vo.opt_), *vo.server_, ex);
   case AdapterType::DIRECT:
     return Egress{std::in_place_type<Direct>, ex};
   case AdapterType::REJECT:

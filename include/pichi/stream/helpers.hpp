@@ -53,6 +53,17 @@ concept HandshakeBase = requires(
 };
 
 template <typename Stream>
+concept ConnectableClient =
+    HandshakeBase<Stream> && requires(
+                                 Stream stream, Endpoint peer, boost::asio::yield_context yield,
+                                 std::function<void(boost::system::error_code)> callback
+                             ) {
+      { stream.async_connect(peer, boost::asio::use_awaitable) } -> std::same_as<Awaitable<void>>;
+      { stream.async_connect(peer, yield) } -> std::same_as<void>;
+      { stream.async_connect(peer, callback) } -> std::same_as<void>;
+    };
+
+template <typename Stream>
 concept HandshakeClient =
     HandshakeBase<Stream> && requires(
                                  Stream stream, boost::asio::yield_context yield,
@@ -92,11 +103,16 @@ template <typename... Streams> Awaitable<void> close(std::variant<Streams...>& s
 extern Awaitable<void> connect(boost::asio::ip::tcp::socket&, Endpoint const&);
 
 template <typename Stream>
-requires(LayeredObject<Stream> && HandshakeClient<Stream>)
+requires(LayeredObject<Stream> && (ConnectableClient<Stream> || HandshakeClient<Stream>))
 Awaitable<void> connect(Stream& stream, Endpoint const& peer)
 {
-  co_await connect(stream.next_layer(), peer);
-  co_await stream.async_handshake(boost::asio::use_awaitable);
+  if constexpr (ConnectableClient<Stream>) {
+    co_await stream.async_connect(peer, boost::asio::use_awaitable);
+  }
+  else {
+    co_await connect(stream.next_layer(), peer);
+    co_await stream.async_handshake(boost::asio::use_awaitable);
+  }
 }
 
 template <typename... Streams>
