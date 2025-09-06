@@ -22,6 +22,37 @@ macro(_find_all_dependencies search_mode)
   endif()
 endmacro()
 
+function(patch_target target)
+  # These dependencies lack sufficient RPATH information within the Conan directory hierarchy.
+
+  if(target STREQUAL "MbedTLS::mbedcrypto")
+    set(dep CONAN_LIB::mbedtls_MbedTLS_mbedcrypto_mbedcrypto)
+  elseif(target STREQUAL "MbedTLS::mbedtls")
+    set(dep CONAN_LIB::mbedtls_MbedTLS_mbedtls_mbedtls)
+  elseif(target STREQUAL "MbedTLS::mbedx509")
+    set(dep CONAN_LIB::mbedtls_MbedTLS_mbedx509_mbedx509)
+  elseif(target STREQUAL "Boost::filesystem")
+    set(dep CONAN_LIB::boost_Boost_filesystem_boost_filesystem)
+  elseif(target STREQUAL "OpenSSL::SSL")
+    set(dep CONAN_LIB::openssl_OpenSSL_SSL_ssl)
+  elseif(target STREQUAL "BoringSSL::SSL")
+    set(dep CONAN_LIB::boringssl_BoringSSL_SSL_ssl)
+  else()
+    message(FATAL_ERROR "Unknown target to be patched: ${target}")
+  endif()
+
+  message(STATUS "Patching RPATH of ${target}")
+  string(TOUPPER "${CMAKE_BUILD_TYPE}" config)
+  get_target_property(lib "${dep}_${config}" "IMPORTED_LOCATION_${config}")
+
+  execute_process(COMMAND sh "${CMAKE_SOURCE_DIR}/cmake/script/patch_target.sh" "${lib}" RESULT_VARIABLE result)
+  if(result EQUAL 0)
+    message(STATUS "Patching RPATH of ${target} - done")
+  else()
+    message(FATAL_ERROR "Patching RPATH of ${target} - failed")
+  endif()
+endfunction()
+
 # To find boost
 list(APPEND BOOST_COMPONENTS context)
 
@@ -134,4 +165,14 @@ list(APPEND COMMON_LIBRARIES
 
 if(TLS_FINGERPRINT)
   list(APPEND COMMON_LIBRARIES brotli::brotli)
+endif()
+
+if(ENABLE_LINK_PATH AND NOT APPLE)
+  patch_target(MbedTLS::mbedcrypto)
+  patch_target(MbedTLS::mbedtls)
+  patch_target(MbedTLS::mbedx509)
+  patch_target(${SSL_LIB}::SSL)
+  if(BUILD_SERVER)
+    patch_target(Boost::filesystem)
+  endif()
 endif()
