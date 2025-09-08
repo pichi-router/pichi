@@ -17,10 +17,12 @@
 .*.swp
 
 # Editors
-.clang-format
-build/
-.vscode/
+.cache/
 .clang_complete
+.clang-format
+.clangd
+.vscode/
+build/
 
 # CMake
 CMakePresets.json

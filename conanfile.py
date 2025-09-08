@@ -60,8 +60,10 @@ class PichiConan(ConanFile):
     tc.cache_variables["TRANSPARENT_IPTABLES"] = self.options.transparent == "iptables"
     tc.cache_variables["TLS_FINGERPRINT"] = self.options.tls_fingerprint
     tc.cache_variables["BUILD_SHARED_LIBS"] = self.options.shared
-    tc.cache_variables["_BOOST_SHARED"] = self.dependencies["boost"].options.shared
-    tc.cache_variables["_SODIUM_SHARED"] = self.dependencies["libsodium"].options.shared
+    if self.settings.compiler == "msvc":
+      tc.cache_variables["_SODIUM_SHARED"] = self.dependencies["libsodium"].options.shared
+    if self.options.build_test:
+      tc.cache_variables["_BOOST_SHARED"] = self.dependencies["boost"].options.shared
     tc.generate()
 
   def build(self):
