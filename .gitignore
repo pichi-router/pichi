@@ -20,11 +20,13 @@
 core
 
 # Editors
+.cache/
+.clang_complete
 .clang-format
+.clangd
+.vscode/
 build/
 out/
-.vscode/
-.clang_complete
 
 # CMake
 CMakePresets.json

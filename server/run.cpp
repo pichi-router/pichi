@@ -27,6 +27,12 @@
 #include <signal.h>
 #endif  // HAS_SIGNAL_H
 
+#ifdef _WIN32
+#ifdef GetObject
+#undef GetObject
+#endif  // GetObject
+#endif  // _WIN32
+
 using namespace std;
 using namespace pichi;
 namespace asio = boost::asio;

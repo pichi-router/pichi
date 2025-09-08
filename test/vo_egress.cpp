@@ -10,11 +10,11 @@
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 
-#ifdef _MSC_VER
+#ifdef _WIN32
 #ifdef OPTIONAL
 #undef OPTIONAL
 #endif  // OPTIONAL
-#endif  // _MSC_VER
+#endif  // _WIN32
 
 using namespace std;
 using namespace rapidjson;

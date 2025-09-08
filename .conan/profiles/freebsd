@@ -1,6 +1,0 @@
-include(default)
-include(boost)
-
-[options]
-b2/*:toolset=clang
-pichi/*:transparent=pf

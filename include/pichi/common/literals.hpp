@@ -12,6 +12,12 @@
 #endif  // max
 #endif  // _WIN332
 
+#ifdef _WIN32
+#ifdef max
+#undef max
+#endif  // max
+#endif  // _WIN32
+
 namespace pichi {
 
 /* TODO

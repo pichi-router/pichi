@@ -34,6 +34,7 @@
 #if __GNUC__ >= 14
 #pragma GCC diagnostic ignored "-Wmismatched-new-delete"
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#pragma GCC diagnostic ignored "-Wuninitialized"
 #endif  // __GNUC__ >= 14
 
 #cmakedefine DISABLE_GCC_IGNORED_ATTRIBUTES
