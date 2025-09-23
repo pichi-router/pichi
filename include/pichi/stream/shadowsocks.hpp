@@ -132,12 +132,14 @@ private:
     co_await switch_to(ex);
 
     auto cipher = CipherBuffer{};
+    auto ret    = plain.size();
     while (plain.size() > 0) {
       auto len = std::min(plain.size(), cipher.size());
       encryptor_.encrypt({plain, len}, cipher);
       co_await boost::asio::async_write(socket_, boost::asio::buffer(cipher, len), await_to(ex));
       plain += len;
     }
+    co_return ret;
   }
 
   Awaitable<size_t> do_aead_write(ConstBuffer plain)
@@ -146,6 +148,7 @@ private:
     co_await switch_to(ex);
 
     auto data = CipherBuffer{};
+    auto ret  = 0_sz;
     while (plain.size() > 0) {
       auto cipher = MutableBuffer{data};
 
@@ -156,7 +159,9 @@ private:
       cl += encryptor_.encrypt({plain, pl}, cipher + cl);
       co_await boost::asio::async_write(socket_, boost::asio::buffer(data, cl), await_to(ex));
       plain += pl;
+      ret += cl;
     }
+    co_return ret;
   }
 
   Awaitable<size_t> do_write(ConstBuffer plain)

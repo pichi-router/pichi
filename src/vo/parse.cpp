@@ -4,8 +4,14 @@
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 
+#ifdef _MSC_VER
+#ifdef TRANSPARENT
+#undef TRANSPARENT
+#endif  // TRANSPARENT
+#endif  // _MSC_VER
+
 using namespace std;
-namespace json = rapidjson;
+namespace json  = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {

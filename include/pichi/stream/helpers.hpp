@@ -122,7 +122,11 @@ template <typename... Streams> Awaitable<void> accept(std::variant<Streams...>& 
 
 Awaitable<void> read(AsyncReadable auto& stream, MutableBuffer buf)
 {
-  co_await boost::asio::async_read(stream, boost::asio::buffer(buf), boost::asio::use_awaitable);
+  co_await boost::asio::async_read(
+      stream,
+      boost::asio::buffer(buf.data(), buf.size()),
+      boost::asio::use_awaitable
+  );
 }
 
 template <AsyncReadable... Streams>
@@ -133,7 +137,10 @@ Awaitable<void> read(std::variant<Streams...>& streams, MutableBuffer buf)
 
 Awaitable<size_t> read_some(AsyncReadable auto& stream, MutableBuffer buf)
 {
-  co_return co_await stream.async_read_some(boost::asio::buffer(buf), boost::asio::use_awaitable);
+  co_return co_await stream.async_read_some(
+      boost::asio::buffer(buf.data(), buf.size()),
+      boost::asio::use_awaitable
+  );
 }
 
 template <AsyncReadable... Streams>

@@ -237,7 +237,7 @@ public:
     return async_initiate<void(ErrorCode const&, size_t), ReadToken, executor_type>(
         get_executor(),
         std::forward<ReadToken>(token),
-        [this](auto&& b) { return do_read(b); },
+        [this](auto&& b) { return this->do_read(b); },
         b
     );
   }

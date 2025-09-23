@@ -15,7 +15,6 @@
 #include <memory>
 #include <mutex>
 #include <ranges>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -35,9 +34,10 @@ struct BatchImpl {
   using Ops = std::vector<std::packaged_task<void()>>;
 
   BatchService& service_;
-  Ops           waitings_ = {};
-  bool          active_   = false;
-  bool          disabled_ = false;
+
+  Ops  waitings_ = {};
+  bool active_   = false;
+  bool disabled_ = false;
 };
 
 class BatchService : public execution_context_service_base<BatchService> {
@@ -66,7 +66,7 @@ public:
 
     if (stopped_) throw execution::bad_executor{};
 
-    auto impl = SharedPtr{new Impl{.service_ = *this}, [](auto impl) {
+    auto impl = SharedPtr{new Impl{.service_ = *this}, [](RawPtr impl) {
                             impl->service_.disable_impl(impl);
                             delete impl;
                           }};
@@ -118,13 +118,24 @@ public:
       // TODO assert if impl is located in queue_
 
       if (!impl->active_) {
+        // FIXME MSVC generates compilation error even F satisfies DECAY_COPY concept
+        static_assert(std::copy_constructible<std::decay_t<F>>);
+#ifdef _MSC_VER
         impl->waitings_.emplace_back([ex = prefer(
                                           require(ex, execution::blocking.never),
                                           execution::outstanding_work.tracked
                                       ),
-                                      f = std::forward<F>(f)]() mutable {
+                                      pf = std::make_shared<std::decay_t<F>>(std::forward<F>(f))](
+                                     ) mutable { ex.execute(std::forward<F>(*pf)); });
+#else   // _MSC_VER
+        impl->waitings_.emplace_back([ex = prefer(
+                                          require(ex, execution::blocking.never),
+                                          execution::outstanding_work.tracked
+                                      ),
+                                      f = std::decay_t<F>{std::forward<F>(f)}]() mutable {
           ex.execute(std::forward<F>(f));
         });
+#endif  // _MSC_VER
         return;
       }
     }

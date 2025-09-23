@@ -310,7 +310,7 @@ template <typename Stream> Awaitable<void> Socks5Egress<Stream>::connect(Endpoin
   co_await stream::connect(stream_, peer_);
 
   auto buf = std::array<uint8_t, 512>{};
-  auto m   = credential_.need_auth() ? 0x02 : 0x00;
+  auto m   = credential_.need_auth() ? 0x02_u8 : 0x00_u8;
 
   buf[0] = 0x05;
   buf[1] = 0x01;
