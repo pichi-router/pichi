@@ -55,7 +55,7 @@ Awaitable<void> Session::start(vo::Ingress const& vo, Socket s)
                              asio::co_spawn(ex_, bridge(ingress, *egress), asio::deferred),
                              asio::co_spawn(ex_, bridge(*egress, ingress), asio::deferred)
   )
-                             .async_wait(asio::experimental::wait_for_one(), await_to(ex_));
+                             .async_wait(asio::experimental::wait_for_one(), asio::use_awaitable);
 
   if (e0) std::rethrow_exception(e0);
   if (e1) std::rethrow_exception(e1);

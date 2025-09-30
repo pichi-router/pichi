@@ -11,7 +11,6 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/constants.hpp>
-#include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/enumerations.hpp>
 #include <pichi/common/error.hpp>
@@ -68,12 +67,11 @@ private:
 
   Awaitable<size_t> do_stream_read(MutableBuffer plain)
   {
-    auto ex = get_executor();
-    co_await switch_to(ex);
-
     auto cipher = CipherBuffer{};
-    auto len =
-        co_await socket_.async_read_some(boost::asio::buffer(cipher, plain.size()), await_to(ex));
+    auto len    = co_await socket_.async_read_some(
+        boost::asio::buffer(cipher, plain.size()),
+        boost::asio::use_awaitable
+    );
     co_return decryptor_.decrypt({cipher, len}, plain);
   }
 
@@ -93,7 +91,7 @@ private:
     co_await boost::asio::async_read(
         socket_,
         boost::asio::buffer(cipher, len),
-        await_to(get_executor())
+        boost::asio::use_awaitable
     );
     decryptor_.decrypt({cipher, len}, block);
   }
@@ -108,9 +106,6 @@ private:
 
   Awaitable<size_t> do_aead_read(MutableBuffer plain)
   {
-    auto ex = get_executor();
-    co_await switch_to(ex);
-
     if (cache_.size() > 0) co_return copy_to(plain);
 
     auto lb = LenBuffer{};
@@ -138,15 +133,16 @@ private:
 
   Awaitable<size_t> do_stream_write(ConstBuffer plain)
   {
-    auto ex = get_executor();
-    co_await switch_to(ex);
-
     auto cipher = CipherBuffer{};
     auto ret    = plain.size();
     while (plain.size() > 0) {
       auto len = std::min(plain.size(), cipher.size());
       encryptor_.encrypt({plain, len}, cipher);
-      co_await boost::asio::async_write(socket_, boost::asio::buffer(cipher, len), await_to(ex));
+      co_await boost::asio::async_write(
+          socket_,
+          boost::asio::buffer(cipher, len),
+          boost::asio::use_awaitable
+      );
       plain += len;
     }
     co_return ret;
@@ -154,9 +150,6 @@ private:
 
   Awaitable<size_t> do_aead_write(ConstBuffer plain)
   {
-    auto ex = get_executor();
-    co_await switch_to(ex);
-
     auto data = CipherBuffer{};
     auto ret  = 0_sz;
     while (plain.size() > 0) {
@@ -167,7 +160,11 @@ private:
       hton(static_cast<uint16_t>(pl), lb);
       auto cl = encryptor_.encrypt(lb, cipher);
       cl += encryptor_.encrypt({plain, pl}, cipher + cl);
-      co_await boost::asio::async_write(socket_, boost::asio::buffer(data, cl), await_to(ex));
+      co_await boost::asio::async_write(
+          socket_,
+          boost::asio::buffer(data, cl),
+          boost::asio::use_awaitable
+      );
       plain += pl;
       ret += cl;
     }

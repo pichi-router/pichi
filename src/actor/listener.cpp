@@ -1,6 +1,3 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
-#include <algorithm>
 #include <array>
 #include <format>
 #include <iostream>
@@ -14,7 +11,6 @@
 namespace asio = boost::asio;
 namespace ip   = asio::ip;
 namespace json = rapidjson;
-namespace rngs = std::ranges;
 
 namespace pichi::actor {
 

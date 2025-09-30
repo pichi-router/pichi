@@ -27,14 +27,9 @@ concept ExecutionContext = requires(Context ctx) {
   { ctx.get_executor() } -> std::same_as<typename Context::executor_type>;
 };
 
-template <boost::asio::execution::executor Executor> auto await_to(Executor const& ex)
-{
-  return boost::asio::bind_executor(ex, boost::asio::use_awaitable);
-}
-
 template <boost::asio::execution::executor Executor> Awaitable<void> switch_to(Executor const& ex)
 {
-  co_await boost::asio::dispatch(await_to(ex));
+  co_await boost::asio::dispatch(boost::asio::bind_executor(ex, boost::asio::use_awaitable));
 }
 
 template <typename T, boost::asio::execution::executor E>

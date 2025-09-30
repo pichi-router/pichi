@@ -159,13 +159,12 @@ private:
 
   Awaitable<void> do_accept()
   {
-    auto ex     = get_executor();
     auto parser = Parser{};
     co_await boost::beast::http::async_read_header(
         delegate_.next_layer(),
         buf_,
         parser,
-        await_to(ex)
+        boost::asio::use_awaitable
     );
     auto header = parser.release();
     assertTrue(header.target() == path_, boost::beast::http::error::bad_target);
@@ -174,7 +173,7 @@ private:
           header[boost::beast::http::field::host] == host_,
           boost::beast::http::error::bad_value
       );
-    co_await delegate_.async_accept(header, await_to(ex));
+    co_await delegate_.async_accept(header, boost::asio::use_awaitable);
   }
 
   template <typename MutableBufferSequence>

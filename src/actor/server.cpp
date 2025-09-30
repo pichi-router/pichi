@@ -1,6 +1,3 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
-#include <algorithm>
 #include <array>
 #include <boost/asio/batch.hpp>
 #include <boost/asio/redirect_error.hpp>
@@ -9,9 +6,9 @@
 #include <boost/beast/http/write.hpp>
 #include <format>
 #include <iostream>
-#include <mutex>
 #include <pichi/actor/detached.hpp>
 #include <pichi/actor/server.hpp>
+#include <pichi/common/coro.hpp>
 #include <pichi/common/error.hpp>
 #include <pichi/vo/error.hpp>
 #include <rapidjson/stringbuffer.h>
@@ -101,10 +98,9 @@ Server::Server(IOExecutor ex, RouterPtr const& r, Listener& l)
 
 Awaitable<void> Server::serve(ip::tcp::endpoint endpoint)
 {
-  co_await switch_to(ex_);
   auto a = ip::tcp::acceptor{ex_, endpoint};
   while (a.is_open()) {
-    asio::co_spawn(ex_, do_session(co_await a.async_accept(await_to(ex_))), detached);
+    asio::co_spawn(ex_, do_session(co_await a.async_accept(asio::use_awaitable)), detached);
   }
 }
 
@@ -113,13 +109,12 @@ Awaitable<void> Server::do_session(ip::tcp::socket s)
   try {
     auto buf = beast::flat_buffer{};
     auto req = Request{};
-    co_await http::async_read(s, buf, req, await_to(ex_));
+    co_await http::async_read(s, buf, req, asio::use_awaitable);
 
     auto [ec, rep] = co_await redirect(handle(req));
-    co_await switch_to(ex_);
 
     if (ec) rep.emplace(gen_resp(ec));
-    co_await http::async_write(s, *rep, await_to(ex_));
+    co_await http::async_write(s, *rep, asio::use_awaitable);
   }
   catch (sys::system_error const& e) {
     std::cout << std::format("API IO Error: {}\n", e.what());
