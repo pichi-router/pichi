@@ -1,3 +1,4 @@
+#include "pichi/common/config.hpp"
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <format>
@@ -8,7 +9,6 @@
 #include <pichi/stream/helpers.hpp>
 
 namespace asio = boost::asio;
-namespace ip   = asio::ip;
 namespace sys  = boost::system;
 
 namespace pichi::actor {
