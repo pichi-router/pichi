@@ -1,5 +1,4 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core/flat_static_buffer.hpp>
@@ -11,9 +10,15 @@
 #include <boost/filesystem/path.hpp>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <pichi/actor/detached.hpp>
+#include <pichi/actor/listener.hpp>
+#include <pichi/actor/router.hpp>
+#include <pichi/actor/server.hpp>
 #include <pichi/api/server.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
+#include <pichi/common/mmdb.hpp>
 #include <pichi/net/adapter.hpp>
 #include <pichi/net/helper.hpp>
 #include <pichi/net/spawn.hpp>
@@ -35,20 +40,19 @@
 
 using namespace std;
 using namespace pichi;
-namespace asio = boost::asio;
+namespace asio  = boost::asio;
 namespace beast = boost::beast;
-namespace fs = boost::filesystem;
-namespace http = boost::beast::http;
-namespace ip = asio::ip;
-namespace json = rapidjson;
+namespace http  = boost::beast::http;
+namespace ip    = asio::ip;
+namespace json  = rapidjson;
 
 using ip::tcp;
 
 static decltype(auto) INGRESSES = "ingresses";
-static decltype(auto) EGRESSES = "egresses";
-static decltype(auto) RULES = "rules";
-static decltype(auto) ROUTE = "route";
-static decltype(auto) INDENT = "  ";
+static decltype(auto) EGRESSES  = "egresses";
+static decltype(auto) RULES     = "rules";
+static decltype(auto) ROUTE     = "route";
+static decltype(auto) INDENT    = "  ";
 
 static asio::io_context io{1};
 
@@ -65,11 +69,11 @@ public:
   HttpHelper(ResolveResults&& endpoint, asio::yield_context yield);
 
   vector<string> get(string const& target);
-  void put(string const& target, string const& body);
-  void del(string const& target);
+  void           put(string const& target, string const& body);
+  void           del(string const& target);
 
 private:
-  ResolveResults endpoint_;
+  ResolveResults      endpoint_;
   asio::yield_context yield_;
 };
 
@@ -89,15 +93,16 @@ vector<string> HttpHelper::get(string const& target)
   req.version(11);
   http::async_write(s, req, yield_);
 
-  auto buf = beast::flat_static_buffer<1024>{};
+  auto buf  = beast::flat_static_buffer<1024>{};
   auto resp = http::response<http::string_body>{};
   http::async_read(s, buf, resp, yield_);
   assertTrue(resp.result() == http::status::ok);
 
   auto doc = parseJson(resp.body().c_str());
   auto ret = vector<string>{};
-  transform(doc.MemberBegin(), doc.MemberEnd(), back_inserter(ret),
-            [](auto&& member) { return member.name.GetString(); });
+  transform(doc.MemberBegin(), doc.MemberEnd(), back_inserter(ret), [](auto&& member) {
+    return member.name.GetString();
+  });
   return ret;
 }
 
@@ -114,7 +119,7 @@ void HttpHelper::put(string const& target, string const& body)
   req.prepare_payload();
   http::async_write(s, req, yield_);
 
-  auto buf = beast::flat_static_buffer<1024>{};
+  auto buf  = beast::flat_static_buffer<1024>{};
   auto resp = http::response<http::string_body>{};
   http::async_read(s, buf, resp, yield_);
   if (resp.result() != http::status::no_content) cout << INDENT << target << " NOT loaded" << endl;
@@ -131,7 +136,7 @@ void HttpHelper::del(string const& target)
   req.version(11);
   http::async_write(s, req, yield_);
 
-  auto buf = beast::flat_static_buffer<1024>{};
+  auto buf  = beast::flat_static_buffer<1024>{};
   auto resp = http::response<http::string_body>{};
   http::async_read(s, buf, resp, yield_);
   assertTrue(resp.result() == http::status::no_content);
@@ -196,15 +201,21 @@ static void flush(HttpHelper& helper)
 
 void run(string const& bind, uint16_t port, string const& fn, string const& mmdb)
 {
-  auto server = api::Server{io, mmdb.c_str()};
-  server.listen(bind, port);
+  g_mmdb.emplace(mmdb);
+
+  auto ex       = io.get_executor();
+  auto router   = std::make_shared<actor::Router>(ex);
+  auto listener = actor::Listener{ex, router};
+  auto server   = actor::Server{ex, std::move(router), listener};
+
+  asio::co_spawn(ex, server.serve({asio::ip::make_address(bind), port}), actor::detached);
 
   // FIXME load & flush aren't designed to be the atomic operations.
   net::spawn(
       io,
       [=](auto yield) {
         auto resolver = tcp::resolver{io};
-        auto helper = HttpHelper{resolver.async_resolve(bind, to_string(port), yield), yield};
+        auto helper   = HttpHelper{resolver.async_resolve(bind, to_string(port), yield), yield};
         load(helper, fn);
 
 #if defined(HAS_SIGNAL_H) && defined(SIGHUP)
@@ -217,7 +228,8 @@ void run(string const& bind, uint16_t port, string const& fn, string const& mmdb
         }
 #endif  // defined(HAS_SIGNAL_H) && defined(SIGHUP)
       },
-      [](auto, auto) noexcept { io.stop(); });
+      [](auto, auto) noexcept { io.stop(); }
+  );
 
   io.run();
 }

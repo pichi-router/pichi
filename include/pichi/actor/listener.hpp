@@ -27,6 +27,8 @@ public:
   Awaitable<void>        del_ingress(std::string const&);
   Awaitable<void>        put_ingress(std::string const&, std::string_view);
 
+  Awaitable<void> set_router(RouterPtr const&);
+
 private:
   Strand    strand_;
   RouterPtr router_;

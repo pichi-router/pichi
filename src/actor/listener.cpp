@@ -15,7 +15,7 @@ namespace json = rapidjson;
 namespace pichi::actor {
 
 Awaitable<void>
-    Listener::listen(std::string_view, ip::tcp::acceptor& ac, api::IngressHolder& holder)
+    Listener::listen(std::string_view iname, ip::tcp::acceptor& ac, api::IngressHolder& holder)
 {
   auto ex = strand_.get_inner_executor();
   while (ac.is_open()) {
@@ -28,7 +28,7 @@ Awaitable<void>
 
     asio::co_spawn(
         ex,
-        [session = Session{ex, router_}, vo = holder.vo_, s = std::move(*s)]() mutable {
+        [session = Session{ex, router_, iname}, vo = holder.vo_, s = std::move(*s)]() mutable {
           return session.start(vo, std::move(s));
         },
         detached
@@ -79,7 +79,14 @@ Awaitable<void> Listener::put_ingress(std::string const& name, std::string_view 
   else
     it->second.reset(ex, std::move(vo));
 
-  for (auto& ac : it->second.acceptors_) asio::co_spawn(ex, listen(name, ac, it->second), detached);
+  for (auto& ac : it->second.acceptors_)
+    asio::co_spawn(ex, listen(it->first, ac, it->second), detached);
+}
+
+Awaitable<void> Listener::set_router(RouterPtr const& router)
+{
+  co_await switch_to(strand_);
+  router_ = router;
 }
 
 }  // namespace pichi::actor

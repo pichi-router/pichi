@@ -84,7 +84,7 @@ static auto const EGRESS_REGEX       = std::regex{"^/egresses/?([?#].*)?$"};
 static auto const EGRESS_NAME_REGEX  = std::regex{"^/egresses/([^?#]+)/?([?#].*)?$"};
 static auto const RULE_REGEX         = std::regex{"^/rules/?([?#].*)?$"};
 static auto const RULE_NAME_REGEX    = std::regex{"^/rules/([^?#]+)/?([?#].*)?$"};
-static auto const ROUTE_REGEX        = std::regex{"^/route/?([?#].*)?$"};
+static auto const ROUTE_REGEX        = std::regex{"^/route$"};
 
 bool match(boost::string_view s, std::regex const& re, std::cmatch& mr)
 {
@@ -191,12 +191,14 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   else if (match(req.target(), RULE_NAME_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::delete_:
-      // conf_ = conf_->del_rule(mr[1].str());
+      router_ = router_->del_rule(mr[1].str());
+      co_await listener_.set_router(router_);
       co_return gen_resp(http::status::no_content);
     case http::verb::options:
       co_return gen_resp(http::verb::delete_, http::verb::options, http::verb::put);
     case http::verb::put:
-      // conf_ = conf_->put_rule(mr[1].str(), req.body());
+      router_ = router_->put_rule(mr[1].str(), req.body());
+      co_await listener_.set_router(router_);
       co_return gen_resp(http::status::no_content);
     default:
       break;
@@ -209,7 +211,8 @@ Awaitable<Server::Response> Server::handle(Request const& req)
     case http::verb::options:
       co_return gen_resp(http::verb::get, http::verb::options, http::verb::put);
     case http::verb::put:
-      // conf_ = conf_->put_route(req.body());
+      router_ = router_->put_route(req.body());
+      co_await listener_.set_router(router_);
       co_return gen_resp(http::status::no_content);
     default:
       break;

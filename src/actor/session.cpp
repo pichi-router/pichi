@@ -1,6 +1,7 @@
 #include "pichi/common/config.hpp"
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
+#include <chrono>
 #include <format>
 #include <iostream>
 #include <pichi/actor/session.hpp>
@@ -29,22 +30,37 @@ template <typename From, typename To> Awaitable<void> bridge(From& from, To& to)
   asio::detail::throw_error(ec);
 }
 
-static Awaitable<adapter::tcp::Egress>
-    handshake(adapter::tcp::Ingress& ingress, std::shared_ptr<Router>& router, IOExecutor const& ex)
+Awaitable<adapter::tcp::Egress>
+    Session::handshake(adapter::tcp::Ingress& ingress, AdapterType itype)
 {
-  auto remote = co_await std::visit([](auto&& ingress) { return ingress.read_remote(); }, ingress);
-  auto egress = adapter::tcp::create_egress(co_await router->route(remote), ex);
-  co_await std::visit([&remote](auto&& egress) { return egress.connect(remote); }, egress);
+  auto peer = co_await std::visit([](auto&& ingress) { return ingress.read_remote(); }, ingress);
+
+  auto [rname, ename, evo] = co_await router_->route(peer, iname_, itype);
+
+  auto egress = adapter::tcp::create_egress(evo, ex_);
+
+  co_await std::visit([&](auto&& egress) { return egress.connect(peer); }, egress);
   co_await std::visit([](auto&& ingress) { return ingress.confirm(); }, ingress);
-  router.reset();
-  std::clog << std::format("transferring {}:{}\n", remote.host_, remote.port_);
+  router_.reset();
+
+  std::clog << std::format(
+      "{} | {}:{} | {}: {} -> {}\n",
+      std::chrono::system_clock::now(),
+      peer.host_,
+      peer.port_,
+      rname,
+      iname_,
+      ename
+  );
+
   co_return egress;
 }
 
 Awaitable<void> Session::start(vo::Ingress const& vo, Socket s)
 {
-  auto ingress      = adapter::tcp::create_ingress(vo, std::move(s));
-  auto [ec, egress] = co_await redirect(handshake(ingress, router_, ex_));
+  auto ingress = adapter::tcp::create_ingress(vo, std::move(s));
+
+  auto [ec, egress] = co_await redirect(handshake(ingress, vo.type_));
 
   if (ec) {
     co_await std::visit([ec](auto&& ingress) { return ingress.disconnect(ec); }, ingress);
