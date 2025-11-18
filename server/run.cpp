@@ -10,10 +10,7 @@
 #include <boost/filesystem/path.hpp>
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <pichi/actor/detached.hpp>
-#include <pichi/actor/listener.hpp>
-#include <pichi/actor/router.hpp>
 #include <pichi/actor/server.hpp>
 #include <pichi/api/server.hpp>
 #include <pichi/common/asserts.hpp>
@@ -203,12 +200,10 @@ void run(string const& bind, uint16_t port, string const& fn, string const& mmdb
 {
   g_mmdb.emplace(mmdb);
 
-  auto ex       = io.get_executor();
-  auto router   = std::make_shared<actor::Router>(ex);
-  auto listener = actor::Listener{ex, router};
-  auto server   = actor::Server{ex, std::move(router), listener};
+  auto ex  = io.get_executor();
+  auto svr = actor::Server{ex};
 
-  asio::co_spawn(ex, server.serve({asio::ip::make_address(bind), port}), actor::detached);
+  asio::co_spawn(ex, svr.serve({asio::ip::make_address(bind), port}), actor::detached);
 
   // FIXME load & flush aren't designed to be the atomic operations.
   net::spawn(

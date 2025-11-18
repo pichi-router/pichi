@@ -1,38 +1,39 @@
 #ifndef PICHI_ACTOR_LISTENER_HPP
 #define PICHI_ACTOR_LISTENER_HPP
 
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/strand.hpp>
 #include <memory>
 #include <pichi/actor/router.hpp>
-#include <pichi/api/ingress_holder.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <string>
-#include <unordered_map>
+#include <vector>
 
 namespace pichi::actor {
 
 class Listener {
 private:
-  using Ingresses = std::unordered_map<std::string, api::IngressHolder>;
+  using Acceptor  = boost::asio::ip::tcp::acceptor;
+  using Acceptors = std::vector<Acceptor>;
   using RouterPtr = std::shared_ptr<Router>;
   using Strand    = boost::asio::strand<IOExecutor>;
 
-  Awaitable<void> listen(std::string_view, boost::asio::ip::tcp::acceptor&, api::IngressHolder&);
+  Awaitable<void> listen(Acceptor&);
 
 public:
-  Listener(IOExecutor, RouterPtr const&);
+  Listener(IOExecutor const&, std::string const&, RouterPtr const&, vo::Ingress);
 
-  Awaitable<std::string> get_ingresses() const;
-  Awaitable<void>        del_ingress(std::string const&);
-  Awaitable<void>        put_ingress(std::string const&, std::string_view);
+  void start();
 
-  Awaitable<void> set_router(RouterPtr const&);
+  void reroute(RouterPtr const&);
 
 private:
-  Strand    strand_;
-  RouterPtr router_;
-  Ingresses ingresses_;
+  Strand      strand_;
+  RouterPtr   router_;
+  std::string name_;
+  vo::Ingress vo_;
+  Acceptors   acceptors_ = {};
 };
 
 }  // namespace pichi::actor
