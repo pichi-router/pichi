@@ -1,5 +1,6 @@
 macro(_find_all_dependencies search_mode)
   find_package(Boost 1.77.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED ${search_mode})
+  find_package(Botan 3.5.0 REQUIRED ${search_mode})
   find_package(MbedTLS REQUIRED ${search_mode})
   find_package(MaxmindDB 1.3.0 REQUIRED ${search_mode})
   find_package(Threads REQUIRED)
@@ -159,7 +160,7 @@ endif()
 
 # Setup COMMON_LIBRARIES for later usage
 list(APPEND COMMON_LIBRARIES
-  Boost::boost Boost::context
+  Boost::boost Boost::context botan::botan
   MbedTLS::mbedtls libsodium::libsodium maxminddb::maxminddb rapidjson
   Threads::Threads ${CMAKE_DL_LIBS} ${SSL_LIB}::SSL)
 

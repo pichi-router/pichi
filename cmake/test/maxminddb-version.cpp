@@ -3,6 +3,6 @@
 
 int main(int, char**)
 {
-  std::cout << MMDB_lib_version() << std::endl;
+  std::cout << MMDB_lib_version();
   return 0;
 }

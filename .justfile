@@ -169,7 +169,7 @@ _build *args:
     -o "boost/*:system_no_deprecated=True" \
     -o "boost/*:without_charconv=True" \
     -o "boost/*:without_chrono=True" \
-    -o "boost/*:without_container=True" \
+    -o "boost/*:without_cobalt=True" \
     -o "boost/*:without_contract=True" \
     -o "boost/*:without_coroutine=True" \
     -o "boost/*:without_date_time=True" \

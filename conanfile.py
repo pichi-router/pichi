@@ -19,7 +19,7 @@ class PichiConan(ConanFile):
              "transparent": ["none", "pf", "iptables"]}
   default_options = {"shared": False, "fPIC": True, "build_test": True, "build_server": True,
                      "tls_fingerprint": False, "transparent": "none"}
-  requires = "boost/[>=1.72.0]", "mbedtls/[>=3.0.0]", "libsodium/[>=1.0.12]", \
+  requires = "boost/[>=1.72.0]", "botan/[>=3.5.0]", "mbedtls/[>=3.0.0]", "libsodium/[>=1.0.12]", \
              "libmaxminddb/[>=1.5.0]", "rapidjson/[>=1.1.0]"
   exports_sources = "CMakeLists.txt", "cmake/*", "include/*", "src/*", "server/*", "test/*"
 
