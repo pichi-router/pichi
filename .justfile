@@ -164,12 +164,12 @@ detect-android ndk_ver:
 _build *args:
   @conan create -b missing -l "{{lockfile}}" --lockfile-partial \
     -o "boost/*:asio_no_deprecated=True" \
-    -o "boost/*:filesystem_no_deprecated=True" \
     -o "boost/*:bzip2=False" \
+    -o "boost/*:filesystem_no_deprecated=True" \
     -o "boost/*:system_no_deprecated=True" \
     -o "boost/*:without_charconv=True" \
     -o "boost/*:without_chrono=True" \
-    -o "boost/*:without_container=True" \
+    -o "boost/*:without_cobalt=True" \
     -o "boost/*:without_contract=True" \
     -o "boost/*:without_coroutine=True" \
     -o "boost/*:without_date_time=True" \
