@@ -15,8 +15,6 @@
 #include <pichi/vo/to_json.hpp>
 #include <ranges>
 #include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 #include <regex>
 #include <sstream>
 
@@ -37,19 +35,11 @@ concept AllOf = (std::same_as<T, U> && ...);
 
 static auto gen_resp(http::status status) { return Server::Response{status, 11}; }
 
-static auto gen_resp(http::status status, std::string_view body)
-{
-  auto rep   = gen_resp(status);
-  rep.body() = body;
-  return rep;
-}
-
 static auto gen_resp(http::status status, json::Value const& body)
 {
-  auto buf    = json::StringBuffer{};
-  auto writer = json::Writer<json::StringBuffer>{buf};
-  body.Accept(writer);
-  return gen_resp(status, buf.GetString());
+  auto rep   = gen_resp(status);
+  rep.body() = vo::toString(body);
+  return rep;
 }
 
 static auto gen_resp(sys::error_code const& ec)
@@ -88,6 +78,20 @@ auto gen_resp(Verbs... verbs)
   return resp;
 }
 
+template <typename Value, typename Alloc>
+auto to_json(std::unordered_map<std::string, Value> const& m, Alloc& alloc)
+{
+  auto ret = json::Value{};
+
+  ret.SetObject();
+  rngs::for_each(m, [&](auto&& item) {
+    auto&& [name, value] = item;
+    assertFalse(name.empty());
+    ret.AddMember(vo::toJson(name, alloc), vo::toJson(value, alloc), alloc);
+  });
+  return ret;
+}
+
 static auto const INGRESS_REGEX      = std::regex{"^/ingresses/?([?#].*)?$"};
 static auto const INGRESS_NAME_REGEX = std::regex{"^/ingresses/([^?#/]+)/?([?#].*)?$"};
 static auto const EGRESS_REGEX       = std::regex{"^/egresses/?([?#].*)?$"};
@@ -107,12 +111,10 @@ Server::Server(IOExecutor const& ex)
 : strand_{asio::make_strand(ex)},
   egresses_{
     {DEFAULT_EGRESS_NAME, vo::Egress{.type_ = AdapterType::DIRECT}}
-  }, rules_{},
+  },
   route_{vo::Route{.default_ = DEFAULT_EGRESS_NAME}},
   router_{std::make_shared<Router>(ex, egresses_, rules_, route_)}
 {
-  auto alloc = json::Document::AllocatorType{};
-  ingresses_.SetObject();
 }
 
 Awaitable<void> Server::serve(ip::tcp::endpoint endpoint)
@@ -155,7 +157,7 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   if (match(req.target(), INGRESS_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::get:
-      co_return gen_resp(http::status::ok, ingresses_);
+      co_return gen_resp(http::status::ok, to_json(ingresses_, alloc));
     case http::verb::options:
       co_return gen_resp(http::verb::get, http::verb::options);
     default:
@@ -169,18 +171,15 @@ Awaitable<Server::Response> Server::handle(Request const& req)
     switch (req.method()) {
     case http::verb::delete_:
       listeners_.erase(name);
-      ingresses_.EraseMember(key);
+      ingresses_.erase(name);
       co_return gen_resp(http::status::no_content);
     case http::verb::options:
       co_return gen_resp(http::verb::delete_, http::verb::options, http::verb::put);
     case http::verb::put: {
-      auto vo   = vo::parse<vo::Ingress>(req.body());
-      auto json = vo::toJson(vo, alloc);
-
-      auto [it, _] = listeners_.insert_or_assign(name, Listener{ex, name, router_, std::move(vo)});
+      auto vo      = vo::parse<vo::Ingress>(req.body());
+      auto [it, _] = listeners_.insert_or_assign(name, Listener{ex, name, router_, vo});
       it->second.start();
-      if (ingresses_.HasMember(key)) ingresses_.RemoveMember(key);
-      ingresses_.AddMember(key, json, alloc);
+      ingresses_.insert_or_assign(name, std::move(vo));
 
       co_return gen_resp(http::status::no_content);
     }
@@ -191,10 +190,7 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   else if (match(req.target(), EGRESS_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::get:
-      co_return gen_resp(
-          http::status::ok,
-          vo::toJson(rngs::cbegin(egresses_), rngs::cend(egresses_), alloc)
-      );
+      co_return gen_resp(http::status::ok, to_json(egresses_, alloc));
     case http::verb::options:
       co_return gen_resp(http::verb::get, http::verb::options);
     default:
@@ -225,10 +221,7 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   else if (match(req.target(), RULE_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::get:
-      co_return gen_resp(
-          http::status::ok,
-          vo::toJson(rngs::cbegin(rules_), rngs::cend(rules_), alloc)
-      );
+      co_return gen_resp(http::status::ok, to_json(rules_, alloc));
     case http::verb::options:
       co_return gen_resp(http::verb::get, http::verb::options);
     default:

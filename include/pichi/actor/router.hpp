@@ -60,14 +60,18 @@ private:
   std::vector<std::string> countries_ = {};
 };
 
+template <typename Value> using ValueMap = std::unordered_map<std::string, Value>;
+
 }  // namespace detail
 
 class Router {
 private:
+  template <typename Value> using ValueMap = detail::ValueMap<Value>;
+
   using Matchers = std::vector<detail::Matcher>;
 
 public:
-  Router(IOExecutor, std::unordered_map<std::string, vo::Egress> const&, std::unordered_map<std::string, vo::Rule> const&, vo::Route const&);
+  Router(IOExecutor, ValueMap<vo::Egress> const&, ValueMap<vo::Rule> const&, vo::Route const&);
 
   Awaitable<std::tuple<std::string, std::string, vo::Egress>>
       route(Endpoint const&, std::string_view, AdapterType) const;
