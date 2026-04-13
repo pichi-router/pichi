@@ -1,46 +1,45 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <algorithm>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/websocket/stream.hpp>
+#include <botan/hash.h>
+#include <botan/hex.h>
 #include <pichi/adapter/tcp/trojan.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/enumerations.hpp>
 #include <pichi/common/error.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/crypto/hash.hpp>
 #include <pichi/stream/helpers.hpp>
 #include <ranges>
 #include <vector>
 
 namespace asio = boost::asio;
-namespace http = boost::beast::http;
 namespace ip   = asio::ip;
 namespace rngs = std::ranges;
-namespace ssl  = asio::ssl;
 namespace sys  = boost::system;
 namespace view = std::views;
-namespace wbsk = boost::beast::websocket;
 
 using namespace std::literals;
 
 namespace pichi::adapter::tcp {
 
-static constexpr size_t PWD_LEN = crypto::HashTraits<HashAlgorithm::SHA224>::length * 2;
+static auto const PWD_LEN = 56_sz;
 
 namespace trojan {
 
+static std::string sha224(std::string_view pwd)
+{
+  auto sha224 = Botan::HashFunction::create_or_throw("SHA-224");
+  sha224->update(pwd);
+  return Botan::hex_encode(sha224->final(), false);
+}
+
 template <typename Container> Container create_pwds(vo::TrojanIngressCredential const& vo)
 {
-  auto v = vo.credential_ | view::transform([](auto&& cred) {
-             auto bin  = std::vector(PWD_LEN / 2, 0_u8);
-             auto hash = crypto::Hash<HashAlgorithm::SHA224>{};
-             hash.hash(cred, bin);
-             return crypto::bin2hex(bin);
-           });
+  auto v = vo.credential_ | view::transform([](auto&& cred) { return sha224(cred); });
   return Container{rngs::cbegin(v), rngs::cend(v)};
 }
 
@@ -106,14 +105,6 @@ void Cache::clear()
 }
 
 void Cache::rollback() { taken_ = 0; }
-
-static std::string sha224(std::string_view pwd)
-{
-  auto bin    = std::vector(PWD_LEN / 2, 0_u8);
-  auto sha224 = crypto::Hash<HashAlgorithm::SHA224>{};
-  sha224.hash(pwd, bin);
-  return crypto::bin2hex(bin);
-}
 
 }  // namespace trojan
 
@@ -242,8 +233,10 @@ template <typename Socket> Awaitable<void> TrojanEgress<Socket>::connect(Endpoin
 
   auto buf = std::array<uint8_t, 512>{};
 
-  auto it = rngs::copy(cred_, rngs::begin(buf)).out;
-  it      = rngs::copy("\r\n\x01"sv, it).out;
+  auto it = rngs::begin(buf);
+
+  it = rngs::copy(cred_, it).out;
+  it = rngs::copy("\r\n\x01"sv, it).out;
   it += serializeEndpoint(remote, {it, 259_sz});
   it = rngs::copy("\r\n"sv, it).out;
 

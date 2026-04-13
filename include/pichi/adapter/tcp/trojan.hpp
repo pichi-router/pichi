@@ -3,7 +3,6 @@
 
 #include <boost/beast/core/flat_static_buffer.hpp>
 #include <boost/system/error_code.hpp>
-#include <concepts>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/stream/tls.hpp>
