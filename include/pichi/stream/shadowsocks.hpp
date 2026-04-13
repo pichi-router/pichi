@@ -8,158 +8,165 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
+#include <botan/cipher_mode.h>
 #include <pichi/common/asserts.hpp>
-#include <pichi/common/buffer.hpp>
-#include <pichi/common/constants.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/common/enumerations.hpp>
-#include <pichi/common/error.hpp>
-#include <pichi/crypto/aead.hpp>
-#include <pichi/crypto/method.hpp>
-#include <pichi/crypto/stream.hpp>
-#include <pichi/net/helper.hpp>
-#include <pichi/stream/completer.hpp>
 #include <pichi/stream/helpers.hpp>
-#include <utility>
+#include <ranges>
+#include <vector>
 
 namespace pichi::stream {
 
-template <CryptoMethod method, typename Socket> class Shadowsocks {
+namespace detail {
+
+class Cryptor {
+public:
+  Cryptor(CryptoMethod, Botan::Cipher_Dir);
+
+  void set_psk(ConstBuffer, ConstBuffer);
+
+  size_t process(ConstBuffer, MutableBuffer);
+
 private:
-  using Decryptor = crypto::Decryptor<method>;
-  using Encryptor = crypto::Encryptor<method>;
+  std::unique_ptr<Botan::Cipher_Mode> cryptor_;
+
+  std::vector<uint8_t> nonce_;
+};
+
+class Encryptor {
+public:
+  Encryptor(CryptoMethod, ConstBuffer);
+
+  ConstBuffer salt() const;
+
+  size_t process(ConstBuffer, MutableBuffer);
+
+private:
+  Cryptor cryptor_;
+
+  std::vector<uint8_t> salt_;
+};
+
+class Decryptor {
+public:
+  Decryptor(CryptoMethod);
+
+  MutableBuffer salt();
+
+  void   set_psk(ConstBuffer);
+  size_t process(ConstBuffer, MutableBuffer);
+
+private:
+  Cryptor cryptor_;
+
+  std::vector<uint8_t> salt_;
+};
+
+class Cache {
+public:
+  Cache() = default;
+
+  bool empty() const;
+
+  size_t copy(MutableBuffer);
+
+  MutableBuffer prepare(MutableBuffer, size_t);
+
+private:
+  boost::beast::flat_buffer data_ = {};
+};
+
+}  // namespace detail
+
+template <typename Socket> class Shadowsocks {
+private:
+  static constexpr size_t FRAME_SIZE = 0x3fff;
+  static constexpr size_t TAG_SIZE   = 16;
+
   using ErrorCode = boost::system::error_code;
+  using Encryptor = detail::Encryptor;
+  using Decryptor = detail::Decryptor;
 
-  using Cache        = boost::beast::basic_flat_buffer<std::allocator<uint8_t>>;
-  using PlainBuffer  = std::array<uint8_t, MAX_FRAME_SIZE>;
-  using CipherBuffer = std::array<uint8_t, MAX_FRAME_SIZE + 2 + 2 * crypto::TAG_SIZE<method>>;
-  using IVBuffer     = std::array<uint8_t, crypto::IV_SIZE<method>>;
-  using LenBuffer    = std::array<uint8_t, 2>;
+  using PlainBuffer  = std::array<uint8_t, FRAME_SIZE>;
+  using CipherBuffer = std::array<uint8_t, FRAME_SIZE + 2 + 2 * TAG_SIZE>;
+  using LengthBuffer = std::array<uint8_t, 2>;
 
-  size_t copy_to(MutableBuffer dst)
+  using Data  = std::vector<uint8_t>;
+  using Cache = detail::Cache;
+
+  Awaitable<void> read_salt()
   {
-    auto copied = boost::asio::buffer_copy(boost::asio::buffer(dst), cache_.data(), cache_.size());
-    cache_.consume(copied);
-    return copied;
+    auto salt = decryptor_.salt();
+    co_await boost::asio::async_read(
+        socket_,
+        boost::asio::buffer(std::ranges::data(salt), std::ranges::size(salt)),
+        boost::asio::use_awaitable
+    );
+    decryptor_.set_psk(pw_);
+    pw_.clear();
   }
 
-  Awaitable<void> read_iv()
+  Awaitable<void> write_salt()
   {
-    if (ivRecv_) co_return;
-
-    auto iv = IVBuffer{};
-    co_await boost::asio::async_read(socket_, boost::asio::buffer(iv), boost::asio::use_awaitable);
-    decryptor_.setIv(iv);
-    ivRecv_ = true;
-  }
-
-  Awaitable<void> write_iv()
-  {
-    if (ivSent_) co_return;
-
     co_await boost::asio::async_write(
         socket_,
-        boost::asio::buffer(encryptor_.getIv()),
+        boost::asio::buffer(encryptor_.salt()),
         boost::asio::use_awaitable
     );
-    ivSent_ = true;
-  }
-
-  Awaitable<size_t> do_stream_read(MutableBuffer plain)
-  {
-    auto cipher = CipherBuffer{};
-    auto len    = co_await socket_.async_read_some(
-        boost::asio::buffer(cipher, plain.size()),
-        boost::asio::use_awaitable
-    );
-    co_return decryptor_.decrypt({cipher, len}, plain);
-  }
-
-  MutableBuffer prepare(MutableBuffer provided, size_t n)
-  {
-    if (n <= provided.size()) return {provided, n};
-    auto buf = cache_.prepare(n);
-    cache_.commit(n);
-    return buf;
   }
 
   Awaitable<void> read_block(MutableBuffer block)
   {
     auto cipher = CipherBuffer{};
-    auto len    = block.size() + crypto::TAG_SIZE<method>;
+    auto len    = std::ranges::size(block) + TAG_SIZE;
 
     co_await boost::asio::async_read(
         socket_,
         boost::asio::buffer(cipher, len),
         boost::asio::use_awaitable
     );
-    decryptor_.decrypt({cipher, len}, block);
+    decryptor_.process({cipher, len}, block);
   }
 
   Awaitable<void> do_connect(Endpoint const& peer)
   {
     co_await connect(socket_, proxy_);
+
     auto plain = PlainBuffer{};
     auto len   = serializeEndpoint(peer, plain);
     co_await do_write({plain, len});
   }
 
-  Awaitable<size_t> do_aead_read(MutableBuffer plain)
+  Awaitable<size_t> do_read(MutableBuffer plain)
   {
-    if (cache_.size() > 0) co_return copy_to(plain);
+    if (!std::ranges::empty(pw_)) co_await read_salt();
 
-    auto lb = LenBuffer{};
+    if (!cache_.empty()) co_return cache_.copy(plain);
+
+    auto lb = LengthBuffer{};
     co_await read_block(lb);
 
     auto len = ntoh<uint16_t>(lb);
-    assertTrue(len <= MAX_FRAME_SIZE, PichiError::BAD_PROTO);
+    assertTrue(len <= FRAME_SIZE, PichiError::BAD_PROTO);
 
-    co_await read_block(prepare(plain, len));
-
-    co_return cache_.size() == 0 ? len : copy_to(plain);
+    co_await read_block(cache_.prepare(plain, len));
+    co_return cache_.empty() ? len : cache_.copy(plain);
   }
 
-  Awaitable<size_t> do_read(MutableBuffer plain)
+  Awaitable<size_t> do_write(ConstBuffer plain)
   {
-    co_await read_iv();
+    if (!std::ranges::empty(encryptor_.salt())) co_await write_salt();
 
-    if constexpr (crypto::detail::isStream<method>()) {
-      co_return co_await do_stream_read(plain);
-    }
-    else {
-      co_return co_await do_aead_read(plain);
-    }
-  }
-
-  Awaitable<size_t> do_stream_write(ConstBuffer plain)
-  {
-    auto cipher = CipherBuffer{};
-    auto ret    = plain.size();
-    while (plain.size() > 0) {
-      auto len = std::min(plain.size(), cipher.size());
-      encryptor_.encrypt({plain, len}, cipher);
-      co_await boost::asio::async_write(
-          socket_,
-          boost::asio::buffer(cipher, len),
-          boost::asio::use_awaitable
-      );
-      plain += len;
-    }
-    co_return ret;
-  }
-
-  Awaitable<size_t> do_aead_write(ConstBuffer plain)
-  {
     auto data = CipherBuffer{};
-    auto ret  = 0_sz;
-    while (plain.size() > 0) {
+    auto ret  = size_t{0};
+    while (std::ranges::size(plain) > 0) {
       auto cipher = MutableBuffer{data};
 
-      auto lb = LenBuffer{};
-      auto pl = std::min(plain.size(), MAX_FRAME_SIZE);
+      auto lb = LengthBuffer{};
+      auto pl = std::min(std::ranges::size(plain), FRAME_SIZE);
       hton(static_cast<uint16_t>(pl), lb);
-      auto cl = encryptor_.encrypt(lb, cipher);
-      cl += encryptor_.encrypt({plain, pl}, cipher + cl);
+      auto cl = encryptor_.process(lb, cipher);
+      cl += encryptor_.process({plain, pl}, cipher + cl);
       co_await boost::asio::async_write(
           socket_,
           boost::asio::buffer(data, cl),
@@ -171,29 +178,24 @@ private:
     co_return ret;
   }
 
-  Awaitable<size_t> do_write(ConstBuffer plain)
-  {
-    co_await write_iv();
-
-    if constexpr (crypto::detail::isStream<method>()) {
-      co_return co_await do_stream_write(plain);
-    }
-    else {
-      co_return co_await do_aead_write(plain);
-    }
-  }
-
 public:
   using executor_type   = typename Socket::executor_type;
   using next_layer_type = Socket;
 
-  Shadowsocks(ConstBuffer psk, Socket socket)
-    : socket_{std::move(socket)}, encryptor_{psk}, decryptor_{psk}
+  Shadowsocks(CryptoMethod method, ConstBuffer pw, Socket socket)
+    : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
+      socket_{std::move(socket)},
+      encryptor_{method, pw_},
+      decryptor_{method}
   {
   }
 
-  Shadowsocks(ConstBuffer psk, Endpoint const& proxy, IOExecutor const& ex)
-    : socket_{ex}, encryptor_{psk}, decryptor_{psk}, proxy_{proxy}
+  Shadowsocks(CryptoMethod method, ConstBuffer pw, Endpoint const& proxy, IOExecutor const& ex)
+    : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
+      socket_{ex},
+      encryptor_{method, pw_},
+      decryptor_{method},
+      proxy_{proxy}
   {
   }
 
@@ -214,7 +216,7 @@ public:
     return async_initiate<void(ErrorCode)>(
         get_executor(),
         std::forward<AcceptToken>(token),
-        [this]() { return read_iv(); }
+        [this]() { return read_salt(); }
     );
   }
 
@@ -250,13 +252,14 @@ public:
   }
 
 private:
+  Data  pw_;
+  Cache cache_ = {};
+
   Socket    socket_;
   Encryptor encryptor_;
   Decryptor decryptor_;
-  bool      ivSent_ = false;
-  bool      ivRecv_ = false;
-  Cache     cache_  = {};
-  Endpoint  proxy_  = {};
+
+  Endpoint proxy_ = {};
 };
 
 }  // namespace pichi::stream

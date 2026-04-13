@@ -1,43 +1,56 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
-#include <boost/asio/connect.hpp>
+#include "pichi/common/config.hpp"
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/adapter/tcp/shadowsocks.hpp>
-#include <pichi/common/endpoint.hpp>
+#include <pichi/common/asserts.hpp>
 #include <pichi/stream/helpers.hpp>
-
-#define ADAPTER_FUNC(Ret)                                                                          \
-  template <CryptoMethod method, typename Socket> Ret Shadowsocks<method, Socket>
-#define DECL_ADAPTER(Method) template class Shadowsocks<CryptoMethod::Method, asio::ip::tcp::socket>
 
 namespace asio = boost::asio;
 namespace sys  = boost::system;
 
 namespace pichi::adapter::tcp {
 
-template <CryptoMethod method, typename Socket>
-Shadowsocks<method, Socket>::Shadowsocks(ConstBuffer psk, Socket s) : stream_{psk, std::move(s)}
+template <typename Socket> auto create_stream(vo::Ingress const& vo, Socket s)
+{
+  assertTrue(vo.opt_.has_value());
+  auto&& opt = std::get<vo::ShadowsocksOption>(*vo.opt_);
+  return stream::Shadowsocks<Socket>{opt.method_, ConstBuffer{opt.password_}, std::move(s)};
+}
+
+template <typename Socket> auto create(vo::Egress const& vo, IOExecutor const& ex)
+{
+  assertTrue(vo.opt_.has_value());
+  auto&& opt = std::get<vo::ShadowsocksOption>(*vo.opt_);
+  return stream::Shadowsocks<Socket>{opt.method_, ConstBuffer{opt.password_}, *vo.server_, ex};
+}
+
+template <typename Socket>
+Shadowsocks<Socket>::Shadowsocks(vo::Ingress const& vo, Socket s)
+  : stream_{create_stream(vo, std::move(s))}
 {
 }
 
-template <CryptoMethod method, typename Socket>
-Shadowsocks<method, Socket>::Shadowsocks(
-    ConstBuffer psk, Endpoint const& proxy, IOExecutor const& ex
-)
-  : stream_{psk, proxy, ex}
+template <typename Socket>
+Shadowsocks<Socket>::Shadowsocks(vo::Egress const& vo, IOExecutor const& ex)
+  : stream_{create<Socket>(vo, ex)}
 {
 }
 
-ADAPTER_FUNC(Awaitable<size_t>)::recv(MutableBuffer buf)
+template <typename Socket> Awaitable<size_t> Shadowsocks<Socket>::recv(MutableBuffer buf)
 {
   co_return co_await stream::read_some(stream_, buf);
 }
 
-ADAPTER_FUNC(Awaitable<void>)::send(ConstBuffer buf) { co_await stream::write(stream_, buf); }
+template <typename Socket> Awaitable<void> Shadowsocks<Socket>::send(ConstBuffer buf)
+{
+  co_await stream::write(stream_, buf);
+}
 
-ADAPTER_FUNC(Awaitable<void>)::close() { co_await redirect(stream::close(stream_)); }
+template <typename Socket> Awaitable<void> Shadowsocks<Socket>::close()
+{
+  co_await redirect(stream::close(stream_));
+}
 
-ADAPTER_FUNC(Awaitable<Endpoint>)::read_remote()
+template <typename Socket> Awaitable<Endpoint> Shadowsocks<Socket>::read_remote()
 {
   co_await stream::accept(stream_);
   co_return co_await parse_endpoint([this](auto buf) -> Awaitable<void> {
@@ -45,31 +58,18 @@ ADAPTER_FUNC(Awaitable<Endpoint>)::read_remote()
   });
 }
 
-ADAPTER_FUNC(Awaitable<void>)::confirm() { co_return; }
+template <typename Socket> Awaitable<void> Shadowsocks<Socket>::confirm() { co_return; }
 
-ADAPTER_FUNC(Awaitable<void>)::connect(Endpoint const& peer)
+template <typename Socket> Awaitable<void> Shadowsocks<Socket>::connect(Endpoint const& peer)
 {
   co_await stream::connect(stream_, peer);
 }
 
-ADAPTER_FUNC(Awaitable<void>)::disconnect(sys::error_code const&) { co_return; }
+template <typename Socket> Awaitable<void> Shadowsocks<Socket>::disconnect(sys::error_code const&)
+{
+  co_return;
+}
 
-DECL_ADAPTER(AES_128_CTR);
-DECL_ADAPTER(AES_192_CTR);
-DECL_ADAPTER(AES_256_CTR);
-DECL_ADAPTER(AES_128_CFB);
-DECL_ADAPTER(AES_192_CFB);
-DECL_ADAPTER(AES_256_CFB);
-DECL_ADAPTER(CAMELLIA_128_CFB);
-DECL_ADAPTER(CAMELLIA_192_CFB);
-DECL_ADAPTER(CAMELLIA_256_CFB);
-DECL_ADAPTER(CHACHA20);
-DECL_ADAPTER(SALSA20);
-DECL_ADAPTER(CHACHA20_IETF);
-DECL_ADAPTER(AES_128_GCM);
-DECL_ADAPTER(AES_192_GCM);
-DECL_ADAPTER(AES_256_GCM);
-DECL_ADAPTER(CHACHA20_IETF_POLY1305);
-DECL_ADAPTER(XCHACHA20_IETF_POLY1305);
+template class Shadowsocks<asio::ip::tcp::socket>;
 
 }  // namespace pichi::adapter::tcp

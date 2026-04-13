@@ -1,8 +1,7 @@
 #ifndef PICHI_COMMON_ASSERTS_HPP
 #define PICHI_COMMON_ASSERTS_HPP
 
-#include <boost/system/error_code.hpp>
-#include <pichi/common/enumerations.hpp>
+#include <pichi/common/error.hpp>
 #include <string_view>
 
 namespace pichi {

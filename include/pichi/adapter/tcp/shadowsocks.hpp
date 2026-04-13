@@ -5,14 +5,16 @@
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/stream/shadowsocks.hpp>
+#include <pichi/vo/egress.hpp>
+#include <pichi/vo/ingress.hpp>
 
 namespace pichi::adapter::tcp {
 
-template <CryptoMethod method, typename Socket> class Shadowsocks {
+template <typename Socket> class Shadowsocks {
 public:
-  explicit Shadowsocks(ConstBuffer, Socket);
+  explicit Shadowsocks(vo::Ingress const&, Socket);
 
-  explicit Shadowsocks(ConstBuffer, Endpoint const&, IOExecutor const&);
+  explicit Shadowsocks(vo::Egress const&, IOExecutor const&);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -26,7 +28,7 @@ public:
   Awaitable<void> disconnect(boost::system::error_code const&);
 
 private:
-  stream::Shadowsocks<method, Socket> stream_;
+  stream::Shadowsocks<Socket> stream_;
 };
 
 }  // namespace pichi::adapter::tcp
