@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <boost/asio/batch.hpp>
 #include <boost/asio/redirect_error.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/read.hpp>
@@ -104,13 +103,13 @@ bool match(boost::string_view s, std::regex const& re, std::cmatch& mr)
   return std::regex_match(std::cbegin(s), std::cend(s), mr, re);
 }
 
-Server::Server(IOExecutor ex)
-: ex_{std::move(ex)},
+Server::Server(IOExecutor const& ex)
+: strand_{asio::make_strand(ex)},
   egresses_{
     {DEFAULT_EGRESS_NAME, vo::Egress{.type_ = AdapterType::DIRECT}}
   }, rules_{},
   route_{vo::Route{.default_ = DEFAULT_EGRESS_NAME}},
-  router_{std::make_shared<Router>(ex_, egresses_, rules_, route_)}
+  router_{std::make_shared<Router>(ex, egresses_, rules_, route_)}
 {
   auto alloc = json::Document::AllocatorType{};
   ingresses_.SetObject();
@@ -118,10 +117,10 @@ Server::Server(IOExecutor ex)
 
 Awaitable<void> Server::serve(ip::tcp::endpoint endpoint)
 {
-  auto a = ip::tcp::acceptor{ex_, endpoint};
-  while (a.is_open()) {
-    asio::co_spawn(ex_, do_session(co_await a.async_accept(asio::use_awaitable)), detached);
-  }
+  auto ex = strand_.get_inner_executor();
+  auto ac = ip::tcp::acceptor{ex, endpoint};
+  while (ac.is_open())
+    asio::co_spawn(ex, do_session(co_await ac.async_accept(asio::use_awaitable)), detached);
 }
 
 Awaitable<void> Server::do_session(ip::tcp::socket s)
@@ -147,10 +146,11 @@ Awaitable<void> Server::do_session(ip::tcp::socket s)
 
 Awaitable<Server::Response> Server::handle(Request const& req)
 {
+  auto ex    = strand_.get_inner_executor();
   auto mr    = std::cmatch{};
   auto alloc = json::Document::AllocatorType{};
-  auto batch = asio::make_batch(ex_);
-  co_await switch_to(batch);
+
+  co_await switch_to(strand_);
 
   if (match(req.target(), INGRESS_REGEX, mr)) {
     switch (req.method()) {
@@ -177,7 +177,7 @@ Awaitable<Server::Response> Server::handle(Request const& req)
       auto vo   = vo::parse<vo::Ingress>(req.body());
       auto json = vo::toJson(vo, alloc);
 
-      auto [it, _] = listeners_.insert_or_assign(name, Listener{ex_, name, router_, std::move(vo)});
+      auto [it, _] = listeners_.insert_or_assign(name, Listener{ex, name, router_, std::move(vo)});
       it->second.start();
       if (ingresses_.HasMember(key)) ingresses_.RemoveMember(key);
       ingresses_.AddMember(key, json, alloc);
@@ -298,7 +298,7 @@ Awaitable<Server::Response> Server::handle(Request const& req)
 
 void Server::update_router()
 {
-  router_ = std::make_shared<Router>(ex_, egresses_, rules_, route_);
+  router_ = std::make_shared<Router>(strand_.get_inner_executor(), egresses_, rules_, route_);
   rngs::for_each(listeners_, [this](auto&& p) { p.second.reroute(router_); });
 }
 

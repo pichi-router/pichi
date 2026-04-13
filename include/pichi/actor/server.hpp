@@ -2,6 +2,7 @@
 #define PICHI_ACTOR_SERVER_HPP
 
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <memory>
@@ -18,6 +19,7 @@ namespace pichi::actor {
 
 class Server {
 private:
+  using Strand    = boost::asio::strand<IOExecutor>;
   using RouterPtr = std::shared_ptr<Router>;
   using Json      = rapidjson::Value;
 
@@ -26,7 +28,7 @@ public:
   using Request  = boost::beast::http::request<HttpBody>;
   using Response = boost::beast::http::response<HttpBody>;
 
-  Server(IOExecutor);
+  Server(IOExecutor const&);
 
   Awaitable<void> serve(boost::asio::ip::tcp::endpoint);
 
@@ -36,7 +38,7 @@ private:
 
   void update_router();
 
-  IOExecutor ex_;
+  Strand strand_;
 
   Json ingresses_ = {};
 
