@@ -199,7 +199,7 @@ public:
   {
   }
 
-  executor_type const& get_executor() { return socket_.get_executor(); }
+  executor_type get_executor() { return socket_.get_executor(); }
 
   next_layer_type&       next_layer() { return socket_; }
   next_layer_type const& next_layer() const { return socket_; }
@@ -208,12 +208,12 @@ public:
 
   template <typename ShutdownToken> auto async_shutdown(ShutdownToken&& token)
   {
-    return async_initiate<void(ErrorCode)>(std::forward<ShutdownToken>(token), ErrorCode{});
+    return stream::async_initiate<void(ErrorCode)>(std::forward<ShutdownToken>(token), ErrorCode{});
   }
 
   template <typename AcceptToken> auto async_accept(AcceptToken&& token)
   {
-    return async_initiate<void(ErrorCode)>(
+    return stream::async_initiate<void(ErrorCode)>(
         get_executor(),
         std::forward<AcceptToken>(token),
         [this]() { return read_salt(); }
@@ -223,7 +223,7 @@ public:
   template <typename MutableBufferSequence, typename ReadToken>
   auto async_read_some(MutableBufferSequence const& b, ReadToken&& token)
   {
-    return async_initiate<void(ErrorCode, size_t)>(
+    return stream::async_initiate<void(ErrorCode, size_t)>(
         get_executor(),
         std::forward<ReadToken>(token),
         [this](auto&& b) { return do_read(b); },
@@ -234,7 +234,7 @@ public:
   template <typename ConstBufferSequence, typename WriteToken>
   auto async_write_some(ConstBufferSequence const& b, WriteToken&& token)
   {
-    return async_initiate<void(ErrorCode, size_t)>(
+    return stream::async_initiate<void(ErrorCode, size_t)>(
         get_executor(),
         std::forward<WriteToken>(token),
         [this](auto b) { return do_write(b); },
@@ -244,7 +244,7 @@ public:
 
   template <typename ConnectToken> auto async_connect(Endpoint const& peer, ConnectToken&& token)
   {
-    return async_initiate<void(ErrorCode)>(
+    return stream::async_initiate<void(ErrorCode)>(
         get_executor(),
         std::forward<ConnectToken>(token),
         [this, &peer]() { return do_connect(peer); }

@@ -223,7 +223,7 @@ public:
 
   template <typename AcceptToken> auto async_accept(AcceptToken&& token)
   {
-    return async_initiate<void(ErrorCode const&), AcceptToken, executor_type>(
+    return pichi::stream::async_initiate<void(ErrorCode const&), AcceptToken, executor_type>(
         get_executor(),
         std::forward<AcceptToken>(token),
         [this]() { return do_accept(); }
@@ -233,7 +233,7 @@ public:
   template <typename MutableBufferSequence, typename ReadToken>
   auto async_read_some(MutableBufferSequence const& b, ReadToken&& token)
   {
-    return async_initiate<void(ErrorCode const&, size_t), ReadToken, executor_type>(
+    return pichi::stream::async_initiate<void(ErrorCode const&, size_t), ReadToken, executor_type>(
         get_executor(),
         std::forward<ReadToken>(token),
         [this](auto&& b) { return this->do_read(b); },
