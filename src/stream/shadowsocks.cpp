@@ -45,12 +45,12 @@ static auto random_salt(CryptoMethod method)
   return salt;
 }
 
-static auto generate_psk(ConstBuffer pw, ConstBuffer salt, MutableBuffer data)
+static auto generate_psk(ConstBuffer pw, MutableBuffer data, size_t size)
 {
-  auto psk = MutableBuffer{data, rngs::size(salt)};
+  auto psk = MutableBuffer{data, size};
 
   auto tmp = ConstBuffer{};
-  while (!rngs::empty(data)) {
+  for (auto i = 0_sz; i < size; i += rngs::size(tmp)) {
     auto md5 = Botan::HashFunction::create_or_throw("MD5");
     auto len = md5->output_length();
 
@@ -74,7 +74,7 @@ Cryptor::Cryptor(CryptoMethod method, Botan::Cipher_Dir direction)
 void Cryptor::set_psk(ConstBuffer pw, ConstBuffer salt)
 {
   auto data = std::array<uint8_t, 1024>{};
-  auto psk  = generate_psk(pw, salt, data);
+  auto psk  = generate_psk(pw, data, rngs::size(salt));
   cryptor_->set_key(Botan::KDF::create_or_throw("HKDF(SHA-1)")
                         ->derive_key(rngs::size(salt), psk, salt, ConstBuffer{"ss-subkey"sv}));
 }
@@ -105,9 +105,8 @@ ConstBuffer Encryptor::salt() const { return salt_; }
 
 size_t Encryptor::process(ConstBuffer plain, MutableBuffer cipher)
 {
-  auto n = cryptor_.process(plain, cipher);
   salt_.clear();
-  return n;
+  return cryptor_.process(plain, cipher);
 }
 
 Decryptor::Decryptor(CryptoMethod method)
