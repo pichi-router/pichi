@@ -6,6 +6,7 @@
 #include <boost/beast/http/write.hpp>
 #include <format>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <pichi/actor/detached.hpp>
 #include <pichi/actor/server.hpp>
@@ -14,10 +15,13 @@
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <ranges>
+#include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <regex>
 #include <sstream>
+
+using namespace std::literals;
 
 namespace asio  = boost::asio;
 namespace ip    = asio::ip;
@@ -93,13 +97,22 @@ static auto const RULE_REGEX         = std::regex{"^/rules/?([?#].*)?$"};
 static auto const RULE_NAME_REGEX    = std::regex{"^/rules/([^?#]+)/?([?#].*)?$"};
 static auto const ROUTE_REGEX        = std::regex{"^/route$"};
 
+static auto const DEFAULT_EGRESS_NAME = "direct"s;
+
 bool match(boost::string_view s, std::regex const& re, std::cmatch& mr)
 {
   return std::regex_match(std::cbegin(s), std::cend(s), mr, re);
 }
 
-Server::Server(IOExecutor ex) : ex_{std::move(ex)}, router_{std::make_shared<Router>(ex_)}
+Server::Server(IOExecutor ex)
+: ex_{std::move(ex)},
+  egresses_{
+    {DEFAULT_EGRESS_NAME, vo::Egress{.type_ = AdapterType::DIRECT}}
+  }, rules_{},
+  route_{vo::Route{.default_ = DEFAULT_EGRESS_NAME}},
+  router_{std::make_shared<Router>(ex_, egresses_, rules_, route_)}
 {
+  auto alloc = json::Document::AllocatorType{};
   ingresses_.SetObject();
 }
 
@@ -114,11 +127,12 @@ Awaitable<void> Server::serve(ip::tcp::endpoint endpoint)
 Awaitable<void> Server::do_session(ip::tcp::socket s)
 {
   try {
-    auto buf = beast::flat_buffer{};
-    auto req = Request{};
-    co_await http::async_read(s, buf, req, asio::use_awaitable);
+    auto buf    = beast::flat_buffer{};
+    auto parser = http::request_parser<HttpBody>{};
+    parser.body_limit(std::numeric_limits<uint64_t>::max());
+    co_await http::async_read(s, buf, parser, asio::use_awaitable);
 
-    auto [ec, rep] = co_await redirect(handle(req));
+    auto [ec, rep] = co_await redirect(handle(parser.release()));
 
     if (ec) rep.emplace(gen_resp(ec));
     co_await http::async_write(s, *rep, asio::use_awaitable);
@@ -133,10 +147,11 @@ Awaitable<void> Server::do_session(ip::tcp::socket s)
 
 Awaitable<Server::Response> Server::handle(Request const& req)
 {
+  auto mr    = std::cmatch{};
+  auto alloc = json::Document::AllocatorType{};
   auto batch = asio::make_batch(ex_);
   co_await switch_to(batch);
 
-  auto mr = std::cmatch{};
   if (match(req.target(), INGRESS_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::get:
@@ -148,9 +163,8 @@ Awaitable<Server::Response> Server::handle(Request const& req)
     }
   }
   else if (match(req.target(), INGRESS_NAME_REGEX, mr)) {
-    auto name  = mr[1].str();
-    auto alloc = json::Document::AllocatorType{};
-    auto key   = vo::toJson(name, alloc);
+    auto name = mr[1].str();
+    auto key  = vo::toJson(name, alloc);
 
     switch (req.method()) {
     case http::verb::delete_:
@@ -177,7 +191,10 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   else if (match(req.target(), EGRESS_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::get:
-      co_return gen_resp(http::status::ok, router_->get_egresses());
+      co_return gen_resp(
+          http::status::ok,
+          vo::toJson(rngs::cbegin(egresses_), rngs::cend(egresses_), alloc)
+      );
     case http::verb::options:
       co_return gen_resp(http::verb::get, http::verb::options);
     default:
@@ -185,14 +202,21 @@ Awaitable<Server::Response> Server::handle(Request const& req)
     }
   }
   else if (match(req.target(), EGRESS_NAME_REGEX, mr)) {
+    auto ename  = mr[1].str();
+    auto in_use = [&]() {
+      return *route_.default_ == ename ||
+             rngs::any_of(route_.rules_, [&](auto&& item) { return item.second == ename; });
+    };
     switch (req.method()) {
     case http::verb::delete_:
-      router_ = router_->del_egress(mr[1].str());
+      assertFalse(in_use(), PichiError::RES_IN_USE);
+      egresses_.erase(ename);
       co_return gen_resp(http::status::no_content);
     case http::verb::options:
       co_return gen_resp(http::verb::delete_, http::verb::options, http::verb::put);
     case http::verb::put:
-      router_ = router_->put_egress(mr[1].str(), req.body());
+      egresses_.insert_or_assign(ename, vo::parse<vo::Egress>(req.body()));
+      if (in_use()) update_router();
       co_return gen_resp(http::status::no_content);
     default:
       break;
@@ -201,7 +225,10 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   else if (match(req.target(), RULE_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::get:
-      co_return gen_resp(http::status::ok, router_->get_rules());
+      co_return gen_resp(
+          http::status::ok,
+          vo::toJson(rngs::cbegin(rules_), rngs::cend(rules_), alloc)
+      );
     case http::verb::options:
       co_return gen_resp(http::verb::get, http::verb::options);
     default:
@@ -209,14 +236,22 @@ Awaitable<Server::Response> Server::handle(Request const& req)
     }
   }
   else if (match(req.target(), RULE_NAME_REGEX, mr)) {
+    auto rname  = mr[1].str();
+    auto in_use = [&]() {
+      return rngs::any_of(route_.rules_, [&](auto&& item) {
+        return rngs::any_of(item.first, [&](auto&& rn) { return rn == rname; });
+      });
+    };
     switch (req.method()) {
     case http::verb::delete_:
-      update_router(router_->del_rule(mr[1].str()));
+      assertFalse(in_use(), PichiError::RES_IN_USE);
+      rules_.erase(rname);
       co_return gen_resp(http::status::no_content);
     case http::verb::options:
       co_return gen_resp(http::verb::delete_, http::verb::options, http::verb::put);
     case http::verb::put:
-      update_router(router_->put_rule(mr[1].str(), req.body()));
+      rules_.insert_or_assign(rname, vo::parse<vo::Rule>(req.body()));
+      if (in_use()) update_router();
       co_return gen_resp(http::status::no_content);
     default:
       break;
@@ -225,12 +260,35 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   else if (match(req.target(), ROUTE_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::get:
-      co_return gen_resp(http::status::ok, router_->get_route());
+      co_return gen_resp(http::status::ok, vo::toJson(route_, alloc));
     case http::verb::options:
       co_return gen_resp(http::verb::get, http::verb::options, http::verb::put);
-    case http::verb::put:
-      update_router(router_->put_route(req.body()));
+    case http::verb::put: {
+      auto route = vo::parse<vo::Route>(req.body());
+      assertTrue(
+          rngs::all_of(
+              route.rules_,
+              [this](auto&& item) {
+                return rngs::all_of(item.first, [this](auto&& rname) {
+                  return rules_.contains(rname);
+                });
+              }
+          ),
+          PichiError::SEMANTIC_ERROR
+      );
+      assertTrue(
+          rngs::all_of(
+              route.rules_,
+              [this](auto&& item) { return egresses_.contains(item.second); }
+          ),
+          PichiError::SEMANTIC_ERROR
+      );
+      if (route.default_)
+        assertTrue(egresses_.contains(*route.default_), PichiError::SEMANTIC_ERROR);
+      route_ = route;
+      update_router();
       co_return gen_resp(http::status::no_content);
+    }
     default:
       break;
     }
@@ -238,9 +296,9 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   co_return gen_resp(http::status::not_found);
 }
 
-void Server::update_router(RouterPtr router)
+void Server::update_router()
 {
-  router_ = std::move(router);
+  router_ = std::make_shared<Router>(ex_, egresses_, rules_, route_);
   rngs::for_each(listeners_, [this](auto&& p) { p.second.reroute(router_); });
 }
 

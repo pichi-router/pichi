@@ -8,6 +8,9 @@
 #include <pichi/actor/listener.hpp>
 #include <pichi/actor/router.hpp>
 #include <pichi/common/coro.hpp>
+#include <pichi/vo/egress.hpp>
+#include <pichi/vo/route.hpp>
+#include <pichi/vo/rule.hpp>
 #include <rapidjson/document.h>
 #include <unordered_map>
 
@@ -31,15 +34,19 @@ private:
   Awaitable<void>     do_session(boost::asio::ip::tcp::socket);
   Awaitable<Response> handle(Request const&);
 
-  void update_router(RouterPtr);
+  void update_router();
 
   IOExecutor ex_;
 
-  RouterPtr router_;
+  Json ingresses_ = {};
 
   std::unordered_map<std::string, Listener> listeners_ = {};
 
-  Json ingresses_ = {};
+  std::unordered_map<std::string, vo::Egress> egresses_;
+  std::unordered_map<std::string, vo::Rule>   rules_;
+
+  vo::Route route_;
+  RouterPtr router_;
 };
 
 }  // namespace pichi::actor
