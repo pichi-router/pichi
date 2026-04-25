@@ -5,19 +5,71 @@
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/co_spawn.hpp>
+#include <boost/asio/execution_context.hpp>
 #include <boost/asio/read.hpp>
+#include <boost/asio/strand.hpp>
+#include <boost/asio/system_timer.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <botan/cipher_mode.h>
+#include <memory>
+#include <mutex>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/stream/helpers.hpp>
 #include <ranges>
+#include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace pichi::stream {
 
 namespace detail {
+
+class SaltSentry {
+private:
+  using Salts  = std::unordered_set<std::string>;
+  using Strand = boost::asio::strand<IOExecutor>;
+  using Timer  = boost::asio::system_timer;
+
+  Awaitable<void> run();
+
+public:
+  SaltSentry(IOExecutor const&);
+
+  Awaitable<bool> contains(ConstBuffer);
+  Awaitable<void> reset();
+
+  void start();
+  void cancel();
+
+private:
+  Strand strand_;
+  Timer  timer_;
+  Salts  expiring_ = {};
+  Salts  active_   = {};
+};
+
+class SaltSentryService
+  : public boost::asio::detail::execution_context_service_base<SaltSentryService> {
+public:
+  explicit SaltSentryService(boost::asio::execution_context&);
+
+  std::shared_ptr<SaltSentry> sentry(IOExecutor const&);
+
+private:
+  void shutdown() noexcept override;
+
+  std::once_flag              flag_   = {};
+  std::shared_ptr<SaltSentry> sentry_ = nullptr;
+};
+
+extern std::shared_ptr<SaltSentry> get_sentry(IOExecutor const&);
+
+template <ExecutionContext Context> auto get_sentry(Context& ctx)
+{
+  return get_sentry(ctx.get_executor());
+}
 
 class Cryptor {
 public:
@@ -83,6 +135,7 @@ private:
   static constexpr size_t FRAME_SIZE = 0x3fff;
   static constexpr size_t TAG_SIZE   = 16;
 
+  using Sentry    = std::shared_ptr<detail::SaltSentry>;
   using ErrorCode = boost::system::error_code;
   using Encryptor = detail::Encryptor;
   using Decryptor = detail::Decryptor;
@@ -102,6 +155,7 @@ private:
         boost::asio::buffer(std::ranges::data(salt), std::ranges::size(salt)),
         boost::asio::use_awaitable
     );
+    if (sentry_) assertFalse(co_await sentry_->contains(salt), PichiError::BAD_PROTO);
     decryptor_.set_psk(pw_);
     pw_.clear();
   }
@@ -184,6 +238,7 @@ public:
 
   Shadowsocks(CryptoMethod method, ConstBuffer pw, Socket socket)
     : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
+      sentry_{detail::get_sentry(socket.get_executor())},
       socket_{std::move(socket)},
       encryptor_{method, pw_},
       decryptor_{method}
@@ -192,6 +247,7 @@ public:
 
   Shadowsocks(CryptoMethod method, ConstBuffer pw, Endpoint const& proxy, IOExecutor const& ex)
     : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
+      sentry_{nullptr},
       socket_{ex},
       encryptor_{method, pw_},
       decryptor_{method},
@@ -255,6 +311,7 @@ private:
   Data  pw_;
   Cache cache_ = {};
 
+  Sentry    sentry_;
   Socket    socket_;
   Encryptor encryptor_;
   Decryptor decryptor_;
