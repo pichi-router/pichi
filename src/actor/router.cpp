@@ -1,4 +1,3 @@
-#include "pichi/common/config.hpp"
 #include <algorithm>
 #include <boost/asio/ip/tcp.hpp>
 #include <cctype>
@@ -181,8 +180,11 @@ Awaitable<std::tuple<std::string, std::string, vo::Egress>>
   auto rs    = ResolveResults{};
   for (auto&& matcher : matchers_) {
     if (matcher.need_resolving()) {
-      rs = co_await ip::tcp::resolver{ex_}
-               .async_resolve(peer.host_, std::to_string(peer.port_), asio::use_awaitable);
+      auto [_, ors] = co_await redirect(
+          ip::tcp::resolver{ex_}
+              .async_resolve(peer.host_, std::to_string(peer.port_), asio::use_awaitable)
+      );
+      if (ors.has_value()) rs = std::move(*ors);
     }
 
     if (matcher.match(peer, iname, itype, rs)) {
