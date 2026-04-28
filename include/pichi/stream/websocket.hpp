@@ -255,26 +255,9 @@ private:
   Buffer      buf_ = {};
 };
 
-template <typename NextLayer> struct RawStream<WsStream<NextLayer>> : public std::false_type {};
-
-template <typename Socket> class TlsStream;
-
-template <typename Stream> struct IsWebsocket : public std::false_type {};
-
-template <typename Stream> struct IsWebsocket<Websocket<Stream>> : public std::true_type {};
-
-template <typename Stream>
-concept WebsocketStream = IsWebsocket<Stream>::value;
-
 }  // namespace pichi::stream
 
 namespace boost::beast::websocket {
-
-template <class Socket, class TeardownHandler>
-void async_teardown(role_type, pichi::stream::TlsStream<Socket>& stream, TeardownHandler&& handler)
-{
-  stream.async_shutdown(std::forward<TeardownHandler>(handler));
-}
 
 template <typename Socket, typename TeardownToken>
 void async_teardown(role_type, pichi::stream::Tls<Socket>& stream, TeardownToken&& token)

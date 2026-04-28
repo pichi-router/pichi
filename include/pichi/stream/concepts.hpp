@@ -93,11 +93,11 @@ concept AsyncSocket = Closable<Socket> && Connectable<Socket> && AsyncReadable<S
 
 // TODO Rename it after deprecating pichi::net
 template <typename Stream>
-concept AsyncStream1 =
+concept AsyncStream =
     Layered<Stream> && Shutdownable<Stream> && AsyncReadable<Stream> && AsyncWritable<Stream>;
 
 template <typename Layer>
-concept AsyncLayer = AsyncSocket<Layer> || AsyncStream1<Layer>;
+concept AsyncLayer = AsyncSocket<Layer> || AsyncStream<Layer>;
 
 }  // namespace pichi::stream
 

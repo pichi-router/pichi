@@ -11,7 +11,6 @@
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/stream/helpers.hpp>
-#include <pichi/stream/traits.hpp>
 
 namespace pichi::stream {
 
@@ -126,8 +125,6 @@ private:
   TestSocket& socket_;
   bool        open_;
 };
-
-template <> struct AsyncStream<TestStream> : public std::false_type {};
 
 }  // namespace pichi::stream
 

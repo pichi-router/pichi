@@ -49,14 +49,14 @@ template <AsyncSocket Socket> Awaitable<void> connect(Socket& s, Endpoint const&
     );
 }
 
-template <AsyncStream1 Stream>
+template <AsyncStream Stream>
 requires(Connectable<Stream>)
 Awaitable<void> connect(Stream& stream, Endpoint const& peer)
 {
   co_await stream.async_connect(peer, boost::asio::use_awaitable);
 }
 
-template <AsyncStream1 Stream>
+template <AsyncStream Stream>
 requires(Handshakable<Stream>)
 Awaitable<void> connect(Stream& stream, Endpoint const& peer)
 {
@@ -72,7 +72,7 @@ Awaitable<void> connect(std::variant<Streams...>& streams, Endpoint const& peer)
 
 template <AsyncSocket Socket> Awaitable<void> accept(Socket&) { co_return; }
 
-template <AsyncStream1 Stream>
+template <AsyncStream Stream>
 requires(Acceptable<Stream>)
 Awaitable<void> accept(Stream& stream)
 {
