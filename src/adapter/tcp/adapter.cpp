@@ -12,7 +12,7 @@ using namespace std::literals;
 
 namespace pichi::adapter::tcp {
 
-template <typename Socket> Ingress create_ingress(vo::Ingress const& vo, Socket s)
+template <stream::AsyncSocket Socket> Ingress create_ingress(vo::Ingress const& vo, Socket s)
 {
   switch (vo.type_) {
   case AdapterType::SS:

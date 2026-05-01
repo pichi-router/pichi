@@ -5,6 +5,7 @@
 #include <boost/system/error_code.hpp>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/coro.hpp>
+#include <pichi/stream/concepts.hpp>
 #include <pichi/stream/tls.hpp>
 #include <pichi/stream/websocket.hpp>
 #include <pichi/vo/egress.hpp>
@@ -66,7 +67,7 @@ private:
 
 }  // namespace trojan
 
-template <typename Socket> class TrojanIngress {
+template <stream::AsyncSocket Socket> class TrojanIngress {
 private:
   using Credential = trojan::IngressCredentials;
   using Cache      = trojan::Cache;
@@ -90,7 +91,7 @@ private:
   Endpoint   remote_;
 };
 
-template <typename Socket> class TrojanEgress {
+template <stream::AsyncSocket Socket> class TrojanEgress {
 private:
   using Stream = std::variant<stream::Tls<Socket>, stream::Websocket<stream::Tls<Socket>>>;
 

@@ -4,11 +4,11 @@
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/parser.hpp>
-#include <functional>
 #include <optional>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
+#include <pichi/stream/concepts.hpp>
 #include <pichi/stream/tls.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
@@ -83,7 +83,7 @@ private:
 
 }  // namespace detail
 
-template <typename Socket> class HttpIngress {
+template <stream::AsyncSocket Socket> class HttpIngress {
 private:
   using Manner = std::variant<detail::InvalidManner, detail::ConnectManner, detail::ProxyManner>;
   using Stream = std::variant<stream::Tls<Socket>, Socket>;
@@ -109,7 +109,7 @@ private:
   detail::HttpIngressCredential credential_;
 };
 
-template <typename Socket> class HttpEgress {
+template <stream::AsyncSocket Socket> class HttpEgress {
 private:
   using Credential = std::optional<vo::UpEgressCredential>;
   using Stream     = std::variant<stream::Tls<Socket>, Socket>;

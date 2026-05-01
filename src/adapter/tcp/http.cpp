@@ -1,5 +1,4 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/write.hpp>
@@ -217,7 +216,7 @@ void HttpEgressCredential::update(Request& req) const
 
 }  // namespace detail
 
-template <typename Socket>
+template <stream::AsyncSocket Socket>
 HttpIngress<Socket>::HttpIngress(vo::Ingress const& vo, Socket s)
   : stream_{
     vo.tls_.has_value()
@@ -233,12 +232,12 @@ HttpIngress<Socket>::HttpIngress(vo::Ingress const& vo, Socket s)
   parser_.body_limit(std::numeric_limits<uint64_t>::max());
 }
 
-template <typename Socket> Awaitable<void> HttpIngress<Socket>::close()
+template <stream::AsyncSocket Socket> Awaitable<void> HttpIngress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Socket> Awaitable<Endpoint> HttpIngress<Socket>::read_remote()
+template <stream::AsyncSocket Socket> Awaitable<Endpoint> HttpIngress<Socket>::read_remote()
 {
   co_await stream::accept(stream_);
 
@@ -269,22 +268,22 @@ template <typename Socket> Awaitable<Endpoint> HttpIngress<Socket>::read_remote(
   }
 }
 
-template <typename Socket> Awaitable<size_t> HttpIngress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncSocket Socket> Awaitable<size_t> HttpIngress<Socket>::recv(MutableBuffer buf)
 {
   co_return co_await std::visit([buf, this](auto&& m) { return m.recv(stream_, buf); }, manner_);
 }
 
-template <typename Socket> Awaitable<void> HttpIngress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncSocket Socket> Awaitable<void> HttpIngress<Socket>::send(ConstBuffer buf)
 {
   co_return co_await std::visit([buf, this](auto&& m) { return m.send(stream_, buf); }, manner_);
 }
 
-template <typename Socket> Awaitable<void> HttpIngress<Socket>::confirm()
+template <stream::AsyncSocket Socket> Awaitable<void> HttpIngress<Socket>::confirm()
 {
   co_return co_await std::visit([this](auto&& m) { return m.confirm(stream_); }, manner_);
 }
 
-template <typename Socket>
+template <stream::AsyncSocket Socket>
 Awaitable<void> HttpIngress<Socket>::disconnect(sys::error_code const& ec)
 {
   if (!ec) co_return;
@@ -326,7 +325,7 @@ Awaitable<void> HttpIngress<Socket>::disconnect(sys::error_code const& ec)
 
 template class HttpIngress<asio::ip::tcp::socket>;
 
-template <typename Socket>
+template <stream::AsyncSocket Socket>
 HttpEgress<Socket>::HttpEgress(vo::Egress const& vo, IOExecutor const& ex)
   : stream_{
     vo.tls_.has_value()
@@ -340,7 +339,7 @@ HttpEgress<Socket>::HttpEgress(vo::Egress const& vo, IOExecutor const& ex)
 {
 }
 
-template <typename Socket> Awaitable<size_t> HttpEgress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncSocket Socket> Awaitable<size_t> HttpEgress<Socket>::recv(MutableBuffer buf)
 {
   if (cache_.size() == 0) co_return co_await stream::read_some(stream_, buf);
   auto copied = std::min(cache_.size(), buf.size());
@@ -349,17 +348,18 @@ template <typename Socket> Awaitable<size_t> HttpEgress<Socket>::recv(MutableBuf
   co_return copied;
 }
 
-template <typename Socket> Awaitable<void> HttpEgress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncSocket Socket> Awaitable<void> HttpEgress<Socket>::send(ConstBuffer buf)
 {
   co_await stream::write(stream_, buf);
 }
 
-template <typename Socket> Awaitable<void> HttpEgress<Socket>::close()
+template <stream::AsyncSocket Socket> Awaitable<void> HttpEgress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Socket> Awaitable<void> HttpEgress<Socket>::connect(Endpoint const& remote)
+template <stream::AsyncSocket Socket>
+Awaitable<void> HttpEgress<Socket>::connect(Endpoint const& remote)
 {
   co_await stream::connect(stream_, peer_);
 

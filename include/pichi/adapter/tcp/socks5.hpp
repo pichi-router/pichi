@@ -3,7 +3,7 @@
 
 #include <array>
 #include <boost/system/error_code.hpp>
-#include <pichi/stream/helpers.hpp>
+#include <pichi/stream/concepts.hpp>
 #include <pichi/stream/tls.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
@@ -38,7 +38,7 @@ private:
 
 }  // namespace socks5
 
-template <typename Socket> class Socks5Ingress {
+template <stream::AsyncSocket Socket> class Socks5Ingress {
 private:
   using Credential = socks5::IngressCredential;
   using Stream     = std::variant<stream::Tls<Socket>, Socket>;
@@ -61,7 +61,7 @@ private:
   Credential credential_;
 };
 
-template <typename Socket> class Socks5Egress {
+template <stream::AsyncSocket Socket> class Socks5Egress {
 private:
   using Stream = std::variant<stream::Tls<Socket>, Socket>;
 

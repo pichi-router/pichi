@@ -9,6 +9,7 @@
 #include <pichi/adapter/tcp/socks5.hpp>
 #include <pichi/adapter/tcp/trojan.hpp>
 #include <pichi/common/coro.hpp>
+#include <pichi/stream/concepts.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <variant>
@@ -24,7 +25,7 @@ using Egress = std::variant<
     Socks5Egress<boost::asio::ip::tcp::socket>, TrojanEgress<boost::asio::ip::tcp::socket>,
     Shadowsocks<boost::asio::ip::tcp::socket>>;
 
-template <typename Socket> Ingress create_ingress(vo::Ingress const&, Socket);
+template <stream::AsyncSocket Socket> Ingress create_ingress(vo::Ingress const&, Socket);
 
 extern Egress create_egress(vo::Egress const&, IOExecutor const&);
 

@@ -1,5 +1,4 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <algorithm>
 #include <boost/asio/ip/tcp.hpp>
 #include <format>
@@ -7,6 +6,7 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/error.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/stream/helpers.hpp>
 
 namespace asio  = boost::asio;
 namespace ip    = asio::ip;
@@ -152,7 +152,7 @@ ConstBuffer EgressCredential::data() const { return ConstBuffer{data_, len_}; }
 
 }  // namespace socks5
 
-template <typename Socket>
+template <stream::AsyncSocket Socket>
 Socks5Ingress<Socket>::Socks5Ingress(vo::Ingress const& vo, Socket s)
   : stream_{
       vo.tls_.has_value()
@@ -165,7 +165,7 @@ Socks5Ingress<Socket>::Socks5Ingress(vo::Ingress const& vo, Socket s)
 {
 }
 
-template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::authenticate()
+template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::authenticate()
 {
   /*
    * Request:
@@ -199,22 +199,23 @@ template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::authenticate()
   co_await stream::write(stream_, AUTH_SUCCESS);
 }
 
-template <typename Socket> Awaitable<size_t> Socks5Ingress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncSocket Socket>
+Awaitable<size_t> Socks5Ingress<Socket>::recv(MutableBuffer buf)
 {
   co_return co_await stream::read_some(stream_, buf);
 }
 
-template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::send(ConstBuffer buf)
 {
   co_await stream::write(stream_, buf);
 }
 
-template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::close()
+template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Socket> Awaitable<Endpoint> Socks5Ingress<Socket>::read_remote()
+template <stream::AsyncSocket Socket> Awaitable<Endpoint> Socks5Ingress<Socket>::read_remote()
 {
   co_await stream::accept(stream_);
 
@@ -247,7 +248,7 @@ template <typename Socket> Awaitable<Endpoint> Socks5Ingress<Socket>::read_remot
   });
 }
 
-template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::confirm()
+template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::confirm()
 {
 #ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   static auto const CONFIRM = array{
@@ -268,7 +269,7 @@ template <typename Socket> Awaitable<void> Socks5Ingress<Socket>::confirm()
   co_await stream::write(stream_, CONFIRM);
 }
 
-template <typename Socket>
+template <stream::AsyncSocket Socket>
 Awaitable<void> Socks5Ingress<Socket>::disconnect(sys::error_code const& ec)
 {
   co_await redirect(stream::write(stream_, socks5::err_to_buf(ec)));
@@ -276,7 +277,7 @@ Awaitable<void> Socks5Ingress<Socket>::disconnect(sys::error_code const& ec)
 
 template class Socks5Ingress<ip::tcp::socket>;
 
-template <typename Socket>
+template <stream::AsyncSocket Socket>
 Socks5Egress<Socket>::Socks5Egress(vo::Egress const& vo, IOExecutor const& ex)
   : stream_{
     vo.tls_.has_value()
@@ -290,22 +291,24 @@ Socks5Egress<Socket>::Socks5Egress(vo::Egress const& vo, IOExecutor const& ex)
 {
 }
 
-template <typename Socket> Awaitable<size_t> Socks5Egress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncSocket Socket>
+Awaitable<size_t> Socks5Egress<Socket>::recv(MutableBuffer buf)
 {
   co_return co_await stream::read_some(stream_, buf);
 }
 
-template <typename Socket> Awaitable<void> Socks5Egress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncSocket Socket> Awaitable<void> Socks5Egress<Socket>::send(ConstBuffer buf)
 {
   co_await stream::write(stream_, buf);
 }
 
-template <typename Socket> Awaitable<void> Socks5Egress<Socket>::close()
+template <stream::AsyncSocket Socket> Awaitable<void> Socks5Egress<Socket>::close()
 {
   co_await redirect(stream::close(stream_));
 }
 
-template <typename Stream> Awaitable<void> Socks5Egress<Stream>::connect(Endpoint const& remote)
+template <stream::AsyncSocket Socket>
+Awaitable<void> Socks5Egress<Socket>::connect(Endpoint const& remote)
 {
   co_await stream::connect(stream_, peer_);
 

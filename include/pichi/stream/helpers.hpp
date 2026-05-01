@@ -1,94 +1,25 @@
 #ifndef PICHI_STREAM_HELPERS_HPP
 #define PICHI_STREAM_HELPERS_HPP
 
-#include <boost/asio/buffer.hpp>
+#include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
-#include <boost/asio/spawn2.hpp>
 #include <boost/asio/write.hpp>
-#include <concepts>
-#include <functional>
-#include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/stream/completer.hpp>
+#include <pichi/stream/concepts.hpp>
 #include <variant>
 
 namespace pichi::stream {
 
-template <typename Object>
-concept LayeredObject = requires(Object obj) {
-  typename Object::next_layer_type;
-  { obj.next_layer() } -> std::same_as<typename Object::next_layer_type&>;
-  { std::as_const(obj).next_layer() } -> std::same_as<typename Object::next_layer_type const&>;
-};
+template <Closable Socket> Awaitable<void> close(Socket& s)
+{
+  s.close();
+  co_return;
+}
 
 template <typename Stream>
-concept AsyncReadable = requires(
-    Stream stream, boost::asio::mutable_buffer mb, boost::asio::yield_context yield,
-    std::function<void(boost::system::error_code, size_t)> callback
-) {
-  { stream.async_read_some(mb, boost::asio::use_awaitable) } -> std::same_as<Awaitable<size_t>>;
-  { stream.async_read_some(mb, yield) } -> std::same_as<size_t>;
-  { stream.async_read_some(mb, callback) } -> std::same_as<void>;
-};
-
-template <typename Stream>
-concept AsyncWritable = requires(
-    Stream stream, boost::asio::const_buffer cb, boost::asio::yield_context yield,
-    std::function<void(boost::system::error_code, size_t)> callback
-) {
-  { stream.async_write_some(cb, boost::asio::use_awaitable) } -> std::same_as<Awaitable<size_t>>;
-  { stream.async_write_some(cb, yield) } -> std::same_as<size_t>;
-  { stream.async_write_some(cb, callback) } -> std::same_as<void>;
-};
-
-template <typename Stream>
-concept HandshakeBase = requires(
-    Stream stream, boost::asio::yield_context yield,
-    std::function<void(boost::system::error_code)> callback
-) {
-  { stream.async_shutdown(boost::asio::use_awaitable) } -> std::same_as<Awaitable<void>>;
-  { stream.async_shutdown(yield) } -> std::same_as<void>;
-  { stream.async_shutdown(callback) } -> std::same_as<void>;
-};
-
-template <typename Stream>
-concept ConnectableClient =
-    HandshakeBase<Stream> && requires(
-                                 Stream stream, Endpoint peer, boost::asio::yield_context yield,
-                                 std::function<void(boost::system::error_code)> callback
-                             ) {
-      { stream.async_connect(peer, boost::asio::use_awaitable) } -> std::same_as<Awaitable<void>>;
-      { stream.async_connect(peer, yield) } -> std::same_as<void>;
-      { stream.async_connect(peer, callback) } -> std::same_as<void>;
-    };
-
-template <typename Stream>
-concept HandshakeClient =
-    HandshakeBase<Stream> && requires(
-                                 Stream stream, boost::asio::yield_context yield,
-                                 std::function<void(boost::system::error_code)> callback
-                             ) {
-      { stream.async_handshake(boost::asio::use_awaitable) } -> std::same_as<Awaitable<void>>;
-      { stream.async_handshake(yield) } -> std::same_as<void>;
-      { stream.async_handshake(callback) } -> std::same_as<void>;
-    };
-
-template <typename Stream>
-concept HandshakeServer =
-    HandshakeBase<Stream> && requires(
-                                 Stream stream, boost::asio::yield_context yield,
-                                 std::function<void(boost::system::error_code)> callback
-                             ) {
-      { stream.async_accept(boost::asio::use_awaitable) } -> std::same_as<Awaitable<void>>;
-      { stream.async_accept(yield) } -> std::same_as<void>;
-      { stream.async_accept(callback) } -> std::same_as<void>;
-    };
-
-extern Awaitable<void> close(boost::asio::ip::tcp::socket&);
-
-template <typename Stream>
-requires(LayeredObject<Stream> && HandshakeBase<Stream>)
+requires(Layered<Stream> && Shutdownable<Stream>)
 Awaitable<void> close(Stream& stream)
 {
   co_await stream.async_shutdown(boost::asio::use_awaitable);
@@ -100,19 +31,37 @@ template <typename... Streams> Awaitable<void> close(std::variant<Streams...>& s
   co_await std::visit([](auto&& stream) { return close(stream); }, streams);
 }
 
-extern Awaitable<void> connect(boost::asio::ip::tcp::socket&, Endpoint const&);
+template <AsyncSocket Socket> Awaitable<void> connect(Socket& s, Endpoint const& peer)
+{
+  if constexpr (!std::same_as<Socket, boost::asio::ip::tcp::socket>)
+    co_await s.async_connect({}, boost::asio::use_awaitable);
+  else if (peer.type_ == EndpointType::DOMAIN_NAME)
+    co_await boost::asio::async_connect(
+        s,
+        co_await boost::asio::ip::tcp::resolver{s.get_executor()}
+            .async_resolve(peer.host_, std::to_string(peer.port_), boost::asio::use_awaitable)
+    );
 
-template <typename Stream>
-requires(LayeredObject<Stream> && (ConnectableClient<Stream> || HandshakeClient<Stream>))
+  else
+    co_await s.async_connect(
+        {boost::asio::ip::make_address(peer.host_), peer.port_},
+        boost::asio::use_awaitable
+    );
+}
+
+template <AsyncStream1 Stream>
+requires(Connectable<Stream>)
 Awaitable<void> connect(Stream& stream, Endpoint const& peer)
 {
-  if constexpr (ConnectableClient<Stream>) {
-    co_await stream.async_connect(peer, boost::asio::use_awaitable);
-  }
-  else {
-    co_await connect(stream.next_layer(), peer);
-    co_await stream.async_handshake(boost::asio::use_awaitable);
-  }
+  co_await stream.async_connect(peer, boost::asio::use_awaitable);
+}
+
+template <AsyncStream1 Stream>
+requires(Handshakable<Stream>)
+Awaitable<void> connect(Stream& stream, Endpoint const& peer)
+{
+  co_await connect(stream.next_layer(), peer);
+  co_await stream.async_handshake(boost::asio::use_awaitable);
 }
 
 template <typename... Streams>
@@ -121,10 +70,10 @@ Awaitable<void> connect(std::variant<Streams...>& streams, Endpoint const& peer)
   co_await std::visit([&](auto&& stream) { return connect(stream, peer); }, streams);
 }
 
-extern Awaitable<void> accept(boost::asio::ip::tcp::socket&);
+template <AsyncSocket Socket> Awaitable<void> accept(Socket&) { co_return; }
 
-template <typename Stream>
-requires(LayeredObject<Stream> && HandshakeServer<Stream>)
+template <AsyncStream1 Stream>
+requires(Acceptable<Stream>)
 Awaitable<void> accept(Stream& stream)
 {
   co_await accept(stream.next_layer());

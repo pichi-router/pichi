@@ -130,7 +130,7 @@ private:
 
 }  // namespace detail
 
-template <typename Socket> class Shadowsocks {
+template <AsyncSocket Socket> class Shadowsocks {
 private:
   static constexpr size_t FRAME_SIZE = 0x3fff;
   static constexpr size_t TAG_SIZE   = 16;
@@ -233,6 +233,7 @@ private:
   }
 
 public:
+  using endpoint_type   = Endpoint;
   using executor_type   = typename Socket::executor_type;
   using next_layer_type = Socket;
 
