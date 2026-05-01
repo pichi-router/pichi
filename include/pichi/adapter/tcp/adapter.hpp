@@ -3,6 +3,7 @@
 
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/adapter/tcp/direct.hpp>
+#include <pichi/adapter/tcp/dual.hpp>
 #include <pichi/adapter/tcp/http.hpp>
 #include <pichi/adapter/tcp/reject.hpp>
 #include <pichi/adapter/tcp/shadowsocks.hpp>
@@ -23,8 +24,9 @@ using Tls       = stream::Tls<Socket>;
 using Websocket = stream::Websocket<Tls>;
 
 using Ingress = std::variant<
-    HttpIngress<Socket>, HttpIngress<Tls>, Socks5Ingress<Socket>, Socks5Ingress<Tls>,
-    TrojanIngress<Tls>, TrojanIngress<Websocket>, Shadowsocks<Socket>>;
+    DualIngress<Socket>, DualIngress<Tls>, HttpIngress<Socket>, HttpIngress<Tls>,
+    Socks5Ingress<Socket>, Socks5Ingress<Tls>, TrojanIngress<Tls>, TrojanIngress<Websocket>,
+    Shadowsocks<Socket>>;
 
 using Egress = std::variant<
     Direct, RejectEgress, HttpEgress<Socket>, HttpEgress<Tls>, Socks5Egress<Socket>,

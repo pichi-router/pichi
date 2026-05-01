@@ -35,6 +35,15 @@ template <stream::AsyncSocket Socket> Ingress create_ingress(vo::Ingress const& 
       };
     else
       return Ingress{std::in_place_type<HttpIngress<Socket>>, vo, std::move(s)};
+  case AdapterType::DUAL:
+    if (vo.tls_.has_value())
+      return Ingress{
+          std::in_place_type<DualIngress<Tls>>,
+          vo,
+          Tls{stream::tls_context(*vo.tls_), std::move(s)}
+      };
+    else
+      return Ingress{std::in_place_type<DualIngress<Socket>>, vo, std::move(s)};
   case AdapterType::TROJAN:
     if (vo.websocket_.has_value())
       return Ingress{
