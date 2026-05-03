@@ -1,105 +1,146 @@
 #define BOOST_TEST_MODULE pichi http test
 
-#include <pichi/common/config.hpp>
-// Include config.hpp first
-#include "utils.hpp"
+#include "pichi/common/config.hpp"
+#include <boost/asio/thread_pool.hpp>
+#include <boost/asio/use_awaitable.hpp>
 #include <boost/beast/http/parser.hpp>
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/string_body.hpp>
+#include <boost/beast/http/write.hpp>
 #include <boost/test/unit_test.hpp>
+#include <botan/base64.h>
+#include <pichi/adapter/tcp/http.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/crypto/base64.hpp>
-#include <pichi/net/helper.hpp>
-#include <pichi/net/http.hpp>
 #include <pichi/stream/test.hpp>
+#include <ranges>
 
-using namespace std;
-namespace asio = boost::asio;
-namespace http = boost::beast::http;
-namespace sys = boost::system;
+using namespace std::literals;
+namespace asio  = boost::asio;
+namespace http  = boost::beast::http;
+namespace rngs  = std::ranges;
+namespace sys   = boost::system;
+namespace views = rngs::views;
 
 namespace pichi::unit_test {
 
-using Socket = stream::TestSocket;
-using HttpIngress = net::HttpIngress<stream::TestStream>;
-using HttpEgress = net::HttpEgress<stream::TestStream>;
+using SystemError = sys::system_error;
+using Ingress     = adapter::tcp::HttpIngress<TestSocket>;
+using Egress      = adapter::tcp::HttpEgress<TestSocket>;
 
-static auto const HTTPS_ENDPOINT = makeEndpoint("localhost"sv, "443"sv);
-static auto const HTTP_ENDPOINT = makeEndpoint("localhost"sv, "80"sv);
+static auto const LOCALHOST = "localhost"sv;
 
-static auto genTunnelReq()
+static auto const LOCALHOST_URI = std::format("http://{}/", LOCALHOST);
+static auto const ROOT_URI      = "/"sv;
+
+static auto const HTTPS_ENDPOINT = makeEndpoint(LOCALHOST, 443);
+static auto const HTTP_ENDPOINT  = makeEndpoint(LOCALHOST, 80);
+
+static auto const HTTPS_TARGET = std::format("{}:{}", HTTPS_ENDPOINT.host_, HTTPS_ENDPOINT.port_);
+
+static auto const CONTENT  = "content"s;
+static auto const USERNAME = "pichi"s;
+static auto const PASSWORD = "pichi"s;
+static auto const IVO_AUTH =
+    vo::Ingress{.credential_ = vo::UpIngressCredential{.credential_ = {{USERNAME, PASSWORD}}}};
+static auto const EVO_AUTH =
+    vo::Egress{.credential_ = vo::UpEgressCredential{.credential_ = {USERNAME, PASSWORD}}};
+
+static auto const BASIC_FIELD      = "BASIC"sv;
+static auto const CLOSE_FIELD      = "CLOSE"sv;
+static auto const KEEP_ALIVE_FIELD = "KEEP-ALIVE"sv;
+static auto const UPGRADE_FIELD    = "UPGRADE"sv;
+
+static auto gen_request(http::verb method, std::string_view target)
 {
   auto req = http::request<http::empty_body>{};
-  req.method(http::verb::connect);
-  req.target("localhost:443");
-  req.version(11);
-  return req;
-}
-
-static auto genRelayReq(string const& target)
-{
-  auto req = http::request<http::empty_body>{};
-  req.method(http::verb::get);
+  req.method(method);
   req.target(target);
   req.version(11);
-  req.set(http::field::host, "localhost");
+  req.set(http::field::host, LOCALHOST);
   return req;
 }
 
-static auto genRelayReqWithBody(string const& target)
+static auto gen_request(std::string_view target, std::string_view body = CONTENT)
 {
   auto req = http::request<http::string_body>{};
   req.method(http::verb::post);
   req.target(target);
   req.version(11);
-  req.set(http::field::host, "localhost");
-  req.body() = "http body";
+  req.set(http::field::host, LOCALHOST);
+  req.body() = body;
   req.prepare_payload();
   return req;
 }
 
-static auto genResponse()
+static auto gen_response(http::status code = http::status::no_content)
 {
   auto resp = http::response<http::empty_body>{};
   resp.version(11);
-  resp.result(http::status::no_content);
+  resp.result(code);
   return resp;
 }
 
-static auto genRefuseResponse()
-{
-  auto resp = http::response<http::empty_body>{};
-  resp.version(11);
-  resp.result(http::status::forbidden);
-  return resp;
-}
-
-template <bool isRequest, typename Body>
-static size_t serializeToBuffer(http::message<isRequest, Body>& m, MutableBuffer buf)
+template <typename Body> static size_t serialize(http::response<Body> const& m, MutableBuffer buf)
 {
   auto left = buf;
-  auto sr = http::serializer<isRequest, Body>{m};
+  auto sr   = http::response_serializer<Body>{m};
   while (!sr.is_done()) {
     auto ec = sys::error_code{};
     sr.next(ec, [&](auto& ec, auto&& serialized) {
       auto copied = asio::buffer_size(serialized);
-      BOOST_REQUIRE_GE(left.size(), copied);
+      BOOST_REQUIRE_GE(rngs::size(left), copied);
       ec = {};
-      copy_n(asio::buffers_begin(serialized), copied, begin(left));
+      rngs::copy_n(asio::buffers_begin(serialized), copied, rngs::begin(left));
       left += copied;
       sr.consume(copied);
     });
     BOOST_REQUIRE_EQUAL(sys::error_code{}, ec);
   }
-  return buf.size() - left.size();
+  return rngs::size(buf) - rngs::size(left);
+}
+
+template <PichiError error> bool verify_exception(SystemError const& e)
+{
+  return e.code() == error;
+}
+
+template <asio::error::basic_errors error> bool verify_exception(SystemError const& e)
+{
+  return e.code() == error;
+}
+
+template <http::error error> bool verify_exception(SystemError const& e)
+{
+  auto expect = http::make_error_code(error);
+  auto fact   = e.code();
+  // FIXME http_error_category equivalence is failed on Windows shared mode
+  return expect.value() == fact.value() &&
+         std::string_view{expect.category().name()} == std::string_view{fact.category().name()};
+}
+
+template <asio::error::misc_errors error> auto verify_exception(SystemError const& e)
+{
+  return e.code() == error;
+}
+
+template <typename Data>
+requires(std::constructible_from<ConstBuffer const&, Data>)
+auto gen_auth(Data const& data)
+{
+  return std::format("{} {}", BASIC_FIELD, Botan::base64_encode(ConstBuffer{data}));
+}
+
+static auto gen_auth(std::string_view u, std::string_view p)
+{
+  return gen_auth(std::format("{}:{}", u, p));
 }
 
 template <bool isRequest, typename Body>
-static http::message<isRequest, Body> parseFromBuffer(ConstBuffer buf)
+static http::message<isRequest, Body> parse(ConstBuffer buf)
 {
   auto parser = http::parser<isRequest, Body>{};
-  auto ec = sys::error_code{};
+  auto ec     = sys::error_code{};
 
   parser.eager(true);
   BOOST_CHECK_EQUAL(buf.size(), parser.put(asio::buffer(buf), ec));
@@ -112,451 +153,576 @@ static http::message<isRequest, Body> parseFromBuffer(ConstBuffer buf)
   return parser.release();
 }
 
-template <bool isRequest>
-static void verifyField(http::header<isRequest> const& h, http::field field, string_view content)
+static void verify_field(http::fields const& hdr, http::field field, std::string_view content)
 {
-  BOOST_CHECK(h.find(field) != cend(h));
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(h[field]), cend(h[field]));
-}
-
-static void verifyDisconnectResponse(PichiError e, http::response<http::empty_body> const& resp)
-{
-  switch (e) {
-  case PichiError::CONN_FAILURE:
-    BOOST_CHECK_EQUAL(http::status::gateway_timeout, resp.result());
-    break;
-  case PichiError::BAD_AUTH_METHOD:
-    BOOST_CHECK_EQUAL(http::status::proxy_authentication_required, resp.result());
-    BOOST_CHECK_EQUAL("Basic", resp[http::field::proxy_authenticate]);
-    break;
-  case PichiError::UNAUTHENTICATED:
-    BOOST_CHECK_EQUAL(http::status::forbidden, resp.result());
-    break;
-  default:
-    BOOST_CHECK_EQUAL(http::status::internal_server_error, resp.result());
-    break;
+  auto iequal = [](rngs::range auto&& lhs, rngs::range auto&& rhs) {
+    return rngs::equal(lhs, rhs, [](auto a, auto b) { return tolower(a) == tolower(b); });
+  };
+  auto it = hdr.find(field);
+  BOOST_CHECK(it != rngs::end(hdr));
+  if (field == http::field::proxy_authorization) {
+    auto v = ConstBuffer{it->value()};
+    BOOST_CHECK(iequal(content | views::take(6), v | views::take(6)));
+    BOOST_CHECK(rngs::equal(content | views::drop(6), v | views::drop(6)));
+  }
+  else {
+    BOOST_CHECK(rngs::equal(content, it->value(), [](auto lhs, auto rhs) {
+      return tolower(lhs) == tolower(rhs);
+    }));
   }
 }
 
-static auto defaultAuthenticator(string const& u, string const& p)
+template <typename TestCase> void run_case(TestCase&& test)
 {
-  return u == "foo" && p == "bar";
+  auto pool = asio::thread_pool{1};
+  asio::co_spawn(
+      pool,
+      std::invoke(std::forward<TestCase>(test), pool.get_executor()),
+      [&](auto&& eptr, auto&&...) {
+        BOOST_CHECK(!eptr);
+        pool.stop();
+      }
+  );
+  pool.join();
 }
 
 BOOST_AUTO_TEST_SUITE(HTTP)
 
-BOOST_AUTO_TEST_CASE(readRemote_Invalid_HTTP_Header)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_HTTP_Header)
 {
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  socket.fill("Not a legal http header"sv);
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
-                        verifyException<http::error::bad_version>);
+    co_await stream::write(client, "Not a legal http header");
+    BOOST_CHECK_EXCEPTION(
+        co_await ingress.read_remote(),
+        SystemError,
+        verify_exception<http::error::bad_version>
+    );
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Tunnel_Authentication_Without_Header)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Tunnel_Authentication_Without_Header)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genTunnelReq();
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto req = gen_request(http::verb::connect, HTTPS_TARGET);
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{IVO_AUTH, client.peer()};
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
-                        verifyException<PichiError::BAD_AUTH_METHOD>);
+    co_await http::async_write(client, req, asio::use_awaitable);
+    BOOST_CHECK_EXCEPTION(
+        co_await ingress.read_remote(),
+        SystemError,
+        verify_exception<PichiError::BAD_AUTH_METHOD>
+    );
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Header)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authentication_Bad_Header)
 {
-  for (auto&& h : {
-           ""s,                                            // Empty header
-           "Token XXXXX"s,                                 // Not basic
-           "Basic "s,                                      // Empty Credential
-           "Basic invalid BASE64 code"s,                   // Bad BASE64 sequence
-           "Basic invalidBASE64code"s,                     // Bad BASE64
-           "Basic "s + crypto::base64Encode("nocolon"sv),  // No colon
-       }) {
-    for (auto&& generator :
-         {function<http::request<http::empty_body>()>{genTunnelReq},
-          function<http::request<http::empty_body>()>{[]() { return genRelayReq("/"s); }}}) {
-      auto req = generator();
-      req.set(http::field::proxy_authorization, h);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    for (auto&& h : {
+             ""s,                           // Empty header
+             "Token XXXXX"s,                // Not basic
+             "Basic "s,                     // Empty Credential
+             "Basic invalid BASE64 code"s,  // Bad BASE64 sequence
+             "Basic invalidBASE64code"s,    // Bad BASE64
+             gen_auth("nocolon"),           // No colon
+         }) {
+      for (auto req :
+           {gen_request(http::verb::connect, HTTPS_TARGET),
+            gen_request(http::verb::get, ROOT_URI)}) {
+        req.set(http::field::proxy_authorization, h);
 
-      auto socket = Socket{};
-      auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
+        auto client  = TestSocket{ex};
+        auto ingress = Ingress{IVO_AUTH, client.peer()};
 
-      auto buf = array<uint8_t, 1024>{};
-      socket.fill({buf, serializeToBuffer(req, buf)});
+        co_await http::async_write(client, req, asio::use_awaitable);
 
-      BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
-                            verifyException<PichiError::BAD_AUTH_METHOD>);
+        BOOST_CHECK_EXCEPTION(
+            co_await ingress.read_remote(),
+            SystemError,
+            verify_exception<PichiError::BAD_AUTH_METHOD>
+        );
+      }
     }
-  }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Authentication_Bad_Credential)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authentication_Bad_Credential)
 {
-  for (auto&& h : {
-           "Basic "s + crypto::base64Encode(":bar"sv),  // Empty username
-           "Basic "s + crypto::base64Encode("foo:"sv),  // Empty password
-           "Basic "s + crypto::base64Encode(":"sv),     // Empty u&p
-           "Basic "s + crypto::base64Encode("f:b"sv),   // Invalid u&p
-       }) {
-    for (auto&& generator :
-         {function<http::request<http::empty_body>()>{genTunnelReq},
-          function<http::request<http::empty_body>()>{[]() { return genRelayReq("/"s); }}}) {
-      auto req = generator();
-      req.set(http::field::proxy_authorization, h);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    for (auto&& h : {
+             ":bar"sv,  // Empty username
+             "foo:"sv,  // Empty password
+             ":"sv,     // Empty u&p
+             "f:b"sv,   // Invalid u&p
+         }) {
+      for (auto req :
+           {gen_request(http::verb::connect, HTTPS_TARGET),
+            gen_request(http::verb::get, ROOT_URI)}) {
+        req.set(http::field::proxy_authorization, gen_auth(h));
 
-      auto socket = Socket{};
-      auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
+        auto client  = TestSocket{ex};
+        auto ingress = Ingress{IVO_AUTH, client.peer()};
 
-      auto buf = array<uint8_t, 1024>{};
-      socket.fill({buf, serializeToBuffer(req, buf)});
+        co_await http::async_write(client, req, asio::use_awaitable);
 
-      BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
-                            verifyException<PichiError::UNAUTHENTICATED>);
+        BOOST_CHECK_EXCEPTION(
+            co_await ingress.read_remote(),
+            SystemError,
+            verify_exception<PichiError::UNAUTHENTICATED>
+        );
+      }
     }
-  }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Authentication_Tunnel_Correct)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authentication_Tunnel_Correct)
 {
-  auto req = genTunnelReq();
-  req.set(http::field::proxy_authorization, "Basic "s + crypto::base64Encode("foo:bar"sv));
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto req = gen_request(http::verb::connect, HTTPS_TARGET);
+    req.set(http::field::proxy_authorization, gen_auth(USERNAME, PASSWORD));
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{IVO_AUTH, client.peer()};
 
-  auto buf = array<uint8_t, 1024>{};
-  socket.fill({buf, serializeToBuffer(req, buf)});
+    co_await http::async_write(client, req, asio::use_awaitable);
 
-  auto remote = ingress.readRemote(gYield);
-  BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
-  BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
-  BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
-  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), SystemError, verifyException<PichiError::MISC>);
-  BOOST_CHECK_EQUAL(0_sz, socket.available());
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Authentication_Relay_Correct)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authentication_Relay_Correct)
 {
-  auto req = genRelayReq("/");
-  req.set(http::field::proxy_authorization, "Basic "s + crypto::base64Encode("foo:bar"sv));
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto req = gen_request(http::verb::get, ROOT_URI);
+    req.set(http::field::proxy_authorization, gen_auth(USERNAME, PASSWORD));
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{&defaultAuthenticator}, socket, true};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{IVO_AUTH, client.peer()};
 
-  auto buf = array<uint8_t, 1024>{};
-  socket.fill({buf, serializeToBuffer(req, buf)});
+    co_await http::async_write(client, req, asio::use_awaitable);
 
-  auto remote = ingress.readRemote(gYield);
-  BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Tunnel_Correct)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Tunnel_Correct)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genTunnelReq();
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::connect, HTTPS_TARGET),
+        asio::use_awaitable
+    );
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  auto remote = ingress.readRemote(gYield);
-
-  BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
-  BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
-  BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
-  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), SystemError, verifyException<PichiError::MISC>);
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Host_Field_Only)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Relay_With_Host_Field_Only)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genRelayReq("/"s);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(client, gen_request(http::verb::get, ROOT_URI), asio::use_awaitable);
+    auto remote = co_await ingress.read_remote();
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  auto remote = ingress.readRemote(gYield);
-
-  BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Both_Fields)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Relay_With_Both_Fields)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genRelayReq("http://localhost/"s);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::get, LOCALHOST_URI),
+        asio::use_awaitable
+    );
+    auto remote = co_await ingress.read_remote();
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  auto remote = ingress.readRemote(gYield);
-
-  BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Relay_Without_Host_Field)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Relay_Without_Host_Field)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genRelayReq("http://localhost/"s);
-  req.erase(http::field::host);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto req = gen_request(http::verb::get, LOCALHOST_URI);
+    req.erase(http::field::host);
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  auto remote = ingress.readRemote(gYield);
+    co_await http::async_write(client, req, asio::use_awaitable);
+    auto remote = co_await ingress.read_remote();
 
-  BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Relay_With_Difference_Destinations)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Relay_With_Difference_Destinations)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genRelayReq("http://localhost:8080/"s);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
+    auto port    = 8080_u16;
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::get, std::format("http://{}:{}/", LOCALHOST, port)),
+        asio::use_awaitable
+    );
+    auto remote = co_await ingress.read_remote();
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  auto remote = ingress.readRemote(gYield);
-
-  BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
-  BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
-  BOOST_CHECK_EQUAL(8080_u16, remote.port_);
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(port, remote.port_);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Relay_Without_Both_Fields)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Relay_Without_Both_Fields)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genRelayReq("/"s);
-  req.erase(http::field::host);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto req = gen_request(http::verb::get, ROOT_URI);
+    req.erase(http::field::host);
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  BOOST_CHECK_EXCEPTION(ingress.readRemote(gYield), SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
+    co_await http::async_write(client, req, asio::use_awaitable);
+
+    BOOST_CHECK_EXCEPTION(
+        co_await ingress.read_remote(),
+        SystemError,
+        verify_exception<PichiError::BAD_PROTO>
+    );
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_Tunnel_With_Sticky_Content)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genTunnelReq();
-  auto sticky = "sticky content"sv;
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::connect, HTTPS_TARGET),
+        asio::use_awaitable
+    );
+    co_await stream::write(client, CONTENT);
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  socket.fill(sticky);
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
 
-  ingress.readRemote(gYield);
-
-  BOOST_CHECK_EQUAL(sticky.size(), ingress.recv(buf, gYield));
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(sticky), cend(sticky), cbegin(buf),
-                                cbegin(buf) + sticky.size());
+    auto buf  = std::array<uint8_t, 1024>{};
+    auto fact = buf | views::take(co_await ingress.recv(buf));
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        rngs::cbegin(CONTENT),
+        rngs::cend(CONTENT),
+        rngs::cbegin(fact),
+        rngs::cend(fact)
+    );
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_Tunnel_By_Insufficient_Buffer)
 {
-  auto buf = array<uint8_t, 64>{};
-  auto req = genTunnelReq();
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::connect, HTTPS_TARGET),
+        asio::use_awaitable
+    );
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  ingress.readRemote(gYield);
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
 
-  auto content = "Very long content"sv;
-  socket.fill(content);
+    co_await stream::write(client, CONTENT);
 
-  for (auto i = 0_sz; i < content.size(); ++i)
-    BOOST_CHECK_EQUAL(1_sz, ingress.recv({buf.data() + i, 1_sz}, gYield));
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
-                                cbegin(buf) + content.size());
-  BOOST_CHECK_EXCEPTION(ingress.recv(buf, gYield), SystemError, verifyException<PichiError::MISC>);
+    auto buf = std::array<uint8_t, 1024>{};
+    for (auto i : views::iota(0_sz, rngs::size(CONTENT))) {
+      co_await ingress.recv(buf | views::drop(i) | views::take(1));
+    };
+    auto fact = buf | views::take(rngs::size(CONTENT));
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        rngs::begin(CONTENT),
+        rngs::end(CONTENT),
+        rngs::begin(fact),
+        rngs::end(fact)
+    );
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_Without_Connection_Field)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReq("http://localhost/"s);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::get, LOCALHOST_URI),
+        asio::use_awaitable
+    );
 
-  socket.fill({buf, serializeToBuffer(origin, buf)});
-  ingress.readRemote(gYield);
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
 
-  auto received = parseFromBuffer<true, http::empty_body>({buf, ingress.recv(buf, gYield)});
-  BOOST_CHECK_EQUAL("/", received.target());
-
-  verifyField(received, http::field::host, "localhost"sv);
-  verifyField(received, http::field::connection, "close"sv);
-  verifyField(received, http::field::proxy_connection, "close"sv);
+    auto buf = std::array<uint8_t, 1024>{};
+    auto req = parse<true, http::empty_body>(buf | views::take(co_await ingress.recv(buf)));
+    BOOST_CHECK_EQUAL(ROOT_URI, req.target());
+    verify_field(req, http::field::host, LOCALHOST);
+    verify_field(req, http::field::connection, CLOSE_FIELD);
+    verify_field(req, http::field::proxy_connection, CLOSE_FIELD);
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Upgrade)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReq("http://localhost/"s);
-  origin.set(http::field::connection, "upgrade");
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto origin = gen_request(http::verb::get, LOCALHOST_URI);
+    origin.set(http::field::connection, UPGRADE_FIELD);
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  socket.fill({buf, serializeToBuffer(origin, buf)});
-  ingress.readRemote(gYield);
+    co_await http::async_write(client, origin, asio::use_awaitable);
 
-  auto received = parseFromBuffer<true, http::empty_body>({buf, ingress.recv(buf, gYield)});
-  BOOST_CHECK_EQUAL("/", received.target());
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
 
-  verifyField(received, http::field::host, "localhost"sv);
-  verifyField(received, http::field::connection, "upgrade"sv);
-  BOOST_CHECK(received.find(http::field::proxy_connection) == cend(received));
+    auto buf = std::array<uint8_t, 1024>{};
+    auto req = parse<true, http::empty_body>(buf | views::take(co_await ingress.recv(buf)));
+    BOOST_CHECK_EQUAL(ROOT_URI, req.target());
+    BOOST_CHECK(req.find(http::field::proxy_connection) == rngs::end(req));
+    verify_field(req, http::field::host, LOCALHOST);
+    verify_field(req, http::field::connection, UPGRADE_FIELD);
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Keep_Alive)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReq("http://localhost/"s);
-  origin.set(http::field::connection, "keey-alive");
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto origin = gen_request(http::verb::get, LOCALHOST_URI);
+    origin.set(http::field::connection, KEEP_ALIVE_FIELD);
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  socket.fill({buf, serializeToBuffer(origin, buf)});
-  ingress.readRemote(gYield);
+    co_await http::async_write(client, origin, asio::use_awaitable);
 
-  auto req = parseFromBuffer<true, http::empty_body>({buf, ingress.recv(buf, gYield)});
-  BOOST_CHECK_EQUAL("/", req.target());
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
 
-  verifyField(req, http::field::host, "localhost"sv);
-  verifyField(req, http::field::connection, "close"sv);
-  verifyField(req, http::field::proxy_connection, "close"sv);
+    auto buf = std::array<uint8_t, 1024>{};
+    auto req = parse<true, http::empty_body>(buf | views::take(co_await ingress.recv(buf)));
+    BOOST_CHECK_EQUAL(ROOT_URI, req.target());
+    verify_field(req, http::field::host, LOCALHOST);
+    verify_field(req, http::field::connection, CLOSE_FIELD);
+    verify_field(req, http::field::proxy_connection, CLOSE_FIELD);
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_With_Body)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReqWithBody("http://localhost/"s);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(client, gen_request(LOCALHOST_URI), asio::use_awaitable);
 
-  socket.fill({buf, serializeToBuffer(origin, buf)});
-  ingress.readRemote(gYield);
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
 
-  // Read header on the first ingress.recv, and body on the second ingress.recv
-  auto transfered = ingress.recv(buf, gYield);
-  transfered += ingress.recv(MutableBuffer{buf} + transfered, gYield);
-  auto req = parseFromBuffer<true, http::string_body>({buf, transfered});
-  BOOST_CHECK_EQUAL("/", req.target());
+    auto buf = std::array<uint8_t, 1024>{};
+    auto req = parse<true, http::string_body>(buf | views::take(co_await ingress.recv(buf)));
 
-  verifyField(req, http::field::host, "localhost"sv);
-  verifyField(req, http::field::connection, "close"sv);
-  verifyField(req, http::field::proxy_connection, "close"sv);
-  BOOST_CHECK_EQUAL("http body", req.body());
+    BOOST_CHECK_EQUAL(ROOT_URI, req.target());
+    BOOST_CHECK_EQUAL(CONTENT, req.body());
+    verify_field(req, http::field::host, LOCALHOST);
+    verify_field(req, http::field::connection, CLOSE_FIELD);
+    verify_field(req, http::field::proxy_connection, CLOSE_FIELD);
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_By_Insufficient_Buffer)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReqWithBody("http://localhost/"s);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(client, gen_request(LOCALHOST_URI), asio::use_awaitable);
+    client.close();
 
-  socket.fill({buf, serializeToBuffer(origin, buf)});
-  ingress.readRemote(gYield);
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
 
-  // Invoke ingress.recv until socket is empty
-  auto data = MutableBuffer{buf};
-  auto recv = [&]() {
-    while (true) {
-      BOOST_CHECK_EQUAL(1_sz, ingress.recv({data, 1}, gYield));
-      data += 1;
-    }
-  };
-  BOOST_CHECK_EXCEPTION(recv(), SystemError, verifyException<PichiError::MISC>);
+    auto buf  = std::array<uint8_t, 1024>{};
+    auto len  = 0_sz;
+    auto recv = [&]() -> Awaitable<void> {
+      while (true) {
+        co_await ingress.recv(buf | views::drop(len) | views::take(1));
+        ++len;
+      }
+    };
 
-  auto received = parseFromBuffer<true, http::string_body>({buf, buf.size() - data.size()});
-  BOOST_CHECK_EQUAL("/", received.target());
+    BOOST_CHECK_EXCEPTION(co_await recv(), SystemError, verify_exception<asio::error::eof>);
 
-  verifyField(received, http::field::host, "localhost"sv);
-  verifyField(received, http::field::connection, "close"sv);
-  verifyField(received, http::field::proxy_connection, "close"sv);
-  BOOST_CHECK_EQUAL("http body", received.body());
+    auto req = parse<true, http::string_body>(buf | views::take(len));
+    BOOST_CHECK_EQUAL(ROOT_URI, req.target());
+    BOOST_CHECK_EQUAL(CONTENT, req.body());
+    verify_field(req, http::field::host, LOCALHOST);
+    verify_field(req, http::field::connection, CLOSE_FIELD);
+    verify_field(req, http::field::proxy_connection, CLOSE_FIELD);
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_confirm_Tunnel)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genTunnelReq();
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::connect, HTTPS_TARGET),
+        asio::use_awaitable
+    );
 
-  socket.fill({buf, serializeToBuffer(origin, buf)});
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTPS_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTPS_ENDPOINT.port_, remote.port_);
 
-  ingress.readRemote(gYield);
-  ingress.confirm(gYield);
+    co_await ingress.confirm();
 
-  auto confirmed = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
-  BOOST_CHECK_EQUAL(http::status::ok, confirmed.result());
+    auto buf = std::array<uint8_t, 1024>{};
+    auto rep =
+        parse<false, http::empty_body>(buf | views::take(co_await stream::read_some(client, buf)));
+    BOOST_CHECK_EQUAL(http::status::ok, rep.result());
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_confirm_Relay)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genRelayReq("http://localhost/"s);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::get, LOCALHOST_URI),
+        asio::use_awaitable
+    );
 
-  socket.fill({buf, serializeToBuffer(origin, buf)});
+    auto remote = co_await ingress.read_remote();
+    BOOST_CHECK(HTTP_ENDPOINT.type_ == remote.type_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.host_, remote.host_);
+    BOOST_CHECK_EQUAL(HTTP_ENDPOINT.port_, remote.port_);
 
-  ingress.readRemote(gYield);
-  ingress.confirm(gYield);
+    co_await ingress.confirm();
+    co_await ingress.close();
 
-  BOOST_CHECK_EQUAL(0_sz, socket.available());
+    auto buf = std::array<uint8_t, 1024>{};
+    BOOST_CHECK_EXCEPTION(
+        co_await stream::read_some(client, buf),
+        SystemError,
+        verify_exception<asio::error::eof>
+    );
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_PichiError)
 {
-  for (auto e : {PichiError::CONN_FAILURE, PichiError::BAD_AUTH_METHOD, PichiError::UNAUTHENTICATED,
-                 PichiError::OK, PichiError::BAD_PROTO, PichiError::CRYPTO_ERROR,
-                 PichiError::BUFFER_OVERFLOW, PichiError::BAD_JSON, PichiError::SEMANTIC_ERROR,
-                 PichiError::RES_IN_USE, PichiError::RES_LOCKED, PichiError::MISC}) {
-    auto socket = Socket{};
-    auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(SystemError{e}), gYield);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    for (auto e :
+         {PichiError::CONN_FAILURE,
+          PichiError::BAD_AUTH_METHOD,
+          PichiError::UNAUTHENTICATED,
+          PichiError::BAD_PROTO,
+          PichiError::CRYPTO_ERROR,
+          PichiError::BUFFER_OVERFLOW,
+          PichiError::BAD_JSON,
+          PichiError::SEMANTIC_ERROR,
+          PichiError::RES_IN_USE,
+          PichiError::RES_LOCKED,
+          PichiError::MISC}) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{{}, client.peer()};
 
-    auto buf = array<uint8_t, 1024>{};
-    verifyDisconnectResponse(e, parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)}));
-  }
+      co_await ingress.disconnect(make_error_code(e));
+      co_await ingress.close();
+
+      auto buf = std::array<uint8_t, 1024>{};
+      auto len = co_await stream::read_some(client, buf);
+      auto rep = parse<false, http::empty_body>(buf | views::take(len));
+      switch (e) {
+      case PichiError::CONN_FAILURE:
+        BOOST_CHECK_EQUAL(http::status::gateway_timeout, rep.result());
+        break;
+      case PichiError::BAD_AUTH_METHOD:
+        BOOST_CHECK_EQUAL(http::status::proxy_authentication_required, rep.result());
+        verify_field(rep, http::field::proxy_authenticate, BASIC_FIELD);
+        break;
+      case PichiError::UNAUTHENTICATED:
+        BOOST_CHECK_EQUAL(http::status::forbidden, rep.result());
+        break;
+      default:
+        BOOST_CHECK_EQUAL(http::status::internal_server_error, rep.result());
+        break;
+      }
+    }
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_HTTP_Errors)
 {
-  static auto const ECS = vector<sys::error_code>{
+  static auto const ECS = std::vector<sys::error_code>{
       http::error::bad_alloc,       http::error::bad_chunk,    http::error::bad_content_length,
       http::error::bad_method,      http::error::bad_obs_fold, http::error::bad_reason,
       http::error::bad_status,      http::error::bad_target,   http::error::bad_transfer_encoding,
@@ -565,20 +731,25 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_HTTP_Errors)
       http::error::header_limit,    http::error::need_buffer,  http::error::need_more,
       http::error::partial_message, http::error::stale_parser, http::error::unexpected_body,
   };
-  for_each(cbegin(ECS), cend(ECS), [](auto&& ec) {
-    auto socket = Socket{};
-    auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(SystemError{ec}), gYield);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    for (auto e : ECS) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{{}, client.peer()};
 
-    auto buf = array<uint8_t, 1024>{};
-    auto resp = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
-    BOOST_CHECK_EQUAL(http::status::bad_request, resp.result());
+      co_await ingress.disconnect(e);
+      co_await ingress.close();
+
+      auto buf = std::array<uint8_t, 1024>{};
+      auto len = co_await stream::read_some(client, buf);
+      auto rep = parse<false, http::empty_body>(buf | views::take(len));
+      BOOST_CHECK_EQUAL(http::status::bad_request, rep.result());
+    }
   });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Network_Errors)
 {
-  auto const ECS = vector<sys::error_code>{
+  static auto const ECS = std::vector<sys::error_code>{
       asio::error::access_denied,
       asio::error::address_family_not_supported,
       asio::error::address_in_use,
@@ -620,343 +791,262 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect_For_Network_Errors)
       asio::error::try_again,
       asio::error::would_block,
   };
-  for_each(cbegin(ECS), cend(ECS), [](auto&& ec) {
-    auto socket = Socket{};
-    auto ingress = HttpIngress{{}, socket, true};
-    ingress.disconnect(make_exception_ptr(SystemError{ec}), gYield);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    for (auto e : ECS) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{{}, client.peer()};
 
-    auto buf = array<uint8_t, 1024>{};
-    auto resp = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
-    BOOST_CHECK_EQUAL(http::status::gateway_timeout, resp.result());
+      co_await ingress.disconnect(e);
+      co_await ingress.close();
+
+      auto buf = std::array<uint8_t, 1024>{};
+      auto len = co_await stream::read_some(client, buf);
+      auto rep = parse<false, http::empty_body>(buf | views::take(len));
+      BOOST_CHECK_EQUAL(http::status::gateway_timeout, rep.result());
+    }
   });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_send_Tunnel)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto origin = genTunnelReq();
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::connect, HTTPS_TARGET),
+        asio::use_awaitable
+    );
 
-  // Handshake
-  socket.fill({buf, serializeToBuffer(origin, buf)});
-  ingress.readRemote(gYield);
-  ingress.confirm(gYield);
-  socket.flush(buf);
+    co_await ingress.read_remote();
+    co_await ingress.confirm();
 
-  auto content = "content"sv;
+    auto buf = std::array<uint8_t, 1024>{};
+    co_await stream::read_some(client, buf);
 
-  ingress.send(content, gYield);
-  BOOST_CHECK_EQUAL(content.size(), socket.available());
+    co_await ingress.send(CONTENT);
 
-  socket.flush({buf, content.size()});
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
-                                cbegin(buf) + content.size());
+    auto fact = buf | views::take(co_await stream::read_some(client, buf));
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        rngs::begin(CONTENT),
+        rngs::end(CONTENT),
+        rngs::begin(fact),
+        rngs::end(fact)
+    );
+  });
 }
 
 BOOST_AUTO_TEST_CASE(Ingress_send_Relay)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto req = genRelayReq("http://localhost/"s);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto socket = Socket{};
-  auto ingress = HttpIngress{{}, socket, true};
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::get, LOCALHOST_URI),
+        asio::use_awaitable
+    );
 
-  socket.fill({buf, serializeToBuffer(req, buf)});
-  ingress.readRemote(gYield);
-  ingress.confirm(gYield);
-  BOOST_CHECK_EQUAL(0_sz, socket.available());
+    co_await ingress.read_remote();
+    co_await ingress.confirm();
 
-  auto origin = genResponse();
-  ingress.send({buf, serializeToBuffer(origin, buf)}, gYield);
+    auto buf = std::array<uint8_t, 1024>{};
+    co_await ingress.send(buf | views::take(serialize(gen_response(), buf)));
 
-  auto sent = parseFromBuffer<false, http::empty_body>({buf, socket.flush(buf)});
-  BOOST_CHECK_EQUAL(http::status::no_content, sent.result());
-  verifyField(sent, http::field::connection, "close"sv);
-  verifyField(sent, http::field::proxy_connection, "close"sv);
-}
+    auto rep =
+        parse<false, http::empty_body>(buf | views::take(co_await stream::read_some(client, buf)));
+    BOOST_CHECK_EQUAL(http::status::no_content, rep.result());
+    verify_field(rep, http::field::connection, CLOSE_FIELD);
+    verify_field(rep, http::field::proxy_connection, CLOSE_FIELD);
 
-BOOST_AUTO_TEST_CASE(connect_Authentication)
-{
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{make_pair("foo"s, "bar"s), socket};
+    co_await ingress.send(CONTENT);
 
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  auto first = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
-
-  BOOST_CHECK_EQUAL(http::verb::connect, first.method());
-  BOOST_CHECK(first.find(http::field::proxy_authorization) != cend(first));
-  BOOST_CHECK_EQUAL("Basic "s + crypto::base64Encode("foo:bar"sv),
-                    first[http::field::proxy_authorization]);
-
-  auto normal = genRelayReq("/");
-  egress.send({buf, serializeToBuffer(normal, buf)}, gYield);
-
-  auto second = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
-  BOOST_CHECK_EQUAL(http::verb::get, second.method());
-  BOOST_CHECK(second.find(http::field::proxy_authorization) != cend(second));
-  BOOST_CHECK_EQUAL("Basic "s + crypto::base64Encode("foo:bar"sv),
-                    second[http::field::proxy_authorization]);
-}
-
-BOOST_AUTO_TEST_CASE(Egress_connect_Tunnel)
-{
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
-
-  auto resp = genResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-
-  egress.connect(makeEndpoint("localhost"sv, "443"sv), {}, gYield);
-  auto req = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
-
-  BOOST_CHECK_EQUAL(http::verb::connect, req.method());
-  BOOST_CHECK_EQUAL("localhost:443", req.target());
-}
-
-BOOST_AUTO_TEST_CASE(Egress_connect_Fallback_To_Relay)
-{
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
-
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  auto req = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
-
-  BOOST_CHECK_EQUAL(http::verb::connect, req.method());
-  BOOST_CHECK_EQUAL("localhost:80", req.target());
-  BOOST_CHECK(egress.readable());
-  BOOST_CHECK(egress.writable());
-}
-
-BOOST_AUTO_TEST_CASE(Egress_send_Tunnel_Arbitrary_Data)
-{
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
-
-  auto resp = genResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-
-  egress.connect(makeEndpoint("localhost"sv, "443"sv), {}, gYield);
-  socket.flush(buf);
-
-  auto expect = array<uint8_t, 0xff>{};
-  generate_n(begin(expect), expect.size(), [i = 0]() mutable { return static_cast<uint8_t>(i++); });
-  egress.send(expect, gYield);
-
-  BOOST_CHECK_EQUAL(expect.size(), socket.flush(buf));
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(buf),
-                                cbegin(buf) + expect.size());
-}
-
-BOOST_AUTO_TEST_CASE(Egress_send_Relay_Non_HTTP_Request)
-{
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
-
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  socket.flush(buf);
-
-  BOOST_CHECK_EXCEPTION(egress.send("Non-HTTP request\r\n"sv, gYield), SystemError,
-                        verifyException<http::error::bad_target>);
-}
-
-BOOST_AUTO_TEST_CASE(Egress_send_Relay_HTTP_Request_Without_Upgrade)
-{
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
-
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  socket.flush(buf);
-
-  auto origin = genRelayReq("/"s);
-  egress.send({buf, serializeToBuffer(origin, buf)}, gYield);
-
-  auto sent = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
-
-  BOOST_CHECK_EQUAL("http://localhost/", sent.target());
-  BOOST_CHECK_EQUAL(http::verb::get, sent.method());
-  verifyField(sent, http::field::host, "localhost"sv);
-  verifyField(sent, http::field::connection, "close"sv);
-  verifyField(sent, http::field::proxy_connection, "close"sv);
-}
-
-BOOST_AUTO_TEST_CASE(Egress_send_Relay_HTTP_Request_With_Upgrade)
-{
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
-
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  socket.flush(buf);
-
-  auto origin = genRelayReq("/"s);
-  origin.set(http::field::connection, "upgrade");
-  egress.send({buf, serializeToBuffer(origin, buf)}, gYield);
-
-  auto sent = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
-
-  BOOST_CHECK_EQUAL("http://localhost/", sent.target());
-  BOOST_CHECK_EQUAL(http::verb::get, sent.method());
-  verifyField(sent, http::field::host, "localhost"sv);
-  verifyField(sent, http::field::connection, "upgrade"sv);
-}
-
-BOOST_AUTO_TEST_CASE(Egress_send_Relay_Multiple_Parts_Header)
-{
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
-
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  socket.flush(buf);
-
-  auto origin = genRelayReq("/"s);
-  for_each(cbegin(buf), cbegin(buf) + serializeToBuffer(origin, buf), [&](auto&& c) {
-    egress.send({addressof(c), 1_sz}, gYield);
+    auto fact = buf | views::take(co_await stream::read_some(client, buf));
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        rngs::begin(CONTENT),
+        rngs::end(CONTENT),
+        rngs::begin(fact),
+        rngs::end(fact)
+    );
   });
-
-  auto sent = parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
-
-  BOOST_CHECK_EQUAL("http://localhost/", sent.target());
-  BOOST_CHECK_EQUAL(http::verb::get, sent.method());
-  verifyField(sent, http::field::host, "localhost"sv);
-  verifyField(sent, http::field::connection, "close"sv);
-  verifyField(sent, http::field::proxy_connection, "close"sv);
 }
 
-BOOST_AUTO_TEST_CASE(Egress_send_Relay_Request_With_Body)
+BOOST_AUTO_TEST_CASE(Ingress_send_Relay_With_Incomplete_Header)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto rep = std::array<uint8_t, 1024>{};
+    auto len = serialize(gen_response(http::status::forbidden), rep);
+    for (auto i = 0_sz; i < len; ++i) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{{}, client.peer()};
 
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
+      co_await http::async_write(
+          client,
+          gen_request(http::verb::get, LOCALHOST_URI),
+          asio::use_awaitable
+      );
 
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  socket.flush(buf);
+      co_await ingress.read_remote();
+      co_await ingress.confirm();
+      co_await ingress.send(rep | views::take(i));
+      co_await ingress.close();
 
-  auto origin = genRelayReqWithBody("/"s);
-  for_each(cbegin(buf), cbegin(buf) + serializeToBuffer(origin, buf), [&](auto&& c) {
-    egress.send({addressof(c), 1_sz}, gYield);
+      auto buf = std::array<uint8_t, 1024>{};
+      BOOST_CHECK_EXCEPTION(
+          co_await stream::read_some(client, buf),
+          SystemError,
+          verify_exception<asio::error::eof>
+      );
+    }
   });
-
-  auto sent = parseFromBuffer<true, http::string_body>({buf, socket.flush(buf)});
-
-  BOOST_CHECK_EQUAL("http://localhost/"s, sent.target());
-  BOOST_CHECK_EQUAL(http::verb::post, sent.method());
-  verifyField(sent, http::field::host, "localhost"sv);
-  verifyField(sent, http::field::connection, "close"sv);
-  verifyField(sent, http::field::proxy_connection, "close"sv);
-  BOOST_CHECK_EQUAL("http body"s, sent.body());
 }
 
-BOOST_AUTO_TEST_CASE(Egress_send_Relay_Request_With_Extra_Data)
+BOOST_AUTO_TEST_CASE(Ingress_send_Relay_One_By_One)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{{}, client.peer()};
 
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
+    co_await http::async_write(
+        client,
+        gen_request(http::verb::get, LOCALHOST_URI),
+        asio::use_awaitable
+    );
 
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  socket.flush(buf);
+    co_await ingress.read_remote();
+    co_await ingress.confirm();
 
-  auto origin = genRelayReq("/"s);
-  egress.send({buf, serializeToBuffer(origin, buf)}, gYield);
-  parseFromBuffer<true, http::empty_body>({buf, socket.flush(buf)});
+    auto buf = std::array<uint8_t, 1024>{};
+    auto len = serialize(gen_response(), buf);
+    for (auto i = 0_sz; i < len; ++i) co_await ingress.send(buf | views::drop(i) | views::take(1));
 
-  auto extra = "extra data"sv;
-  egress.send(extra, gYield);
+    auto rep =
+        parse<false, http::empty_body>(buf | views::take(co_await stream::read_some(client, buf)));
+    BOOST_CHECK_EQUAL(http::status::no_content, rep.result());
+    verify_field(rep, http::field::connection, CLOSE_FIELD);
+    verify_field(rep, http::field::proxy_connection, CLOSE_FIELD);
 
-  BOOST_CHECK_EQUAL(extra.size(), socket.flush(buf));
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(extra), cend(extra), cbegin(buf),
-                                cbegin(buf) + extra.size());
+    for (auto i = 0_sz; i < rngs::size(CONTENT); ++i) {
+      co_await ingress.send(CONTENT | views::drop(i) | views::take(1));
+      BOOST_CHECK_EQUAL(1, co_await stream::read_some(client, buf));
+      BOOST_CHECK_EQUAL(CONTENT[i], buf[0]);
+    }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(Egress_recv_Tunnel)
+BOOST_AUTO_TEST_CASE(Egress_connect_Authentication)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto server = TestSocket{ex};
+    auto egress = Egress{EVO_AUTH, server.peer()};
 
-  auto resp = genResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-  egress.connect(makeEndpoint("localhost"sv, "443"sv), {}, gYield);
-  socket.flush(buf);
+    auto buf = std::array<uint8_t, 1024>{};
+    co_await stream::write(server, buf | views::take(serialize(gen_response(), buf)));
 
-  auto content = "content"sv;
-  socket.fill(content);
+    co_await egress.connect(HTTPS_ENDPOINT);
+    auto req =
+        parse<true, http::empty_body>(buf | views::take(co_await stream::read_some(server, buf)));
+    BOOST_CHECK_EQUAL(http::verb::connect, req.method());
+    BOOST_CHECK_EQUAL(HTTPS_TARGET, req.target());
+    verify_field(req, http::field::proxy_authorization, gen_auth(USERNAME, PASSWORD));
+    verify_field(req, http::field::host, HTTPS_TARGET);
+    verify_field(req, http::field::proxy_connection, KEEP_ALIVE_FIELD);
 
-  BOOST_CHECK_EQUAL(content.size(), egress.recv(buf, gYield));
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
-                                cbegin(buf) + content.size());
+    co_await egress.close();
+    BOOST_CHECK_EXCEPTION(
+        co_await stream::read_some(server, buf),
+        SystemError,
+        verify_exception<asio::error::eof>
+    );
+  });
 }
 
-BOOST_AUTO_TEST_CASE(Egress_recv_Relay_Non_HTTP_Data)
+BOOST_AUTO_TEST_CASE(Egress_connect_Without_Authentication)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto server = TestSocket{ex};
+    auto egress = Egress{{}, server.peer()};
 
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  socket.flush(buf);
+    auto buf = std::array<uint8_t, 1024>{};
+    co_await stream::write(server, buf | views::take(serialize(gen_response(), buf)));
 
-  auto content = "non-HTTP data"sv;
-  socket.fill(content);
+    co_await egress.connect(HTTPS_ENDPOINT);
+    auto req =
+        parse<true, http::empty_body>(buf | views::take(co_await stream::read_some(server, buf)));
+    BOOST_CHECK_EQUAL(http::verb::connect, req.method());
+    BOOST_CHECK_EQUAL(HTTPS_TARGET, req.target());
+    verify_field(req, http::field::host, HTTPS_TARGET);
+    verify_field(req, http::field::proxy_connection, KEEP_ALIVE_FIELD);
 
-  BOOST_CHECK_EQUAL(content.size(), egress.recv(buf, gYield));
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(content), cend(content), cbegin(buf),
-                                cbegin(buf) + content.size());
+    co_await egress.close();
+    BOOST_CHECK_EXCEPTION(
+        co_await stream::read_some(server, buf),
+        SystemError,
+        verify_exception<asio::error::eof>
+    );
+  });
 }
 
-BOOST_AUTO_TEST_CASE(Egress_recv_Relay_HTTP_Response)
+BOOST_AUTO_TEST_CASE(Egress_send_Content)
 {
-  auto buf = array<uint8_t, 1024>{};
-  auto socket = Socket{};
-  auto egress = HttpEgress{{}, socket};
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto server = TestSocket{ex};
+    auto egress = Egress{{}, server.peer()};
 
-  auto resp = genRefuseResponse();
-  socket.fill({buf, serializeToBuffer(resp, buf)});
-  egress.connect(makeEndpoint("localhost"sv, "80"sv), {}, gYield);
-  socket.flush(buf);
+    auto buf = std::array<uint8_t, 1024>{};
+    co_await stream::write(server, buf | views::take(serialize(gen_response(), buf)));
 
-  auto origin = genResponse();
-  socket.fill({buf, serializeToBuffer(origin, buf)});
+    co_await egress.connect(HTTPS_ENDPOINT);
+    co_await stream::read_some(server, buf);
 
-  auto received = parseFromBuffer<false, http::empty_body>({buf, egress.recv(buf, gYield)});
+    co_await egress.send(CONTENT);
+    co_await egress.close();
 
-  BOOST_CHECK_EQUAL(http::status::no_content, received.result());
-  BOOST_CHECK(received.find(http::field::connection) == cend(received));
-  BOOST_CHECK(received.find(http::field::proxy_connection) == cend(received));
+    auto fact = buf | views::take(co_await stream::read_some(server, buf));
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        rngs::begin(CONTENT),
+        rngs::end(CONTENT),
+        rngs::begin(fact),
+        rngs::end(fact)
+    );
+    BOOST_CHECK_EXCEPTION(
+        co_await stream::read_some(server, buf),
+        SystemError,
+        verify_exception<asio::error::eof>
+    );
+  });
+}
+
+BOOST_AUTO_TEST_CASE(Egress_recv_Content)
+{
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto server = TestSocket{ex};
+    auto egress = Egress{{}, server.peer()};
+
+    auto buf = std::array<uint8_t, 1024>{};
+    co_await stream::write(server, buf | views::take(serialize(gen_response(), buf)));
+
+    co_await egress.connect(HTTPS_ENDPOINT);
+    co_await stream::read_some(server, buf);
+
+    co_await stream::write(server, CONTENT);
+    co_await stream::close(server);
+
+    auto fact = buf | views::take(co_await egress.recv(buf));
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        rngs::begin(CONTENT),
+        rngs::end(CONTENT),
+        rngs::begin(fact),
+        rngs::end(fact)
+    );
+    BOOST_CHECK_EXCEPTION(
+        co_await egress.recv(buf),
+        SystemError,
+        verify_exception<asio::error::eof>
+    );
+  });
 }
 
 BOOST_AUTO_TEST_SUITE_END()

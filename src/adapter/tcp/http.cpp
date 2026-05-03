@@ -1,7 +1,10 @@
 #include "pichi/common/config.hpp"
 #include <boost/asio/buffers_iterator.hpp>
+#include <boost/beast/http/error.hpp>
 #include <boost/beast/http/read.hpp>
+#include <boost/beast/http/verb.hpp>
 #include <boost/beast/http/write.hpp>
+#include <boost/system/system_error.hpp>
 #include <format>
 #include <pichi/adapter/tcp/adapter.hpp>
 #include <pichi/adapter/tcp/http.hpp>
@@ -9,12 +12,16 @@
 #include <pichi/common/uri.hpp>
 #include <pichi/crypto/base64.hpp>
 #include <pichi/stream/helpers.hpp>
+#include <pichi/stream/test.hpp>
 #include <pichi/stream/tls.hpp>
+#include <ranges>
 #include <regex>
 
-namespace asio = boost::asio;
-namespace http = boost::beast::http;
-namespace sys  = boost::system;
+namespace asio  = boost::asio;
+namespace http  = boost::beast::http;
+namespace rngs  = std::ranges;
+namespace sys   = boost::system;
+namespace views = rngs::views;
 
 using namespace std::literals;
 
@@ -125,39 +132,76 @@ template <typename Stream> Awaitable<void> ConnectManner::confirm(Stream& stream
   co_await detail::http_write(stream, rep);
 }
 
-ProxyManner::ProxyManner(Cache cache, Request req) : cache_{std::move(cache)}
+ProxyManner::ProxyManner(Cache cache, Request req) : in_{std::move(cache)}, out_{}, parser_{}
 {
-  auto sticked = cache_.size();
+  auto sticked = in_.size();
 
   auto sr = http::serializer<true, Body>{req};
   do {
     auto ec = sys::error_code{};
     sr.next(ec, [&](auto&&, auto serialized) {
       auto n = asio::buffer_size(serialized);
-      asio::buffer_copy(cache_.prepare(n), serialized);
-      cache_.commit(n);
+      asio::buffer_copy(in_.prepare(n), serialized);
+      in_.commit(n);
       sr.consume(n);
     });
     asio::detail::throw_error(ec);
   } while (!sr.is_header_done());
 
-  asio::buffer_copy(cache_.prepare(sticked), cache_.data());
-  cache_.consume(sticked);
+  asio::buffer_copy(in_.prepare(sticked), in_.data());
+  in_.commit(sticked);
+  in_.consume(sticked);
 }
 
 template <typename Stream> Awaitable<size_t> ProxyManner::recv(Stream& stream, MutableBuffer buf)
 {
-  if (cache_.size() == 0) co_return co_await stream::read_some(stream, buf);
+  if (in_.size() == 0) co_return co_await stream::read_some(stream, buf);
 
-  auto copied = std::min(cache_.size(), buf.size());
-  std::copy_n(asio::buffers_begin(cache_.data()), copied, std::begin(buf));
-  cache_.consume(copied);
+  auto copied = std::min(in_.size(), buf.size());
+  std::copy_n(asio::buffers_begin(in_.data()), copied, std::begin(buf));
+  in_.consume(copied);
   co_return copied;
 }
 
 template <typename Stream> Awaitable<void> ProxyManner::send(Stream& stream, ConstBuffer buf)
 {
-  co_await stream::write(stream, buf);
+  if (parser_.is_header_done()) {
+    co_await stream::write(stream, buf);
+    co_return;
+  }
+
+  if (out_.size() > 0) {
+    auto n = rngs::size(buf);
+    rngs::copy(buf, asio::buffers_begin(out_.prepare(n)));
+    out_.commit(n);
+    buf = out_.cdata();
+  }
+
+  auto ec = sys::error_code{};
+  auto n  = parser_.put(asio::buffer(buf), ec);
+  if (ec && ec != http::error::need_more) throw sys::system_error(ec);
+
+  if (out_.size() > 0) {
+    out_.consume(n);
+  }
+  else {
+    rngs::copy(buf | views::drop(n), asio::buffers_begin(out_.prepare(rngs::size(buf) - n)));
+    out_.commit(rngs::size(buf) - n);
+  }
+
+  if (!parser_.is_header_done()) co_return;
+
+  auto rep = parser_.release();
+  if (!parser_.upgrade()) {
+    rep.set(http::field::connection, "close");
+    rep.set(http::field::proxy_connection, "close");
+  }
+
+  co_await http_write(stream, rep);
+  if (out_.size() > 0) {
+    co_await stream::write(stream, out_.cdata());
+    out_.consume(out_.size());
+  }
 }
 
 template <typename Stream> Awaitable<void> ProxyManner::confirm(Stream&) { co_return; }
@@ -263,6 +307,10 @@ template <stream::AsyncSocket Socket> Awaitable<Endpoint> HttpIngress<Socket>::r
   }
   else {
     auto remote = detail::get_remote(req);
+    if (!parser_.upgrade()) {
+      req.set(http::field::connection, "close");
+      req.set(http::field::proxy_connection, "close");
+    }
     manner_.template emplace<detail::ProxyManner>(std::move(cache_), std::move(req));
     co_return remote;
   }
@@ -324,18 +372,24 @@ Awaitable<void> HttpIngress<Socket>::disconnect(sys::error_code const& ec)
 }
 
 template class HttpIngress<asio::ip::tcp::socket>;
+template class HttpIngress<unit_test::TestSocket>;
 
 template <stream::AsyncSocket Socket>
 HttpEgress<Socket>::HttpEgress(vo::Egress const& vo, IOExecutor const& ex)
-  : stream_{
-    vo.tls_.has_value()
-    ? Stream{
-      std::in_place_type<stream::Tls<Socket>>,
-      stream::tls_context(*vo.tls_, vo.server_->host_),
-      ex
-    }
-    : Stream{std::in_place_type<Socket>, ex}
-  }, peer_{*vo.server_}, credential_{vo}
+  : HttpEgress{vo, Socket{ex}}
+{
+}
+
+template <stream::AsyncSocket Socket>
+HttpEgress<Socket>::HttpEgress(vo::Egress const& vo, Socket s)
+: stream_{
+  vo.tls_.has_value()
+  ? Stream{
+    std::in_place_type<stream::Tls<Socket>>, stream::tls_context(*vo.tls_, vo.server_->host_),
+    std::move(s)
+  }
+  : Stream{std::in_place_type<Socket>, std::move(s)}
+}, peer_{*vo.server_}, credential_{vo}
 {
 }
 
@@ -370,8 +424,7 @@ Awaitable<void> HttpEgress<Socket>::connect(Endpoint const& remote)
   else
     req.target(std::format("{}:{}", remote.host_, remote.port_));
   req.set(http::field::host, req.target());
-  req.set(http::field::connection, "close");
-  req.set(http::field::proxy_connection, "close");
+  req.set(http::field::proxy_connection, "Keep-Alive");
   credential_.update(req);
   req.prepare_payload();
 
@@ -384,5 +437,6 @@ Awaitable<void> HttpEgress<Socket>::connect(Endpoint const& remote)
 }
 
 template class HttpEgress<asio::ip::tcp::socket>;
+template class HttpEgress<unit_test::TestSocket>;
 
 }  // namespace pichi::adapter::tcp

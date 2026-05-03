@@ -57,8 +57,10 @@ public:
   template <typename Stream> Awaitable<void>   confirm(Stream&);
 
 private:
-  Cache   cache_;
-  Request req_;
+  Cache in_;
+  Cache out_;
+
+  ResponseParser parser_;
 };
 
 class HttpIngressCredential {
@@ -116,6 +118,7 @@ private:
 
 public:
   explicit HttpEgress(vo::Egress const&, IOExecutor const&);
+  explicit HttpEgress(vo::Egress const&, Socket);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
