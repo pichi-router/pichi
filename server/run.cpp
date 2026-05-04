@@ -198,10 +198,10 @@ static void flush(HttpHelper& helper)
 
 void run(string const& bind, uint16_t port, string const& fn, string const& mmdb)
 {
-  g_mmdb.emplace(mmdb);
-
   auto ex  = io.get_executor();
   auto svr = actor::Server{ex};
+
+  if (!mmdb.empty()) asio::use_service<Mmdb>(io).initialize(mmdb);
 
   asio::co_spawn(ex, svr.serve({asio::ip::make_address(bind), port}), actor::detached);
 

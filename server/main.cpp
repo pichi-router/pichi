@@ -1,5 +1,4 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/program_options.hpp>
@@ -20,8 +19,8 @@
 #endif  // HAS_GRP_H
 
 using namespace std;
-namespace fs = boost::filesystem;
-namespace po = boost::program_options;
+namespace fs  = boost::filesystem;
+namespace po  = boost::program_options;
 namespace sys = boost::system;
 
 using pichi::assertSuccess;
@@ -34,17 +33,13 @@ extern void run(string const&, uint16_t, string const&, string const&);
 int main(int argc, char const* argv[])
 {
   auto listen = string{};
-  auto port = uint16_t{};
-  auto json = string{};
-  auto geo = string{};
-  auto user = string{};
-  auto group = string{};
-  auto desc = po::options_description{"Allow options"};
-  desc.add_options()("help,h", "produce help message")(
-      "listen,l", po::value<string>(&listen)->default_value("::1"),
-      "API server address")("port,p", po::value<uint16_t>(&port), "API server port")(
-      "geo,g", po::value<string>(&geo), "GEO file")("json", po::value<string>(&json),
-                                                    "Initial configration(JSON format)")
+  auto port   = uint16_t{};
+  auto json   = string{};
+  auto geo    = string{};
+  auto user   = string{};
+  auto group  = string{};
+  auto desc   = po::options_description{"Allow options"};
+  desc.add_options()("help,h", "produce help message")("listen,l", po::value<string>(&listen)->default_value("::1"), "API server address")("port,p", po::value<uint16_t>(&port), "API server port")("geo,g", po::value<string>(&geo), "GEO file")("json", po::value<string>(&json), "Initial configration(JSON format)")
 #if defined(HAS_FORK) && defined(HAS_SETSID)
       ("daemon,d", "daemonize")
 #endif  // HAS_SETUID && HAS_GETPWNAM
@@ -61,7 +56,7 @@ int main(int argc, char const* argv[])
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
-    if (vm.count("help") || !vm.count("port") || !vm.count("geo")) {
+    if (vm.count("help") || !vm.count("port")) {
       cout << desc << endl;
       return 1;
     }
