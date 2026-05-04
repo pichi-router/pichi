@@ -3,9 +3,11 @@
 
 #include <boost/asio/ip/network_v4.hpp>
 #include <boost/asio/ip/network_v6.hpp>
+#include <optional>
+#include <pichi/common/adapter.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/common/enumerations.hpp>
+#include <pichi/common/mmdb.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/route.hpp>
@@ -24,17 +26,27 @@ namespace detail {
 
 class Matcher {
 private:
-  template <typename Results> bool match_range(Endpoint const&, Results&&) const;
+  bool match_range(Endpoint const&, ResolveResults const&) const;
 
   bool match_pattern(std::string const&) const;
 
   bool match_domain(Endpoint const&) const;
 
+  Awaitable<bool> match_range(Endpoint const&) const;
+
 public:
   Matcher(std::string_view, vo::Rule const&, std::string_view, vo::Egress const&);
+  Matcher(
+      std::string_view, vo::Rule const&, std::string_view, vo::Egress const&,
+      std::function<Awaitable<bool>(Endpoint const&)> f
+  );
 
-  template <typename Results>
-  bool match(Endpoint const&, std::string const&, AdapterType, Results&&) const;
+  bool match(
+      Endpoint const&, std::string const&, AdapterType, std::optional<ResolveResults> const&,
+      Mmdb& mmdb
+  ) const;
+
+  Awaitable<bool> match() const;
 
   bool need_resolving() const;
 
@@ -67,10 +79,14 @@ private:
   using Matchers = std::vector<detail::Matcher>;
 
 public:
-  Router(IOExecutor, std::unordered_map<std::string, vo::Egress> const&, std::unordered_map<std::string, vo::Rule> const&, vo::Route const&);
+  Router(
+      IOExecutor, std::unordered_map<std::string, vo::Egress> const&,
+      std::unordered_map<std::string, vo::Rule> const&, vo::Route const&
+  );
 
-  Awaitable<std::tuple<std::string, std::string, vo::Egress>>
-      route(Endpoint const&, std::string_view, AdapterType) const;
+  Awaitable<std::tuple<std::string, std::string, vo::Egress>> route(
+      Endpoint const&, std::string_view, AdapterType, std::optional<ResolveResults> = std::nullopt
+  ) const;
 
 private:
   IOExecutor ex_;

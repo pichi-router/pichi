@@ -25,19 +25,6 @@ private:
   std::optional<MMDB_s> db_;
 };
 
-class MMDB {
-public:
-  MMDB(std::string const&);
-  ~MMDB();
-
-  bool match(sockaddr const* const, std::string_view);
-
-private:
-  MMDB_s db_ = {};
-};
-
-extern std::optional<MMDB> g_mmdb;
-
 }  // namespace pichi
 
 #endif  // PICHI_COMMON_MMDB_HPP

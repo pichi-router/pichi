@@ -56,7 +56,7 @@ template <rngs::range Range> auto to_lower_str(Range&& orig)
   return std::string{rngs::cbegin(v), rngs::cend(v)};
 }
 
-template <typename Results> bool Matcher::match_range(Endpoint const&, Results&& rs) const
+bool Matcher::match_range(Endpoint const&, ResolveResults const& rs) const
 {
   static auto match = [](auto const& ranges, auto const& addr) {
     return rngs::any_of(ranges, [&](auto net) {
@@ -133,16 +133,18 @@ std::string const& Matcher::ename() const { return ename_; }
 
 vo::Egress const& Matcher::egress() const { return egress_; }
 
-template <typename Results>
-bool Matcher::match(Endpoint const& peer, std::string const& iname, AdapterType type, Results&& rs)
-    const
+bool Matcher::match(
+    Endpoint const& peer, std::string const& iname, AdapterType type,
+    std::optional<ResolveResults> const& rs, Mmdb& mmdb
+) const
 {
-  return match_range(peer, rs) || inames_.contains(iname) || types_.contains(type) ||
-         match_pattern(peer.host_) || match_domain(peer) || rngs::any_of(rs, [this](auto&& r) {
-           return rngs::any_of(countries_, [&](auto&& country) {
-             return g_mmdb.has_value() && g_mmdb->match(r.endpoint().data(), country);
-           });
-         });
+  return (rs.has_value() && match_range(peer, *rs)) || inames_.contains(iname) ||
+         types_.contains(type) || match_pattern(peer.host_) || match_domain(peer) ||
+         (rs.has_value() && rngs::any_of(*rs, [&, this](auto&& r) {
+            return rngs::any_of(countries_, [&](auto&& country) {
+              return mmdb.match(r.endpoint().data(), country);
+            });
+          }));
 }
 
 }  // namespace detail
@@ -169,12 +171,14 @@ static auto parse_route(
 )
 {
   auto ret = std::vector<detail::Matcher>{};
-  ret.reserve(std::accumulate(
-      rngs::cbegin(route.rules_),
-      rngs::cend(route.rules_),
-      0_sz,
-      [](auto s, auto&& p) { return s + rngs::size(p.first); }
-  ));
+  ret.reserve(
+      std::accumulate(
+          rngs::cbegin(route.rules_),
+          rngs::cend(route.rules_),
+          0_sz,
+          [](auto s, auto&& p) { return s + rngs::size(p.first); }
+      )
+  );
   for (auto&& p : route.rules_) {
     for (auto&& rname : p.first) {
       assertTrue(rules.contains(rname));
@@ -195,18 +199,26 @@ Router::Router(
 {
 }
 
-Awaitable<std::tuple<std::string, std::string, vo::Egress>>
-    Router::route(Endpoint const& peer, std::string_view name, AdapterType itype) const
+Awaitable<std::tuple<std::string, std::string, vo::Egress>> Router::route(
+    Endpoint const& peer, std::string_view name, AdapterType itype, std::optional<ResolveResults> rs
+) const
 {
-  auto iname = std::to_string(name);
-  auto rs    = ResolveResults{};
+  auto  iname = std::to_string(name);
+  auto& mmdb  = asio::use_service<Mmdb>(ex_.context());
   for (auto&& matcher : matchers_) {
-    if (matcher.need_resolving()) {
-      rs = co_await ip::tcp::resolver{ex_}
-               .async_resolve(peer.host_, std::to_string(peer.port_), asio::use_awaitable);
+    if (!rs.has_value() && matcher.need_resolving()) {
+      if (peer.type_ == EndpointType::DOMAIN_NAME) fail(PichiError::MISC);
+      auto [_, o] = co_await redirect(
+          ip::tcp::resolver{ex_}
+              .async_resolve(peer.host_, std::to_string(peer.port_), asio::use_awaitable)
+      );
+      if (o.has_value())
+        std::swap(rs, o);
+      else
+        rs = ResolveResults{};
     }
 
-    if (matcher.match(peer, iname, itype, rs)) {
+    if (matcher.match(peer, iname, itype, rs, mmdb)) {
       co_return std::make_tuple(matcher.rname(), matcher.ename(), matcher.egress());
     }
   }
