@@ -67,6 +67,7 @@ private:
 
 public:
   explicit Socks5Egress(vo::Egress const&, IOExecutor const&);
+  explicit Socks5Egress(vo::Egress const&, Socket);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);

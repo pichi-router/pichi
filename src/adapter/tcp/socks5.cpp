@@ -7,12 +7,12 @@
 #include <pichi/common/error.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/stream/helpers.hpp>
+#include <pichi/stream/test.hpp>
 
-namespace asio  = boost::asio;
-namespace ip    = asio::ip;
-namespace rngs  = std::ranges;
-namespace sys   = boost::system;
-namespace views = std::views;
+namespace asio = boost::asio;
+namespace ip   = asio::ip;
+namespace rngs = std::ranges;
+namespace sys  = boost::system;
 
 namespace pichi::adapter::tcp {
 
@@ -228,8 +228,8 @@ template <stream::AsyncSocket Socket> Awaitable<Endpoint> Socks5Ingress<Socket>:
   co_await stream::read(stream_, {buf, len});
 
   auto m = credential_.need_auth() ? 0x02_u8 : 0x00_u8;
-  assertFalse(
-      rngs::empty(ConstBuffer{buf, len} | views::filter([m](auto i) { return m == i; })),
+  assertTrue(
+      rngs::any_of(ConstBuffer{buf, len}, [m](auto b) { return b == m; }),
       PichiError::BAD_AUTH_METHOD
   );
   buf[0] = 0x05;
@@ -276,18 +276,25 @@ Awaitable<void> Socks5Ingress<Socket>::disconnect(sys::error_code const& ec)
 }
 
 template class Socks5Ingress<ip::tcp::socket>;
+template class Socks5Ingress<unit_test::TestSocket>;
 
 template <stream::AsyncSocket Socket>
 Socks5Egress<Socket>::Socks5Egress(vo::Egress const& vo, IOExecutor const& ex)
-  : stream_{
-    vo.tls_.has_value()
-    ? Stream{
-        std::in_place_type<stream::Tls<Socket>>,
-        stream::tls_context(*vo.tls_, vo.server_->host_),
-        ex
-      }
-    : Stream{std::in_place_type<Socket>, ex}
-  }, peer_{*vo.server_}, credential_{vo}
+  : Socks5Egress{vo, Socket{ex}}
+{
+}
+
+template <stream::AsyncSocket Socket>
+Socks5Egress<Socket>::Socks5Egress(vo::Egress const& vo, Socket s)
+: stream_{
+  vo.tls_.has_value()
+  ? Stream{
+    std::in_place_type<stream::Tls<Socket>>,
+    stream::tls_context(*vo.tls_, vo.server_->host_),
+    std::move(s)
+  }
+  : Stream{std::in_place_type<Socket>, std::move(s)}
+}, peer_{*vo.server_}, credential_{vo}
 {
 }
 
@@ -349,5 +356,6 @@ Awaitable<void> Socks5Egress<Socket>::connect(Endpoint const& remote)
 }
 
 template class Socks5Egress<ip::tcp::socket>;
+template class Socks5Egress<unit_test::TestSocket>;
 
 }  // namespace pichi::adapter::tcp
