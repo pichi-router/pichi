@@ -11,6 +11,9 @@
 namespace pichi {
 
 class Mmdb : public boost::asio::detail::execution_context_service_base<Mmdb> {
+private:
+  using Database = std::optional<MMDB_s>;
+
 public:
   explicit Mmdb(boost::asio::execution_context&);
 
@@ -21,8 +24,8 @@ public:
 private:
   void shutdown() noexcept override;
 
-  std::mutex            mutex_;
-  std::optional<MMDB_s> db_;
+  std::once_flag flag_;
+  Database       db_;
 };
 
 }  // namespace pichi

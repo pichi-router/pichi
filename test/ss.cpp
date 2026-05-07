@@ -201,9 +201,8 @@ static auto const TEST_DATA = std::unordered_map<CryptoMethod, TestData>{
      "2284052CEAC971CEC204019F9ADFDA2AD44AB0C323C5AC"s,
      }}},
     {CryptoMethod::XCHACHA20_IETF_POLY1305,
-     {.salt_ = "000102030405060708090A0B0C0D0E0F0F0E0D0C0B0A09080706050403020100"s,
-     .ciphers_ =
-     {
+     {.salt_    = "000102030405060708090A0B0C0D0E0F0F0E0D0C0B0A09080706050403020100"s,
+     .ciphers_ = {
      "3F44BEAC0D3D42B71BEF662F52173755A78A53656F703D4049676CAE189D78F3"s,
      "C9CF8AF3E08185048BC17FCABC9BB05F0A66634A295E649DAE2223C4DD5A9CC3"s,
      "9FF38AC231666ACF79070C013CD68ADD359F087BB13C9EF2177635F582E800BD"s,
@@ -237,7 +236,7 @@ template <typename TestCase> void run_test_case(TestCase&& test)
     for (auto&& item : KEY_SIZE) {
       auto [m, s] = item;
       auto ec     = co_await redirect(test(ex, m, s));
-      co_await stream::detail::get_sentry(ex)->reset();
+      co_await stream::detail::get_sentry(ex).reset();
       BOOST_CHECK(!ec);
     }
   });
@@ -254,7 +253,7 @@ BOOST_AUTO_TEST_CASE(SaltSentry_Conflict)
     ec = co_await redirect(send_salt(ex, m, s, 0_u8));
     BOOST_CHECK_EQUAL(make_error_code(PichiError::BAD_PROTO), ec);
 
-    co_await stream::detail::get_sentry(ex)->reset();
+    co_await stream::detail::get_sentry(ex).reset();
   });
 }
 
@@ -266,7 +265,7 @@ BOOST_AUTO_TEST_CASE(SaltSentry_Normal)
       BOOST_CHECK(!ec);
     }
 
-    co_await stream::detail::get_sentry(ex)->reset();
+    co_await stream::detail::get_sentry(ex).reset();
   });
 }
 

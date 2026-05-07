@@ -6,35 +6,32 @@ namespace asio = boost::asio;
 namespace pichi {
 
 Mmdb::Mmdb(asio::execution_context& ctx)
-  : asio::detail::execution_context_service_base<Mmdb>{ctx}, mutex_{}, db_{}
+  : asio::detail::execution_context_service_base<Mmdb>{ctx}, db_{}
 {
 }
 
 void Mmdb::initialize(std::string const& fn)
 {
-  auto lock = std::lock_guard{mutex_};
-  if (db_.has_value()) return;
-  auto mmdb = std::make_optional(MMDB_s{});
-  auto stat = MMDB_open(fn.c_str(), MMDB_MODE_MMAP, std::addressof(*mmdb));
-  assertTrue(stat == MMDB_SUCCESS, MMDB_strerror(stat));
-  std::swap(db_, mmdb);
+  std::call_once(
+      flag_,
+      [this](auto&& fn) {
+        db_       = MMDB_s{};
+        auto stat = MMDB_open(fn.c_str(), MMDB_MODE_MMAP, std::addressof(*db_));
+        assertTrue(stat == MMDB_SUCCESS, MMDB_strerror(stat));
+      },
+      fn
+  );
 }
 
 void Mmdb::shutdown() noexcept
 {
-  auto lock = std::lock_guard{mutex_};
-  if (db_.has_value()) {
-    MMDB_close(std::addressof(*db_));
-    db_.reset();
-  }
+  if (db_.has_value()) MMDB_close(std::addressof(*db_));
+  db_.reset();
 }
 
 bool Mmdb::match(sockaddr const* const endpoint, std::string_view country)
 {
-  {
-    auto lock = std::lock_guard{mutex_};
-    if (!db_.has_value()) return false;
-  }
+  if (!db_.has_value()) return false;
 
   auto status = MMDB_SUCCESS;
   auto result = MMDB_lookup_sockaddr(std::addressof(*db_), endpoint, &status);

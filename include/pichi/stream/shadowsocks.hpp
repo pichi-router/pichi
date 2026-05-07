@@ -12,8 +12,8 @@
 #include <boost/asio/write.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <botan/cipher_mode.h>
-#include <memory>
 #include <mutex>
+#include <optional>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/stream/helpers.hpp>
@@ -26,50 +26,36 @@ namespace pichi::stream {
 
 namespace detail {
 
-class SaltSentry {
+class SaltSentry : public boost::asio::detail::execution_context_service_base<SaltSentry> {
 private:
   using Salts  = std::unordered_set<std::string>;
-  using Strand = boost::asio::strand<IOExecutor>;
-  using Timer  = boost::asio::system_timer;
+  using Strand = std::optional<boost::asio::strand<IOExecutor>>;
+  using Timer  = std::optional<boost::asio::system_timer>;
 
   Awaitable<void> run();
 
 public:
-  SaltSentry(IOExecutor const&);
+  explicit SaltSentry(boost::asio::execution_context&);
+
+  void init(IOExecutor const&);
 
   Awaitable<bool> contains(ConstBuffer);
   Awaitable<void> reset();
 
-  void start();
   void cancel();
-
-private:
-  Strand strand_;
-  Timer  timer_;
-  Salts  expiring_ = {};
-  Salts  active_   = {};
-};
-
-class SaltSentryService
-  : public boost::asio::detail::execution_context_service_base<SaltSentryService> {
-public:
-  explicit SaltSentryService(boost::asio::execution_context&);
-
-  std::shared_ptr<SaltSentry> sentry(IOExecutor const&);
 
 private:
   void shutdown() noexcept override;
 
-  std::once_flag              flag_   = {};
-  std::shared_ptr<SaltSentry> sentry_ = nullptr;
+  std::once_flag flag_ = {};
+
+  Strand strand_   = {};
+  Timer  timer_    = {};
+  Salts  expiring_ = {};
+  Salts  active_   = {};
 };
 
-extern std::shared_ptr<SaltSentry> get_sentry(IOExecutor const&);
-
-template <ExecutionContext Context> auto get_sentry(Context& ctx)
-{
-  return get_sentry(ctx.get_executor());
-}
+extern SaltSentry& get_sentry(IOExecutor const&);
 
 class Cryptor {
 public:
@@ -135,7 +121,7 @@ private:
   static constexpr size_t FRAME_SIZE = 0x3fff;
   static constexpr size_t TAG_SIZE   = 16;
 
-  using Sentry    = std::shared_ptr<detail::SaltSentry>;
+  using Sentry    = detail::SaltSentry*;
   using ErrorCode = boost::system::error_code;
   using Encryptor = detail::Encryptor;
   using Decryptor = detail::Decryptor;
@@ -240,7 +226,7 @@ public:
   // Used by ingresses
   Shadowsocks(CryptoMethod method, ConstBuffer pw, Socket socket)
     : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
-      sentry_{detail::get_sentry(socket.get_executor())},
+      sentry_{std::addressof(detail::get_sentry(socket.get_executor()))},
       socket_{std::move(socket)},
       encryptor_{method, pw_},
       decryptor_{method}
@@ -261,7 +247,7 @@ public:
   // For unit test purpose
   Shadowsocks(CryptoMethod method, ConstBuffer pw, ConstBuffer salt, Socket socket)
     : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
-      sentry_{detail::get_sentry(socket.get_executor())},
+      sentry_{std::addressof(detail::get_sentry(socket.get_executor()))},
       socket_{std::move(socket)},
       encryptor_{method, pw_, salt},
       decryptor_{method},
