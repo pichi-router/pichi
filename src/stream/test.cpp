@@ -1,3 +1,4 @@
+#include "pichi/common/config.hpp"
 #include <boost/asio/connect_pipe.hpp>
 #include <pichi/stream/test.hpp>
 
@@ -26,3 +27,9 @@ TestSocket TestSocket::peer()
 }
 
 }  // namespace pichi::unit_test
+
+namespace boost::beast {
+
+void beast_close_socket(pichi::unit_test::TestSocket& s) { s.close(); }
+
+}  // namespace boost::beast

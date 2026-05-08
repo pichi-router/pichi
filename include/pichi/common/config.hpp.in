@@ -75,4 +75,16 @@
 
 #cmakedefine BUILD_TEST
 
+namespace pichi::unit_test {
+
+class TestSocket;
+
+};  // namespace pichi::unit_test
+
+namespace boost::beast {
+
+extern void beast_close_socket(pichi::unit_test::TestSocket&);
+
+}  // namespace boost::beast
+
 #endif  // PICHI_CONFIG_H

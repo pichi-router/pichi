@@ -14,6 +14,7 @@
 #include <pichi/common/error.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/stream/helpers.hpp>
+#include <pichi/stream/test.hpp>
 #include <ranges>
 #include <vector>
 
@@ -160,7 +161,7 @@ template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> TrojanIngress<NextLa
     co_return remote;
   }
   catch (...) {
-    if constexpr (std::same_as<NextLayer, Tls>) {
+    if constexpr (std::same_as<NextLayer, Tls> || std::same_as<NextLayer, unit_test::TestSocket>) {
       cache_.rollback();
       co_return remote_;
     }
@@ -181,6 +182,7 @@ Awaitable<void> TrojanIngress<NextLayer>::disconnect(sys::error_code const&)
 
 template class TrojanIngress<Tls>;
 template class TrojanIngress<Websocket>;
+template class TrojanIngress<unit_test::TestSocket>;
 
 template <stream::AsyncLayer NextLayer>
 TrojanEgress<NextLayer>::TrojanEgress(vo::Egress const& vo, NextLayer underlying)
@@ -229,5 +231,6 @@ Awaitable<void> TrojanEgress<NextLayer>::connect(Endpoint const& remote)
 
 template class TrojanEgress<Tls>;
 template class TrojanEgress<Websocket>;
+template class TrojanEgress<unit_test::TestSocket>;
 
 }  // namespace pichi::adapter::tcp

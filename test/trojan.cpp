@@ -1,219 +1,334 @@
 #define BOOST_TEST_MODULE pichi trojan test
 
-#include "utils.hpp"
+#include <algorithm>
 #include <array>
-#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
-#include <initializer_list>
-#include <memory>
+#include <pichi/adapter/tcp/trojan.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/net/helper.hpp>
-#include <pichi/net/trojan.hpp>
 #include <pichi/stream/test.hpp>
-#include <vector>
+#include <ranges>
 
-using namespace std;
+using namespace std::literals;
+namespace asio  = boost::asio;
+namespace rngs  = std::ranges;
+namespace sys   = boost::system;
+namespace views = rngs::views;
 
 namespace pichi::unit_test {
 
-namespace asio = boost::asio;
-namespace sys = boost::system;
+using SystemError = sys::system_error;
+using Ingress     = adapter::tcp::TrojanIngress<TestSocket>;
+using Egress      = adapter::tcp::TrojanEgress<TestSocket>;
 
-using Socket = stream::TestSocket;
-using Ingress = net::TrojanIngress<stream::TestStream>;
-using Egress = net::TrojanEgress<stream::TestStream>;
+static auto const PASSWORD   = "pichi"s;
+static auto const PWD_LENGTH = 56_sz;
 
-static auto const PASSWORDS = vector{"pichi"s};
-static auto const HASHED_PASSWORDS = []() {
-  auto ret = vector<string>{};
-  transform(cbegin(PASSWORDS), cend(PASSWORDS), back_inserter(ret), &net::sha224);
-  return ret;
-}();
-static auto const PWD_LENGTH = HASHED_PASSWORDS.front().size();
+static auto FALIED_EP  = makeEndpoint("localhost", "80");
+static auto CORRECT_EP = makeEndpoint("127.0.0.1", "443");
 
-static auto FALIED_EP = makeEndpoint("localhost", "80");
-static auto CORRECT_EP = makeEndpoint("127.0.0.1", "80");
-static auto CORRECT_DATA = []() {
-  auto ret = vector<uint8_t>{cbegin(HASHED_PASSWORDS.front()), cend(HASHED_PASSWORDS.front())};
-  auto ep = array<uint8_t, 512>{};
-  ret.push_back('\r');
-  ret.push_back('\n');
-  ret.push_back(1_u8);
-  ret.insert(end(ret), cbegin(ep), cbegin(ep) + serializeEndpoint(CORRECT_EP, ep));
-  ret.push_back('\r');
-  ret.push_back('\n');
-  return ret;
-}();
+static auto const CORRECT_DATA = std::array{
+    // Hashed password
+    0x65_u8, 0x38_u8, 0x65_u8, 0x32_u8, 0x34_u8, 0x63_u8, 0x62_u8, 0x30_u8, 0x61_u8, 0x34_u8,
+    0x31_u8, 0x65_u8, 0x34_u8, 0x63_u8, 0x65_u8, 0x66_u8, 0x38_u8, 0x32_u8, 0x64_u8, 0x36_u8,
+    0x64_u8, 0x64_u8, 0x32_u8, 0x61_u8, 0x66_u8, 0x35_u8, 0x32_u8, 0x64_u8, 0x33_u8, 0x35_u8,
+    0x37_u8, 0x66_u8, 0x33_u8, 0x35_u8, 0x33_u8, 0x36_u8, 0x62_u8, 0x63_u8, 0x63_u8, 0x61_u8,
+    0x33_u8, 0x61_u8, 0x65_u8, 0x63_u8, 0x35_u8, 0x63_u8, 0x36_u8, 0x63_u8, 0x66_u8, 0x30_u8,
+    0x63_u8, 0x36_u8, 0x38_u8, 0x38_u8, 0x38_u8, 0x30_u8,
+    0x0d_u8,  // '\r'
+    0x0a_u8,  // '\n'
+    0x01_u8,  // CMD
+    0x01_u8,  // CORRECT_EP
+    0x7f_u8, 0x00_u8, 0x00_u8, 0x01_u8, 0x01_u8, 0xbb_u8,
+    0x0d_u8,  // '\r'
+    0x0a_u8,  // '\n'
+};
 
-static auto createIngress(Socket& socket)
+static auto const IVO = vo::Ingress{
+    .credential_ = vo::TrojanIngressCredential{.credential_ = {PASSWORD}},
+    .opt_        = vo::TrojanOption{.remote_ = FALIED_EP}
+};
+
+static auto const EVO =
+    vo::Egress{.credential_ = vo::TrojanEgressCredential{.credential_ = PASSWORD}};
+
+template <asio::error::misc_errors error> auto verify_exception(SystemError const& e)
 {
-  return make_unique<Ingress>(FALIED_EP, cbegin(PASSWORDS), cend(PASSWORDS), socket, true);
+  return e.code() == error;
 }
 
-static void verifyFailedRequest(Ingress& ingress, ConstBuffer expect)
+template <typename TestCase> void run_case(TestCase&& test)
 {
-  BOOST_CHECK(ingress.readable());
-
-  auto fact = vector(expect.size() + 1, 0_u8);
-  fact.resize(ingress.recv(fact, gYield));
-  BOOST_CHECK_EQUAL(fact.size(), expect.size());
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(fact), cend(fact), cbegin(expect), cend(expect));
+  auto pool = asio::thread_pool{1};
+  asio::co_spawn(
+      pool,
+      std::invoke(std::forward<TestCase>(test), pool.get_executor()),
+      [&](auto&& eptr, auto&&...) {
+        BOOST_CHECK(!eptr);
+        pool.stop();
+      }
+  );
+  pool.join();
 }
 
 BOOST_AUTO_TEST_SUITE(TROJAN)
 
-BOOST_AUTO_TEST_CASE(readRemote_Correct_Stream)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Correct_Stream)
 {
-  auto socket = Socket{};
-  auto ingress = createIngress(socket);
-  socket.fill(CORRECT_DATA);
-  BOOST_CHECK(CORRECT_EP == ingress->readRemote(gYield));
-  BOOST_CHECK(ingress->readable());
-  BOOST_CHECK_EXCEPTION(ingress->recv({}, gYield), SystemError, verifyException<PichiError::MISC>);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto buf     = std::array<uint8_t, 1024>{};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{IVO, client.peer()};
+
+    co_await stream::write(client, CORRECT_DATA);
+    co_await stream::close(client);
+
+    BOOST_CHECK(CORRECT_EP == co_await ingress.read_remote());
+    BOOST_CHECK_EXCEPTION(co_await ingress.recv(buf), SystemError, verify_exception<asio::error::eof>);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Simulate_HTTP_Server)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Simulate_HTTP_Server)
 {
-  for (auto i = 1_sz; i < PWD_LENGTH + 3; ++i) {
-    auto socket = Socket{};
-    auto ingress = createIngress(socket);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    for (auto i = 1_sz; i < PWD_LENGTH + 3; ++i) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{IVO, client.peer()};
 
-    auto data = ConstBuffer{CORRECT_DATA};
-    socket.fill(ConstBuffer{data, i});
+      auto expect = CORRECT_DATA | views::take(i);
+      co_await stream::write(client, expect);
+      co_await stream::close(client);
 
-    data += i;
-    socket.fill(data);
+      BOOST_CHECK(FALIED_EP == co_await ingress.read_remote());
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
-    verifyFailedRequest(*ingress, {CORRECT_DATA, i});
-  }
+      auto buf  = std::array<uint8_t, 1024>{};
+      auto fact = buf | views::take(co_await ingress.recv(buf));
+
+      BOOST_CHECK_EQUAL_COLLECTIONS(
+          rngs::begin(expect),
+          rngs::end(expect),
+          rngs::begin(fact),
+          rngs::end(fact)
+      );
+    }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Unauthenticated)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Unauthenticated)
 {
-  auto data = CORRECT_DATA;
-  fill_n(begin(data), PWD_LENGTH, 0_u8);
-  auto socket = Socket{};
-  auto ingress = createIngress(socket);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto expect = CORRECT_DATA;
+    rngs::fill(expect | views::take(PWD_LENGTH), 0_u8);
 
-  socket.fill(data);
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{IVO, client.peer()};
 
-  BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
-  verifyFailedRequest(*ingress, data);
+    co_await stream::write(client, expect);
+    co_await stream::close(client);
+
+    BOOST_CHECK(FALIED_EP == co_await ingress.read_remote());
+
+    auto buf  = std::array<uint8_t, 1024>{};
+    auto fact = buf | views::take(co_await ingress.recv(buf));
+
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        rngs::begin(expect),
+        rngs::end(expect),
+        rngs::begin(fact),
+        rngs::end(fact)
+    );
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Invalid_Char_For_The_First_CR)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_Char_For_The_First_CR)
 {
-  auto data = CORRECT_DATA;
-  for (auto i = 0; i < 0x100; ++i) {
-    auto c = static_cast<uint8_t>(i);
-    if (c == '\r') continue;
-    data[PWD_LENGTH] = c;
-    auto socket = Socket{};
-    auto ingress = createIngress(socket);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return '\r' != b; }) |
+              views::transform([](auto c) {
+                auto data        = CORRECT_DATA;
+                data[PWD_LENGTH] = c;
+                return data;
+              });
+    for (auto&& expect : ds) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{IVO, client.peer()};
 
-    socket.fill(data);
+      co_await stream::write(client, expect);
+      co_await stream::close(client);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
-    verifyFailedRequest(*ingress, data);
-  }
+      BOOST_CHECK(FALIED_EP == co_await ingress.read_remote());
+
+      auto buf  = std::array<uint8_t, 1024>{};
+      auto fact = buf | views::take(co_await ingress.recv(buf));
+
+      BOOST_CHECK_EQUAL_COLLECTIONS(
+          rngs::begin(expect),
+          rngs::end(expect),
+          rngs::begin(fact),
+          rngs::end(fact)
+      );
+    }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Invalid_Char_For_The_Second_CR)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_Char_For_The_Second_CR)
 {
-  auto data = CORRECT_DATA;
-  for (auto i = 0; i < 0x100; ++i) {
-    auto c = static_cast<uint8_t>(i);
-    if (c == '\r') continue;
-    data[data.size() - 2] = c;
-    auto socket = Socket{};
-    auto ingress = createIngress(socket);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return '\r' != b; }) |
+              views::transform([](auto c) {
+                auto data                  = CORRECT_DATA;
+                data[rngs::size(data) - 2] = c;
+                return data;
+              });
+    for (auto&& expect : ds) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{IVO, client.peer()};
 
-    socket.fill(data);
+      co_await stream::write(client, expect);
+      co_await stream::close(client);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
-    verifyFailedRequest(*ingress, data);
-  }
+      BOOST_CHECK(FALIED_EP == co_await ingress.read_remote());
+
+      auto buf  = std::array<uint8_t, 1024>{};
+      auto fact = buf | views::take(co_await ingress.recv(buf));
+
+      BOOST_CHECK_EQUAL_COLLECTIONS(
+          rngs::begin(expect),
+          rngs::end(expect),
+          rngs::begin(fact),
+          rngs::end(fact)
+      );
+    }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Invalid_Char_For_The_First_LF)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_Char_For_The_First_LF)
 {
-  auto data = CORRECT_DATA;
-  for (auto i = 0; i < 0x100; ++i) {
-    auto c = static_cast<uint8_t>(i);
-    if (c == '\n') continue;
-    data[PWD_LENGTH + 1] = c;
-    auto socket = Socket{};
-    auto ingress = createIngress(socket);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return '\n' != b; }) |
+              views::transform([](auto c) {
+                auto data            = CORRECT_DATA;
+                data[PWD_LENGTH + 1] = c;
+                return data;
+              });
+    for (auto&& expect : ds) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{IVO, client.peer()};
 
-    socket.fill(data);
+      co_await stream::write(client, expect);
+      co_await stream::close(client);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
-    verifyFailedRequest(*ingress, data);
-  }
+      BOOST_CHECK(FALIED_EP == co_await ingress.read_remote());
+
+      auto buf  = std::array<uint8_t, 1024>{};
+      auto fact = buf | views::take(co_await ingress.recv(buf));
+
+      BOOST_CHECK_EQUAL_COLLECTIONS(
+          rngs::begin(expect),
+          rngs::end(expect),
+          rngs::begin(fact),
+          rngs::end(fact)
+      );
+    }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Invalid_Char_For_The_Second_LF)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_Char_For_The_Second_LF)
 {
-  auto data = CORRECT_DATA;
-  for (auto i = 0; i < 0x100; ++i) {
-    auto c = static_cast<uint8_t>(i);
-    if (c == '\n') continue;
-    data[data.size() - 1] = c;
-    auto socket = Socket{};
-    auto ingress = createIngress(socket);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return '\n' != b; }) |
+              views::transform([](auto c) {
+                auto data                  = CORRECT_DATA;
+                data[rngs::size(data) - 1] = c;
+                return data;
+              });
+    for (auto&& expect : ds) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{IVO, client.peer()};
 
-    socket.fill(data);
+      co_await stream::write(client, expect);
+      co_await stream::close(client);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
-    verifyFailedRequest(*ingress, data);
-  }
+      BOOST_CHECK(FALIED_EP == co_await ingress.read_remote());
+
+      auto buf  = std::array<uint8_t, 1024>{};
+      auto fact = buf | views::take(co_await ingress.recv(buf));
+
+      BOOST_CHECK_EQUAL_COLLECTIONS(
+          rngs::begin(expect),
+          rngs::end(expect),
+          rngs::begin(fact),
+          rngs::end(fact)
+      );
+    }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Invalid_CMD)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_CMD)
 {
-  auto data = CORRECT_DATA;
-  for (auto i = 0; i < 0x100; ++i) {
-    auto c = static_cast<uint8_t>(i);
-    if (c == 1_u8) continue;
-    data[PWD_LENGTH + 2] = c;
-    auto socket = Socket{};
-    auto ingress = createIngress(socket);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return 1 != b; }) |
+              views::transform([](auto c) {
+                auto data            = CORRECT_DATA;
+                data[PWD_LENGTH + 2] = c;
+                return data;
+              });
+    for (auto&& expect : ds) {
+      auto client  = TestSocket{ex};
+      auto ingress = Ingress{IVO, client.peer()};
 
-    socket.fill(data);
+      co_await stream::write(client, expect);
+      co_await stream::close(client);
 
-    BOOST_CHECK(FALIED_EP == ingress->readRemote(gYield));
-    verifyFailedRequest(*ingress, data);
-  }
+      BOOST_CHECK(FALIED_EP == co_await ingress.read_remote());
+
+      auto buf  = std::array<uint8_t, 1024>{};
+      auto fact = buf | views::take(co_await ingress.recv(buf));
+
+      BOOST_CHECK_EQUAL_COLLECTIONS(
+          rngs::begin(expect),
+          rngs::end(expect),
+          rngs::begin(fact),
+          rngs::end(fact)
+      );
+    }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(readRemote_Stream_Separated_From_Trojan_Request)
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Stream_Separated_From_Trojan_Request)
 {
-  auto data = CORRECT_DATA;
-  for (auto i = PWD_LENGTH + 3; i < data.size(); ++i) {
-    auto socket = Socket{};
-    auto ingress = createIngress(socket);
-    auto buf = ConstBuffer{data};
-    socket.fill({buf, i});
-    buf += i;
-    socket.fill(buf);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto buf     = std::array<uint8_t, 1024>{};
+    auto client  = TestSocket{ex};
+    auto ingress = Ingress{IVO, client.peer()};
 
-    BOOST_CHECK(CORRECT_EP == ingress->readRemote(gYield));
-  }
+    for (auto i = 0_sz; i < rngs::size(CORRECT_DATA); ++i)
+      co_await stream::write(client, CORRECT_DATA | views::drop(i) | views::take(1));
+    co_await stream::close(client);
+
+    BOOST_CHECK(CORRECT_EP == co_await ingress.read_remote());
+    BOOST_CHECK_EXCEPTION(co_await ingress.recv(buf), SystemError, verify_exception<asio::error::eof>);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(connect_Correct_Request)
+BOOST_AUTO_TEST_CASE(Egress_connect_Correct_Request)
 {
-  auto received = vector(CORRECT_DATA.size(), 0_u8);
-  auto socket = Socket{};
-  auto egress = make_unique<Egress>(PASSWORDS.front(), socket);
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto server = TestSocket{ex};
+    auto egress = Egress{EVO, server.peer()};
 
-  egress->connect(CORRECT_EP, {}, gYield);
+    co_await egress.connect(CORRECT_EP);
 
-  BOOST_CHECK_EQUAL(CORRECT_DATA.size(), socket.available());
-  socket.flush(received);
-  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(received), cend(received), cbegin(CORRECT_DATA),
-                                cend(CORRECT_DATA));
+    auto buf  = std::array<uint8_t, 1024>{};
+    auto fact = buf | views::take(co_await stream::read_some(server, buf));
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        rngs::begin(CORRECT_DATA),
+        rngs::end(CORRECT_DATA),
+        rngs::begin(fact),
+        rngs::end(fact)
+    );
+  });
 }
 
 BOOST_AUTO_TEST_SUITE_END()
