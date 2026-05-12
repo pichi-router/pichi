@@ -3,15 +3,14 @@ list(APPEND VO_TESTS vos vo_credential vo_ingress vo_egress vo_rule vo_route vo_
 
 configure_file(geo.mmdb ${CMAKE_CURRENT_BINARY_DIR}/geo.mmdb COPYONLY)
 
-set(UTILS_SRC utils.cpp)
 set(VO_SRC vo.cpp)
 
 foreach(CASE IN LISTS RAW_TESTS)
-  add_executable(${CASE} "${CASE}.cpp" ${UTILS_SRC})
+  add_executable(${CASE} "${CASE}.cpp")
 endforeach()
 
 foreach(CASE IN LISTS VO_TESTS)
-  add_executable(${CASE} "${CASE}.cpp" ${UTILS_SRC} ${VO_SRC})
+  add_executable(${CASE} "${CASE}.cpp" ${VO_SRC})
 endforeach()
 
 foreach(CASE IN LISTS RAW_TESTS VO_TESTS)

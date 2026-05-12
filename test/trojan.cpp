@@ -1,9 +1,8 @@
 #define BOOST_TEST_MODULE pichi trojan test
 
+#include "utils.hpp"
 #include <algorithm>
 #include <array>
-#include <boost/asio/thread_pool.hpp>
-#include <boost/test/unit_test.hpp>
 #include <pichi/adapter/tcp/trojan.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/net/helper.hpp>
@@ -18,9 +17,8 @@ namespace views = rngs::views;
 
 namespace pichi::unit_test {
 
-using SystemError = sys::system_error;
-using Ingress     = adapter::tcp::TrojanIngress<TestSocket>;
-using Egress      = adapter::tcp::TrojanEgress<TestSocket>;
+using Ingress = adapter::tcp::TrojanIngress<TestSocket>;
+using Egress  = adapter::tcp::TrojanEgress<TestSocket>;
 
 static auto const PASSWORD   = "pichi"s;
 static auto const PWD_LENGTH = 56_sz;
@@ -53,25 +51,6 @@ static auto const IVO = vo::Ingress{
 static auto const EVO =
     vo::Egress{.credential_ = vo::TrojanEgressCredential{.credential_ = PASSWORD}};
 
-template <asio::error::misc_errors error> auto verify_exception(SystemError const& e)
-{
-  return e.code() == error;
-}
-
-template <typename TestCase> void run_case(TestCase&& test)
-{
-  auto pool = asio::thread_pool{1};
-  asio::co_spawn(
-      pool,
-      std::invoke(std::forward<TestCase>(test), pool.get_executor()),
-      [&](auto&& eptr, auto&&...) {
-        BOOST_CHECK(!eptr);
-        pool.stop();
-      }
-  );
-  pool.join();
-}
-
 BOOST_AUTO_TEST_SUITE(TROJAN)
 
 BOOST_AUTO_TEST_CASE(Ingress_read_remote_Correct_Stream)
@@ -85,7 +64,11 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Correct_Stream)
     co_await stream::close(client);
 
     BOOST_CHECK(CORRECT_EP == co_await ingress.read_remote());
-    BOOST_CHECK_EXCEPTION(co_await ingress.recv(buf), SystemError, verify_exception<asio::error::eof>);
+    BOOST_CHECK_EXCEPTION(
+        co_await ingress.recv(buf),
+        SystemError,
+        verify_exception<asio::error::eof>
+    );
   });
 }
 
@@ -308,7 +291,11 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Stream_Separated_From_Trojan_Request)
     co_await stream::close(client);
 
     BOOST_CHECK(CORRECT_EP == co_await ingress.read_remote());
-    BOOST_CHECK_EXCEPTION(co_await ingress.recv(buf), SystemError, verify_exception<asio::error::eof>);
+    BOOST_CHECK_EXCEPTION(
+        co_await ingress.recv(buf),
+        SystemError,
+        verify_exception<asio::error::eof>
+    );
   });
 }
 

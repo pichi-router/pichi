@@ -1,11 +1,8 @@
 #define BOOST_TEST_MODULE pichi router test
 
-#include <boost/asio/co_spawn.hpp>
+#include "utils.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/thread_pool.hpp>
-#include <boost/test/unit_test.hpp>
-#include <pichi/actor/detached.hpp>
 #include <pichi/actor/router.hpp>
 #include <pichi/common/error.hpp>
 #include <pichi/common/mmdb.hpp>
@@ -16,26 +13,11 @@
 #include <string_view>
 
 using namespace std::literals;
-namespace asio  = boost::asio;
-namespace ip    = asio::ip;
-namespace rngs  = std::ranges;
-namespace views = rngs::views;
+namespace asio = boost::asio;
+namespace ip   = asio::ip;
+namespace rngs = std::ranges;
 
 namespace pichi::unit_test {
-
-using SystemError = boost::system::system_error;
-
-template <PichiError error> bool verifyException(SystemError const& e) { return e.code() == error; }
-
-static auto sv2rr(std::string_view sv)
-{
-
-  return rngs::empty(sv)
-             ? std::nullopt
-             : std::make_optional(
-                   ResolveResults::create(ip::tcp::endpoint{ip::make_address(sv), 0}, "", "")
-               );
-}
 
 static auto const SPEC_EGRESS = "spec"s;
 static auto const DEFT_EGRESS = "deft"s;
@@ -53,23 +35,6 @@ static auto const ROUTE = vo::Route{
     .rules_   = {std::make_pair(std::vector<std::string>{SPEC_RULE}, SPEC_EGRESS)},
 };
 
-template <typename TestCase>
-requires(std::is_invocable_r_v<Awaitable<void>, TestCase, IOExecutor const&>)
-void run_case(TestCase&& test)
-{
-  auto pool = asio::thread_pool{1};
-  asio::use_service<Mmdb>(pool).initialize("geo.mmdb"s);
-  asio::co_spawn(
-      pool,
-      std::invoke(std::forward<TestCase>(test), pool.get_executor()),
-      [&](std::exception_ptr eptr, auto&&...) {
-        BOOST_CHECK(!eptr);
-        pool.stop();
-      }
-  );
-  pool.join();
-}
-
 template <typename Arg>
 requires(
     std::same_as<Arg, Endpoint> || std::same_as<Arg, std::string> || std::same_as<Arg, AdapterType>
@@ -79,12 +44,21 @@ void run_generic_test(
 )
 {
   run_case([=](auto&& ex) -> Awaitable<void> {
+    asio::use_service<Mmdb>(asio::query(ex, asio::execution::context)).initialize("geo.mmdb"s);
     auto rules       = RULES;
     rules[SPEC_RULE] = rule;
     auto router      = actor::Router{ex, EGRESSES, rules, ROUTE};
     auto route       = [&]() {
       if constexpr (std::same_as<Arg, Endpoint>)
-        return router.route(arg, ""s, AdapterType::DIRECT, sv2rr(rr));
+        if (rngs::empty(rr))
+          return router.route(arg, ""s, AdapterType::DIRECT, std::nullopt);
+        else
+          return router.route(
+              arg,
+              ""s,
+              AdapterType::DIRECT,
+              ResolveResults::create(ip::tcp::endpoint{ip::make_address(rr), 0}, "", "")
+          );
       else if constexpr (std::same_as<Arg, std::string>)
         return router.route({}, arg, AdapterType::DIRECT);
       else

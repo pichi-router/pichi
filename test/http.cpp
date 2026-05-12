@@ -1,13 +1,12 @@
 #define BOOST_TEST_MODULE pichi http test
 
 #include "pichi/common/config.hpp"
-#include <boost/asio/thread_pool.hpp>
+#include "utils.hpp"
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/beast/http/parser.hpp>
 #include <boost/beast/http/serializer.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/beast/http/write.hpp>
-#include <boost/test/unit_test.hpp>
 #include <botan/base64.h>
 #include <pichi/adapter/tcp/http.hpp>
 #include <pichi/common/endpoint.hpp>
@@ -24,9 +23,8 @@ namespace views = rngs::views;
 
 namespace pichi::unit_test {
 
-using SystemError = sys::system_error;
-using Ingress     = adapter::tcp::HttpIngress<TestSocket>;
-using Egress      = adapter::tcp::HttpEgress<TestSocket>;
+using Ingress = adapter::tcp::HttpIngress<TestSocket>;
+using Egress  = adapter::tcp::HttpEgress<TestSocket>;
 
 static auto const LOCALHOST = "localhost"sv;
 
@@ -100,30 +98,6 @@ template <typename Body> static size_t serialize(http::response<Body> const& m, 
   return rngs::size(buf) - rngs::size(left);
 }
 
-template <PichiError error> bool verify_exception(SystemError const& e)
-{
-  return e.code() == error;
-}
-
-template <asio::error::basic_errors error> bool verify_exception(SystemError const& e)
-{
-  return e.code() == error;
-}
-
-template <http::error error> bool verify_exception(SystemError const& e)
-{
-  auto expect = http::make_error_code(error);
-  auto fact   = e.code();
-  // FIXME http_error_category equivalence is failed on Windows shared mode
-  return expect.value() == fact.value() &&
-         std::string_view{expect.category().name()} == std::string_view{fact.category().name()};
-}
-
-template <asio::error::misc_errors error> auto verify_exception(SystemError const& e)
-{
-  return e.code() == error;
-}
-
 template <typename Data>
 requires(std::constructible_from<ConstBuffer const&, Data>)
 auto gen_auth(Data const& data)
@@ -170,20 +144,6 @@ static void verify_field(http::fields const& hdr, http::field field, std::string
       return tolower(lhs) == tolower(rhs);
     }));
   }
-}
-
-template <typename TestCase> void run_case(TestCase&& test)
-{
-  auto pool = asio::thread_pool{1};
-  asio::co_spawn(
-      pool,
-      std::invoke(std::forward<TestCase>(test), pool.get_executor()),
-      [&](auto&& eptr, auto&&...) {
-        BOOST_CHECK(!eptr);
-        pool.stop();
-      }
-  );
-  pool.join();
 }
 
 BOOST_AUTO_TEST_SUITE(HTTP)

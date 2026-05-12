@@ -1,9 +1,7 @@
 #define BOOST_TEST_MODULE pichi socks5 test
 
+#include "utils.hpp"
 #include <array>
-#include <boost/asio/co_spawn.hpp>
-#include <boost/asio/thread_pool.hpp>
-#include <boost/test/unit_test.hpp>
 #include <functional>
 #include <pichi/actor/detached.hpp>
 #include <pichi/adapter/tcp/socks5.hpp>
@@ -21,9 +19,8 @@ namespace views = rngs::views;
 
 namespace pichi::unit_test {
 
-using Ingress     = adapter::tcp::Socks5Ingress<TestSocket>;
-using Egress      = adapter::tcp::Socks5Egress<TestSocket>;
-using SystemError = sys::system_error;
+using Ingress = adapter::tcp::Socks5Ingress<TestSocket>;
+using Egress  = adapter::tcp::Socks5Egress<TestSocket>;
 
 static auto const USERNAME = "pichi"s;
 static auto const PASSWORD = "pichi"s;
@@ -64,22 +61,6 @@ static auto const SERVER_REP = std::array{
     0x00_u8,  // Port
     0x00_u8,
 };
-
-template <PichiError error> bool verifyException(SystemError const& e) { return e.code() == error; }
-
-template <typename TestCase> void run_case(TestCase&& test)
-{
-  auto pool = asio::thread_pool{1};
-  asio::co_spawn(
-      pool,
-      std::invoke(std::forward<TestCase>(test), pool.get_executor()),
-      [&](auto&& eptr, auto&&...) {
-        BOOST_CHECK(!eptr);
-        pool.stop();
-      }
-  );
-  pool.join();
-}
 
 BOOST_AUTO_TEST_SUITE(SOCKS5)
 
