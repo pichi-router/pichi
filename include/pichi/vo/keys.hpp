@@ -1,25 +1,19 @@
 #ifndef PICHI_VO_KEYS_HPP
 #define PICHI_VO_KEYS_HPP
 
-#ifdef _MSC_VER
-#ifdef TRANSPARENT
-#undef TRANSPARENT
-#endif  // TRANSPARENT
-#endif  // _MSC_VER
-
 namespace pichi::vo {
 
 namespace type {
 
-inline decltype(auto) DIRECT      = "direct";
-inline decltype(auto) REJECT      = "reject";
-inline decltype(auto) SOCKS5      = "socks5";
-inline decltype(auto) HTTP        = "http";
-inline decltype(auto) SS          = "ss";
-inline decltype(auto) TUNNEL      = "tunnel";
-inline decltype(auto) TROJAN      = "trojan";
-inline decltype(auto) TRANSPARENT = "transparent";
-inline decltype(auto) DUAL        = "dual";
+inline decltype(auto) DIRECT = "direct";
+inline decltype(auto) REJECT = "reject";
+inline decltype(auto) SOCKS5 = "socks5";
+inline decltype(auto) HTTP   = "http";
+inline decltype(auto) SS     = "ss";
+inline decltype(auto) TUNNEL = "tunnel";
+inline decltype(auto) TROJAN = "trojan";
+inline decltype(auto) TRANSP = "transparent";
+inline decltype(auto) DUAL   = "dual";
 
 }  // namespace type
 

@@ -56,28 +56,28 @@ BOOST_AUTO_TEST_SUITE(VOS)
 BOOST_AUTO_TEST_CASE(parse_AdapterType)
 {
   verify_parsing<AdapterType>({
-      {     vo::type::DIRECT,      AdapterType::DIRECT},
-      {     vo::type::REJECT,      AdapterType::REJECT},
-      {     vo::type::SOCKS5,      AdapterType::SOCKS5},
-      {       vo::type::HTTP,        AdapterType::HTTP},
-      {         vo::type::SS,          AdapterType::SS},
-      {     vo::type::TUNNEL,      AdapterType::TUNNEL},
-      {vo::type::TRANSPARENT, AdapterType::TRANSPARENT},
-      {       vo::type::DUAL,        AdapterType::DUAL},
+      {vo::type::DIRECT, AdapterType::DIRECT},
+      {vo::type::REJECT, AdapterType::REJECT},
+      {vo::type::SOCKS5, AdapterType::SOCKS5},
+      {  vo::type::HTTP,   AdapterType::HTTP},
+      {    vo::type::SS,     AdapterType::SS},
+      {vo::type::TUNNEL, AdapterType::TUNNEL},
+      {vo::type::TRANSP, AdapterType::TRANSP},
+      {  vo::type::DUAL,   AdapterType::DUAL},
   });
 }
 
 BOOST_AUTO_TEST_CASE(toJson_AdapterType)
 {
   verify_toJson<AdapterType>({
-      {     AdapterType::DIRECT,      vo::type::DIRECT},
-      {     AdapterType::REJECT,      vo::type::REJECT},
-      {     AdapterType::SOCKS5,      vo::type::SOCKS5},
-      {       AdapterType::HTTP,        vo::type::HTTP},
-      {         AdapterType::SS,          vo::type::SS},
-      {     AdapterType::TUNNEL,      vo::type::TUNNEL},
-      {AdapterType::TRANSPARENT, vo::type::TRANSPARENT},
-      {       AdapterType::DUAL,        vo::type::DUAL},
+      {AdapterType::DIRECT, vo::type::DIRECT},
+      {AdapterType::REJECT, vo::type::REJECT},
+      {AdapterType::SOCKS5, vo::type::SOCKS5},
+      {  AdapterType::HTTP,   vo::type::HTTP},
+      {    AdapterType::SS,     vo::type::SS},
+      {AdapterType::TUNNEL, vo::type::TUNNEL},
+      {AdapterType::TRANSP, vo::type::TRANSP},
+      {  AdapterType::DUAL,   vo::type::DUAL},
   });
 }
 

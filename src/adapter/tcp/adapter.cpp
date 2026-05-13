@@ -59,7 +59,7 @@ template <stream::AsyncSocket Socket> Ingress create_ingress(vo::Ingress const& 
           vo,
           Tls{stream::tls_context(*vo.tls_), std::move(s)}
       };
-  case AdapterType::TRANSPARENT:
+  case AdapterType::TRANSP:
     return Ingress{std::in_place_type<TransparentIngress>, vo, std::move(s)};
   default:
     fail();
