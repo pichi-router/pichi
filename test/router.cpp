@@ -187,7 +187,10 @@ BOOST_AUTO_TEST_CASE(Router_Router_Bad_Input)
       SystemError,
       verify_exception<PichiError::MISC>
   );
-  BOOST_CHECK_THROW(actor::Router(ex, EGRESSES, RULES, {}), std::out_of_range);
+  BOOST_CHECK_THROW(
+      actor::Router(ex, EGRESSES, RULES, {.default_ = "Non-existent egress"}),
+      std::out_of_range
+  );
 }
 
 BOOST_AUTO_TEST_CASE(Matcher_match_Ranges)

@@ -1,12 +1,10 @@
 #define BOOST_TEST_MODULE pichi ss test
 
 #include "pichi/common/config.hpp"
+#include "utils.hpp"
 #include <algorithm>
-#include <boost/asio/thread_pool.hpp>
-#include <boost/test/unit_test.hpp>
 #include <botan/exceptn.h>
 #include <botan/hex.h>
-#include <pichi/actor/detached.hpp>
 #include <pichi/adapter/tcp/shadowsocks.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/stream/shadowsocks.hpp>
@@ -37,10 +35,10 @@ struct TestData {
 static auto const PASSWORD = "a flexible rule-based proxy"s;
 static auto const ENDPOINT = makeEndpoint("localhost", 443);
 
-static Awaitable<void> send_salt(asio::thread_pool& pool, CryptoMethod m, size_t s, uint8_t c)
+static Awaitable<void> send_salt(IOExecutor const& ex, CryptoMethod m, size_t s, uint8_t c)
 {
   auto salt   = std::vector<uint8_t>(s, c);
-  auto client = TestSocket{pool.get_executor()};
+  auto client = TestSocket{ex};
   auto stream = Stream{m, PASSWORD, client.peer()};
 
   co_await stream::write(client, salt);
@@ -203,8 +201,9 @@ static auto const TEST_DATA = std::unordered_map<CryptoMethod, TestData>{
      "2284052CEAC971CEC204019F9ADFDA2AD44AB0C323C5AC"s,
      }}},
     {CryptoMethod::XCHACHA20_IETF_POLY1305,
-     {.salt_    = "000102030405060708090A0B0C0D0E0F0F0E0D0C0B0A09080706050403020100"s,
-     .ciphers_ = {
+     {.salt_ = "000102030405060708090A0B0C0D0E0F0F0E0D0C0B0A09080706050403020100"s,
+     .ciphers_ =
+     {
      "3F44BEAC0D3D42B71BEF662F52173755A78A53656F703D4049676CAE189D78F3"s,
      "C9CF8AF3E08185048BC17FCABC9BB05F0A66634A295E649DAE2223C4DD5A9CC3"s,
      "9FF38AC231666ACF79070C013CD68ADD359F087BB13C9EF2177635F582E800BD"s,
@@ -232,46 +231,15 @@ static auto const TEST_DATA = std::unordered_map<CryptoMethod, TestData>{
      }}},
 };
 
-template <typename TestCase, typename Teardown, typename... Args>
-requires(
-    std::is_invocable_r_v<
-        Awaitable<void>, std::decay_t<TestCase>, asio::thread_pool&, CryptoMethod, size_t> &&
-    std::invocable<Teardown, std::exception_ptr, Args && ...>
-)
-void run_case(TestCase&& test, Teardown&& teardown)
+template <typename TestCase> void run_test_case(TestCase&& test)
 {
-  for (auto&& item : KEY_SIZE) {
-    auto [m, s] = item;
-    auto pool   = asio::thread_pool{1};
-    asio::co_spawn(
-        pool,
-        std::invoke(std::forward<TestCase>(test), pool, m, s),
-        [&, teardown = std::forward<Teardown>(teardown)](std::exception_ptr eptr, auto&&... args) {
-          std::invoke(teardown, eptr, std::forward<Args>(args)...);
-          asio::co_spawn(
-              pool,
-              std::invoke(
-                  [](auto&& pool) -> Awaitable<void> {
-                    co_await stream::detail::get_sentry(pool)->reset();
-                    pool.stop();
-                  },
-                  pool
-              ),
-              actor::detached
-          );
-        }
-    );
-    pool.join();
-  }
-}
-
-template <typename TestCase>
-requires(std::is_invocable_r_v<
-         Awaitable<void>, std::decay_t<TestCase>, asio::thread_pool&, CryptoMethod, size_t>)
-void run_case(TestCase&& test)
-{
-  run_case(std::forward<TestCase>(test), [](std::exception_ptr eptr, auto&&...) {
-    BOOST_CHECK(!eptr);
+  run_case([test = std::forward<TestCase>(test)](auto&& ex) -> Awaitable<void> {
+    for (auto&& item : KEY_SIZE) {
+      auto [m, s] = item;
+      auto ec     = co_await redirect(test(ex, m, s));
+      co_await stream::detail::get_sentry(ex)->reset();
+      BOOST_CHECK(!ec);
+    }
   });
 }
 
@@ -279,26 +247,26 @@ BOOST_AUTO_TEST_SUITE(SS)
 
 BOOST_AUTO_TEST_CASE(SaltSentry_Conflict)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
-    auto ec = co_await redirect(send_salt(pool, m, s, 0_u8));
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
+    auto ec = co_await redirect(send_salt(ex, m, s, 0_u8));
     BOOST_CHECK(!ec);
 
-    ec = co_await redirect(send_salt(pool, m, s, 0_u8));
+    ec = co_await redirect(send_salt(ex, m, s, 0_u8));
     BOOST_CHECK_EQUAL(make_error_code(PichiError::BAD_PROTO), ec);
 
-    co_await stream::detail::get_sentry(pool)->reset();
+    co_await stream::detail::get_sentry(ex)->reset();
   });
 }
 
 BOOST_AUTO_TEST_CASE(SaltSentry_Normal)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     for (auto c : views::iota(0_u8, 0xff_u8)) {
-      auto ec = co_await redirect(send_salt(pool, m, s, c));
+      auto ec = co_await redirect(send_salt(ex, m, s, c));
       BOOST_CHECK(!ec);
     }
 
-    co_await stream::detail::get_sentry(pool)->reset();
+    co_await stream::detail::get_sentry(ex)->reset();
   });
 }
 
@@ -443,8 +411,8 @@ BOOST_AUTO_TEST_CASE(Decryption_Without_PSK)
 
 BOOST_AUTO_TEST_CASE(Stream_accept)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
-    auto client = TestSocket{pool.get_executor()};
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
+    auto client = TestSocket{ex};
     auto stream = Stream{m, PASSWORD, client.peer()};
 
     co_await stream::write(client, SALT | views::take(s));
@@ -461,10 +429,10 @@ BOOST_AUTO_TEST_CASE(Stream_accept)
 
 BOOST_AUTO_TEST_CASE(Stream_connect)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     auto salt = SALT | views::take(s);
 
-    auto server = TestSocket{pool.get_executor()};
+    auto server = TestSocket{ex};
     auto stream = Stream{m, PASSWORD, salt, server.peer()};
 
     co_await stream::connect(stream, ENDPOINT);
@@ -480,10 +448,10 @@ BOOST_AUTO_TEST_CASE(Stream_connect)
 
 BOOST_AUTO_TEST_CASE(Stream_read)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     auto salt = SALT | views::take(s);
 
-    auto client = TestSocket{pool.get_executor()};
+    auto client = TestSocket{ex};
     auto stream = Stream{m, PASSWORD, client.peer()};
 
     auto buf = Buffer{};
@@ -499,10 +467,10 @@ BOOST_AUTO_TEST_CASE(Stream_read)
 
 BOOST_AUTO_TEST_CASE(Stream_write)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     auto salt = SALT | views::take(s);
 
-    auto server = TestSocket{pool.get_executor()};
+    auto server = TestSocket{ex};
     auto stream = Stream{m, PASSWORD, salt, server.peer()};
 
     auto buf = Buffer{};
@@ -518,8 +486,8 @@ BOOST_AUTO_TEST_CASE(Stream_write)
 
 BOOST_AUTO_TEST_CASE(Ingress_read_remote)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
-    auto client  = TestSocket{pool.get_executor()};
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
     auto ingress = Ingress{
         {m, PASSWORD, client.peer()}
     };
@@ -537,8 +505,8 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote)
 
 BOOST_AUTO_TEST_CASE(Ingress_confirm)
 {
-  run_case([](auto&& pool, auto m, auto) -> Awaitable<void> {
-    auto client = TestSocket{pool.get_executor()};
+  run_test_case([](auto&& ex, auto m, auto) -> Awaitable<void> {
+    auto client = TestSocket{ex};
 
     // Write a dummy string to prevent next asnyc_read from blocking
     auto dummy = "dummy"s;
@@ -558,8 +526,8 @@ BOOST_AUTO_TEST_CASE(Ingress_confirm)
 
 BOOST_AUTO_TEST_CASE(Ingress_disconnect)
 {
-  run_case([](auto&& pool, auto m, auto) -> Awaitable<void> {
-    auto client = TestSocket{pool.get_executor()};
+  run_test_case([](auto&& ex, auto m, auto) -> Awaitable<void> {
+    auto client = TestSocket{ex};
 
     // Write a dummy string to prevent next asnyc_read from blocking
     auto dummy = "dummy"s;
@@ -579,8 +547,8 @@ BOOST_AUTO_TEST_CASE(Ingress_disconnect)
 
 BOOST_AUTO_TEST_CASE(Ingress_recv)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
-    auto client  = TestSocket{pool.get_executor()};
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
     auto ingress = Ingress{
         {m, PASSWORD, client.peer()}
     };
@@ -599,8 +567,8 @@ BOOST_AUTO_TEST_CASE(Ingress_recv)
 
 BOOST_AUTO_TEST_CASE(Ingress_recv_With_Insufficient_Buffer)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
-    auto client  = TestSocket{pool.get_executor()};
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
+    auto client  = TestSocket{ex};
     auto ingress = Ingress{
         {m, PASSWORD, client.peer()}
     };
@@ -623,10 +591,10 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_With_Insufficient_Buffer)
 
 BOOST_AUTO_TEST_CASE(Ingress_send)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     auto salt = SALT | views::take(s);
 
-    auto client  = TestSocket{pool.get_executor()};
+    auto client  = TestSocket{ex};
     auto ingress = Ingress{
         {m, PASSWORD, salt, client.peer()}
     };
@@ -643,10 +611,10 @@ BOOST_AUTO_TEST_CASE(Ingress_send)
 
 BOOST_AUTO_TEST_CASE(Egress_connect)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     auto salt = SALT | views::take(s);
 
-    auto server = TestSocket{pool.get_executor()};
+    auto server = TestSocket{ex};
     auto egress = Egress{
         {m, PASSWORD, salt, server.peer()}
     };
@@ -662,10 +630,10 @@ BOOST_AUTO_TEST_CASE(Egress_connect)
 
 BOOST_AUTO_TEST_CASE(Egress_recv)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     auto salt = SALT | views::take(s);
 
-    auto server = TestSocket{pool.get_executor()};
+    auto server = TestSocket{ex};
     auto egress = Egress{
         {m, PASSWORD, salt, server.peer()}
     };
@@ -683,10 +651,10 @@ BOOST_AUTO_TEST_CASE(Egress_recv)
 
 BOOST_AUTO_TEST_CASE(Egress_recv_With_Insufficient_Buffer)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     auto salt = SALT | views::take(s);
 
-    auto server = TestSocket{pool.get_executor()};
+    auto server = TestSocket{ex};
     auto egress = Egress{
         {m, PASSWORD, salt, server.peer()}
     };
@@ -708,10 +676,10 @@ BOOST_AUTO_TEST_CASE(Egress_recv_With_Insufficient_Buffer)
 
 BOOST_AUTO_TEST_CASE(Egress_send)
 {
-  run_case([](auto&& pool, auto m, auto s) -> Awaitable<void> {
+  run_test_case([](auto&& ex, auto m, auto s) -> Awaitable<void> {
     auto salt = SALT | views::take(s);
 
-    auto server = TestSocket{pool.get_executor()};
+    auto server = TestSocket{ex};
     auto egress = Egress{
         {m, PASSWORD, salt, server.peer()}
     };

@@ -6,8 +6,6 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/beast/http/error.hpp>
 #include <boost/test/unit_test.hpp>
-#include <format>
-#include <iostream>
 #include <pichi/common/error.hpp>
 #include <string_view>
 
@@ -34,10 +32,13 @@ template <boost::beast::http::error error> bool verify_exception(SystemError con
          std::string_view{expect.category().name()} == std::string_view{fact.category().name()};
 }
 
-template <boost::asio::error::misc_errors error> auto verify_exception(SystemError const& e)
+inline auto verify_eof(SystemError const& e)
 {
-  std::cout << std::format("E: {}\n", e.what());
-  return e.code() == error;
+#ifdef _WIN32
+  return e.code() == boost::asio::error::broken_pipe;
+#else   // _WIN32
+  return e.code() == boost::asio::error::eof;
+#endif  // _WIN32
 }
 
 template <typename TestCase> void run_case(TestCase&& test)

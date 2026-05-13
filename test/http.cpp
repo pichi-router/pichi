@@ -43,8 +43,10 @@ static auto const IVO_AUTH = vo::Ingress{
     .type_       = AdapterType::HTTP,
     .credential_ = vo::UpIngressCredential{.credential_ = {{USERNAME, PASSWORD}}}
 };
+static auto const EVO      = vo::Egress{.type_ = AdapterType::HTTP, .server_ = HTTPS_ENDPOINT};
 static auto const EVO_AUTH = vo::Egress{
     .type_       = AdapterType::HTTP,
+    .server_     = HTTPS_ENDPOINT,
     .credential_ = vo::UpEgressCredential{.credential_ = {USERNAME, PASSWORD}}
 };
 
@@ -600,7 +602,7 @@ BOOST_AUTO_TEST_CASE(Ingress_recv_Relay_By_Insufficient_Buffer)
       }
     };
 
-    BOOST_CHECK_EXCEPTION(co_await recv(), SystemError, verify_exception<asio::error::eof>);
+    BOOST_CHECK_EXCEPTION(co_await recv(), SystemError, verify_eof);
 
     auto req = parse<true, http::string_body>(buf | views::take(len));
     BOOST_CHECK_EQUAL(ROOT_URI, req.target());
@@ -658,11 +660,7 @@ BOOST_AUTO_TEST_CASE(Ingress_confirm_Relay)
     co_await ingress.close();
 
     auto buf = std::array<uint8_t, 1024>{};
-    BOOST_CHECK_EXCEPTION(
-        co_await stream::read_some(client, buf),
-        SystemError,
-        verify_exception<asio::error::eof>
-    );
+    BOOST_CHECK_EXCEPTION(co_await stream::read_some(client, buf), SystemError, verify_eof);
   });
 }
 
@@ -883,11 +881,7 @@ BOOST_AUTO_TEST_CASE(Ingress_send_Relay_With_Incomplete_Header)
       co_await ingress.close();
 
       auto buf = std::array<uint8_t, 1024>{};
-      BOOST_CHECK_EXCEPTION(
-          co_await stream::read_some(client, buf),
-          SystemError,
-          verify_exception<asio::error::eof>
-      );
+      BOOST_CHECK_EXCEPTION(co_await stream::read_some(client, buf), SystemError, verify_eof);
     }
   });
 }
@@ -944,11 +938,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Authentication)
     verify_field(req, http::field::proxy_connection, KEEP_ALIVE_FIELD);
 
     co_await egress.close();
-    BOOST_CHECK_EXCEPTION(
-        co_await stream::read_some(server, buf),
-        SystemError,
-        verify_exception<asio::error::eof>
-    );
+    BOOST_CHECK_EXCEPTION(co_await stream::read_some(server, buf), SystemError, verify_eof);
   });
 }
 
@@ -956,7 +946,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Without_Authentication)
 {
   run_case([](auto&& ex) -> Awaitable<void> {
     auto server = TestSocket{ex};
-    auto egress = Egress{{}, server.peer()};
+    auto egress = Egress{EVO, server.peer()};
 
     auto buf = std::array<uint8_t, 1024>{};
     co_await stream::write(server, buf | views::take(serialize(gen_response(), buf)));
@@ -970,11 +960,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Without_Authentication)
     verify_field(req, http::field::proxy_connection, KEEP_ALIVE_FIELD);
 
     co_await egress.close();
-    BOOST_CHECK_EXCEPTION(
-        co_await stream::read_some(server, buf),
-        SystemError,
-        verify_exception<asio::error::eof>
-    );
+    BOOST_CHECK_EXCEPTION(co_await stream::read_some(server, buf), SystemError, verify_eof);
   });
 }
 
@@ -982,7 +968,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Content)
 {
   run_case([](auto&& ex) -> Awaitable<void> {
     auto server = TestSocket{ex};
-    auto egress = Egress{{}, server.peer()};
+    auto egress = Egress{EVO, server.peer()};
 
     auto buf = std::array<uint8_t, 1024>{};
     co_await stream::write(server, buf | views::take(serialize(gen_response(), buf)));
@@ -1000,11 +986,7 @@ BOOST_AUTO_TEST_CASE(Egress_send_Content)
         rngs::begin(fact),
         rngs::end(fact)
     );
-    BOOST_CHECK_EXCEPTION(
-        co_await stream::read_some(server, buf),
-        SystemError,
-        verify_exception<asio::error::eof>
-    );
+    BOOST_CHECK_EXCEPTION(co_await stream::read_some(server, buf), SystemError, verify_eof);
   });
 }
 
@@ -1012,7 +994,7 @@ BOOST_AUTO_TEST_CASE(Egress_recv_Content)
 {
   run_case([](auto&& ex) -> Awaitable<void> {
     auto server = TestSocket{ex};
-    auto egress = Egress{{}, server.peer()};
+    auto egress = Egress{EVO, server.peer()};
 
     auto buf = std::array<uint8_t, 1024>{};
     co_await stream::write(server, buf | views::take(serialize(gen_response(), buf)));
@@ -1030,11 +1012,7 @@ BOOST_AUTO_TEST_CASE(Egress_recv_Content)
         rngs::begin(fact),
         rngs::end(fact)
     );
-    BOOST_CHECK_EXCEPTION(
-        co_await egress.recv(buf),
-        SystemError,
-        verify_exception<asio::error::eof>
-    );
+    BOOST_CHECK_EXCEPTION(co_await egress.recv(buf), SystemError, verify_eof);
   });
 }
 
