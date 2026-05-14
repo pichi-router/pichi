@@ -87,7 +87,7 @@ private:
 
 class Encryptor {
 public:
-  Encryptor(CryptoMethod, ConstBuffer);
+  Encryptor(CryptoMethod, ConstBuffer, ConstBuffer = {});
 
   ConstBuffer salt() const;
 
@@ -237,6 +237,7 @@ public:
   using executor_type   = typename Socket::executor_type;
   using next_layer_type = Socket;
 
+  // Used by ingresses
   Shadowsocks(CryptoMethod method, ConstBuffer pw, Socket socket)
     : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
       sentry_{detail::get_sentry(socket.get_executor())},
@@ -246,6 +247,7 @@ public:
   {
   }
 
+  // Used by egresses
   Shadowsocks(CryptoMethod method, ConstBuffer pw, Endpoint const& proxy, IOExecutor const& ex)
     : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
       sentry_{nullptr},
@@ -253,6 +255,17 @@ public:
       encryptor_{method, pw_},
       decryptor_{method},
       proxy_{proxy}
+  {
+  }
+
+  // For unit test purpose
+  Shadowsocks(CryptoMethod method, ConstBuffer pw, ConstBuffer salt, Socket socket)
+    : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
+      sentry_{detail::get_sentry(socket.get_executor())},
+      socket_{std::move(socket)},
+      encryptor_{method, pw_, salt},
+      decryptor_{method},
+      proxy_{}
   {
   }
 

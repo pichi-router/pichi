@@ -138,8 +138,10 @@ void Cryptor::set_psk(ConstBuffer pw, ConstBuffer salt)
 {
   auto data = std::array<uint8_t, 1024>{};
   auto psk  = generate_psk(pw, data, rngs::size(salt));
-  cryptor_->set_key(Botan::KDF::create_or_throw("HKDF(SHA-1)")
-                        ->derive_key(rngs::size(salt), psk, salt, ConstBuffer{"ss-subkey"sv}));
+  cryptor_->set_key(
+      Botan::KDF::create_or_throw("HKDF(SHA-1)")
+          ->derive_key(rngs::size(salt), psk, salt, ConstBuffer{"ss-subkey"sv})
+  );
 }
 
 size_t Cryptor::process(ConstBuffer orig, MutableBuffer dest)
@@ -158,8 +160,13 @@ size_t Cryptor::process(ConstBuffer orig, MutableBuffer dest)
   return n + rngs::size(t);
 }
 
-Encryptor::Encryptor(CryptoMethod method, ConstBuffer pw)
-  : cryptor_{method, Botan::Cipher_Dir::Encryption}, salt_{random_salt(method)}
+Encryptor::Encryptor(CryptoMethod method, ConstBuffer pw, ConstBuffer salt)
+: cryptor_{method, Botan::Cipher_Dir::Encryption},
+  salt_{
+    rngs::empty(salt) ?
+    random_salt(method) :
+    std::vector<uint8_t>{rngs::begin(salt), rngs::end(salt)}
+  }
 {
   cryptor_.set_psk(pw, salt_);
 }

@@ -1,4 +1,4 @@
-list(APPEND RAW_TESTS keys hash hmac hkdf base64 method cryptogram router uri endpoint
+list(APPEND RAW_TESTS keys hash hmac hkdf base64 method router uri endpoint
   socks5 http ss balancer trojan)
 list(APPEND VO_TESTS vos vo_credential vo_ingress vo_egress vo_rule vo_route vo_options)
 

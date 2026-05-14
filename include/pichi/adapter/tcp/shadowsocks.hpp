@@ -32,6 +32,9 @@ template <stream::AsyncSocket Socket> auto create_stream(vo::Egress const& vo, I
 
 template <stream::AsyncSocket Socket> class Shadowsocks {
 public:
+  // For unit test purpose
+  Shadowsocks(stream::Shadowsocks<Socket> stream) : stream_{std::move(stream)} {}
+
   Shadowsocks(vo::Ingress const& vo, Socket s) : stream_{detail::create_stream(vo, std::move(s))} {}
 
   Shadowsocks(vo::Egress const& vo, IOExecutor const& ex)
