@@ -8,7 +8,6 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/stream/completer.hpp>
 #include <pichi/stream/concepts.hpp>
-#include <variant>
 
 namespace pichi::stream {
 
@@ -18,17 +17,10 @@ template <Closable Socket> Awaitable<void> close(Socket& s)
   co_return;
 }
 
-template <typename Stream>
-requires(Layered<Stream> && Shutdownable<Stream>)
-Awaitable<void> close(Stream& stream)
+template <AsyncStream Stream> Awaitable<void> close(Stream& stream)
 {
   co_await stream.async_shutdown(boost::asio::use_awaitable);
   co_await close(stream.next_layer());
-}
-
-template <typename... Streams> Awaitable<void> close(std::variant<Streams...>& streams)
-{
-  co_await std::visit([](auto&& stream) { return close(stream); }, streams);
 }
 
 template <AsyncSocket Socket> Awaitable<void> connect(Socket& s, Endpoint const& peer)
@@ -64,12 +56,6 @@ Awaitable<void> connect(Stream& stream, Endpoint const& peer)
   co_await stream.async_handshake(boost::asio::use_awaitable);
 }
 
-template <typename... Streams>
-Awaitable<void> connect(std::variant<Streams...>& streams, Endpoint const& peer)
-{
-  co_await std::visit([&](auto&& stream) { return connect(stream, peer); }, streams);
-}
-
 template <AsyncSocket Socket> Awaitable<void> accept(Socket&) { co_return; }
 
 template <AsyncStream Stream>
@@ -78,11 +64,6 @@ Awaitable<void> accept(Stream& stream)
 {
   co_await accept(stream.next_layer());
   co_await stream.async_accept(boost::asio::use_awaitable);
-}
-
-template <typename... Streams> Awaitable<void> accept(std::variant<Streams...>& streams)
-{
-  co_await std::visit([](auto&& stream) { return accept(stream); }, streams);
 }
 
 Awaitable<void> read(AsyncReadable auto& stream, MutableBuffer buf)
@@ -94,12 +75,6 @@ Awaitable<void> read(AsyncReadable auto& stream, MutableBuffer buf)
   );
 }
 
-template <AsyncReadable... Streams>
-Awaitable<void> read(std::variant<Streams...>& streams, MutableBuffer buf)
-{
-  co_await std::visit([=](auto&& stream) { return read(stream, buf); }, streams);
-}
-
 Awaitable<size_t> read_some(AsyncReadable auto& stream, MutableBuffer buf)
 {
   co_return co_await stream.async_read_some(
@@ -108,32 +83,14 @@ Awaitable<size_t> read_some(AsyncReadable auto& stream, MutableBuffer buf)
   );
 }
 
-template <AsyncReadable... Streams>
-Awaitable<size_t> read_some(std::variant<Streams...>& streams, MutableBuffer buf)
-{
-  co_return co_await std::visit([=](auto&& stream) { return read_some(stream, buf); }, streams);
-}
-
 Awaitable<void> write(AsyncWritable auto& stream, ConstBuffer buf)
 {
   co_await boost::asio::async_write(stream, boost::asio::buffer(buf), boost::asio::use_awaitable);
 }
 
-template <AsyncWritable... Streams>
-Awaitable<void> write(std::variant<Streams...>& streams, ConstBuffer buf)
-{
-  co_await std::visit([=](auto&& stream) { return write(stream, buf); }, streams);
-}
-
 Awaitable<size_t> write_some(AsyncWritable auto& stream, ConstBuffer buf)
 {
   co_return co_await stream.async_write_some(boost::asio::buffer(buf), boost::asio::use_awaitable);
-}
-
-template <AsyncWritable... Streams>
-Awaitable<size_t> write_some(std::variant<Streams...>& streams, ConstBuffer buf)
-{
-  co_return co_await std::visit([=](auto&& stream) { return write_some(stream, buf); }, streams);
 }
 
 template <
