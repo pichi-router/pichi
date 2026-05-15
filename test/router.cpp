@@ -5,7 +5,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <pichi/actor/router.hpp>
 #include <pichi/common/error.hpp>
-#include <pichi/common/mmdb.hpp>
+#include <pichi/service/mmdb.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/route.hpp>
 #include <pichi/vo/rule.hpp>
@@ -46,7 +46,8 @@ void run_generic_test(
 )
 {
   run_case([=](auto&& ex) -> Awaitable<void> {
-    asio::use_service<Mmdb>(asio::query(ex, asio::execution::context)).initialize("geo.mmdb"s);
+    asio::use_service<service::Mmdb>(asio::query(ex, asio::execution::context))
+        .initialize("geo.mmdb"s);
     auto rules       = RULES;
     rules[SPEC_RULE] = rule;
     auto router      = actor::Router{ex, EGRESSES, rules, ROUTE};

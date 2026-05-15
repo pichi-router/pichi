@@ -1,9 +1,9 @@
 #include <pichi/common/asserts.hpp>
-#include <pichi/common/mmdb.hpp>
+#include <pichi/service/mmdb.hpp>
 
 namespace asio = boost::asio;
 
-namespace pichi {
+namespace pichi::service {
 
 Mmdb::Mmdb(asio::execution_context& ctx)
   : asio::detail::execution_context_service_base<Mmdb>{ctx}, db_{}
@@ -47,4 +47,4 @@ bool Mmdb::match(sockaddr const* const endpoint, std::string_view country)
   return std::string_view{entry.utf8_string, entry.data_size} == country;
 }
 
-}  // namespace pichi
+}  // namespace pichi::service

@@ -1,5 +1,5 @@
-#ifndef PICHI_COMMON_MMDB_HPP
-#define PICHI_COMMON_MMDB_HPP
+#ifndef PICHI_SERVICE_MMDB_HPP
+#define PICHI_SERVICE_MMDB_HPP
 
 #include <boost/asio/execution_context.hpp>
 #include <maxminddb.h>
@@ -8,7 +8,7 @@
 #include <string>
 #include <string_view>
 
-namespace pichi {
+namespace pichi::service {
 
 class Mmdb : public boost::asio::detail::execution_context_service_base<Mmdb> {
 private:
@@ -28,6 +28,6 @@ private:
   Database       db_;
 };
 
-}  // namespace pichi
+}  // namespace pichi::service
 
-#endif  // PICHI_COMMON_MMDB_HPP
+#endif  // PICHI_SERVICE_MMDB_HPP

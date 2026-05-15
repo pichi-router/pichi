@@ -19,7 +19,7 @@
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/common/mmdb.hpp>
+#include <pichi/service/mmdb.hpp>
 #include <pichi/vo/to_json.hpp>
 #include <ranges>
 #include <rapidjson/document.h>
@@ -215,7 +215,7 @@ void run(std::string const& bind, uint16_t port, std::string const& fn, std::str
   auto server = actor::Server{ex};
   auto client = HttpClient{ex, fn};
 
-  if (!mmdb.empty()) asio::use_service<Mmdb>(io).initialize(mmdb);
+  if (!mmdb.empty()) asio::use_service<service::Mmdb>(io).initialize(mmdb);
 
   asio::co_spawn(io, server.serve({asio::ip::make_address(bind), port}), actor::detached);
   asio::co_spawn(io, client.run(bind, port), [&](auto eptr) noexcept {

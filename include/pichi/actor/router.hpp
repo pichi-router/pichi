@@ -7,7 +7,7 @@
 #include <optional>
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/common/mmdb.hpp>
+#include <pichi/service/mmdb.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/route.hpp>
 #include <pichi/vo/rule.hpp>
@@ -50,7 +50,7 @@ public:
 
   bool match(
       Endpoint const&, std::string const&, AdapterType, std::optional<ResolveResults> const&,
-      Mmdb& mmdb
+      service::Mmdb& mmdb
   ) const;
 
   bool need_resolving() const;

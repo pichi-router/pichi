@@ -120,7 +120,7 @@ vo::Egress const& Matcher::egress() const { return egress_; }
 
 bool Matcher::match(
     Endpoint const& peer, std::string const& iname, AdapterType type,
-    std::optional<ResolveResults> const& rs, Mmdb& mmdb
+    std::optional<ResolveResults> const& rs, service::Mmdb& mmdb
 ) const
 {
   return (rs.has_value() && match_range(peer, *rs)) || inames_.contains(iname) ||
@@ -172,7 +172,7 @@ Awaitable<std::tuple<std::string, std::string, vo::Egress>> Router::route(
 ) const
 {
   auto  iname = std::to_string(name);
-  auto& mmdb  = asio::use_service<Mmdb>(ex_.context());
+  auto& mmdb  = asio::use_service<service::Mmdb>(ex_.context());
   for (auto&& matcher : matchers_) {
     if (!rs.has_value() && matcher.need_resolving()) {
       if (peer.type_ == EndpointType::DOMAIN_NAME) fail(PichiError::MISC);
