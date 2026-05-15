@@ -6,32 +6,17 @@
 #include <maxminddb.h>
 #include <numeric>
 #include <pichi/actor/router.hpp>
-#include <pichi/common/adapter.hpp>
 #include <pichi/common/asserts.hpp>
-#include <pichi/common/coro.hpp>
-#include <pichi/common/endpoint.hpp>
 #include <pichi/common/enumerations.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/common/mmdb.hpp>
-#include <pichi/vo/egress.hpp>
 #include <pichi/vo/parse.hpp>
-#include <pichi/vo/route.hpp>
-#include <pichi/vo/rule.hpp>
-#include <pichi/vo/to_json.hpp>
 #include <ranges>
-#include <rapidjson/document.h>
-#include <regex>
-#include <string_view>
-#include <tuple>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 using namespace std::literals;
 
 namespace asio  = boost::asio;
 namespace ip    = asio::ip;
-namespace json  = rapidjson;
 namespace rngs  = std::ranges;
 namespace sys   = boost::system;
 namespace views = rngs::views;
@@ -147,30 +132,11 @@ bool Matcher::match(
           }));
 }
 
-}  // namespace detail
-
-template <rngs::range Range> std::string to_string(Range const& range)
-{
-  auto alloc = json::Document::AllocatorType{};
-  return vo::toString(vo::toJson(rngs::cbegin(range), rngs::cend(range), alloc));
-}
-
-template <typename VO> using VoMap = std::unordered_map<std::string, VO>;
-
-template <typename VO> VoMap<VO> parse(json::Value const& json)
-{
-  auto ret = VoMap<VO>{};
-  for (auto&& item : json.GetObj()) {
-    ret.insert_or_assign(item.name.GetString(), vo::parse<VO>(item.value));
-  }
-  return ret;
-}
-
 static auto parse_route(
-    vo::Route const& route, VoMap<vo::Egress> const& egresses, VoMap<vo::Rule> const& rules
+    vo::Route const& route, ValueMap<vo::Egress> const& egresses, ValueMap<vo::Rule> const& rules
 )
 {
-  auto ret = std::vector<detail::Matcher>{};
+  auto ret = std::vector<Matcher>{};
   ret.reserve(
       std::accumulate(
           rngs::cbegin(route.rules_),
@@ -189,12 +155,14 @@ static auto parse_route(
   return ret;
 }
 
+}  // namespace detail
+
 Router::Router(
-    IOExecutor ex, VoMap<vo::Egress> const& egresses, VoMap<vo::Rule> const& rules,
+    IOExecutor ex, ValueMap<vo::Egress> const& egresses, ValueMap<vo::Rule> const& rules,
     vo::Route const& route
 )
   : ex_{std::move(ex)},
-    matchers_{parse_route(route, egresses, rules)},
+    matchers_{detail::parse_route(route, egresses, rules)},
     default_{std::make_tuple("*"s, *route.default_, egresses.at(*route.default_))}
 {
 }

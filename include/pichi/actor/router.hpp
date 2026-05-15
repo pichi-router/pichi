@@ -9,7 +9,6 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/mmdb.hpp>
 #include <pichi/vo/egress.hpp>
-#include <pichi/vo/ingress.hpp>
 #include <pichi/vo/route.hpp>
 #include <pichi/vo/rule.hpp>
 #include <regex>
@@ -27,12 +26,11 @@ namespace detail {
 class Matcher {
 private:
   bool match_range(Endpoint const&, ResolveResults const&) const;
+  bool match_range(Endpoint const&) const;
 
   bool match_pattern(std::string const&) const;
 
   bool match_domain(Endpoint const&) const;
-
-  Awaitable<bool> match_range(Endpoint const&) const;
 
 public:
   Matcher(std::string_view, vo::Rule const&, std::string_view, vo::Egress const&);
@@ -45,8 +43,6 @@ public:
       Endpoint const&, std::string const&, AdapterType, std::optional<ResolveResults> const&,
       Mmdb& mmdb
   ) const;
-
-  Awaitable<bool> match() const;
 
   bool need_resolving() const;
 
@@ -72,17 +68,18 @@ private:
   std::vector<std::string> countries_ = {};
 };
 
+template <typename Value> using ValueMap = std::unordered_map<std::string, Value>;
+
 }  // namespace detail
 
 class Router {
 private:
+  template <typename Value> using ValueMap = detail::ValueMap<Value>;
+
   using Matchers = std::vector<detail::Matcher>;
 
 public:
-  Router(
-      IOExecutor, std::unordered_map<std::string, vo::Egress> const&,
-      std::unordered_map<std::string, vo::Rule> const&, vo::Route const&
-  );
+  Router(IOExecutor, ValueMap<vo::Egress> const&, ValueMap<vo::Rule> const&, vo::Route const&);
 
   Awaitable<std::tuple<std::string, std::string, vo::Egress>> route(
       Endpoint const&, std::string_view, AdapterType, std::optional<ResolveResults> = std::nullopt

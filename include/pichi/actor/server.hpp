@@ -2,6 +2,7 @@
 #define PICHI_ACTOR_SERVER_HPP
 
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <memory>
@@ -9,17 +10,19 @@
 #include <pichi/actor/router.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/vo/egress.hpp>
+#include <pichi/vo/ingress.hpp>
 #include <pichi/vo/route.hpp>
 #include <pichi/vo/rule.hpp>
-#include <rapidjson/document.h>
 #include <unordered_map>
 
 namespace pichi::actor {
 
 class Server {
 private:
+  template <typename Value> using ValueMap = std::unordered_map<std::string, Value>;
+
+  using Strand    = boost::asio::strand<IOExecutor>;
   using RouterPtr = std::shared_ptr<Router>;
-  using Json      = rapidjson::Value;
 
 public:
   using HttpBody = boost::beast::http::string_body;
@@ -36,14 +39,13 @@ private:
 
   void update_router();
 
-  IOExecutor ex_;
+  Strand strand_;
 
-  Json ingresses_ = {};
+  ValueMap<vo::Ingress> ingresses_ = {};
+  ValueMap<Listener>    listeners_ = {};
 
-  std::unordered_map<std::string, Listener> listeners_ = {};
-
-  std::unordered_map<std::string, vo::Egress> egresses_;
-  std::unordered_map<std::string, vo::Rule>   rules_;
+  ValueMap<vo::Egress> egresses_;
+  ValueMap<vo::Rule>   rules_ = {};
 
   vo::Route route_;
   RouterPtr router_;
