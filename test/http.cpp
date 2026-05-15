@@ -188,8 +188,6 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authentication_Bad_Header)
              "Token XXXXX"s,                // Not basic
              "Basic "s,                     // Empty Credential
              "Basic invalid BASE64 code"s,  // Bad BASE64 sequence
-             "Basic invalidBASE64code"s,    // Bad BASE64
-             gen_auth("nocolon"),           // No colon
          }) {
       for (auto req :
            {gen_request(http::verb::connect, HTTPS_TARGET),
@@ -205,6 +203,33 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authentication_Bad_Header)
             co_await ingress.read_remote(),
             SystemError,
             verify_exception<PichiError::BAD_AUTH_METHOD>
+        );
+      }
+    }
+  });
+}
+
+BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authentication_Bad_Base64)
+{
+  run_case([](auto&& ex) -> Awaitable<void> {
+    for (auto&& h : {
+             "Basic invalidBASE64code"s,  // Bad BASE64
+             gen_auth("nocolon"),         // No colon
+         }) {
+      for (auto req :
+           {gen_request(http::verb::connect, HTTPS_TARGET),
+            gen_request(http::verb::get, ROOT_URI)}) {
+        req.set(http::field::proxy_authorization, h);
+
+        auto client  = TestSocket{ex};
+        auto ingress = Ingress{IVO_AUTH, client.peer()};
+
+        co_await http::async_write(client, req, asio::use_awaitable);
+
+        BOOST_CHECK_EXCEPTION(
+            co_await ingress.read_remote(),
+            SystemError,
+            verify_exception<PichiError::UNAUTHENTICATED>
         );
       }
     }

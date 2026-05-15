@@ -1,16 +1,18 @@
 #include "pichi/common/config.hpp"
+#include <algorithm>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/beast/http/error.hpp>
+#include <boost/beast/http/field.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/verb.hpp>
 #include <boost/beast/http/write.hpp>
 #include <boost/system/system_error.hpp>
+#include <botan/base64.h>
 #include <format>
 #include <pichi/adapter/tcp/adapter.hpp>
 #include <pichi/adapter/tcp/http.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/uri.hpp>
-#include <pichi/crypto/base64.hpp>
 #include <pichi/stream/helpers.hpp>
 #include <pichi/stream/test.hpp>
 #include <pichi/stream/tls.hpp>
@@ -200,63 +202,54 @@ template <stream::AsyncLayer NextLayer> Awaitable<void> ProxyManner<NextLayer>::
   co_return;
 }
 
-static auto get_credential(Request const& req)
+static auto gen_auth(std::string_view u, std::string_view p)
 {
-  auto auth = req.find(http::field::proxy_authorization);
-  assertFalse(auth == std::cend(req), PichiError::BAD_AUTH_METHOD);
-  auto m          = std::cmatch{};
-  auto credential = auth->value();
-  assertTrue(
-      std::regex_match(std::cbegin(credential), std::cend(credential), m, BASIC_AUTH_PATTERN),
-      PichiError::BAD_AUTH_METHOD
-  );
-  assertTrue(2 == m.size() && m[1].matched, PichiError::BAD_AUTH_METHOD);
-  auto plain = crypto::base64Decode(
-      {m[1].first, static_cast<size_t>(m[1].length())},
-      PichiError::BAD_AUTH_METHOD
-  );
-  auto colon = plain.find_first_of(':');
-  assertFalse(colon == std::string::npos, PichiError::BAD_AUTH_METHOD);
-  return std::make_pair(plain.substr(0, colon), plain.substr(colon + 1));
+  return Botan::base64_encode(ConstBuffer{std::format("{}:{}", u, p)});
 }
 
-HttpIngressCredential::HttpIngressCredential(vo::Ingress const& vo)
-  : data_{
-        vo.credential_.has_value() ? std::get<vo::UpIngressCredential>(*vo.credential_).credential_
-                                   : std::unordered_map<std::string, std::string>{}
+static auto gen_credentials(vo::Ingress const& vo)
+{
+  auto ret = std::unordered_set<std::string>{};
+  if (vo.credential_.has_value()) {
+    for (auto&& item : std::get<vo::UpIngressCredential>(*vo.credential_).credential_) {
+      ret.emplace(gen_auth(item.first, item.second));
     }
-{
+  }
+  return ret;
 }
 
-bool HttpIngressCredential::authenticate(Request const& req) const
+static bool
+    authenticate(http::fields const& req, std::unordered_set<std::string> const& credentials)
 {
-  if (data_.empty()) return true;
+  auto it = req.find(http::field::proxy_authorization);
+  assertFalse(it == std::cend(req), PichiError::BAD_AUTH_METHOD);
 
-  auto [u, p] = get_credential(req);
-  auto it     = data_.find(u);
-  return it != std::end(data_) && it->second == p;
+  auto match = std::cmatch{};
+  auto auth  = it->value();
+  assertTrue(
+      std::regex_match(std::cbegin(auth), std::cend(auth), match, BASIC_AUTH_PATTERN),
+      PichiError::BAD_AUTH_METHOD
+  );
+  assertTrue(2 == match.size() && match[1].matched, PichiError::BAD_AUTH_METHOD);
+
+  return credentials.contains({match[1].first, static_cast<size_t>(match[1].length())});
 }
 
-HttpEgressCredential::HttpEgressCredential(vo::Egress const& vo)
+static auto gen_credential(vo::Egress const& vo)
 {
-  if (!vo.credential_.has_value()) return;
+  if (!vo.credential_.has_value()) return ""s;
 
   auto&& pair = std::get<vo::UpEgressCredential>(*vo.credential_).credential_;
-  data_ =
-      std::format("Basic {}", crypto::base64Encode(std::format("{}:{}", pair.first, pair.second)));
-}
-
-void HttpEgressCredential::update(Request& req) const
-{
-  if (data_.empty()) return;
-  req.set(http::field::proxy_authorization, data_);
+  return std::format("Basic {}", gen_auth(pair.first, pair.second));
 }
 
 }  // namespace detail
 
 template <stream::AsyncLayer NextLayer>
 HttpIngress<NextLayer>::HttpIngress(vo::Ingress const& vo, NextLayer underlying)
-  : underlying_{std::move(underlying)}, manner_{detail::InvalidManner<NextLayer>{}}, credential_{vo}
+  : underlying_{std::move(underlying)},
+    manner_{detail::InvalidManner<NextLayer>{}},
+    credentials_{detail::gen_credentials(vo)}
 {
   parser_.header_limit(detail::HEADER_LIMIT);
   parser_.body_limit(std::numeric_limits<uint64_t>::max());
@@ -275,7 +268,8 @@ template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> HttpIngress<NextLaye
 
   auto req = parser_.release();
 
-  assertTrue(credential_.authenticate(req), PichiError::UNAUTHENTICATED);
+  if (!rngs::empty(credentials_))
+    assertTrue(detail::authenticate(req, credentials_), PichiError::UNAUTHENTICATED);
 
   if (req.method() == http::verb::connect) {
     manner_.template emplace<detail::ConnectManner<NextLayer>>(std::move(cache_));
@@ -371,7 +365,7 @@ template class HttpIngress<unit_test::TestSocket>;
 
 template <stream::AsyncLayer NextLayer>
 HttpEgress<NextLayer>::HttpEgress(vo::Egress const& vo, NextLayer underlying)
-  : underlying_{std::move(underlying)}, peer_{*vo.server_}, credential_{vo}
+  : underlying_{std::move(underlying)}, peer_{*vo.server_}, credential_{detail::gen_credential(vo)}
 {
 }
 
@@ -408,7 +402,7 @@ Awaitable<void> HttpEgress<NextLayer>::connect(Endpoint const& remote)
     req.target(std::format("{}:{}", remote.host_, remote.port_));
   req.set(http::field::host, req.target());
   req.set(http::field::proxy_connection, "Keep-Alive");
-  credential_.update(req);
+  if (!rngs::empty(credential_)) req.set(http::field::proxy_authorization, credential_);
   req.prepare_payload();
 
   co_await http::async_write(underlying_, req, asio::use_awaitable);

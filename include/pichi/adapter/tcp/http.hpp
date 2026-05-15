@@ -4,7 +4,6 @@
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/parser.hpp>
-#include <optional>
 #include <pichi/common/buffer.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
@@ -13,6 +12,7 @@
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 #include <string>
+#include <unordered_set>
 #include <variant>
 
 namespace pichi::adapter::tcp {
@@ -63,26 +63,6 @@ private:
   ResponseParser parser_;
 };
 
-class HttpIngressCredential {
-public:
-  explicit HttpIngressCredential(vo::Ingress const&);
-
-  bool authenticate(Request const&) const;
-
-private:
-  std::unordered_map<std::string, std::string> data_;
-};
-
-class HttpEgressCredential {
-public:
-  explicit HttpEgressCredential(vo::Egress const&);
-
-  void update(Request&) const;
-
-private:
-  std::string data_ = {};
-};
-
 }  // namespace detail
 
 template <stream::AsyncLayer NextLayer> class HttpIngress {
@@ -90,6 +70,7 @@ private:
   using Manner = std::variant<
       detail::InvalidManner<NextLayer>, detail::ConnectManner<NextLayer>,
       detail::ProxyManner<NextLayer>>;
+  using Credentials = std::unordered_set<std::string>;
 
 public:
   explicit HttpIngress(vo::Ingress const&, NextLayer);
@@ -109,13 +90,10 @@ private:
   detail::RequestParser parser_ = {};
   detail::Cache         cache_  = {};
 
-  detail::HttpIngressCredential credential_;
+  Credentials credentials_;
 };
 
 template <stream::AsyncLayer NextLayer> class HttpEgress {
-private:
-  using Credential = std::optional<vo::UpEgressCredential>;
-
 public:
   explicit HttpEgress(vo::Egress const&, NextLayer);
 
@@ -129,8 +107,7 @@ private:
   NextLayer     underlying_;
   Endpoint      peer_;
   detail::Cache cache_;
-
-  detail::HttpEgressCredential credential_;
+  std::string   credential_;
 };
 
 }  // namespace pichi::adapter::tcp
