@@ -1,4 +1,4 @@
-list(APPEND RAW_TESTS router uri endpoint socks5 http ss balancer trojan)
+list(APPEND RAW_TESTS router uri endpoint socks5 http ss trojan)
 list(APPEND VO_TESTS vos vo_credential vo_ingress vo_egress vo_rule vo_route vo_options)
 
 configure_file(geo.mmdb ${CMAKE_CURRENT_BINARY_DIR}/geo.mmdb COPYONLY)

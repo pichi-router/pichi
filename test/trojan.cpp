@@ -5,7 +5,6 @@
 #include <array>
 #include <pichi/adapter/tcp/trojan.hpp>
 #include <pichi/common/literals.hpp>
-#include <pichi/net/helper.hpp>
 #include <pichi/stream/test.hpp>
 #include <ranges>
 

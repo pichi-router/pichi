@@ -1,28 +1,30 @@
 #include "pichi/common/config.hpp"
+#include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/use_awaitable.hpp>
 #include <boost/beast/core/flat_static_buffer.hpp>
 #include <boost/beast/http/empty_body.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/read.hpp>
+#include <boost/beast/http/status.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/beast/http/write.hpp>
 #include <boost/filesystem/path.hpp>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <pichi/actor/detached.hpp>
 #include <pichi/actor/server.hpp>
-#include <pichi/api/server.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/mmdb.hpp>
-#include <pichi/net/adapter.hpp>
-#include <pichi/net/helper.hpp>
-#include <pichi/net/spawn.hpp>
 #include <pichi/vo/to_json.hpp>
+#include <ranges>
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
-#include <vector>
+#include <string_view>
 
 #ifdef HAS_SIGNAL_H
 #include <boost/asio/signal_set.hpp>
@@ -35,15 +37,15 @@
 #endif  // GetObject
 #endif  // _WIN32
 
-using namespace std;
 using namespace pichi;
 namespace asio  = boost::asio;
 namespace beast = boost::beast;
 namespace http  = boost::beast::http;
-namespace ip    = asio::ip;
 namespace json  = rapidjson;
+namespace rngs  = std::ranges;
+namespace views = rngs::views;
 
-using ip::tcp;
+using Socket = asio::ip::tcp::socket;
 
 static decltype(auto) INGRESSES = "ingresses";
 static decltype(auto) EGRESSES  = "egresses";
@@ -51,180 +53,183 @@ static decltype(auto) RULES     = "rules";
 static decltype(auto) ROUTE     = "route";
 static decltype(auto) INDENT    = "  ";
 
-static asio::io_context io{1};
-
-static json::Document parseJson(char const* str)
+static Awaitable<json::Value::Object> get(Socket& s, std::string_view target)
 {
-  auto doc = json::Document{};
-  doc.Parse(str);
-  assertFalse(doc.HasParseError());
-  return doc;
-}
-
-class HttpHelper {
-public:
-  HttpHelper(ResolveResults&& endpoint, asio::yield_context yield);
-
-  vector<string> get(string const& target);
-  void           put(string const& target, string const& body);
-  void           del(string const& target);
-
-private:
-  ResolveResults      endpoint_;
-  asio::yield_context yield_;
-};
-
-HttpHelper::HttpHelper(ResolveResults&& endpoint, asio::yield_context yield)
-  : endpoint_{move(endpoint)}, yield_{yield}
-{
-}
-
-vector<string> HttpHelper::get(string const& target)
-{
-  auto s = tcp::socket{io};
-  net::connect(endpoint_, s, yield_);
-
   auto req = http::request<http::empty_body>{};
   req.method(http::verb::get);
   req.target(target);
   req.version(11);
-  http::async_write(s, req, yield_);
+
+  co_await http::async_write(s, req, asio::use_awaitable);
 
   auto buf  = beast::flat_static_buffer<1024>{};
   auto resp = http::response<http::string_body>{};
-  http::async_read(s, buf, resp, yield_);
+
+  co_await http::async_read(s, buf, resp, asio::use_awaitable);
   assertTrue(resp.result() == http::status::ok);
 
-  auto doc = parseJson(resp.body().c_str());
-  auto ret = vector<string>{};
-  transform(doc.MemberBegin(), doc.MemberEnd(), back_inserter(ret), [](auto&& member) {
-    return member.name.GetString();
-  });
-  return ret;
+  auto doc = json::Document{};
+  doc.Parse(resp.body().c_str());
+  assertFalse(doc.HasParseError());
+  co_return doc.GetObj();
 }
 
-void HttpHelper::put(string const& target, string const& body)
+static Awaitable<http::status> put(Socket& s, std::string_view target, std::string_view body)
 {
-  auto s = tcp::socket{io};
-  net::connect(endpoint_, s, yield_);
-
   auto req = http::request<http::string_body>{};
   req.method(http::verb::put);
   req.target(target);
   req.version(11);
   req.body() = body;
   req.prepare_payload();
-  http::async_write(s, req, yield_);
+
+  co_await http::async_write(s, req, asio::use_awaitable);
 
   auto buf  = beast::flat_static_buffer<1024>{};
   auto resp = http::response<http::string_body>{};
-  http::async_read(s, buf, resp, yield_);
-  if (resp.result() != http::status::no_content) cout << INDENT << target << " NOT loaded" << endl;
+
+  co_await http::async_read(s, buf, resp, asio::use_awaitable);
+  co_return resp.result();
 }
 
-void HttpHelper::del(string const& target)
+static Awaitable<void> del(Socket& s, std::string_view target)
 {
-  auto s = tcp::socket{io};
-  net::connect(endpoint_, s, yield_);
-
   auto req = http::request<http::string_body>{};
   req.method(http::verb::delete_);
   req.target(target);
   req.version(11);
-  http::async_write(s, req, yield_);
+
+  co_await http::async_write(s, req, asio::use_awaitable);
 
   auto buf  = beast::flat_static_buffer<1024>{};
   auto resp = http::response<http::string_body>{};
-  http::async_read(s, buf, resp, yield_);
+
+  co_await http::async_read(s, buf, resp, asio::use_awaitable);
   assertTrue(resp.result() == http::status::no_content);
 }
 
-static auto readJson(string const& fn)
-{
-  auto doc = json::Document{};
-  auto ifs = ifstream{fn};
-  auto isw = json::IStreamWrapper{ifs};
-  doc.ParseStream(isw);
-  if (doc.HasParseError() || !doc.IsObject()) {
-    cout << "Invalid JSON configuration" << endl;
-    doc = json::Document{};
-    doc.SetObject();
-  }
-  return doc;
-}
+class HttpClient {
+private:
+  template <typename StringRef>
+  Awaitable<void> update(Socket& s, json::Value const& root, StringRef const& category)
+  {
+    auto it = root.FindMember(category);
+    if (it == root.MemberEnd() || !it->value.IsObject()) {
+      std::clog << std::format("{}{} NOT loaded\n", INDENT, category);
+      co_return;
+    }
 
-template <typename StringRef>
-static void loadSet(HttpHelper& helper, json::Value const& root, StringRef const& category)
-{
-  auto it = root.FindMember(category);
-  if (it == root.MemberEnd() || !it->value.IsObject()) {
-    cout << INDENT << category << " NOT loaded" << endl;
-    return;
+    for (auto&& node : it->value.GetObject()) {
+      auto target = std::format("/{}/{}", category, node.name.GetString());
+      if (co_await put(s, target, vo::toString(node.value)) != http::status::no_content)
+        std::clog << std::format("{}{} NOT loaded.\n", INDENT, target);
+    }
   }
 
-  for (auto&& node : it->value.GetObject())
-    helper.put("/"s + category + "/" + node.name.GetString(), vo::toString(node.value));
-}
+  Awaitable<void> reload(ResolveResults const& rr)
+  {
+    std::clog << std::format("Loading configuration {}\n", fn_);
 
-static void load(HttpHelper& helper, string const& fn)
-{
-  if (fn.empty()) return;
-  cout << "Loading configuration: " << fn << endl;
-  auto json = readJson(fn);
-  loadSet(helper, json, INGRESSES);
-  loadSet(helper, json, EGRESSES);
-  loadSet(helper, json, RULES);
-  if (json.HasMember(ROUTE))
-    helper.put("/"s + ROUTE, vo::toString(json[ROUTE]));
-  else
-    cout << INDENT << ROUTE << " NOT loaded" << endl;
-  cout << "Configuration " << fn << " loaded" << endl;
-}
+    auto doc = json::Document{};
+    auto ifs = std::ifstream{fn_};
+    auto isw = json::IStreamWrapper{ifs};
+    doc.ParseStream(isw);
+    if (doc.HasParseError() || !doc.IsObject()) {
+      std::clog << "Invalid JSON configuration\n";
+      co_return;
+    }
+
+    auto sock = Socket{ex_};
+
+    co_await asio::async_connect(sock, rr, asio::use_awaitable);
+    co_await update(sock, doc, INGRESSES);
+    co_await update(sock, doc, EGRESSES);
+    co_await update(sock, doc, RULES);
+    if (doc.HasMember(ROUTE) &&
+        co_await put(sock, std::format("/{}", ROUTE), vo::toString(doc[ROUTE])) !=
+            http::status::no_content)
+      std::clog << std::format("{}{} NOT loaded\n", INDENT, ROUTE);
+
+    std::clog << std::format("Configuration {} loaded\n", fn_);
+  }
+
+  Awaitable<void> flush(ResolveResults const& rr)
+  {
+    auto sock = Socket{ex_};
+
+    co_await asio::async_connect(sock, rr, asio::use_awaitable);
+    co_await put(sock, std::format("/{}/direct", EGRESSES), "{\"type\":\"direct\"}");
+    co_await put(sock, std::format("/{}", ROUTE), "{\"default\":\"direct\",\"rules\":[]}");
+
+    for (auto&& r : co_await get(sock, std::format("/{}", RULES)) |
+                        views::transform([](auto&& member) { return member.name.GetString(); })) {
+      co_await del(sock, std::format("{}/{}", RULES, r));
+    }
+
+    for (auto&& e : co_await get(sock, std::format("/{}", EGRESSES)) |
+                        views::transform([](auto&& member) { return member.name.GetString(); }) |
+                        views::filter([](auto&& e) { return e != "direct"; })) {
+      co_await del(sock, std::format("/{}/{}", EGRESSES, e));
+    }
+
+    for (auto&& i : co_await get(sock, std::format("/{}", INGRESSES)) |
+                        views::transform([](auto&& member) { return member.name.GetString(); })) {
+      co_await del(sock, std::format("{}/{}", INGRESSES, i));
+    }
+
+    std::clog << "Configuration reset.\n";
+  }
+
+public:
+  HttpClient(IOExecutor const& ex, std::string const& fn) : ex_{ex}, fn_{fn} {}
+
+  Awaitable<void> run(std::string_view bind, uint16_t port, std::string_view fn)
+  {
+    if (rngs::empty(fn)) co_return;
+
+    auto rr = co_await asio::ip::tcp::resolver{ex_}
+                  .async_resolve(bind, std::to_string(port), asio::use_awaitable);
+    co_await reload(rr);
 
 #if defined(HAS_SIGNAL_H) && defined(SIGHUP)
-static void flush(HttpHelper& helper)
-{
-  helper.put("/"s + EGRESSES + "/direct", "{\"type\":\"direct\"}"s);
-  helper.put("/"s + ROUTE, "{\"default\":\"direct\",\"rules\":[]}"s);
+    auto ss = asio::signal_set{ex_};
+    while (true) {
+      ss.add(SIGHUP);
 
-  for (auto&& rule : helper.get("/"s + RULES)) helper.del("/"s + RULES + "/" + rule);
-  for (auto&& egress : helper.get("/"s + EGRESSES))
-    if (egress != "direct") helper.del("/"s + EGRESSES + "/" + egress);
-  for (auto&& ingress : helper.get("/"s + INGRESSES)) helper.del("/"s + INGRESSES + "/" + ingress);
-
-  cout << "Configuration reset" << endl;
-}
+      co_await ss.async_wait(asio::use_awaitable);
+      co_await flush(rr);
+      co_await reload(rr);
+    }
 #endif  // defined(HAS_SIGNAL_H) && defined(SIGHUP)
+  }
 
-void run(string const& bind, uint16_t port, string const& fn, string const& mmdb)
+private:
+  IOExecutor  ex_;
+  std::string fn_;
+};
+
+void run(std::string const& bind, uint16_t port, std::string const& fn, std::string const& mmdb)
 {
-  auto ex  = io.get_executor();
-  auto svr = actor::Server{ex};
+  auto io = asio::io_context{};
+  auto ex = io.get_executor();
+
+  auto server = actor::Server{ex};
+  auto client = HttpClient{ex, fn};
 
   if (!mmdb.empty()) asio::use_service<Mmdb>(io).initialize(mmdb);
 
-  asio::co_spawn(ex, svr.serve({asio::ip::make_address(bind), port}), actor::detached);
-
-  // FIXME load & flush aren't designed to be the atomic operations.
-  net::spawn(
-      io,
-      [=](auto yield) {
-        auto resolver = tcp::resolver{io};
-        auto helper   = HttpHelper{resolver.async_resolve(bind, to_string(port), yield), yield};
-        load(helper, fn);
-
-#if defined(HAS_SIGNAL_H) && defined(SIGHUP)
-        auto ss = asio::signal_set{io};
-        while (true) {
-          ss.add(SIGHUP);
-          ss.async_wait(yield);
-          flush(helper);
-          load(helper, fn);
-        }
-#endif  // defined(HAS_SIGNAL_H) && defined(SIGHUP)
-      },
-      [](auto, auto) noexcept { io.stop(); }
-  );
+  asio::co_spawn(io, server.serve({asio::ip::make_address(bind), port}), actor::detached);
+  asio::co_spawn(io, client.run(bind, port, fn), [&](auto eptr) noexcept {
+    if (eptr) {
+      try {
+        std::rethrow_exception(eptr);
+      }
+      catch (std::exception const& e) {
+        std::clog << std::format("ERROR: {}\n", e.what());
+      }
+    }
+    io.stop();
+  });
 
   io.run();
 }

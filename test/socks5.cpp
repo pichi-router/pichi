@@ -6,7 +6,7 @@
 #include <pichi/actor/detached.hpp>
 #include <pichi/adapter/tcp/socks5.hpp>
 #include <pichi/common/endpoint.hpp>
-#include <pichi/net/helper.hpp>
+#include <pichi/common/literals.hpp>
 #include <pichi/stream/test.hpp>
 #include <ranges>
 #include <vector>

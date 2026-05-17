@@ -1,29 +1,33 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
 #include <iostream>
 #include <pichi.h>
-#include <pichi/api/server.hpp>
+#include <pichi/actor/detached.hpp>
+#include <pichi/actor/server.hpp>
 #include <pichi/common/asserts.hpp>
+#include <pichi/common/mmdb.hpp>
 
-using namespace std;
-namespace api = pichi::api;
-namespace asio = boost::asio;
+namespace actor = pichi::actor;
+namespace asio  = boost::asio;
 
-static asio::io_context io{1};
+static asio::io_context io{};
 
 int pichi_run_server(char const* bind, uint16_t port, char const* mmdb)
 {
   try {
     pichi::assertFalse(bind == nullptr);
-    pichi::assertFalse(mmdb == nullptr);
-    auto server = api::Server{io, mmdb};
-    server.listen(bind, port);
+
+    if (mmdb != nullptr) asio::use_service<pichi::Mmdb>(io).initialize(mmdb);
+
+    auto server = actor::Server{io.get_executor()};
+    asio::co_spawn(io, server.serve({asio::ip::make_address(bind), port}), actor::detached);
+
     io.run();
     return 0;
   }
-  catch (exception const& e) {
-    cout << "ERROR: " << e.what() << endl;
+  catch (std::exception const& e) {
+    std::clog << std::format("ERROR: {}\n", e.what());
     return -1;
   }
 }
