@@ -1,5 +1,4 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
@@ -10,16 +9,15 @@
 #endif  // TRANSPARENT
 #endif  // _MSC_VER
 
-using namespace std;
 namespace json  = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {
 
-template <> string parse(json::Value const& v)
+template <> std::string parse(json::Value const& v)
 {
   assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto ret = string{v.GetString()};
+  auto ret = std::string{v.GetString()};
   assertFalse(ret.empty(), PichiError::BAD_JSON, msg::STR_EMPTY);
   return ret;
 }
@@ -33,7 +31,7 @@ template <> bool parse(json::Value const& v)
 template <> DelayMode parse(json::Value const& v)
 {
   assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
+  auto str = std::string_view{v.GetString()};
   if (str == delay::RANDOM) return DelayMode::RANDOM;
   if (str == delay::FIXED) return DelayMode::FIXED;
   fail(PichiError::BAD_JSON, msg::DM_INVALID);
@@ -42,7 +40,7 @@ template <> DelayMode parse(json::Value const& v)
 template <> AdapterType parse(json::Value const& v)
 {
   assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
+  auto str = std::string_view{v.GetString()};
   if (str == type::DIRECT) return AdapterType::DIRECT;
   if (str == type::REJECT) return AdapterType::REJECT;
   if (str == type::SOCKS5) return AdapterType::SOCKS5;
@@ -52,13 +50,14 @@ template <> AdapterType parse(json::Value const& v)
   if (str == type::TROJAN) return AdapterType::TROJAN;
   if (str == type::VMESS) return AdapterType::VMESS;
   if (str == type::TRANSPARENT) return AdapterType::TRANSPARENT;
+  if (str == type::DUAL) return AdapterType::DUAL;
   fail(PichiError::BAD_JSON, msg::AT_INVALID);
 }
 
 template <> CryptoMethod parse(json::Value const& v)
 {
   assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
+  auto str = std::string_view{v.GetString()};
   if (str == method::RC4_MD5) return CryptoMethod::RC4_MD5;
   if (str == method::BF_CFB) return CryptoMethod::BF_CFB;
   if (str == method::AES_128_CTR) return CryptoMethod::AES_128_CTR;
@@ -84,7 +83,7 @@ template <> CryptoMethod parse(json::Value const& v)
 template <> BalanceType parse(json::Value const& v)
 {
   assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
+  auto str = std::string_view{v.GetString()};
   if (str == balance::RANDOM) return BalanceType::RANDOM;
   if (str == balance::ROUND_ROBIN) return BalanceType::ROUND_ROBIN;
   if (str == balance::LEAST_CONN) return BalanceType::LEAST_CONN;
@@ -94,7 +93,7 @@ template <> BalanceType parse(json::Value const& v)
 template <> VMessSecurity parse(json::Value const& v)
 {
   assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
-  auto str = string_view{v.GetString()};
+  auto str = std::string_view{v.GetString()};
   if (str == security::AUTO) return VMessSecurity::AUTO;
   if (str == security::NONE) return VMessSecurity::NONE;
   if (str == security::CHACHA20_IETF_POLY1305) return VMessSecurity::CHACHA20_IETF_POLY1305;
@@ -106,8 +105,16 @@ template <> uint16_t parse(json::Value const& v)
 {
   assertTrue(v.IsInt(), PichiError::BAD_JSON, msg::INT_TYPE_ERROR);
   auto uint16 = v.GetInt();
-  assertTrue(uint16 >= numeric_limits<uint16_t>::min(), PichiError::BAD_JSON, msg::UINT16_INVALID);
-  assertTrue(uint16 <= numeric_limits<uint16_t>::max(), PichiError::BAD_JSON, msg::UINT16_INVALID);
+  assertTrue(
+      uint16 >= std::numeric_limits<uint16_t>::min(),
+      PichiError::BAD_JSON,
+      msg::UINT16_INVALID
+  );
+  assertTrue(
+      uint16 <= std::numeric_limits<uint16_t>::max(),
+      PichiError::BAD_JSON,
+      msg::UINT16_INVALID
+  );
   return static_cast<uint16_t>(uint16);
 }
 
@@ -116,24 +123,24 @@ template <> Endpoint parse(json::Value const& v)
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   assertTrue(v.HasMember(endpoint::HOST), PichiError::BAD_JSON, msg::MISSING_HOST_FIELD);
   assertTrue(v.HasMember(endpoint::PORT), PichiError::BAD_JSON, msg::MISSING_PORT_FIELD);
-  return makeEndpoint(parse<string>(v[endpoint::HOST]), parse<uint16_t>(v[endpoint::PORT]));
+  return makeEndpoint(parse<std::string>(v[endpoint::HOST]), parse<uint16_t>(v[endpoint::PORT]));
 }
 
-string parseNameOrPassword(json::Value const& v)
+std::string parseNameOrPassword(json::Value const& v)
 {
-  auto ret = parse<string>(v);
+  auto ret = parse<std::string>(v);
   assertTrue(ret.size() < 256, PichiError::BAD_JSON, msg::TOO_LONG_NAME_PASSWORD);
   return ret;
 }
 
-vector<Endpoint> parseDestinantions(json::Value const& v)
+std::vector<Endpoint> parseDestinantions(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   assertFalse(v.MemberCount() == 0, PichiError::BAD_JSON);
 
-  auto ret = vector<Endpoint>{};
+  auto ret = std::vector<Endpoint>{};
   transform(v.MemberBegin(), v.MemberEnd(), back_inserter(ret), [](auto&& item) {
-    return makeEndpoint(parse<string>(item.name), parse<uint16_t>(item.value));
+    return makeEndpoint(parse<std::string>(item.name), parse<uint16_t>(item.value));
   });
   return ret;
 }

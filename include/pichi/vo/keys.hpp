@@ -20,6 +20,7 @@ inline decltype(auto) TUNNEL      = "tunnel";
 inline decltype(auto) TROJAN      = "trojan";
 inline decltype(auto) VMESS       = "vmess";
 inline decltype(auto) TRANSPARENT = "transparent";
+inline decltype(auto) DUAL        = "dual";
 
 }  // namespace type
 

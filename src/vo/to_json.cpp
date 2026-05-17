@@ -1,5 +1,4 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/enumerations.hpp>
 #include <pichi/vo/keys.hpp>
@@ -7,20 +6,19 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
-using namespace std;
-namespace json = rapidjson;
+namespace json  = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {
 
-json::Value portToJson(string const& port)
+json::Value portToJson(std::string const& port)
 {
   auto p = std::stoi(port);
   assertTrue(p > 0 && p <= std::numeric_limits<uint16_t>::max());
   return json::Value{p};
 }
 
-json::Value toJson(string_view str, Allocator& alloc)
+json::Value toJson(std::string_view str, Allocator& alloc)
 {
   auto ret = json::Value{};
   ret.SetString(str.data(), static_cast<json::SizeType>(str.size()), alloc);
@@ -60,6 +58,8 @@ json::Value toJson(AdapterType type, Allocator& alloc)
     return toJson(type::VMESS, alloc);
   case AdapterType::TRANSPARENT:
     return toJson(type::TRANSPARENT, alloc);
+  case AdapterType::DUAL:
+    return toJson(type::DUAL, alloc);
   default:
     fail();
   }
@@ -149,9 +149,9 @@ json::Value toJson(Endpoint const& endpoint, Allocator& alloc)
   return ret;
 }
 
-string toString(json::Value const& v)
+std::string toString(json::Value const& v)
 {
-  auto buf = json::StringBuffer{};
+  auto buf    = json::StringBuffer{};
   auto writer = json::Writer<json::StringBuffer>{buf};
   v.Accept(writer);
   return buf.GetString();
