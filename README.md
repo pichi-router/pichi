@@ -429,9 +429,8 @@ Please refer to the [folder](schemas/examples) to find more examples.
 ### Requirements
 
 * C++17
-* [Boost](https://www.boost.org) 1.72.0
-* [MbedTLS](https://tls.mbed.org) 2.7.0
-* [libsodium](https://libsodium.org) 1.0.12
+* [Boost](https://www.boost.org) 1.77.0
+* [Botan3](https://botan.randombit.net/) 3.5.0
 * [RapidJSON](http://rapidjson.org/) 1.1.0
 * [libmaxminddb](http://maxmind.github.io/libmaxminddb/) 1.3.0
 * one of the following TLS libraries

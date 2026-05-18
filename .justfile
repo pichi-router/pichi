@@ -30,8 +30,8 @@ _execute command *recipes:
   @{{ \
     if recipes == "" { \
       just + " _rec-exec " + command + \
-        " pichi boost boringssl brotli libmaxminddb libsodium mbedtls openssl rapidjson" \
-    } else { \
+        " pichi boost boringssl botan brotli libmaxminddb openssl rapidjson" \
+        } else { \
       just + " _rec-exec " + command + " " + recipes \
     } \
   }}
@@ -195,7 +195,6 @@ _build *args:
     -o "boost/*:without_url=True" \
     -o "boost/*:without_wave=True" \
     -o "boost/*:zlib=False" \
-    -o "mbedtls/*:with_zlib=False" \
     -o "openssl/*:no_apps=True" \
     -o "openssl/*:no_zlib=True" \
     {{args}} \
@@ -208,7 +207,6 @@ _build-host build_type shared fingerprint transparent=default_transparent versio
           "-o" "boringssl/*:shared=" + shared \
           "-o" "brotli/*:shared=" + shared \
           "-o" "libmaxminddb/*:shared=" + shared \
-          "-o" "mbedtls/*:shared=" + (if os() == "windows" { "False" } else { shared }) \
           "-o" "openssl/*:shared=" + shared \
           "-o" "rapidjson/*:shared=" + shared \
           "-o" "pichi/*:shared=" + shared \
