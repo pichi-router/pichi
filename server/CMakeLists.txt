@@ -3,7 +3,7 @@ set(SERVER pichi)
 add_executable(${SERVER} main.cpp run.cpp)
 
 target_link_libraries(${SERVER} PRIVATE ${PICHI_LIBRARY}
-  ${COMMON_LIBRARIES} Boost::program_options Boost::filesystem)
+  ${COMMON_LIBRARIES} Boost::program_options)
 set_target_properties(${SERVER} PROPERTIES
   INSTALL_RPATH ${RPATH}
   MSVC_RUNTIME_LIBRARY ${MSVC_CRT}

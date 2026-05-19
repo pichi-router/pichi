@@ -23,9 +23,7 @@ endmacro()
 function(patch_target target)
   # These dependencies lack sufficient RPATH information within the Conan directory hierarchy.
 
-  if(target STREQUAL "Boost::filesystem")
-    set(dep CONAN_LIB::boost_Boost_filesystem_boost_filesystem)
-  elseif(target STREQUAL "OpenSSL::SSL")
+  if(target STREQUAL "OpenSSL::SSL")
     set(dep CONAN_LIB::openssl_OpenSSL_SSL_ssl)
   elseif(target STREQUAL "BoringSSL::SSL")
     set(dep CONAN_LIB::boringssl_BoringSSL_SSL_ssl)
@@ -49,7 +47,7 @@ endfunction()
 list(APPEND BOOST_COMPONENTS context)
 
 if(BUILD_SERVER)
-  list(APPEND BOOST_COMPONENTS filesystem program_options)
+  list(APPEND BOOST_COMPONENTS program_options)
 endif()
 
 if(BUILD_TEST)
@@ -140,7 +138,4 @@ endif()
 
 if(ENABLE_LINK_PATH AND NOT APPLE)
   patch_target(${SSL_LIB}::SSL)
-  if(BUILD_SERVER)
-    patch_target(Boost::filesystem)
-  endif()
 endif()

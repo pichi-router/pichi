@@ -164,7 +164,6 @@ detect-android ndk_ver:
 _build *args:
   @conan create -b missing -l "{{lockfile}}" --lockfile-partial \
     -o "boost/*:asio_no_deprecated=True" \
-    -o "boost/*:filesystem_no_deprecated=True" \
     -o "boost/*:bzip2=False" \
     -o "boost/*:system_no_deprecated=True" \
     -o "boost/*:without_charconv=True" \
@@ -174,6 +173,7 @@ _build *args:
     -o "boost/*:without_coroutine=True" \
     -o "boost/*:without_date_time=True" \
     -o "boost/*:without_fiber=True" \
+    -o "boost/*:without_filesystem=True" \
     -o "boost/*:without_graph=True" \
     -o "boost/*:without_graph_parallel=True" \
     -o "boost/*:without_iostreams=True" \
@@ -252,7 +252,6 @@ _build-cross build_type fingerprint version *extra_args: \
           "-o" "pichi/*:build_test=False" \
           "-o" "boost/*:without_atomic=True" \
           "-o" "boost/*:without_exception=True" \
-          "-o" "boost/*:without_filesystem=True" \
           "-o" "boost/*:without_program_options=True" \
           "-o" "boost/*:without_system=True" \
           "-o" "boost/*:without_test=True" \

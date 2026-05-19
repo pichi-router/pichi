@@ -10,7 +10,6 @@
 #include <boost/beast/http/status.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/beast/http/write.hpp>
-#include <boost/filesystem/path.hpp>
 #include <exception>
 #include <fstream>
 #include <iostream>
