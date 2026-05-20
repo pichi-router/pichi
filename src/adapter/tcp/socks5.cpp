@@ -210,16 +210,17 @@ template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Ingress<NextLayer>
   co_await redirect(stream::close(underlying_));
 }
 
-template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> Socks5Ingress<NextLayer>::read_remote()
+template <stream::AsyncLayer NextLayer>
+Awaitable<Endpoint> Socks5Ingress<NextLayer>::continue_read_remote(ConstBuffer b)
 {
-  co_await stream::accept(underlying_);
+  assertTrue(rngs::size(b) == 1);
+  assertTrue(b[0] == 0x05_u8, PichiError::BAD_PROTO);
 
   auto buf = std::array<uint8_t, 512>{};
-  co_await stream::read(underlying_, {buf, 2});
-  assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
-  assertTrue(buf[1] > 0, PichiError::BAD_PROTO);
+  co_await stream::read(underlying_, {buf, 1});
+  assertTrue(buf[0] > 0, PichiError::BAD_PROTO);
 
-  auto len = buf[1];
+  auto len = buf[0];
   co_await stream::read(underlying_, {buf, len});
 
   auto m = credential_.need_auth() ? 0x02_u8 : 0x00_u8;
@@ -241,6 +242,15 @@ template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> Socks5Ingress<NextLa
   co_return co_await parse_endpoint([this](auto buf) -> Awaitable<void> {
     co_await stream::read(underlying_, buf);
   });
+}
+
+template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> Socks5Ingress<NextLayer>::read_remote()
+{
+  co_await stream::accept(underlying_);
+
+  auto buf = std::array<uint8_t, 1>{};
+  co_await stream::read(underlying_, buf);
+  co_return co_await continue_read_remote(buf);
 }
 
 template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Ingress<NextLayer>::confirm()

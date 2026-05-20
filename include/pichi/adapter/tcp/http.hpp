@@ -83,6 +83,8 @@ public:
   Awaitable<void>     confirm();
   Awaitable<void>     disconnect(boost::system::error_code const&);
 
+  Awaitable<Endpoint> continue_read_remote(ConstBuffer);
+
 private:
   NextLayer underlying_;
   Manner    manner_;
