@@ -65,11 +65,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Correct_Stream)
     co_await stream::close(client);
 
     BOOST_CHECK(CORRECT_EP == co_await ingress.read_remote());
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.recv(buf),
-        SystemError,
-        verify_exception<asio::error::eof>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.recv(buf), SystemError, verify_exception<asio::error::eof>);
   });
 }
 
@@ -292,11 +288,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Stream_Separated_From_Trojan_Request)
     co_await stream::close(client);
 
     BOOST_CHECK(CORRECT_EP == co_await ingress.read_remote());
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.recv(buf),
-        SystemError,
-        verify_exception<asio::error::eof>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.recv(buf), SystemError, verify_exception<asio::error::eof>);
   });
 }
 

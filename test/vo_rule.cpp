@@ -43,25 +43,31 @@ BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
 BOOST_AUTO_TEST_CASE(parse_Rule_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>("not a json"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>("[\"not a json object\"]"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Rule>("not a json"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Rule>("[\"not a json object\"]"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule)
 {
   auto const expect = vo::Rule{};
-  auto fact = parse<vo::Rule>(toString(expect));
+  auto       fact   = parse<vo::Rule>(toString(expect));
   BOOST_CHECK(fact == expect);
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Fields)
 {
-  auto const origin = vo::Rule{};
-  auto generate = [](auto&& key, auto&& value) {
+  auto const origin   = vo::Rule{};
+  auto       generate = [](auto&& key, auto&& value) {
     auto expect = Document{};
-    auto array = Value{};
+    auto array  = Value{};
     expect.SetObject();
     expect.AddMember(key, array.SetArray().PushBack(toJson(value, alloc), alloc), alloc);
     return toString(expect);
@@ -105,28 +111,43 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Empty_Fields_Content)
 
   auto range = origin;
   range.range_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(range)), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Rule>(toString(range)),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 
   auto ingress = origin;
   ingress.ingress_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(ingress)), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Rule>(toString(ingress)),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 
   auto pattern = origin;
   pattern.pattern_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(pattern)), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Rule>(toString(pattern)),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 
   auto domain = origin;
   domain.domain_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(domain)), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Rule>(toString(domain)),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 
   auto country = origin;
   country.country_.emplace_back("");
-  BOOST_CHECK_EXCEPTION(parse<vo::Rule>(toString(country)), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Rule>(toString(country)),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(parse_Rule_With_Superfluous_Field)
@@ -137,7 +158,7 @@ BOOST_AUTO_TEST_CASE(parse_Rule_With_Superfluous_Field)
 BOOST_AUTO_TEST_CASE(toJson_Rule_Without_Fields)
 {
   auto const origin = vo::Rule{};
-  auto fact = toJson(origin, alloc);
+  auto       fact   = toJson(origin, alloc);
 
   auto expect = Value{};
   expect.SetObject();
@@ -149,7 +170,7 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_With_Fields)
 {
   auto generate = [](auto&& key, auto&& value) {
     auto expect = Value{};
-    auto array = Value{};
+    auto array  = Value{};
     expect.SetObject();
     expect.AddMember(key, array.SetArray().PushBack(toJson(value, alloc), alloc), alloc);
     return expect;
@@ -188,14 +209,19 @@ BOOST_AUTO_TEST_CASE(toJson_Rule_Empty_Pack)
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack_Empty_Name)
 {
-  auto src = unordered_map<string, vo::Rule>{{"", {}}};
-  BOOST_CHECK_EXCEPTION(toJson(begin(src), end(src), alloc), SystemError,
-                        verifyException<PichiError::MISC>);
+  auto src = unordered_map<string, vo::Rule>{
+      {"", {}}
+  };
+  BOOST_CHECK_EXCEPTION(
+      toJson(begin(src), end(src), alloc),
+      SystemError,
+      verify_exception<PichiError::MISC>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Rule_Pack)
 {
-  auto src = unordered_map<string, vo::Rule>{};
+  auto src    = unordered_map<string, vo::Rule>{};
   auto expect = Value{};
   expect.SetObject();
   for (auto i = 0; i < 10; ++i) {

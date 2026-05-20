@@ -82,11 +82,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Handshake_Invalid_Version)
       auto client  = TestSocket{ex};
       auto ingress = Ingress{{}, client.peer()};
       co_await stream::write(client, hdk);
-      BOOST_CHECK_EXCEPTION(
-          co_await ingress.read_remote(),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_PROTO>);
     };
   });
 }
@@ -102,11 +98,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Handshake_Zero_Method)
         0x00_u8,  // N-methods
     };
     co_await stream::write(client, buf);
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.read_remote(),
-        SystemError,
-        verifyException<PichiError::BAD_PROTO>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_PROTO>);
   });
 }
 
@@ -123,11 +115,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Handshake_Without_Acceptable_Method)
     buf.insert(rngs::end(buf), rngs::begin(ms), rngs::end(ms));
 
     co_await stream::write(client, buf);
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.read_remote(),
-        SystemError,
-        verifyException<PichiError::BAD_AUTH_METHOD>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_AUTH_METHOD>);
   });
 }
 
@@ -144,11 +132,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Handshake_Without_Acceptable_Method_Cre
     buf.insert(rngs::end(buf), rngs::begin(ms), rngs::end(ms));
 
     co_await stream::write(client, buf);
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.read_remote(),
-        SystemError,
-        verifyException<PichiError::BAD_AUTH_METHOD>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_AUTH_METHOD>);
   });
 }
 
@@ -203,11 +187,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Invalid_Version)
       auto client  = TestSocket{ex};
       auto ingress = Ingress{IVO_AUTH, client.peer()};
       co_await stream::write(client, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await ingress.read_remote(),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
       BOOST_CHECK_EQUAL(2, co_await stream::read_some(client, buf));
       BOOST_CHECK_EQUAL(0x05, buf[0]);
@@ -232,11 +212,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Empty_Username)
     auto client  = TestSocket{ex};
     auto ingress = Ingress{IVO_AUTH, client.peer()};
     co_await stream::write(client, buf);
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.read_remote(),
-        SystemError,
-        verifyException<PichiError::BAD_PROTO>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
     BOOST_CHECK_EQUAL(2, co_await stream::read_some(client, buf));
     BOOST_CHECK_EQUAL(0x05, buf[0]);
@@ -260,11 +236,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Empty_Password)
     auto client  = TestSocket{ex};
     auto ingress = Ingress{IVO_AUTH, client.peer()};
     co_await stream::write(client, buf);
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.read_remote(),
-        SystemError,
-        verifyException<PichiError::BAD_PROTO>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
     BOOST_CHECK_EQUAL(2, co_await stream::read_some(client, buf));
     BOOST_CHECK_EQUAL(0x05, buf[0]);
@@ -289,11 +261,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Nonexisting_User)
     auto client  = TestSocket{ex};
     auto ingress = Ingress{IVO_AUTH, client.peer()};
     co_await stream::write(client, buf);
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.read_remote(),
-        SystemError,
-        verifyException<PichiError::UNAUTHENTICATED>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::UNAUTHENTICATED>);
 
     BOOST_CHECK_EQUAL(2, co_await stream::read_some(client, buf));
     BOOST_CHECK_EQUAL(0x05, buf[0]);
@@ -318,11 +286,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Incorrect_Password)
     auto client  = TestSocket{ex};
     auto ingress = Ingress{IVO_AUTH, client.peer()};
     co_await stream::write(client, buf);
-    BOOST_CHECK_EXCEPTION(
-        co_await ingress.read_remote(),
-        SystemError,
-        verifyException<PichiError::UNAUTHENTICATED>
-    );
+    BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::UNAUTHENTICATED>);
 
     BOOST_CHECK_EQUAL(2, co_await stream::read_some(client, buf));
     BOOST_CHECK_EQUAL(0x05, buf[0]);
@@ -345,11 +309,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Request_With_Invalid_Version)
 
       co_await stream::write(client, CLIENT_HDK);
       co_await stream::write(client, req);
-      BOOST_CHECK_EXCEPTION(
-          co_await ingress.read_remote(),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
       auto buf = std::array<uint8_t, 64>{};
       BOOST_CHECK_EQUAL(2, co_await stream::read_some(client, buf));
@@ -374,11 +334,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Request_With_Invalid_CMD)
 
       co_await stream::write(client, CLIENT_HDK);
       co_await stream::write(client, req);
-      BOOST_CHECK_EXCEPTION(
-          co_await ingress.read_remote(),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
       auto buf = std::array<uint8_t, 64>{};
       BOOST_CHECK_EQUAL(2, co_await stream::read_some(client, buf));
@@ -402,11 +358,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Request_With_Invalid_RSV)
 
       co_await stream::write(client, CLIENT_HDK);
       co_await stream::write(client, req);
-      BOOST_CHECK_EXCEPTION(
-          co_await ingress.read_remote(),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await ingress.read_remote(), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
       auto buf = std::array<uint8_t, 64>{};
       BOOST_CHECK_EQUAL(2, co_await stream::read_some(client, buf));
@@ -485,11 +437,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Handshake_Invalid_Version)
       auto egress = Egress{{}, server.peer()};
 
       co_await stream::write(server, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await egress.connect({}),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await egress.connect({}), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
       auto req = std::array<uint8_t, 64>{};
       BOOST_CHECK_EQUAL(3, co_await stream::read_some(server, req));
@@ -514,11 +462,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Handshake_Without_Acceptable_Method)
       auto egress = Egress{{}, server.peer()};
 
       co_await stream::write(server, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await egress.connect({}),
-          SystemError,
-          verifyException<PichiError::BAD_AUTH_METHOD>
-      );
+      BOOST_CHECK_EXCEPTION(co_await egress.connect({}), SystemError, verify_exception<PichiError::BAD_AUTH_METHOD>);
 
       auto req = std::array<uint8_t, 64>{};
       BOOST_CHECK_EQUAL(3, co_await stream::read_some(server, req));
@@ -544,11 +488,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Handshake_Without_Acceptable_Method_Credenti
       auto egress = Egress{EVO_AUTH, server.peer()};
 
       co_await stream::write(server, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await egress.connect({}),
-          SystemError,
-          verifyException<PichiError::BAD_AUTH_METHOD>
-      );
+      BOOST_CHECK_EXCEPTION(co_await egress.connect({}), SystemError, verify_exception<PichiError::BAD_AUTH_METHOD>);
 
       auto req = std::array<uint8_t, 64>{};
       BOOST_CHECK_EQUAL(3, co_await stream::read_some(server, req));
@@ -576,11 +516,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Authentication_With_Invalid_Version)
       auto egress = Egress{EVO_AUTH, server.peer()};
 
       co_await stream::write(server, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await egress.connect({}),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await egress.connect({}), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
       auto req = std::array<uint8_t, 64>{};
 
@@ -615,11 +551,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Authentication_Failed)
       auto egress = Egress{EVO_AUTH, server.peer()};
 
       co_await stream::write(server, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await egress.connect({}),
-          SystemError,
-          verifyException<PichiError::UNAUTHENTICATED>
-      );
+      BOOST_CHECK_EXCEPTION(co_await egress.connect({}), SystemError, verify_exception<PichiError::UNAUTHENTICATED>);
 
       auto req = std::array<uint8_t, 64>{};
 
@@ -656,11 +588,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Reply_With_Invalid_Version)
       auto egress = Egress{{}, server.peer()};
 
       co_await stream::write(server, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await egress.connect(ENDPOINT),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await egress.connect(ENDPOINT), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
       auto data = std::array<uint8_t, 64>{};
 
@@ -705,11 +633,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Reply_Connection_Failure)
       auto egress = Egress{{}, server.peer()};
 
       co_await stream::write(server, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await egress.connect(ENDPOINT),
-          SystemError,
-          verifyException<PichiError::CONN_FAILURE>
-      );
+      BOOST_CHECK_EXCEPTION(co_await egress.connect(ENDPOINT), SystemError, verify_exception<PichiError::CONN_FAILURE>);
 
       auto data = std::array<uint8_t, 64>{};
 
@@ -754,11 +678,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Reply_With_Invalid_RSV)
       auto egress = Egress{{}, server.peer()};
 
       co_await stream::write(server, buf);
-      BOOST_CHECK_EXCEPTION(
-          co_await egress.connect(ENDPOINT),
-          SystemError,
-          verifyException<PichiError::BAD_PROTO>
-      );
+      BOOST_CHECK_EXCEPTION(co_await egress.connect(ENDPOINT), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
       auto data = std::array<uint8_t, 64>{};
 
@@ -804,11 +724,7 @@ BOOST_AUTO_TEST_CASE(Egress_connect_Reply_Invalid_Endpoint)
         }
     );
 
-    BOOST_CHECK_EXCEPTION(
-        co_await egress.connect(ENDPOINT),
-        SystemError,
-        verifyException<PichiError::BAD_PROTO>
-    );
+    BOOST_CHECK_EXCEPTION(co_await egress.connect(ENDPOINT), SystemError, verify_exception<PichiError::BAD_PROTO>);
 
     auto data = std::array<uint8_t, 64>{};
 

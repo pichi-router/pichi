@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE(parse_Uint16_Incorrect_Type)
     BOOST_CHECK_EXCEPTION(
         vo::parse<uint16_t>(v),
         SystemError,
-        verifyException<PichiError::BAD_JSON>
+        verify_exception<PichiError::BAD_JSON>
     );
   }
 }
@@ -211,12 +211,12 @@ BOOST_AUTO_TEST_CASE(parse_Uint16_Out_Of_Range)
   BOOST_CHECK_EXCEPTION(
       vo::parse<uint16_t>(Value{-1}),
       SystemError,
-      verifyException<PichiError::BAD_JSON>
+      verify_exception<PichiError::BAD_JSON>
   );
   BOOST_CHECK_EXCEPTION(
       vo::parse<uint16_t>(Value{static_cast<uint32_t>(numeric_limits<uint16_t>::max()) + 1}),
       SystemError,
-      verifyException<PichiError::BAD_JSON>
+      verify_exception<PichiError::BAD_JSON>
   );
 }
 
@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_CASE(parseNameOrPassword_Length_Out_Of_Range)
   BOOST_CHECK_EXCEPTION(
       vo::parseNameOrPassword(createValue(s)),
       SystemError,
-      verifyException<PichiError::BAD_JSON>
+      verify_exception<PichiError::BAD_JSON>
   );
 }
 
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(parseDestinantions_Incorrect_Type)
     BOOST_CHECK_EXCEPTION(
         vo::parseDestinantions(v),
         SystemError,
-        verifyException<PichiError::BAD_JSON>
+        verify_exception<PichiError::BAD_JSON>
     );
   }
 }
@@ -269,7 +269,7 @@ BOOST_AUTO_TEST_CASE(parseDestinantions_Empty_Object)
   BOOST_CHECK_EXCEPTION(
       vo::parseDestinantions(Value{kObjectType}),
       SystemError,
-      verifyException<PichiError::BAD_JSON>
+      verify_exception<PichiError::BAD_JSON>
   );
 }
 
@@ -281,7 +281,7 @@ BOOST_AUTO_TEST_CASE(parseDestinations_Incorrect_Port_Type)
     BOOST_CHECK_EXCEPTION(
         vo::parseDestinantions(json),
         SystemError,
-        verifyException<PichiError::BAD_JSON>
+        verify_exception<PichiError::BAD_JSON>
     );
   }
 }

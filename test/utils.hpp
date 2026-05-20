@@ -6,6 +6,8 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/beast/http/error.hpp>
 #include <boost/test/unit_test.hpp>
+#include <format>
+#include <iostream>
 #include <pichi/common/error.hpp>
 #include <string_view>
 
@@ -34,6 +36,7 @@ template <boost::beast::http::error error> bool verify_exception(SystemError con
 
 template <boost::asio::error::misc_errors error> auto verify_exception(SystemError const& e)
 {
+  std::cout << std::format("E: {}\n", e.what());
   return e.code() == error;
 }
 
@@ -49,22 +52,6 @@ template <typename TestCase> void run_case(TestCase&& test)
       }
   );
   pool.join();
-}
-
-template <PichiError error> bool verifyException(SystemError const& e) { return e.code() == error; }
-
-template <boost::asio::error::basic_errors error> bool verifyException(SystemError const& e)
-{
-  return e.code() == error;
-}
-
-template <boost::beast::http::error error> bool verifyException(SystemError const& e)
-{
-  auto expect = boost::beast::http::make_error_code(error);
-  auto fact   = e.code();
-  // FIXME http_error_category equivalence is failed on Windows shared mode
-  return expect.value() == fact.value() &&
-         std::string_view{expect.category().name()} == std::string_view{fact.category().name()};
 }
 
 }  // namespace pichi::unit_test

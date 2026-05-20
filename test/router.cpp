@@ -180,12 +180,12 @@ BOOST_AUTO_TEST_CASE(Router_Router_Bad_Input)
   BOOST_CHECK_EXCEPTION(
       actor::Router(ex, {}, RULES, ROUTE),
       SystemError,
-      verifyException<PichiError::MISC>
+      verify_exception<PichiError::MISC>
   );
   BOOST_CHECK_EXCEPTION(
       actor::Router(ex, EGRESSES, {}, ROUTE),
       SystemError,
-      verifyException<PichiError::MISC>
+      verify_exception<PichiError::MISC>
   );
   BOOST_CHECK_THROW(actor::Router(ex, EGRESSES, RULES, {}), std::out_of_range);
 }

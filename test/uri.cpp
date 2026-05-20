@@ -12,12 +12,21 @@ BOOST_AUTO_TEST_SUITE(URI)
 
 BOOST_AUTO_TEST_CASE(Uri_Bad_Scheme)
 {
-  BOOST_CHECK_EXCEPTION(Uri{"ws://localhost/"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"wss://localhost/"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"unknown://localhost/"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(
+      Uri{"ws://localhost/"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
+  BOOST_CHECK_EXCEPTION(
+      Uri{"wss://localhost/"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
+  BOOST_CHECK_EXCEPTION(
+      Uri{"unknown://localhost/"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(Uri_Scheme)
@@ -31,10 +40,10 @@ BOOST_AUTO_TEST_CASE(Uri_Scheme)
 
 BOOST_AUTO_TEST_CASE(Uri_Empty_Host)
 {
-  BOOST_CHECK_EXCEPTION(Uri{"http:///"}, SystemError, verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"http://:80/"}, SystemError, verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"http://[]/"}, SystemError, verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"http://[]:80/"}, SystemError, verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(Uri{"http:///"}, SystemError, verify_exception<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(Uri{"http://:80/"}, SystemError, verify_exception<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(Uri{"http://[]/"}, SystemError, verify_exception<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(Uri{"http://[]:80/"}, SystemError, verify_exception<PichiError::BAD_PROTO>);
 }
 
 BOOST_AUTO_TEST_CASE(Uri_Host)
@@ -62,12 +71,21 @@ BOOST_AUTO_TEST_CASE(Uri_Host_IPv6)
 
 BOOST_AUTO_TEST_CASE(Uri_Bad_Port_Field)
 {
-  BOOST_CHECK_EXCEPTION(Uri{"http://localhost:/"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"http://localhost:alpha/"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"http://localhost:%/"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(
+      Uri{"http://localhost:/"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
+  BOOST_CHECK_EXCEPTION(
+      Uri{"http://localhost:alpha/"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
+  BOOST_CHECK_EXCEPTION(
+      Uri{"http://localhost:%/"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(Uri_Omit_Port)
@@ -149,14 +167,26 @@ BOOST_AUTO_TEST_CASE(Uri_With_Query_And_Fragment)
 
 BOOST_AUTO_TEST_CASE(Uri_Empty_Path_Without_Query)
 {
-  BOOST_CHECK_EXCEPTION(Uri{"http://localhost?query"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"http://localhost#fragment"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"http://localhost?query#fragment"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(Uri{"http://localhost#fragment?query"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(
+      Uri{"http://localhost?query"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
+  BOOST_CHECK_EXCEPTION(
+      Uri{"http://localhost#fragment"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
+  BOOST_CHECK_EXCEPTION(
+      Uri{"http://localhost?query#fragment"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
+  BOOST_CHECK_EXCEPTION(
+      Uri{"http://localhost#fragment?query"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(Uri_Capital_Scheme)
@@ -172,10 +202,10 @@ BOOST_AUTO_TEST_CASE(Uri_Capital_Scheme)
 
 BOOST_AUTO_TEST_CASE(HostAndPort_Empty_Host)
 {
-  BOOST_CHECK_EXCEPTION(HostAndPort{""}, SystemError, verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(HostAndPort{"[]"}, SystemError, verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(HostAndPort{":80"}, SystemError, verifyException<PichiError::BAD_PROTO>);
-  BOOST_CHECK_EXCEPTION(HostAndPort{"[]:80"}, SystemError, verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(HostAndPort{""}, SystemError, verify_exception<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(HostAndPort{"[]"}, SystemError, verify_exception<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(HostAndPort{":80"}, SystemError, verify_exception<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(HostAndPort{"[]:80"}, SystemError, verify_exception<PichiError::BAD_PROTO>);
 }
 
 BOOST_AUTO_TEST_CASE(HostAndPort_Missing_Port)
@@ -195,8 +225,11 @@ BOOST_AUTO_TEST_CASE(HostAndPort_Missing_Port)
 
 BOOST_AUTO_TEST_CASE(HostAndPort_Alpha_Port)
 {
-  BOOST_CHECK_EXCEPTION(HostAndPort{"localhost:http"}, SystemError,
-                        verifyException<PichiError::BAD_PROTO>);
+  BOOST_CHECK_EXCEPTION(
+      HostAndPort{"localhost:http"},
+      SystemError,
+      verify_exception<PichiError::BAD_PROTO>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(HostAndPort_Normal)

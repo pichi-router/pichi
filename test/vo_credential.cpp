@@ -7,7 +7,6 @@
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
-#include <unordered_map>
 
 using namespace std;
 using namespace rapidjson;
@@ -20,43 +19,58 @@ using namespace pichi::vo;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Credential_Normal_Case, Credential, AllCredentials)
 {
-  BOOST_CHECK(parse<Credential>(defaultCredentialJson<Credential>()) ==
-              defaultCredential<Credential>());
+  BOOST_CHECK(
+      parse<Credential>(defaultCredentialJson<Credential>()) == defaultCredential<Credential>()
+  );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Credential_Normal_Case, Credential, AllCredentials)
 {
-  BOOST_CHECK(toJson(defaultCredential<Credential>(), alloc) ==
-              defaultCredentialJson<Credential>());
+  BOOST_CHECK(
+      toJson(defaultCredential<Credential>(), alloc) == defaultCredentialJson<Credential>()
+  );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Invalid_Type, Credential, IngressCredentials)
 {
   for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kObjectType}) {
-    BOOST_CHECK_EXCEPTION(parse<Credential>(Value{t}), SystemError,
-                          verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(
+        parse<Credential>(Value{t}),
+        SystemError,
+        verify_exception<PichiError::BAD_JSON>
+    );
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Empty_Credential, Credential,
-                              IngressCredentials)
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    parse_IngressCredential_Empty_Credential, Credential, IngressCredentials
+)
 {
-  BOOST_CHECK_EXCEPTION(parse<Credential>(Value{kArrayType}), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<Credential>(Value{kArrayType}),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Invalid_Type_Of_Items, Credential,
-                              IngressCredentials)
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    parse_IngressCredential_Invalid_Type_Of_Items, Credential, IngressCredentials
+)
 {
   for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kArrayType}) {
     auto v = Value{kArrayType};
     v.PushBack(Value{t}, alloc);
-    BOOST_CHECK_EXCEPTION(parse<Credential>(v), SystemError, verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(
+        parse<Credential>(v),
+        SystemError,
+        verify_exception<PichiError::BAD_JSON>
+    );
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Mandatory_Fields, Credential,
-                              IngressCredentials)
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    parse_IngressCredential_Mandatory_Fields, Credential, IngressCredentials
+)
 {
   auto keys = vector<string>{};
   if constexpr (is_same_v<Credential, UpIngressCredential>) {
@@ -72,13 +86,17 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Mandatory_Fields, Credenti
   for (auto&& key : keys) {
     auto json = defaultCredentialJson<Credential>();
     json[0].RemoveMember(key.c_str());
-    BOOST_CHECK_EXCEPTION(parse<Credential>(json), SystemError,
-                          verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(
+        parse<Credential>(json),
+        SystemError,
+        verify_exception<PichiError::BAD_JSON>
+    );
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Duplicated_Key, Credential,
-                              IngressCredentials)
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    parse_IngressCredential_Duplicated_Key, Credential, IngressCredentials
+)
 {
   auto modify = function<void(Value&)>{};
   if constexpr (is_same_v<Credential, UpIngressCredential>) {
@@ -94,8 +112,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Duplicated_Key, Credential
   }
   auto json = defaultCredentialJson<Credential>();
   json.PushBack(createJsonObject(modify), alloc);
-  BOOST_CHECK_EXCEPTION(parse<Credential>(json), SystemError,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
+  BOOST_CHECK_EXCEPTION(
+      parse<Credential>(json),
+      SystemError,
+      verify_exception<PichiError::SEMANTIC_ERROR>
+  );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Empty_Key, Credential, IngressCredentials)
@@ -110,29 +131,40 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Empty_Key, Credential, Ing
   else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
     key = credential::UUID;
   }
-  auto empty = defaultCredentialJson<Credential>();
+  auto empty            = defaultCredentialJson<Credential>();
   empty[0][key.c_str()] = "";
-  BOOST_CHECK_EXCEPTION(parse<Credential>(empty), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<Credential>(empty),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_IngressCredential_Empty_Credential, Credential,
-                              IngressCredentials)
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    toJson_IngressCredential_Empty_Credential, Credential, IngressCredentials
+)
 {
-  BOOST_CHECK_EXCEPTION(toJson(Credential{}, alloc), SystemError,
-                        verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(
+      toJson(Credential{}, alloc),
+      SystemError,
+      verify_exception<PichiError::MISC>
+  );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_EgressCredential_Invalid_Type, Credential, EgressCredentials)
 {
   for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kArrayType}) {
-    BOOST_CHECK_EXCEPTION(parse<Credential>(Value{t}), SystemError,
-                          verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(
+        parse<Credential>(Value{t}),
+        SystemError,
+        verify_exception<PichiError::BAD_JSON>
+    );
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(parse_EgressCredential_Mandatory_Fields, Credential,
-                              EgressCredentials)
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    parse_EgressCredential_Mandatory_Fields, Credential, EgressCredentials
+)
 {
   auto keys = vector<string>{};
   if constexpr (is_same_v<Credential, UpEgressCredential>) {
@@ -148,8 +180,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_EgressCredential_Mandatory_Fields, Credentia
   for (auto&& key : keys) {
     auto json = defaultCredentialJson<Credential>();
     json.RemoveMember(key.c_str());
-    BOOST_CHECK_EXCEPTION(parse<Credential>(json), SystemError,
-                          verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(
+        parse<Credential>(json),
+        SystemError,
+        verify_exception<PichiError::BAD_JSON>
+    );
   }
 }
 
