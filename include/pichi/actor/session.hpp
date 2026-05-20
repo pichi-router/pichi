@@ -16,21 +16,19 @@ private:
   using RouterPtr = std::shared_ptr<Router>;
   using Socket    = boost::asio::ip::tcp::socket;
 
-  Awaitable<adapter::tcp::Egress> handshake(adapter::tcp::Ingress&, AdapterType);
+  Awaitable<adapter::tcp::Egress> handshake(adapter::tcp::Ingress&, vo::Ingress const&);
 
 public:
   template <boost::asio::execution::executor Executor>
-  Session(Executor ex, RouterPtr r, std::string_view iname)
-    : ex_{std::move(ex)}, router_{std::move(r)}, iname_{iname}
+  Session(Executor ex, RouterPtr r) : ex_{std::move(ex)}, router_{std::move(r)}
   {
   }
 
   Awaitable<void> start(vo::Ingress const&, Socket);
 
 private:
-  IOExecutor       ex_;
-  RouterPtr        router_;
-  std::string_view iname_;
+  IOExecutor ex_;
+  RouterPtr  router_;
 };
 
 }  // namespace pichi::actor

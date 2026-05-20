@@ -41,9 +41,7 @@ private:
 
   Strand strand_;
 
-  ValueMap<vo::Ingress> ingresses_ = {};
-  ValueMap<Listener>    listeners_ = {};
-
+  ValueMap<Listener>   listeners_ = {};
   ValueMap<vo::Egress> egresses_;
   ValueMap<vo::Rule>   rules_ = {};
 

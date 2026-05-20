@@ -7,7 +7,6 @@
 #include <pichi/actor/router.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/vo/ingress.hpp>
-#include <string>
 #include <vector>
 
 namespace pichi::actor {
@@ -18,22 +17,24 @@ private:
   using Acceptors = std::vector<Acceptor>;
   using RouterPtr = std::shared_ptr<Router>;
   using Strand    = boost::asio::strand<IOExecutor>;
+  using Ingress   = vo::Ingress;
 
   Awaitable<void> listen(Acceptor&);
 
 public:
-  Listener(IOExecutor const&, std::string const&, RouterPtr const&, vo::Ingress);
+  Listener(IOExecutor const&, RouterPtr const&, Ingress);
 
   void start();
 
   void reroute(RouterPtr const&);
 
+  Ingress const& vo() const;
+
 private:
-  Strand      strand_;
-  RouterPtr   router_;
-  std::string name_;
-  vo::Ingress vo_;
-  Acceptors   acceptors_ = {};
+  Strand    strand_;
+  RouterPtr router_;
+  Ingress   vo_;
+  Acceptors acceptors_ = {};
 };
 
 }  // namespace pichi::actor

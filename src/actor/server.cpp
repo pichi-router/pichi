@@ -1,3 +1,4 @@
+#include "pichi/common/config.hpp"
 #include <algorithm>
 #include <boost/asio/redirect_error.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
@@ -26,6 +27,7 @@ namespace http  = beast::http;
 namespace json  = rapidjson;
 namespace rngs  = std::ranges;
 namespace sys   = boost::system;
+namespace views = rngs::views;
 
 namespace pichi::actor {
 
@@ -77,17 +79,16 @@ auto gen_resp(Verbs... verbs)
   return resp;
 }
 
-template <typename Value, typename Alloc>
-auto to_json(std::unordered_map<std::string, Value> const& m, Alloc& alloc)
+template <rngs::range Pairs, typename Alloc> auto to_json(Pairs const& pairs, Alloc& alloc)
 {
   auto ret = json::Value{};
 
   ret.SetObject();
-  rngs::for_each(m, [&](auto&& item) {
-    auto&& [name, value] = item;
+  for (auto&& pair : pairs) {
+    auto&& [name, item] = pair;
     assertFalse(name.empty());
-    ret.AddMember(vo::toJson(name, alloc), vo::toJson(value, alloc), alloc);
-  });
+    ret.AddMember(vo::toJson(name, alloc), vo::toJson(item, alloc), alloc);
+  }
   return ret;
 }
 
@@ -165,7 +166,15 @@ Awaitable<Server::Response> Server::handle(Request const& req)
   if (match(req.target(), INGRESS_REGEX, mr)) {
     switch (req.method()) {
     case http::verb::get:
-      co_return gen_resp(http::status::ok, to_json(ingresses_, alloc));
+      co_return gen_resp(
+          http::status::ok,
+          to_json(
+              listeners_ | views::transform([](auto&& item) {
+                return std::make_pair(std::ref(item.first), std::ref(item.second.vo()));
+              }),
+              alloc
+          )
+      );
     case http::verb::options:
       co_return gen_resp(http::verb::get, http::verb::options);
     default:
@@ -179,16 +188,14 @@ Awaitable<Server::Response> Server::handle(Request const& req)
     switch (req.method()) {
     case http::verb::delete_:
       listeners_.erase(name);
-      ingresses_.erase(name);
       co_return gen_resp(http::status::no_content);
     case http::verb::options:
       co_return gen_resp(http::verb::delete_, http::verb::options, http::verb::put);
     case http::verb::put: {
       auto vo      = vo::parse<vo::Ingress>(req.body());
-      auto [it, _] = listeners_.insert_or_assign(name, Listener{ex, name, router_, vo});
+      vo.name_     = name;
+      auto [it, _] = listeners_.insert_or_assign(name, Listener{ex, router_, std::move(vo)});
       it->second.start();
-      ingresses_.insert_or_assign(name, std::move(vo));
-
       co_return gen_resp(http::status::no_content);
     }
     default:

@@ -7,6 +7,7 @@
 #include <pichi/vo/credential.hpp>
 #include <pichi/vo/options.hpp>
 #include <rapidjson/document.h>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -22,6 +23,9 @@ struct Ingress {
   std::optional<Options>          opt_        = {};
   std::optional<TlsIngressOption> tls_        = {};
   std::optional<WebsocketOption>  websocket_  = {};
+
+  // For internal usage
+  std::string name_ = {};
 };
 
 extern rapidjson::Value toJson(Ingress const&, rapidjson::Document::AllocatorType&);

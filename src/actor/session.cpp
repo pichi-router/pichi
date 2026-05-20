@@ -30,13 +30,16 @@ template <typename From, typename To> Awaitable<void> bridge(From& from, To& to)
 }
 
 Awaitable<adapter::tcp::Egress>
-    Session::handshake(adapter::tcp::Ingress& ingress, AdapterType itype)
+    Session::handshake(adapter::tcp::Ingress& ingress, vo::Ingress const& vo)
 {
   auto [ec, peer] =
       co_await redirect(std::visit([](auto&& ingress) { return ingress.read_remote(); }, ingress));
-  if (ec == PichiError::BAD_PROTO && itype == AdapterType::SS) {
-    std::clog
-        << std::format("{} | Duplicated salt from {}\n", std::chrono::system_clock::now(), iname_);
+  if (ec == PichiError::BAD_PROTO && vo.type_ == AdapterType::SS) {
+    std::clog << std::format(
+        "{} | Duplicated salt from {}\n",
+        std::chrono::system_clock::now(),
+        vo.name_
+    );
     router_     = nullptr;
     auto egress = adapter::tcp::create_egress(
         {
@@ -50,7 +53,7 @@ Awaitable<adapter::tcp::Egress>
   }
   if (ec) asio::detail::throw_error(ec);
 
-  auto [rname, ename, evo] = co_await router_->route(*peer, iname_, itype);
+  auto [rname, ename, evo] = co_await router_->route(*peer, vo.name_, vo.type_);
 
   auto egress = adapter::tcp::create_egress(evo, ex_);
 
@@ -64,7 +67,7 @@ Awaitable<adapter::tcp::Egress>
       peer->host_,
       peer->port_,
       rname,
-      iname_,
+      vo.name_,
       ename
   );
 
@@ -75,7 +78,7 @@ Awaitable<void> Session::start(vo::Ingress const& vo, Socket s)
 {
   auto ingress = adapter::tcp::create_ingress(vo, std::move(s));
 
-  auto [ec, egress] = co_await redirect(handshake(ingress, vo.type_));
+  auto [ec, egress] = co_await redirect(handshake(ingress, vo));
 
   if (ec) {
     co_await std::visit([ec](auto&& ingress) { return ingress.disconnect(ec); }, ingress);

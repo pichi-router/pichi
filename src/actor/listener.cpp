@@ -29,7 +29,7 @@ Awaitable<void> Listener::listen(Acceptor& ac)
     co_await switch_to(strand_);
     asio::co_spawn(
         ex,
-        [session = Session{ex, router_, name_}, s = std::move(*s), &vo = vo_]() mutable {
+        [session = Session{ex, router_}, s = std::move(*s), &vo = vo_]() mutable {
           return session.start(vo, std::move(s));
         },
         detached
@@ -37,10 +37,8 @@ Awaitable<void> Listener::listen(Acceptor& ac)
   }
 }
 
-Listener::Listener(
-    IOExecutor const& ex, std::string const& name, RouterPtr const& router, vo::Ingress vo
-)
-  : strand_{asio::make_strand(ex)}, router_{router}, name_{name}, vo_{std::move(vo)}
+Listener::Listener(IOExecutor const& ex, RouterPtr const& router, vo::Ingress vo)
+  : strand_{asio::make_strand(ex)}, router_{router}, vo_{std::move(vo)}
 {
   auto v = vo_.bind_ | views::transform([ex](auto&& endpoint) {
              return Acceptor{
@@ -50,6 +48,8 @@ Listener::Listener(
            });
   acceptors_.assign(rngs::begin(v), rngs::end(v));
 }
+
+vo::Ingress const& Listener::vo() const { return vo_; }
 
 void Listener::start()
 {
