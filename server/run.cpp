@@ -31,12 +31,6 @@
 #include <signal.h>
 #endif  // HAS_SIGNAL_H
 
-#ifdef _WIN32
-#ifdef GetObject
-#undef GetObject
-#endif  // GetObject
-#endif  // _WIN32
-
 using namespace pichi;
 using namespace std::literals;
 namespace asio  = boost::asio;
@@ -54,7 +48,7 @@ static decltype(auto) RULES     = "rules";
 static decltype(auto) ROUTE     = "route";
 static decltype(auto) INDENT    = "  ";
 
-static Awaitable<json::Value::Object> get(Socket& s, std::string_view target)
+static Awaitable<json::Document> get(Socket& s, std::string_view target)
 {
   auto req = http::request<http::empty_body>{};
   req.method(http::verb::get);
@@ -72,7 +66,7 @@ static Awaitable<json::Value::Object> get(Socket& s, std::string_view target)
   auto doc = json::Document{};
   doc.Parse(resp.body().c_str());
   assertFalse(doc.HasParseError());
-  co_return doc.GetObj();
+  co_return doc;
 }
 
 static Awaitable<http::status> put(Socket& s, std::string_view target, std::string_view body)
@@ -120,7 +114,7 @@ private:
       co_return;
     }
 
-    for (auto&& node : it->value.GetObject()) {
+    for (auto&& node : it->value.GetObj()) {
       auto target = std::format("/{}/{}", category, node.name.GetString());
       if (co_await put(s, target, vo::toString(node.value)) != http::status::no_content)
         std::clog << std::format("{}{} NOT loaded.\n", INDENT, target);
@@ -162,18 +156,21 @@ private:
     co_await put(sock, std::format("/{}/direct", EGRESSES), "{\"type\":\"direct\"}");
     co_await put(sock, std::format("/{}", ROUTE), "{\"default\":\"direct\",\"rules\":[]}");
 
-    for (auto&& r : co_await get(sock, std::format("/{}", RULES)) |
-                        views::transform([](auto&& member) { return member.name.GetString(); })) {
+    auto rules = co_await get(sock, std::format("/{}", RULES));
+    for (auto&& r :
+         rules.GetObj() | views::transform([](auto&& member) { return member.name.GetString(); })) {
       co_await del(sock, std::format("{}/{}", RULES, r));
     }
 
-    for (auto&& e : co_await get(sock, std::format("/{}", EGRESSES)) |
-                        views::transform([](auto&& member) { return member.name.GetString(); }) |
-                        views::filter([](auto&& e) { return e != "direct"sv; })) {
+    auto egresses = co_await get(sock, std::format("/{}", EGRESSES));
+    for (auto&& e : egresses.GetObj() | views::transform([](auto&& member) {
+                      return member.name.GetString();
+                    }) | views::filter([](auto&& e) { return e != "direct"sv; })) {
       co_await del(sock, std::format("/{}/{}", EGRESSES, e));
     }
 
-    for (auto&& i : co_await get(sock, std::format("/{}", INGRESSES)) |
+    auto ingresses = co_await get(sock, std::format("/{}", INGRESSES));
+    for (auto&& i : ingresses.GetObj() |
                         views::transform([](auto&& member) { return member.name.GetString(); })) {
       co_await del(sock, std::format("{}/{}", INGRESSES, i));
     }
