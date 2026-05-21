@@ -11,9 +11,8 @@
 namespace pichi::vo {
 
 struct Egress {
-  using Credential =
-      std::variant<UpEgressCredential, TrojanEgressCredential, VMessEgressCredential>;
-  using Option = std::variant<RejectOption, ShadowsocksOption>;
+  using Credential = std::variant<UpEgressCredential, TrojanEgressCredential>;
+  using Option     = std::variant<RejectOption, ShadowsocksOption>;
 
   AdapterType                    type_;
   std::optional<Endpoint>        server_     = {};

@@ -1,5 +1,4 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/literals.hpp>
 #include <pichi/vo/egress.hpp>
@@ -14,7 +13,6 @@
 #endif  // TRANSPARENT
 #endif  // _MSC_VER
 
-using namespace std;
 namespace json  = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
@@ -67,19 +65,6 @@ json::Value toJson(Egress const& egress, Allocator& alloc)
     if (egress.websocket_.has_value())
       ret.AddMember(egress::WEBSOCKET, toJson(*egress.websocket_, alloc), alloc);
     break;
-  case AdapterType::VMESS:
-    assertTrue(egress.server_.has_value());
-    assertTrue(egress.credential_.has_value());
-    ret.AddMember(egress::SERVER, toJson(*egress.server_, alloc), alloc);
-    ret.AddMember(
-        egress::CREDENTIAL,
-        toJson(get<VMessEgressCredential>(*egress.credential_), alloc),
-        alloc
-    );
-    if (egress.tls_.has_value()) ret.AddMember(egress::TLS, toJson(*egress.tls_, alloc), alloc);
-    if (egress.websocket_.has_value())
-      ret.AddMember(egress::WEBSOCKET, toJson(*egress.websocket_, alloc), alloc);
-    break;
   default:
     fail();
   }
@@ -125,15 +110,6 @@ template <> Egress parse(json::Value const& v)
     if (v.HasMember(egress::WEBSOCKET))
       egress.websocket_ = parse<WebsocketOption>(v[egress::WEBSOCKET]);
     break;
-  case AdapterType::VMESS:
-    assertTrue(v.HasMember(egress::SERVER), PichiError::BAD_JSON, msg::MISSING_SERVER_FIELD);
-    assertTrue(v.HasMember(egress::CREDENTIAL), PichiError::BAD_JSON, msg::MISSING_CRED_FIELD);
-    egress.server_     = parse<Endpoint>(v[egress::SERVER]);
-    egress.credential_ = parse<VMessEgressCredential>(v[egress::CREDENTIAL]);
-    if (v.HasMember(egress::TLS)) egress.tls_ = parse<TlsEgressOption>(v[egress::TLS]);
-    if (v.HasMember(egress::WEBSOCKET))
-      egress.websocket_ = parse<WebsocketOption>(v[egress::WEBSOCKET]);
-    break;
   default:
     fail(PichiError::BAD_JSON, msg::AT_INVALID);
     break;
@@ -155,9 +131,6 @@ bool operator==(Egress const& lhs, Egress const& rhs)
   case AdapterType::SS:
     return lhs.server_ == rhs.server_ && lhs.opt_ == rhs.opt_;
   case AdapterType::TROJAN:
-    return lhs.server_ == rhs.server_ && lhs.credential_ == rhs.credential_ &&
-           lhs.tls_ == rhs.tls_ && lhs.websocket_ == rhs.websocket_;
-  case AdapterType::VMESS:
     return lhs.server_ == rhs.server_ && lhs.credential_ == rhs.credential_ &&
            lhs.tls_ == rhs.tls_ && lhs.websocket_ == rhs.websocket_;
   default:

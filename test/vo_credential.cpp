@@ -80,9 +80,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
   else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     keys.push_back(credential::PASSWORD);
   }
-  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
-    keys.push_back(credential::UUID);
-  }
   for (auto&& key : keys) {
     auto json = defaultCredentialJson<Credential>();
     json[0].RemoveMember(key.c_str());
@@ -107,9 +104,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
   else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     modify = [](auto&& item) { item.AddMember(credential::PASSWORD, ph, alloc); };
   }
-  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
-    modify = [](auto&& item) { item.AddMember(credential::UUID, ph, alloc); };
-  }
   auto json = defaultCredentialJson<Credential>();
   json.PushBack(createJsonObject(modify), alloc);
   BOOST_CHECK_EXCEPTION(
@@ -127,9 +121,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_IngressCredential_Empty_Key, Credential, Ing
   }
   else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     key = credential::PASSWORD;
-  }
-  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
-    key = credential::UUID;
   }
   auto empty            = defaultCredentialJson<Credential>();
   empty[0][key.c_str()] = "";
@@ -174,9 +165,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
   else if constexpr (is_same_v<Credential, TrojanEgressCredential>) {
     keys.push_back(credential::PASSWORD);
   }
-  else if constexpr (is_same_v<Credential, VMessEgressCredential>) {
-    keys.push_back(credential::UUID);
-  }
   for (auto&& key : keys) {
     auto json = defaultCredentialJson<Credential>();
     json.RemoveMember(key.c_str());
@@ -186,19 +174,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
         verify_exception<PichiError::BAD_JSON>
     );
   }
-}
-
-BOOST_AUTO_TEST_CASE(parse_vmess_EgressCredential_Default_Fields)
-{
-  using Credential = VMessEgressCredential;
-
-  auto alterId = defaultCredentialJson<Credential>();
-  alterId.RemoveMember(credential::ALTER_ID);
-  BOOST_CHECK(parse<Credential>(alterId) == defaultCredential<Credential>());
-
-  auto security = defaultCredentialJson<Credential>();
-  security.RemoveMember(credential::SECURITY);
-  BOOST_CHECK(parse<Credential>(security) == defaultCredential<Credential>());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

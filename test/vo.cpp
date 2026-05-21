@@ -12,7 +12,7 @@ using namespace rapidjson;
 
 namespace pichi::unit_test {
 
-static auto doc = Document{};
+static auto              doc   = Document{};
 Document::AllocatorType& alloc = doc.GetAllocator();
 
 Endpoint const DEFAULT_ENDPOINT = makeEndpoint(ph, 0_u16);
@@ -26,28 +26,20 @@ template <typename Credential> Credential defaultCredential()
   else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     return TrojanIngressCredential{{ph}};
   }
-  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
-    return VMessIngressCredential{{{ph, 0_u16}}};
-  }
   else if constexpr (is_same_v<Credential, UpEgressCredential>) {
     return UpEgressCredential{make_pair(ph, ph)};
   }
   else if constexpr (is_same_v<Credential, TrojanEgressCredential>) {
     return TrojanEgressCredential{ph};
   }
-  else if constexpr (is_same_v<Credential, VMessEgressCredential>) {
-    return VMessEgressCredential{ph, 0_u16, VMessSecurity::AUTO};
-  }
   else
     return {};
 }
 
-template UpIngressCredential defaultCredential();
+template UpIngressCredential     defaultCredential();
 template TrojanIngressCredential defaultCredential();
-template VMessIngressCredential defaultCredential();
-template UpEgressCredential defaultCredential();
-template TrojanEgressCredential defaultCredential();
-template VMessEgressCredential defaultCredential();
+template UpEgressCredential      defaultCredential();
+template TrojanEgressCredential  defaultCredential();
 
 template <typename Credential> Value defaultCredentialJson()
 {
@@ -60,11 +52,6 @@ template <typename Credential> Value defaultCredentialJson()
   else if constexpr (is_same_v<Credential, TrojanIngressCredential>) {
     return createJsonArray([](auto&& item) { item.AddMember(credential::PASSWORD, ph, alloc); });
   }
-  else if constexpr (is_same_v<Credential, VMessIngressCredential>) {
-    return createJsonArray([](auto&& item) {
-      item.AddMember(credential::UUID, ph, alloc).AddMember(credential::ALTER_ID, Value{0}, alloc);
-    });
-  }
   else if constexpr (is_same_v<Credential, UpEgressCredential>) {
     return createJsonObject([](auto&& item) {
       item.AddMember(credential::USERNAME, ph, alloc).AddMember(credential::PASSWORD, ph, alloc);
@@ -73,30 +60,21 @@ template <typename Credential> Value defaultCredentialJson()
   else if constexpr (is_same_v<Credential, TrojanEgressCredential>) {
     return createJsonObject([](auto&& item) { item.AddMember(credential::PASSWORD, ph, alloc); });
   }
-  else if constexpr (is_same_v<Credential, VMessEgressCredential>) {
-    return createJsonObject([](auto&& item) {
-      item.AddMember(credential::UUID, ph, alloc)
-          .AddMember(credential::ALTER_ID, Value{0}, alloc)
-          .AddMember(credential::SECURITY, toJson(VMessSecurity::AUTO, alloc), alloc);
-    });
-  }
   else
     return {};
 }
 
 template Value defaultCredentialJson<UpIngressCredential>();
 template Value defaultCredentialJson<TrojanIngressCredential>();
-template Value defaultCredentialJson<VMessIngressCredential>();
 template Value defaultCredentialJson<UpEgressCredential>();
 template Value defaultCredentialJson<TrojanEgressCredential>();
-template Value defaultCredentialJson<VMessEgressCredential>();
 
 template <typename Option> Value defaultOptionJson()
 {
   static_assert(HasKey<Option, AllOptions>);
   auto ret = Value{kObjectType};
   if constexpr (is_same_v<Option, ShadowsocksOption>) {
-    ret.AddMember(option::METHOD, toJson(CryptoMethod::RC4_MD5, alloc), alloc);
+    ret.AddMember(option::METHOD, toJson(CryptoMethod::AES_128_GCM, alloc), alloc);
     ret.AddMember(option::PASSWORD, ph, alloc);
   }
   else if constexpr (is_same_v<Option, TunnelOption>) {
@@ -166,11 +144,11 @@ template <typename Option> Option defaultOption()
 }
 
 template ShadowsocksOption defaultOption<>();
-template TunnelOption defaultOption<>();
-template RejectOption defaultOption<>();
-template TrojanOption defaultOption<>();
-template TlsIngressOption defaultOption<>();
-template TlsEgressOption defaultOption<>();
-template WebsocketOption defaultOption<>();
+template TunnelOption      defaultOption<>();
+template RejectOption      defaultOption<>();
+template TrojanOption      defaultOption<>();
+template TlsIngressOption  defaultOption<>();
+template TlsEgressOption   defaultOption<>();
+template WebsocketOption   defaultOption<>();
 
 }  // namespace pichi::unit_test

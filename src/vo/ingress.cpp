@@ -1,13 +1,11 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <algorithm>
 #include <pichi/vo/ingress.hpp>
 #include <pichi/vo/keys.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 
-using namespace std;
-namespace json = rapidjson;
+namespace json  = rapidjson;
 using Allocator = json::Document::AllocatorType;
 
 namespace pichi::vo {
@@ -23,10 +21,13 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
 
   assertFalse(ingress.bind_.empty());
   ret.AddMember(ingress::BIND, json::Value(json::kArrayType), alloc);
-  for_each(cbegin(ingress.bind_), cend(ingress.bind_),
-           [&bind = ret[ingress::BIND], &alloc](auto&& endpoint) {
-             bind.PushBack(toJson(endpoint, alloc), alloc);
-           });
+  for_each(
+      cbegin(ingress.bind_),
+      cend(ingress.bind_),
+      [&bind = ret[ingress::BIND], &alloc](auto&& endpoint) {
+        bind.PushBack(toJson(endpoint, alloc), alloc);
+      }
+  );
 
   switch (ingress.type_) {
   case AdapterType::TUNNEL:
@@ -37,8 +38,11 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
   case AdapterType::SOCKS5:
     if (ingress.tls_.has_value()) ret.AddMember(ingress::TLS, toJson(*ingress.tls_, alloc), alloc);
     if (ingress.credential_.has_value())
-      ret.AddMember(ingress::CREDENTIALS,
-                    toJson(get<UpIngressCredential>(*ingress.credential_), alloc), alloc);
+      ret.AddMember(
+          ingress::CREDENTIALS,
+          toJson(get<UpIngressCredential>(*ingress.credential_), alloc),
+          alloc
+      );
     break;
   case AdapterType::SS:
     assertTrue(ingress.opt_.has_value());
@@ -50,16 +54,11 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
     assertTrue(ingress.credential_.has_value());
     ret.AddMember(ingress::OPTION, toJson(get<TrojanOption>(*ingress.opt_), alloc), alloc);
     ret.AddMember(ingress::TLS, toJson(*ingress.tls_, alloc), alloc);
-    ret.AddMember(ingress::CREDENTIALS,
-                  toJson(get<TrojanIngressCredential>(*ingress.credential_), alloc), alloc);
-    if (ingress.websocket_.has_value())
-      ret.AddMember(ingress::WEBSOCKET, toJson(*ingress.websocket_, alloc), alloc);
-    break;
-  case AdapterType::VMESS:
-    assertTrue(ingress.credential_.has_value());
-    ret.AddMember(ingress::CREDENTIALS,
-                  toJson(get<VMessIngressCredential>(*ingress.credential_), alloc), alloc);
-    if (ingress.tls_.has_value()) ret.AddMember(ingress::TLS, toJson(*ingress.tls_, alloc), alloc);
+    ret.AddMember(
+        ingress::CREDENTIALS,
+        toJson(get<TrojanIngressCredential>(*ingress.credential_), alloc),
+        alloc
+    );
     if (ingress.websocket_.has_value())
       ret.AddMember(ingress::WEBSOCKET, toJson(*ingress.websocket_, alloc), alloc);
     break;
@@ -86,8 +85,9 @@ template <> Ingress parse(json::Value const& v)
   auto&& bind = v[ingress::BIND];
   assertTrue(bind.IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
   assertFalse(bind.Empty(), PichiError::BAD_JSON, msg::ARY_SIZE_ERROR);
-  transform(bind.Begin(), bind.End(), back_inserter(ingress.bind_),
-            [](auto&& v) { return parse<Endpoint>(v); });
+  transform(bind.Begin(), bind.End(), back_inserter(ingress.bind_), [](auto&& v) {
+    return parse<Endpoint>(v);
+  });
 
   switch (ingress.type_) {
   case AdapterType::TUNNEL:
@@ -109,15 +109,8 @@ template <> Ingress parse(json::Value const& v)
     assertTrue(v.HasMember(ingress::OPTION), PichiError::BAD_JSON, msg::MISSING_OPTION_FIELD);
     assertTrue(v.HasMember(ingress::TLS), PichiError::BAD_JSON, msg::MISSING_TLS_FIELD);
     ingress.credential_ = parse<TrojanIngressCredential>(v[ingress::CREDENTIALS]);
-    ingress.opt_ = parse<TrojanOption>(v[ingress::OPTION]);
-    ingress.tls_ = parse<TlsIngressOption>(v[ingress::TLS]);
-    if (v.HasMember(ingress::WEBSOCKET))
-      ingress.websocket_ = parse<WebsocketOption>(v[ingress::WEBSOCKET]);
-    break;
-  case AdapterType::VMESS:
-    assertTrue(v.HasMember(ingress::CREDENTIALS), PichiError::BAD_JSON, msg::MISSING_CRED_FIELD);
-    ingress.credential_ = parse<VMessIngressCredential>(v[ingress::CREDENTIALS]);
-    if (v.HasMember(ingress::TLS)) ingress.tls_ = parse<TlsIngressOption>(v[ingress::TLS]);
+    ingress.opt_        = parse<TrojanOption>(v[ingress::OPTION]);
+    ingress.tls_        = parse<TlsIngressOption>(v[ingress::TLS]);
     if (v.HasMember(ingress::WEBSOCKET))
       ingress.websocket_ = parse<WebsocketOption>(v[ingress::WEBSOCKET]);
     break;
@@ -142,9 +135,6 @@ bool operator==(Ingress const& lhs, Ingress const& rhs)
     return lhs.tls_ == rhs.tls_ && lhs.credential_ == rhs.credential_;
   case AdapterType::TROJAN:
     return lhs.credential_ == rhs.credential_ && lhs.opt_ == rhs.opt_ && lhs.tls_ == rhs.tls_ &&
-           lhs.websocket_ == rhs.websocket_;
-  case AdapterType::VMESS:
-    return lhs.credential_ == rhs.credential_ && lhs.tls_ == rhs.tls_ &&
            lhs.websocket_ == rhs.websocket_;
   case AdapterType::TRANSPARENT:
     return true;

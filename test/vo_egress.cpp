@@ -89,21 +89,10 @@ template <> struct AdapterTrait<AdapterType::TROJAN> {
   using Credential              = TrojanEgressCredential;
 };
 
-template <> struct AdapterTrait<AdapterType::VMESS> {
-  static const auto type_       = AdapterType::VMESS;
-  static const auto server_     = Present::MANDATORY;
-  static const auto credential_ = Present::MANDATORY;
-  static const auto option_     = Present::UNUSED;
-  static const auto tls_        = Present::OPTIONAL;
-  static const auto websocket_  = Present::OPTIONAL;
-  using Credential              = VMessEgressCredential;
-};
-
 using AllAdapterTraits = mpl::set<
     AdapterTrait<AdapterType::DIRECT>, AdapterTrait<AdapterType::HTTP>,
     AdapterTrait<AdapterType::SOCKS5>, AdapterTrait<AdapterType::REJECT>,
-    AdapterTrait<AdapterType::SS>, AdapterTrait<AdapterType::TROJAN>,
-    AdapterTrait<AdapterType::VMESS>>;
+    AdapterTrait<AdapterType::SS>, AdapterTrait<AdapterType::TROJAN>>;
 
 template <AdapterType type> Value defaultEgressJson()
 {
