@@ -6,7 +6,6 @@
 #include <iostream>
 #include <pichi/actor/session.hpp>
 #include <pichi/adapter/tcp/adapter.hpp>
-#include <pichi/crypto/key.hpp>
 #include <pichi/stream/helpers.hpp>
 
 namespace asio = boost::asio;
