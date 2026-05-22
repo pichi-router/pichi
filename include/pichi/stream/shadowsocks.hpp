@@ -5,57 +5,20 @@
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/co_spawn.hpp>
-#include <boost/asio/execution_context.hpp>
 #include <boost/asio/read.hpp>
-#include <boost/asio/strand.hpp>
-#include <boost/asio/system_timer.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <botan/cipher_mode.h>
-#include <mutex>
-#include <optional>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/endpoint.hpp>
+#include <pichi/service/sentry.hpp>
 #include <pichi/stream/helpers.hpp>
 #include <ranges>
-#include <string>
-#include <unordered_set>
 #include <vector>
 
 namespace pichi::stream {
 
 namespace detail {
-
-class SaltSentry : public boost::asio::detail::execution_context_service_base<SaltSentry> {
-private:
-  using Salts  = std::unordered_set<std::string>;
-  using Strand = std::optional<boost::asio::strand<IOExecutor>>;
-  using Timer  = std::optional<boost::asio::system_timer>;
-
-  Awaitable<void> run();
-
-public:
-  explicit SaltSentry(boost::asio::execution_context&);
-
-  void init(IOExecutor const&);
-
-  Awaitable<bool> contains(ConstBuffer);
-  Awaitable<void> reset();
-
-  void cancel();
-
-private:
-  void shutdown() noexcept override;
-
-  std::once_flag flag_ = {};
-
-  Strand strand_   = {};
-  Timer  timer_    = {};
-  Salts  expiring_ = {};
-  Salts  active_   = {};
-};
-
-extern SaltSentry& get_sentry(IOExecutor const&);
 
 class Cryptor {
 public:
@@ -121,7 +84,7 @@ private:
   static constexpr size_t FRAME_SIZE = 0x3fff;
   static constexpr size_t TAG_SIZE   = 16;
 
-  using Sentry    = detail::SaltSentry*;
+  using Sentry    = service::SaltSentry*;
   using ErrorCode = boost::system::error_code;
   using Encryptor = detail::Encryptor;
   using Decryptor = detail::Decryptor;
@@ -226,7 +189,7 @@ public:
   // Used by ingresses
   Shadowsocks(CryptoMethod method, ConstBuffer pw, Socket socket)
     : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
-      sentry_{std::addressof(detail::get_sentry(socket.get_executor()))},
+      sentry_{std::addressof(service::get_sentry(socket.get_executor()))},
       socket_{std::move(socket)},
       encryptor_{method, pw_},
       decryptor_{method}
@@ -247,7 +210,7 @@ public:
   // For unit test purpose
   Shadowsocks(CryptoMethod method, ConstBuffer pw, ConstBuffer salt, Socket socket)
     : pw_{std::ranges::begin(pw), std::ranges::end(pw)},
-      sentry_{std::addressof(detail::get_sentry(socket.get_executor()))},
+      sentry_{std::addressof(service::get_sentry(socket.get_executor()))},
       socket_{std::move(socket)},
       encryptor_{method, pw_, salt},
       decryptor_{method},

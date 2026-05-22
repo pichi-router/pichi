@@ -7,6 +7,7 @@
 #include <botan/hex.h>
 #include <pichi/adapter/tcp/shadowsocks.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/service/sentry.hpp>
 #include <pichi/stream/shadowsocks.hpp>
 #include <pichi/stream/test.hpp>
 #include <utility>
@@ -236,7 +237,7 @@ template <typename TestCase> void run_test_case(TestCase&& test)
     for (auto&& item : KEY_SIZE) {
       auto [m, s] = item;
       auto ec     = co_await redirect(test(ex, m, s));
-      co_await stream::detail::get_sentry(ex).reset();
+      co_await service::get_sentry(ex).reset();
       BOOST_CHECK(!ec);
     }
   });
@@ -253,7 +254,7 @@ BOOST_AUTO_TEST_CASE(SaltSentry_Conflict)
     ec = co_await redirect(send_salt(ex, m, s, 0_u8));
     BOOST_CHECK_EQUAL(make_error_code(PichiError::BAD_PROTO), ec);
 
-    co_await stream::detail::get_sentry(ex).reset();
+    co_await service::get_sentry(ex).reset();
   });
 }
 
@@ -265,7 +266,7 @@ BOOST_AUTO_TEST_CASE(SaltSentry_Normal)
       BOOST_CHECK(!ec);
     }
 
-    co_await stream::detail::get_sentry(ex).reset();
+    co_await service::get_sentry(ex).reset();
   });
 }
 
