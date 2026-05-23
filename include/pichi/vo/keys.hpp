@@ -148,6 +148,8 @@ inline decltype(auto) TYPE        = "ingress_type";
 inline decltype(auto) PATTERN     = "pattern";
 inline decltype(auto) DOMAIN_NAME = "domain";
 inline decltype(auto) COUNTRY     = "country";
+inline decltype(auto) RANGE_NR    = "range_nr";
+inline decltype(auto) COUNTRY_NR  = "country_nr";
 
 }  // namespace rule
 
