@@ -119,7 +119,7 @@ template <typename Option> Option defaultOption()
 {
   static_assert(HasKey<Option, AllOptions>);
   if constexpr (is_same_v<Option, ShadowsocksOption>) {
-    return {ph, CryptoMethod::RC4_MD5};
+    return {ph, CryptoMethod::AES_128_GCM};
   }
   else if constexpr (is_same_v<Option, TunnelOption>) {
     return {{makeEndpoint(ph, 0_u16)}, BalanceType::RANDOM};

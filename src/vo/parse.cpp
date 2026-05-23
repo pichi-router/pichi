@@ -57,20 +57,6 @@ template <> CryptoMethod parse(json::Value const& v)
 {
   assertTrue(v.IsString(), PichiError::BAD_JSON, msg::STR_TYPE_ERROR);
   auto str = std::string_view{v.GetString()};
-  if (str == method::RC4_MD5) return CryptoMethod::RC4_MD5;
-  if (str == method::BF_CFB) return CryptoMethod::BF_CFB;
-  if (str == method::AES_128_CTR) return CryptoMethod::AES_128_CTR;
-  if (str == method::AES_192_CTR) return CryptoMethod::AES_192_CTR;
-  if (str == method::AES_256_CTR) return CryptoMethod::AES_256_CTR;
-  if (str == method::AES_128_CFB) return CryptoMethod::AES_128_CFB;
-  if (str == method::AES_192_CFB) return CryptoMethod::AES_192_CFB;
-  if (str == method::AES_256_CFB) return CryptoMethod::AES_256_CFB;
-  if (str == method::CAMELLIA_128_CFB) return CryptoMethod::CAMELLIA_128_CFB;
-  if (str == method::CAMELLIA_192_CFB) return CryptoMethod::CAMELLIA_192_CFB;
-  if (str == method::CAMELLIA_256_CFB) return CryptoMethod::CAMELLIA_256_CFB;
-  if (str == method::CHACHA20) return CryptoMethod::CHACHA20;
-  if (str == method::SALSA20) return CryptoMethod::SALSA20;
-  if (str == method::CHACHA20_IETF) return CryptoMethod::CHACHA20_IETF;
   if (str == method::AES_128_GCM) return CryptoMethod::AES_128_GCM;
   if (str == method::AES_192_GCM) return CryptoMethod::AES_192_GCM;
   if (str == method::AES_256_GCM) return CryptoMethod::AES_256_GCM;

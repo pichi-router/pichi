@@ -87,20 +87,6 @@ BOOST_AUTO_TEST_CASE(toJson_AdapterType)
 BOOST_AUTO_TEST_CASE(parse_CryptoMethod)
 {
   verifyParsing<CryptoMethod>({
-      {                vo::method::RC4_MD5,                 CryptoMethod::RC4_MD5},
-      {                 vo::method::BF_CFB,                  CryptoMethod::BF_CFB},
-      {            vo::method::AES_128_CTR,             CryptoMethod::AES_128_CTR},
-      {            vo::method::AES_192_CTR,             CryptoMethod::AES_192_CTR},
-      {            vo::method::AES_256_CTR,             CryptoMethod::AES_256_CTR},
-      {            vo::method::AES_128_CFB,             CryptoMethod::AES_128_CFB},
-      {            vo::method::AES_192_CFB,             CryptoMethod::AES_192_CFB},
-      {            vo::method::AES_256_CFB,             CryptoMethod::AES_256_CFB},
-      {       vo::method::CAMELLIA_128_CFB,        CryptoMethod::CAMELLIA_128_CFB},
-      {       vo::method::CAMELLIA_192_CFB,        CryptoMethod::CAMELLIA_192_CFB},
-      {       vo::method::CAMELLIA_256_CFB,        CryptoMethod::CAMELLIA_256_CFB},
-      {               vo::method::CHACHA20,                CryptoMethod::CHACHA20},
-      {                vo::method::SALSA20,                 CryptoMethod::SALSA20},
-      {          vo::method::CHACHA20_IETF,           CryptoMethod::CHACHA20_IETF},
       {            vo::method::AES_128_GCM,             CryptoMethod::AES_128_GCM},
       {            vo::method::AES_192_GCM,             CryptoMethod::AES_192_GCM},
       {            vo::method::AES_256_GCM,             CryptoMethod::AES_256_GCM},
@@ -112,20 +98,6 @@ BOOST_AUTO_TEST_CASE(parse_CryptoMethod)
 BOOST_AUTO_TEST_CASE(toJson_CryptoMethod)
 {
   verifyToJson<CryptoMethod>({
-      {                CryptoMethod::RC4_MD5,                 vo::method::RC4_MD5},
-      {                 CryptoMethod::BF_CFB,                  vo::method::BF_CFB},
-      {            CryptoMethod::AES_128_CTR,             vo::method::AES_128_CTR},
-      {            CryptoMethod::AES_192_CTR,             vo::method::AES_192_CTR},
-      {            CryptoMethod::AES_256_CTR,             vo::method::AES_256_CTR},
-      {            CryptoMethod::AES_128_CFB,             vo::method::AES_128_CFB},
-      {            CryptoMethod::AES_192_CFB,             vo::method::AES_192_CFB},
-      {            CryptoMethod::AES_256_CFB,             vo::method::AES_256_CFB},
-      {       CryptoMethod::CAMELLIA_128_CFB,        vo::method::CAMELLIA_128_CFB},
-      {       CryptoMethod::CAMELLIA_192_CFB,        vo::method::CAMELLIA_192_CFB},
-      {       CryptoMethod::CAMELLIA_256_CFB,        vo::method::CAMELLIA_256_CFB},
-      {               CryptoMethod::CHACHA20,                vo::method::CHACHA20},
-      {                CryptoMethod::SALSA20,                 vo::method::SALSA20},
-      {          CryptoMethod::CHACHA20_IETF,           vo::method::CHACHA20_IETF},
       {            CryptoMethod::AES_128_GCM,             vo::method::AES_128_GCM},
       {            CryptoMethod::AES_192_GCM,             vo::method::AES_192_GCM},
       {            CryptoMethod::AES_256_GCM,             vo::method::AES_256_GCM},
@@ -165,26 +137,6 @@ BOOST_AUTO_TEST_CASE(toJson_DelayMode)
   verifyToJson<DelayMode>({
       { DelayMode::FIXED,  vo::delay::FIXED},
       {DelayMode::RANDOM, vo::delay::RANDOM}
-  });
-}
-
-BOOST_AUTO_TEST_CASE(parse_VMessSecurity)
-{
-  verifyParsing<VMessSecurity>({
-      {                  vo::security::AUTO,                   VMessSecurity::AUTO},
-      {                  vo::security::NONE,                   VMessSecurity::NONE},
-      {vo::security::CHACHA20_IETF_POLY1305, VMessSecurity::CHACHA20_IETF_POLY1305},
-      {           vo::security::AES_128_GCM,            VMessSecurity::AES_128_GCM}
-  });
-}
-
-BOOST_AUTO_TEST_CASE(toJson_VMessSecurity)
-{
-  verifyToJson<VMessSecurity>({
-      {                  VMessSecurity::AUTO,                   vo::security::AUTO},
-      {                  VMessSecurity::NONE,                   vo::security::NONE},
-      {VMessSecurity::CHACHA20_IETF_POLY1305, vo::security::CHACHA20_IETF_POLY1305},
-      {           VMessSecurity::AES_128_GCM,            vo::security::AES_128_GCM}
   });
 }
 

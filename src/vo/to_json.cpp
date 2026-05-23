@@ -64,34 +64,6 @@ json::Value toJson(AdapterType type, Allocator& alloc)
 json::Value toJson(CryptoMethod method, Allocator& alloc)
 {
   switch (method) {
-  case CryptoMethod::RC4_MD5:
-    return toJson(method::RC4_MD5, alloc);
-  case CryptoMethod::BF_CFB:
-    return toJson(method::BF_CFB, alloc);
-  case CryptoMethod::AES_128_CTR:
-    return toJson(method::AES_128_CTR, alloc);
-  case CryptoMethod::AES_192_CTR:
-    return toJson(method::AES_192_CTR, alloc);
-  case CryptoMethod::AES_256_CTR:
-    return toJson(method::AES_256_CTR, alloc);
-  case CryptoMethod::AES_128_CFB:
-    return toJson(method::AES_128_CFB, alloc);
-  case CryptoMethod::AES_192_CFB:
-    return toJson(method::AES_192_CFB, alloc);
-  case CryptoMethod::AES_256_CFB:
-    return toJson(method::AES_256_CFB, alloc);
-  case CryptoMethod::CAMELLIA_128_CFB:
-    return toJson(method::CAMELLIA_128_CFB, alloc);
-  case CryptoMethod::CAMELLIA_192_CFB:
-    return toJson(method::CAMELLIA_192_CFB, alloc);
-  case CryptoMethod::CAMELLIA_256_CFB:
-    return toJson(method::CAMELLIA_256_CFB, alloc);
-  case CryptoMethod::CHACHA20:
-    return toJson(method::CHACHA20, alloc);
-  case CryptoMethod::SALSA20:
-    return toJson(method::SALSA20, alloc);
-  case CryptoMethod::CHACHA20_IETF:
-    return toJson(method::CHACHA20_IETF, alloc);
   case CryptoMethod::AES_128_GCM:
     return toJson(method::AES_128_GCM, alloc);
   case CryptoMethod::AES_192_GCM:
