@@ -260,9 +260,11 @@ template <stream::AsyncLayer NextLayer> Awaitable<void> HttpIngress<NextLayer>::
   co_await redirect(stream::close(underlying_));
 }
 
-template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> HttpIngress<NextLayer>::read_remote()
+template <stream::AsyncLayer NextLayer>
+Awaitable<Endpoint> HttpIngress<NextLayer>::continue_read_remote(ConstBuffer b)
 {
-  co_await stream::accept(underlying_);
+  rngs::copy(b, asio::buffers_begin(cache_.prepare(rngs::size(b))));
+  cache_.commit(rngs::size(b));
 
   co_await http::async_read_header(underlying_, cache_, parser_, asio::use_awaitable);
 
@@ -294,6 +296,15 @@ template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> HttpIngress<NextLaye
     manner_.template emplace<detail::ProxyManner<NextLayer>>(std::move(cache_), std::move(req));
     co_return remote;
   }
+}
+
+template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> HttpIngress<NextLayer>::read_remote()
+{
+  co_await stream::accept(underlying_);
+
+  auto buf = std::array<uint8_t, 1>{};
+  co_await stream::read(underlying_, buf);
+  co_return co_await continue_read_remote(buf);
 }
 
 template <stream::AsyncLayer NextLayer>

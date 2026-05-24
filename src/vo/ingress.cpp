@@ -36,6 +36,7 @@ json::Value toJson(Ingress const& ingress, Allocator& alloc)
     break;
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
+  case AdapterType::DUAL:
     if (ingress.tls_.has_value()) ret.AddMember(ingress::TLS, toJson(*ingress.tls_, alloc), alloc);
     if (ingress.credential_.has_value())
       ret.AddMember(
@@ -96,6 +97,7 @@ template <> Ingress parse(json::Value const& v)
     break;
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
+  case AdapterType::DUAL:
     if (v.HasMember(ingress::TLS)) ingress.tls_ = parse<TlsIngressOption>(v[ingress::TLS]);
     if (v.HasMember(ingress::CREDENTIALS))
       ingress.credential_ = parse<UpIngressCredential>(v[ingress::CREDENTIALS]);
@@ -132,6 +134,7 @@ bool operator==(Ingress const& lhs, Ingress const& rhs)
     return lhs.opt_ == rhs.opt_;
   case AdapterType::HTTP:
   case AdapterType::SOCKS5:
+  case AdapterType::DUAL:
     return lhs.tls_ == rhs.tls_ && lhs.credential_ == rhs.credential_;
   case AdapterType::TROJAN:
     return lhs.credential_ == rhs.credential_ && lhs.opt_ == rhs.opt_ && lhs.tls_ == rhs.tls_ &&

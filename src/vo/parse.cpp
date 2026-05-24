@@ -50,6 +50,7 @@ template <> AdapterType parse(json::Value const& v)
   if (str == type::TUNNEL) return AdapterType::TUNNEL;
   if (str == type::TROJAN) return AdapterType::TROJAN;
   if (str == type::TRANSPARENT) return AdapterType::TRANSPARENT;
+  if (str == type::DUAL) return AdapterType::DUAL;
   fail(PichiError::BAD_JSON, msg::AT_INVALID);
 }
 

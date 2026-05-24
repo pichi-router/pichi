@@ -11,7 +11,7 @@ namespace pichi {
 
 enum class EndpointType { DOMAIN_NAME, IPV4, IPV6 };
 
-enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS, TUNNEL, TROJAN, TRANSPARENT };
+enum class AdapterType { DIRECT, REJECT, SOCKS5, HTTP, SS, TUNNEL, TROJAN, TRANSPARENT, DUAL };
 
 enum class CryptoMethod {
   // AES-GCM methods

@@ -197,6 +197,7 @@ _build *args:
     -o "boost/*:zlib=False" \
     -o "openssl/*:no_apps=True" \
     -o "openssl/*:no_zlib=True" \
+    -s "botan/*:compiler.cppstd=20" \
     {{args}} \
     {{workspace}}
 
