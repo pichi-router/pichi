@@ -125,6 +125,7 @@ Balancer::Manner Balancer::initialize(IOExecutor const& ex, vo::Ingress const& v
 {
   assertTrue(vo.type_ == AdapterType::TUNNEL);
   auto opt = std::get<vo::TunnelOption>(*vo.opt_);
+  assertFalse(rngs::empty(opt.destinations_));
   switch (opt.balance_) {
   case BalanceType::RANDOM:
     return balancer::Random{ex, opt};

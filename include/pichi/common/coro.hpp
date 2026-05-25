@@ -29,7 +29,7 @@ concept ExecutionContext = requires(Context ctx) {
 
 template <boost::asio::execution::executor Executor> Awaitable<void> switch_to(Executor const& ex)
 {
-  co_await boost::asio::dispatch(boost::asio::bind_executor(ex, boost::asio::use_awaitable));
+  co_await boost::asio::post(boost::asio::bind_executor(ex, boost::asio::use_awaitable));
 }
 
 template <typename T, boost::asio::execution::executor E>
