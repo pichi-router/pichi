@@ -30,31 +30,31 @@ template <bool isRequest> using Message = boost::beast::http::message<isRequest,
 using Request                           = Message<true>;
 using Response                          = Message<false>;
 
-struct InvalidManner {
-  template <typename Stream> Awaitable<size_t> recv(Stream&, MutableBuffer);
-  template <typename Stream> Awaitable<void>   send(Stream&, ConstBuffer);
-  template <typename Stream> Awaitable<void>   confirm(Stream&);
+template <stream::AsyncLayer NextLayer> struct InvalidManner {
+  Awaitable<size_t> recv(NextLayer&, MutableBuffer);
+  Awaitable<void>   send(NextLayer&, ConstBuffer);
+  Awaitable<void>   confirm(NextLayer&);
 };
 
-class ConnectManner {
+template <stream::AsyncLayer NextLayer> class ConnectManner {
 public:
   explicit ConnectManner(Cache);
 
-  template <typename Stream> Awaitable<size_t> recv(Stream&, MutableBuffer);
-  template <typename Stream> Awaitable<void>   send(Stream&, ConstBuffer);
-  template <typename Stream> Awaitable<void>   confirm(Stream&);
+  Awaitable<size_t> recv(NextLayer&, MutableBuffer);
+  Awaitable<void>   send(NextLayer&, ConstBuffer);
+  Awaitable<void>   confirm(NextLayer&);
 
 private:
   Cache cache_;
 };
 
-class ProxyManner {
+template <stream::AsyncLayer NextLayer> class ProxyManner {
 public:
   explicit ProxyManner(Cache, Request);
 
-  template <typename Stream> Awaitable<size_t> recv(Stream&, MutableBuffer);
-  template <typename Stream> Awaitable<void>   send(Stream&, ConstBuffer);
-  template <typename Stream> Awaitable<void>   confirm(Stream&);
+  Awaitable<size_t> recv(NextLayer&, MutableBuffer);
+  Awaitable<void>   send(NextLayer&, ConstBuffer);
+  Awaitable<void>   confirm(NextLayer&);
 
 private:
   Cache in_;
@@ -85,13 +85,14 @@ private:
 
 }  // namespace detail
 
-template <stream::AsyncSocket Socket> class HttpIngress {
+template <stream::AsyncLayer NextLayer> class HttpIngress {
 private:
-  using Manner = std::variant<detail::InvalidManner, detail::ConnectManner, detail::ProxyManner>;
-  using Stream = std::variant<stream::Tls<Socket>, Socket>;
+  using Manner = std::variant<
+      detail::InvalidManner<NextLayer>, detail::ConnectManner<NextLayer>,
+      detail::ProxyManner<NextLayer>>;
 
 public:
-  explicit HttpIngress(vo::Ingress const&, Socket);
+  explicit HttpIngress(vo::Ingress const&, NextLayer);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -102,8 +103,8 @@ public:
   Awaitable<void>     disconnect(boost::system::error_code const&);
 
 private:
-  Stream stream_;
-  Manner manner_ = {};
+  NextLayer underlying_;
+  Manner    manner_;
 
   detail::RequestParser parser_ = {};
   detail::Cache         cache_  = {};
@@ -111,14 +112,12 @@ private:
   detail::HttpIngressCredential credential_;
 };
 
-template <stream::AsyncSocket Socket> class HttpEgress {
+template <stream::AsyncLayer NextLayer> class HttpEgress {
 private:
   using Credential = std::optional<vo::UpEgressCredential>;
-  using Stream     = std::variant<stream::Tls<Socket>, Socket>;
 
 public:
-  explicit HttpEgress(vo::Egress const&, IOExecutor const&);
-  explicit HttpEgress(vo::Egress const&, Socket);
+  explicit HttpEgress(vo::Egress const&, NextLayer);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -127,7 +126,7 @@ public:
   Awaitable<void> connect(Endpoint const&);
 
 private:
-  Stream        stream_;
+  NextLayer     underlying_;
   Endpoint      peer_;
   detail::Cache cache_;
 

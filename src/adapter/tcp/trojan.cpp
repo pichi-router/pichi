@@ -7,6 +7,7 @@
 #include <boost/beast/websocket/stream.hpp>
 #include <botan/hash.h>
 #include <botan/hex.h>
+#include <pichi/adapter/tcp/adapter.hpp>
 #include <pichi/adapter/tcp/trojan.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/enumerations.hpp>
@@ -16,8 +17,6 @@
 #include <ranges>
 #include <vector>
 
-namespace asio = boost::asio;
-namespace ip   = asio::ip;
 namespace rngs = std::ranges;
 namespace sys  = boost::system;
 namespace view = std::views;
@@ -69,10 +68,10 @@ bool IngressCredentials::authenticate(std::string_view str) const
 
 Cache::Cache() : available_{buf_.prepare(512)} {}
 
-template <typename Stream> Awaitable<void> Cache::read_from(Stream& stream, size_t n)
+template <stream::AsyncLayer Layer> Awaitable<void> Cache::read_from(Layer& underlying, size_t n)
 {
   while (size() < n) {
-    buf_.commit(co_await stream::read_some(stream, available_));
+    buf_.commit(co_await stream::read_some(underlying, available_));
     available_ += buf_.size();
   }
 }
@@ -108,71 +107,60 @@ void Cache::rollback() { taken_ = 0; }
 
 }  // namespace trojan
 
-template <stream::AsyncSocket Socket>
-TrojanIngress<Socket>::TrojanIngress(vo::Ingress const& vo, Socket underlying)
-  : stream_{
-    vo.websocket_.has_value()
-    ? Stream{
-      std::in_place_type<stream::Websocket<stream::Tls<Socket>>>,
-      vo.websocket_->path_,
-      vo.websocket_->host_.value_or(""),
-      stream::tls_context(*vo.tls_),
-      std::move(underlying)
-    }
-    : Stream{
-      std::in_place_type<stream::Tls<Socket>>,
-      stream::tls_context(*vo.tls_),
-      std::move(underlying)
-    }
-  }, cred_{vo}, remote_{std::get<vo::TrojanOption>(*vo.opt_).remote_}
+template <stream::AsyncLayer NextLayer>
+TrojanIngress<NextLayer>::TrojanIngress(vo::Ingress const& vo, NextLayer underlying)
+  : underlying_{std::move(underlying)},
+    cred_{vo},
+    remote_{std::get<vo::TrojanOption>(*vo.opt_).remote_}
 {
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<size_t> TrojanIngress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> TrojanIngress<NextLayer>::recv(MutableBuffer buf)
 {
-  if (cache_.size() == 0) co_return co_await stream::read_some(stream_, buf);
+  if (cache_.size() == 0) co_return co_await stream::read_some(underlying_, buf);
 
   co_return cache_.take(buf);
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> TrojanIngress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> TrojanIngress<NextLayer>::send(ConstBuffer buf)
 {
-  co_await stream::write(stream_, buf);
+  co_await stream::write(underlying_, buf);
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> TrojanIngress<Socket>::close()
+template <stream::AsyncLayer NextLayer> Awaitable<void> TrojanIngress<NextLayer>::close()
 {
-  co_await redirect(stream::close(stream_));
+  co_await redirect(stream::close(underlying_));
 }
 
-template <stream::AsyncSocket Socket> Awaitable<Endpoint> TrojanIngress<Socket>::read_remote()
+template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> TrojanIngress<NextLayer>::read_remote()
 {
   try {
-    co_await stream::accept(stream_);
+    co_await stream::accept(underlying_);
 
-    co_await cache_.read_from(stream_);
+    co_await cache_.read_from(underlying_);
 
     assertTrue(cache_.size() >= PWD_LEN + 2, PichiError::BAD_PROTO);
     assertTrue(cred_.authenticate(cache_.take(PWD_LEN)), PichiError::UNAUTHENTICATED);
     assertTrue(cache_.take(2) == "\r\n"sv, PichiError::BAD_PROTO);
 
-    co_await cache_.read_from(stream_);
+    co_await cache_.read_from(underlying_);
     assertTrue(cache_.take(1) == "\x01"sv, PichiError::BAD_PROTO);
 
     auto remote = co_await parse_endpoint([&](auto demand) -> Awaitable<void> {
-      co_await cache_.read_from(stream_, demand.size());
+      co_await cache_.read_from(underlying_, demand.size());
       cache_.take(demand);
     });
 
-    co_await cache_.read_from(stream_, 2);
+    co_await cache_.read_from(underlying_, 2);
     assertTrue(cache_.take(2) == "\r\n"sv, PichiError::BAD_PROTO);
 
     cache_.clear();
     co_return remote;
   }
   catch (...) {
-    if (stream_.index() == 0) {
+    if constexpr (std::same_as<NextLayer, Tls>) {
       cache_.rollback();
       co_return remote_;
     }
@@ -180,63 +168,49 @@ template <stream::AsyncSocket Socket> Awaitable<Endpoint> TrojanIngress<Socket>:
   }
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> TrojanIngress<Socket>::confirm()
+template <stream::AsyncLayer NextLayer> Awaitable<void> TrojanIngress<NextLayer>::confirm()
 {
   co_return;
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<void> TrojanIngress<Socket>::disconnect(sys::error_code const&)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> TrojanIngress<NextLayer>::disconnect(sys::error_code const&)
 {
   co_return;
 }
 
-template class TrojanIngress<ip::tcp::socket>;
+template class TrojanIngress<Tls>;
+template class TrojanIngress<Websocket>;
 
-template <stream::AsyncSocket Socket>
-TrojanEgress<Socket>::TrojanEgress(vo::Egress const& vo, IOExecutor const& ex)
+template <stream::AsyncLayer NextLayer>
+TrojanEgress<NextLayer>::TrojanEgress(vo::Egress const& vo, NextLayer underlying)
   : cred_{trojan::sha224(std::get<vo::TrojanEgressCredential>(*vo.credential_).credential_)},
     peer_{*vo.server_},
-    stream_{
-      vo.websocket_.has_value()
-      ? Stream{
-        std::in_place_type<stream::Websocket<stream::Tls<Socket>>>,
-        vo.websocket_->path_,
-        vo.websocket_->host_.value_or(""),
-        vo.tls_->sni_,
-        stream::tls_context(*vo.tls_, vo.server_->host_),
-        ex
-      }
-      : Stream{
-        std::in_place_type<stream::Tls<Socket>>,
-        vo.tls_->sni_,
-        stream::tls_context(*vo.tls_, vo.server_->host_),
-        ex
-      }
-    }
+    underlying_{std::move(underlying)}
 {
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<size_t> TrojanEgress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> TrojanEgress<NextLayer>::recv(MutableBuffer buf)
 {
-  co_return co_await stream::read_some(stream_, buf);
+  co_return co_await stream::read_some(underlying_, buf);
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> TrojanEgress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> TrojanEgress<NextLayer>::send(ConstBuffer buf)
 {
-  co_await stream::write(stream_, buf);
+  co_await stream::write(underlying_, buf);
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> TrojanEgress<Socket>::close()
+template <stream::AsyncLayer NextLayer> Awaitable<void> TrojanEgress<NextLayer>::close()
 {
-  co_await redirect(stream::close(stream_));
+  co_await redirect(stream::close(underlying_));
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<void> TrojanEgress<Socket>::connect(Endpoint const& remote)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> TrojanEgress<NextLayer>::connect(Endpoint const& remote)
 {
-  co_await stream::connect(stream_, peer_);
+  co_await stream::connect(underlying_, peer_);
 
   auto buf = std::array<uint8_t, 512>{};
 
@@ -248,11 +222,12 @@ Awaitable<void> TrojanEgress<Socket>::connect(Endpoint const& remote)
   it = rngs::copy("\r\n"sv, it).out;
 
   co_await stream::write(
-      stream_,
+      underlying_,
       {rngs::begin(buf), static_cast<size_t>(rngs::distance(rngs::begin(buf), it))}
   );
 }
 
-template class TrojanEgress<ip::tcp::socket>;
+template class TrojanEgress<Tls>;
+template class TrojanEgress<Websocket>;
 
 }  // namespace pichi::adapter::tcp

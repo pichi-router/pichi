@@ -4,7 +4,6 @@
 #include <boost/beast/core/flat_static_buffer.hpp>
 #include <boost/system/error_code.hpp>
 #include <pichi/common/buffer.hpp>
-#include <pichi/common/coro.hpp>
 #include <pichi/stream/concepts.hpp>
 #include <pichi/stream/tls.hpp>
 #include <pichi/stream/websocket.hpp>
@@ -13,7 +12,6 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
-#include <variant>
 
 namespace pichi::adapter::tcp {
 
@@ -50,7 +48,7 @@ public:
 
   size_t size() const;
 
-  template <typename Stream> Awaitable<void> read_from(Stream&, size_t = 1);
+  template <stream::AsyncLayer Layer> Awaitable<void> read_from(Layer&, size_t = 1);
 
   std::string_view take(size_t);
 
@@ -67,14 +65,13 @@ private:
 
 }  // namespace trojan
 
-template <stream::AsyncSocket Socket> class TrojanIngress {
+template <stream::AsyncLayer NextLayer> class TrojanIngress {
 private:
   using Credential = trojan::IngressCredentials;
   using Cache      = trojan::Cache;
-  using Stream     = std::variant<stream::Tls<Socket>, stream::Websocket<stream::Tls<Socket>>>;
 
 public:
-  explicit TrojanIngress(vo::Ingress const&, Socket);
+  explicit TrojanIngress(vo::Ingress const&, NextLayer);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -85,18 +82,15 @@ public:
   Awaitable<void>     disconnect(boost::system::error_code const&);
 
 private:
-  Stream     stream_;
+  NextLayer  underlying_;
   Credential cred_;
   Cache      cache_ = {};
   Endpoint   remote_;
 };
 
-template <stream::AsyncSocket Socket> class TrojanEgress {
-private:
-  using Stream = std::variant<stream::Tls<Socket>, stream::Websocket<stream::Tls<Socket>>>;
-
+template <stream::AsyncLayer NextLayer> class TrojanEgress {
 public:
-  explicit TrojanEgress(vo::Egress const&, IOExecutor const&);
+  explicit TrojanEgress(vo::Egress const&, NextLayer);
 
   Awaitable<size_t> recv(MutableBuffer);
   Awaitable<void>   send(ConstBuffer);
@@ -107,7 +101,7 @@ public:
 private:
   std::string cred_;
   Endpoint    peer_;
-  Stream      stream_;
+  NextLayer   underlying_;
 };
 
 }  // namespace pichi::adapter::tcp

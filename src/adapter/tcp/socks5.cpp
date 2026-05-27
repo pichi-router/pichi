@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <boost/asio/ip/tcp.hpp>
 #include <format>
+#include <pichi/adapter/tcp/adapter.hpp>
 #include <pichi/adapter/tcp/socks5.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/error.hpp>
@@ -152,20 +153,13 @@ ConstBuffer EgressCredential::data() const { return ConstBuffer{data_, len_}; }
 
 }  // namespace socks5
 
-template <stream::AsyncSocket Socket>
-Socks5Ingress<Socket>::Socks5Ingress(vo::Ingress const& vo, Socket s)
-  : stream_{
-      vo.tls_.has_value()
-      ? Stream{
-          std::in_place_type<stream::Tls<Socket>>,
-          stream::tls_context(*vo.tls_),
-          std::move(s)
-        }
-      : Stream{std::move(s)}}, credential_{vo}
+template <stream::AsyncLayer NextLayer>
+Socks5Ingress<NextLayer>::Socks5Ingress(vo::Ingress const& vo, NextLayer underlying)
+  : underlying_{std::move(underlying)}, credential_{vo}
 {
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::authenticate()
+template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Ingress<NextLayer>::authenticate()
 {
   /*
    * Request:
@@ -176,11 +170,11 @@ template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::aut
    * +----+------+----------+------+----------+
    */
   auto ver = 0_u8;
-  co_await stream::read(stream_, {&ver, 1_sz});
+  co_await stream::read(underlying_, {&ver, 1_sz});
   assertTrue(ver == 0x01_u8, PichiError::BAD_PROTO);
 
-  auto u = co_await socks5::read_string(stream_);
-  auto p = co_await socks5::read_string(stream_);
+  auto u = co_await socks5::read_string(underlying_);
+  auto p = co_await socks5::read_string(underlying_);
   assertTrue(credential_.authenticate(u, p), PichiError::UNAUTHENTICATED);
 
   /*
@@ -196,36 +190,37 @@ template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::aut
 #else   // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   static uint8_t const AUTH_SUCCESS[] = {0x01_u8, 0x00_u8};
 #endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-  co_await stream::write(stream_, AUTH_SUCCESS);
+  co_await stream::write(underlying_, AUTH_SUCCESS);
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<size_t> Socks5Ingress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> Socks5Ingress<NextLayer>::recv(MutableBuffer buf)
 {
-  co_return co_await stream::read_some(stream_, buf);
+  co_return co_await stream::read_some(underlying_, buf);
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> Socks5Ingress<NextLayer>::send(ConstBuffer buf)
 {
-  co_await stream::write(stream_, buf);
+  co_await stream::write(underlying_, buf);
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::close()
+template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Ingress<NextLayer>::close()
 {
-  co_await redirect(stream::close(stream_));
+  co_await redirect(stream::close(underlying_));
 }
 
-template <stream::AsyncSocket Socket> Awaitable<Endpoint> Socks5Ingress<Socket>::read_remote()
+template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> Socks5Ingress<NextLayer>::read_remote()
 {
-  co_await stream::accept(stream_);
+  co_await stream::accept(underlying_);
 
   auto buf = std::array<uint8_t, 512>{};
-  co_await stream::read(stream_, {buf, 2});
+  co_await stream::read(underlying_, {buf, 2});
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
   assertTrue(buf[1] > 0, PichiError::BAD_PROTO);
 
   auto len = buf[1];
-  co_await stream::read(stream_, {buf, len});
+  co_await stream::read(underlying_, {buf, len});
 
   auto m = credential_.need_auth() ? 0x02_u8 : 0x00_u8;
   assertTrue(
@@ -234,21 +229,21 @@ template <stream::AsyncSocket Socket> Awaitable<Endpoint> Socks5Ingress<Socket>:
   );
   buf[0] = 0x05;
   buf[1] = m;
-  co_await stream::write(stream_, {buf, 2});
+  co_await stream::write(underlying_, {buf, 2});
 
   if (credential_.need_auth()) co_await authenticate();
 
-  co_await stream::read(stream_, {buf, 3});
+  co_await stream::read(underlying_, {buf, 3});
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
   assertTrue(buf[1] == 0x01, PichiError::BAD_PROTO);
   assertTrue(buf[2] == 0x00, PichiError::BAD_PROTO);
 
   co_return co_await parse_endpoint([this](auto buf) -> Awaitable<void> {
-    co_await stream::read(stream_, buf);
+    co_await stream::read(underlying_, buf);
   });
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::confirm()
+template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Ingress<NextLayer>::confirm()
 {
 #ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   static auto const CONFIRM = array{
@@ -266,58 +261,46 @@ template <stream::AsyncSocket Socket> Awaitable<void> Socks5Ingress<Socket>::con
 #else   // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   static uint8_t const CONFIRM[] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 #endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-  co_await stream::write(stream_, CONFIRM);
+  co_await stream::write(underlying_, CONFIRM);
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<void> Socks5Ingress<Socket>::disconnect(sys::error_code const& ec)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> Socks5Ingress<NextLayer>::disconnect(sys::error_code const& ec)
 {
-  co_await redirect(stream::write(stream_, socks5::err_to_buf(ec)));
+  co_await redirect(stream::write(underlying_, socks5::err_to_buf(ec)));
 }
 
-template class Socks5Ingress<ip::tcp::socket>;
+template class Socks5Ingress<Socket>;
+template class Socks5Ingress<Tls>;
 template class Socks5Ingress<unit_test::TestSocket>;
 
-template <stream::AsyncSocket Socket>
-Socks5Egress<Socket>::Socks5Egress(vo::Egress const& vo, IOExecutor const& ex)
-  : Socks5Egress{vo, Socket{ex}}
+template <stream::AsyncLayer NextLayer>
+Socks5Egress<NextLayer>::Socks5Egress(vo::Egress const& vo, NextLayer underlying)
+  : underlying_{std::move(underlying)}, peer_{*vo.server_}, credential_{vo}
 {
 }
 
-template <stream::AsyncSocket Socket>
-Socks5Egress<Socket>::Socks5Egress(vo::Egress const& vo, Socket s)
-: stream_{
-  vo.tls_.has_value()
-  ? Stream{
-    std::in_place_type<stream::Tls<Socket>>,
-    stream::tls_context(*vo.tls_, vo.server_->host_),
-    std::move(s)
-  }
-  : Stream{std::in_place_type<Socket>, std::move(s)}
-}, peer_{*vo.server_}, credential_{vo}
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> Socks5Egress<NextLayer>::recv(MutableBuffer buf)
 {
+  co_return co_await stream::read_some(underlying_, buf);
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<size_t> Socks5Egress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> Socks5Egress<NextLayer>::send(ConstBuffer buf)
 {
-  co_return co_await stream::read_some(stream_, buf);
+  co_await stream::write(underlying_, buf);
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> Socks5Egress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Egress<NextLayer>::close()
 {
-  co_await stream::write(stream_, buf);
+  co_await redirect(stream::close(underlying_));
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> Socks5Egress<Socket>::close()
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> Socks5Egress<NextLayer>::connect(Endpoint const& remote)
 {
-  co_await redirect(stream::close(stream_));
-}
-
-template <stream::AsyncSocket Socket>
-Awaitable<void> Socks5Egress<Socket>::connect(Endpoint const& remote)
-{
-  co_await stream::connect(stream_, peer_);
+  co_await stream::connect(underlying_, peer_);
 
   auto buf = std::array<uint8_t, 512>{};
   auto m   = credential_.need_auth() ? 0x02_u8 : 0x00_u8;
@@ -325,16 +308,16 @@ Awaitable<void> Socks5Egress<Socket>::connect(Endpoint const& remote)
   buf[0] = 0x05;
   buf[1] = 0x01;
   buf[2] = m;
-  co_await stream::write(stream_, {buf, 3});
+  co_await stream::write(underlying_, {buf, 3});
 
-  co_await stream::read(stream_, {buf, 2});
+  co_await stream::read(underlying_, {buf, 2});
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
   assertTrue(buf[1] == m, PichiError::BAD_AUTH_METHOD);
 
   if (credential_.need_auth()) {
-    co_await stream::write(stream_, credential_.data());
+    co_await stream::write(underlying_, credential_.data());
 
-    co_await stream::read(stream_, {buf, 2});
+    co_await stream::read(underlying_, {buf, 2});
     assertTrue(buf[0] == 0x01_u8, PichiError::BAD_PROTO);
     assertTrue(buf[1] == 0x00_u8, PichiError::UNAUTHENTICATED);
   }
@@ -342,9 +325,9 @@ Awaitable<void> Socks5Egress<Socket>::connect(Endpoint const& remote)
   buf[0] = 0x05;
   buf[1] = 0x01;
   buf[2] = 0x00;
-  co_await stream::write(stream_, {buf, serializeEndpoint(remote, MutableBuffer{buf} + 3) + 3});
+  co_await stream::write(underlying_, {buf, serializeEndpoint(remote, MutableBuffer{buf} + 3) + 3});
 
-  co_await stream::read(stream_, {buf, 3});
+  co_await stream::read(underlying_, {buf, 3});
   assertTrue(buf[0] == 0x05, PichiError::BAD_PROTO);
   assertTrue(
       buf[1] == 0x00,
@@ -352,10 +335,11 @@ Awaitable<void> Socks5Egress<Socket>::connect(Endpoint const& remote)
       std::format("Failed to establish connection with {}:{}", remote.host_, remote.port_)
   );
   assertTrue(buf[2] == 0x00, PichiError::BAD_PROTO);
-  co_await parse_endpoint([this](auto dst) { return stream::read(stream_, dst); });
+  co_await parse_endpoint([this](auto dst) { return stream::read(underlying_, dst); });
 }
 
-template class Socks5Egress<ip::tcp::socket>;
+template class Socks5Egress<Socket>;
+template class Socks5Egress<Tls>;
 template class Socks5Egress<unit_test::TestSocket>;
 
 }  // namespace pichi::adapter::tcp

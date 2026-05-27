@@ -34,27 +34,6 @@ static uint32_t const HEADER_LIMIT = 1024ul * 1024ul;
 
 static auto const BASIC_AUTH_PATTERN = std::regex{"^basic ([a-z0-9+/]+={0,2})", std::regex::icase};
 
-template <bool isRequest, typename... Streams>
-Awaitable<void> http_write(std::variant<Streams...>& streams, Message<isRequest>& msg)
-{
-  co_await std::visit(
-      [&](auto&& stream) { return http::async_write(stream, msg, asio::use_awaitable); },
-      streams
-  );
-}
-
-template <bool isRequest, typename... Streams>
-Awaitable<void>
-    http_read_header(std::variant<Streams...>& streams, Cache& cache, Parser<isRequest>& parser)
-{
-  co_await std::visit(
-      [&](auto&& stream) {
-        return http::async_read_header(stream, cache, parser, asio::use_awaitable);
-      },
-      streams
-  );
-}
-
 static Endpoint get_remote(Request& req)
 {
   /*
@@ -91,26 +70,32 @@ static Endpoint get_remote(Request& req)
   }
 }
 
-template <typename Stream> Awaitable<size_t> InvalidManner::recv(Stream&, MutableBuffer)
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> InvalidManner<NextLayer>::recv(NextLayer&, MutableBuffer)
 {
   fail("Unexpected invocation");
 }
 
-template <typename Stream> Awaitable<void> InvalidManner::send(Stream&, ConstBuffer)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> InvalidManner<NextLayer>::send(NextLayer&, ConstBuffer)
 {
   fail("Unexpected invocation");
 }
 
-template <typename Stream> Awaitable<void> InvalidManner::confirm(Stream&)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> InvalidManner<NextLayer>::confirm(NextLayer&)
 {
   fail("Unexpected invocation");
 }
 
-ConnectManner::ConnectManner(Cache cache) : cache_{cache} {}
-
-template <typename Stream> Awaitable<size_t> ConnectManner::recv(Stream& stream, MutableBuffer buf)
+template <stream::AsyncLayer NextLayer>
+ConnectManner<NextLayer>::ConnectManner(Cache cache) : cache_{cache}
 {
-  if (cache_.size() == 0) co_return co_await stream::read_some(stream, buf);
+}
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> ConnectManner<NextLayer>::recv(NextLayer& underlying, MutableBuffer buf)
+{
+  if (cache_.size() == 0) co_return co_await stream::read_some(underlying, buf);
 
   auto copied = std::min(buf.size(), cache_.size());
   std::copy_n(asio::buffers_begin(cache_.data()), copied, std::begin(buf));
@@ -118,21 +103,25 @@ template <typename Stream> Awaitable<size_t> ConnectManner::recv(Stream& stream,
   co_return copied;
 }
 
-template <typename Stream> Awaitable<void> ConnectManner::send(Stream& stream, ConstBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> ConnectManner<NextLayer>::send(NextLayer& underlying, ConstBuffer buf)
 {
-  co_await stream::write(stream, buf);
+  co_await stream::write(underlying, buf);
 }
 
-template <typename Stream> Awaitable<void> ConnectManner::confirm(Stream& stream)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> ConnectManner<NextLayer>::confirm(NextLayer& underlying)
 {
   auto rep = Response{};
   rep.version(11);
   rep.result(http::status::ok);
   rep.reason("Connection Established");
-  co_await detail::http_write(stream, rep);
+  co_await http::async_write(underlying, rep, asio::use_awaitable);
 }
 
-ProxyManner::ProxyManner(Cache cache, Request req) : in_{std::move(cache)}, out_{}, parser_{}
+template <stream::AsyncLayer NextLayer>
+ProxyManner<NextLayer>::ProxyManner(Cache cache, Request req)
+  : in_{std::move(cache)}, out_{}, parser_{}
 {
   auto sticked = in_.size();
 
@@ -153,9 +142,10 @@ ProxyManner::ProxyManner(Cache cache, Request req) : in_{std::move(cache)}, out_
   in_.consume(sticked);
 }
 
-template <typename Stream> Awaitable<size_t> ProxyManner::recv(Stream& stream, MutableBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> ProxyManner<NextLayer>::recv(NextLayer& underlying, MutableBuffer buf)
 {
-  if (in_.size() == 0) co_return co_await stream::read_some(stream, buf);
+  if (in_.size() == 0) co_return co_await stream::read_some(underlying, buf);
 
   auto copied = std::min(in_.size(), buf.size());
   std::copy_n(asio::buffers_begin(in_.data()), copied, std::begin(buf));
@@ -163,10 +153,11 @@ template <typename Stream> Awaitable<size_t> ProxyManner::recv(Stream& stream, M
   co_return copied;
 }
 
-template <typename Stream> Awaitable<void> ProxyManner::send(Stream& stream, ConstBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> ProxyManner<NextLayer>::send(NextLayer& underlying, ConstBuffer buf)
 {
   if (parser_.is_header_done()) {
-    co_await stream::write(stream, buf);
+    co_await stream::write(underlying, buf);
     co_return;
   }
 
@@ -197,14 +188,17 @@ template <typename Stream> Awaitable<void> ProxyManner::send(Stream& stream, Con
     rep.set(http::field::proxy_connection, "close");
   }
 
-  co_await http_write(stream, rep);
+  co_await http::async_write(underlying, rep, asio::use_awaitable);
   if (out_.size() > 0) {
-    co_await stream::write(stream, out_.cdata());
+    co_await stream::write(underlying, out_.cdata());
     out_.consume(out_.size());
   }
 }
 
-template <typename Stream> Awaitable<void> ProxyManner::confirm(Stream&) { co_return; }
+template <stream::AsyncLayer NextLayer> Awaitable<void> ProxyManner<NextLayer>::confirm(NextLayer&)
+{
+  co_return;
+}
 
 static auto get_credential(Request const& req)
 {
@@ -260,39 +254,31 @@ void HttpEgressCredential::update(Request& req) const
 
 }  // namespace detail
 
-template <stream::AsyncSocket Socket>
-HttpIngress<Socket>::HttpIngress(vo::Ingress const& vo, Socket s)
-  : stream_{
-    vo.tls_.has_value()
-    ? Stream{
-        std::in_place_type<stream::Tls<Socket>>,
-        stream::tls_context(*vo.tls_),
-        std::move(s)
-      }
-    : Stream{std::in_place_type<Socket>, std::move(s)}
-  }, credential_{vo}
+template <stream::AsyncLayer NextLayer>
+HttpIngress<NextLayer>::HttpIngress(vo::Ingress const& vo, NextLayer underlying)
+  : underlying_{std::move(underlying)}, manner_{detail::InvalidManner<NextLayer>{}}, credential_{vo}
 {
   parser_.header_limit(detail::HEADER_LIMIT);
   parser_.body_limit(std::numeric_limits<uint64_t>::max());
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> HttpIngress<Socket>::close()
+template <stream::AsyncLayer NextLayer> Awaitable<void> HttpIngress<NextLayer>::close()
 {
-  co_await redirect(stream::close(stream_));
+  co_await redirect(stream::close(underlying_));
 }
 
-template <stream::AsyncSocket Socket> Awaitable<Endpoint> HttpIngress<Socket>::read_remote()
+template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> HttpIngress<NextLayer>::read_remote()
 {
-  co_await stream::accept(stream_);
+  co_await stream::accept(underlying_);
 
-  co_await detail::http_read_header(stream_, cache_, parser_);
+  co_await http::async_read_header(underlying_, cache_, parser_, asio::use_awaitable);
 
   auto req = parser_.release();
 
   assertTrue(credential_.authenticate(req), PichiError::UNAUTHENTICATED);
 
   if (req.method() == http::verb::connect) {
-    manner_.template emplace<detail::ConnectManner>(std::move(cache_));
+    manner_.template emplace<detail::ConnectManner<NextLayer>>(std::move(cache_));
 
     /*
      * HTTP CONNECT @RFC2616
@@ -311,28 +297,36 @@ template <stream::AsyncSocket Socket> Awaitable<Endpoint> HttpIngress<Socket>::r
       req.set(http::field::connection, "close");
       req.set(http::field::proxy_connection, "close");
     }
-    manner_.template emplace<detail::ProxyManner>(std::move(cache_), std::move(req));
+    manner_.template emplace<detail::ProxyManner<NextLayer>>(std::move(cache_), std::move(req));
     co_return remote;
   }
 }
 
-template <stream::AsyncSocket Socket> Awaitable<size_t> HttpIngress<Socket>::recv(MutableBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> HttpIngress<NextLayer>::recv(MutableBuffer buf)
 {
-  co_return co_await std::visit([buf, this](auto&& m) { return m.recv(stream_, buf); }, manner_);
+  co_return co_await std::visit(
+      [buf, this](auto&& m) { return m.recv(underlying_, buf); },
+      manner_
+  );
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> HttpIngress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> HttpIngress<NextLayer>::send(ConstBuffer buf)
 {
-  co_return co_await std::visit([buf, this](auto&& m) { return m.send(stream_, buf); }, manner_);
+  co_return co_await std::visit(
+      [buf, this](auto&& m) { return m.send(underlying_, buf); },
+      manner_
+  );
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> HttpIngress<Socket>::confirm()
+template <stream::AsyncLayer NextLayer> Awaitable<void> HttpIngress<NextLayer>::confirm()
 {
-  co_return co_await std::visit([this](auto&& m) { return m.confirm(stream_); }, manner_);
+  co_return co_await std::visit([this](auto&& m) { return m.confirm(underlying_); }, manner_);
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<void> HttpIngress<Socket>::disconnect(sys::error_code const& ec)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> HttpIngress<NextLayer>::disconnect(sys::error_code const& ec)
 {
   if (!ec) co_return;
 
@@ -368,54 +362,43 @@ Awaitable<void> HttpIngress<Socket>::disconnect(sys::error_code const& ec)
     auto pCat         = dynamic_cast<CategoryPtr>(&ec.category());
     rep.result(pCat ? http::status::bad_request : http::status::gateway_timeout);
   }
-  co_await detail::http_write(stream_, rep);
+  co_await http::async_write(underlying_, rep, asio::use_awaitable);
 }
 
-template class HttpIngress<asio::ip::tcp::socket>;
+template class HttpIngress<Socket>;
+template class HttpIngress<Tls>;
 template class HttpIngress<unit_test::TestSocket>;
 
-template <stream::AsyncSocket Socket>
-HttpEgress<Socket>::HttpEgress(vo::Egress const& vo, IOExecutor const& ex)
-  : HttpEgress{vo, Socket{ex}}
+template <stream::AsyncLayer NextLayer>
+HttpEgress<NextLayer>::HttpEgress(vo::Egress const& vo, NextLayer underlying)
+  : underlying_{std::move(underlying)}, peer_{*vo.server_}, credential_{vo}
 {
 }
 
-template <stream::AsyncSocket Socket>
-HttpEgress<Socket>::HttpEgress(vo::Egress const& vo, Socket s)
-: stream_{
-  vo.tls_.has_value()
-  ? Stream{
-    std::in_place_type<stream::Tls<Socket>>, stream::tls_context(*vo.tls_, vo.server_->host_),
-    std::move(s)
-  }
-  : Stream{std::in_place_type<Socket>, std::move(s)}
-}, peer_{*vo.server_}, credential_{vo}
+template <stream::AsyncLayer NextLayer>
+Awaitable<size_t> HttpEgress<NextLayer>::recv(MutableBuffer buf)
 {
-}
-
-template <stream::AsyncSocket Socket> Awaitable<size_t> HttpEgress<Socket>::recv(MutableBuffer buf)
-{
-  if (cache_.size() == 0) co_return co_await stream::read_some(stream_, buf);
+  if (cache_.size() == 0) co_return co_await stream::read_some(underlying_, buf);
   auto copied = std::min(cache_.size(), buf.size());
   std::copy_n(asio::buffers_begin(cache_.data()), copied, std::begin(buf));
   cache_.consume(copied);
   co_return copied;
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> HttpEgress<Socket>::send(ConstBuffer buf)
+template <stream::AsyncLayer NextLayer> Awaitable<void> HttpEgress<NextLayer>::send(ConstBuffer buf)
 {
-  co_await stream::write(stream_, buf);
+  co_await stream::write(underlying_, buf);
 }
 
-template <stream::AsyncSocket Socket> Awaitable<void> HttpEgress<Socket>::close()
+template <stream::AsyncLayer NextLayer> Awaitable<void> HttpEgress<NextLayer>::close()
 {
-  co_await redirect(stream::close(stream_));
+  co_await redirect(stream::close(underlying_));
 }
 
-template <stream::AsyncSocket Socket>
-Awaitable<void> HttpEgress<Socket>::connect(Endpoint const& remote)
+template <stream::AsyncLayer NextLayer>
+Awaitable<void> HttpEgress<NextLayer>::connect(Endpoint const& remote)
 {
-  co_await stream::connect(stream_, peer_);
+  co_await stream::connect(underlying_, peer_);
 
   auto req = detail::Request{};
   req.method(http::verb::connect);
@@ -428,15 +411,16 @@ Awaitable<void> HttpEgress<Socket>::connect(Endpoint const& remote)
   credential_.update(req);
   req.prepare_payload();
 
-  co_await detail::http_write(stream_, req);
+  co_await http::async_write(underlying_, req, asio::use_awaitable);
 
   auto parser = detail::ResponseParser{};
-  co_await detail::http_read_header(stream_, cache_, parser);
+  co_await http::async_read_header(underlying_, cache_, parser, asio::use_awaitable);
   auto code = parser.release().result_int();
   assertTrue(code >= 200 && code < 300, PichiError::CONN_FAILURE);
 }
 
-template class HttpEgress<asio::ip::tcp::socket>;
+template class HttpEgress<Socket>;
+template class HttpEgress<Tls>;
 template class HttpEgress<unit_test::TestSocket>;
 
 }  // namespace pichi::adapter::tcp

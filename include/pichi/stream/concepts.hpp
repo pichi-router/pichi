@@ -96,6 +96,9 @@ template <typename Stream>
 concept AsyncStream1 =
     Layered<Stream> && Shutdownable<Stream> && AsyncReadable<Stream> && AsyncWritable<Stream>;
 
+template <typename Layer>
+concept AsyncLayer = AsyncSocket<Layer> || AsyncStream1<Layer>;
+
 }  // namespace pichi::stream
 
 #endif  // PICHI_STREAM_CONCEPTS_HPP

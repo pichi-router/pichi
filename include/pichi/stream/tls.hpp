@@ -166,13 +166,6 @@ private:
   Stream  stream_;
 };
 
-template <typename Socket> struct IsTls : public std::false_type {};
-
-template <typename Socket> struct IsTls<Tls<Socket>> : public std::true_type {};
-
-template <typename Stream>
-concept TLSStream = IsTls<Stream>::value;
-
 }  // namespace pichi::stream
 
 #endif  // PICHI_STREAM_TLS_HPP
