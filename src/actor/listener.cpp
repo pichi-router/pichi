@@ -1,11 +1,11 @@
 #include <algorithm>
-#include <format>
-#include <iostream>
+#include <boost/asio/detail/throw_error.hpp>
 #include <pichi/actor/detached.hpp>
 #include <pichi/actor/listener.hpp>
 #include <pichi/actor/session.hpp>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/enumerations.hpp>
+#include <pichi/service/balancer.hpp>
 #include <ranges>
 
 namespace asio  = boost::asio;
@@ -18,13 +18,13 @@ namespace pichi::actor {
 Awaitable<void> Listener::listen(Acceptor& ac)
 {
   auto ex = strand_.get_inner_executor();
+  if (vo_.type_ == AdapterType::TUNNEL) co_await service::create_balancer(ex, vo_);
   while (ac.is_open()) {
     auto [ec, s] = co_await redirect(ac.async_accept(asio::use_awaitable));
-    if (ec) {
-      if (ec != asio::error::operation_aborted)
-        std::clog << std::format("ERROR: {}\n", ec.message());
+    if (ec == asio::error::operation_aborted)
       break;
-    }
+    else
+      asio::detail::throw_error(ec);
 
     co_await switch_to(strand_);
     asio::co_spawn(
@@ -47,6 +47,13 @@ Listener::Listener(IOExecutor const& ex, RouterPtr const& router, vo::Ingress vo
              };
            });
   acceptors_.assign(rngs::begin(v), rngs::end(v));
+}
+
+Listener::~Listener()
+{
+  // router_ is also a flag to indicate whether this listener is moved or not.
+  if (router_ != nullptr && vo_.type_ == AdapterType::TUNNEL)
+    service::remove_balancer(strand_, vo_.name_);
 }
 
 vo::Ingress const& Listener::vo() const { return vo_; }

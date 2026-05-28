@@ -23,6 +23,13 @@ private:
 
 public:
   Listener(IOExecutor const&, RouterPtr const&, Ingress);
+  ~Listener();
+
+  Listener(Listener const&) = delete;
+  Listener(Listener&&)      = default;
+
+  Listener& operator=(Listener const&) = delete;
+  Listener& operator=(Listener&&)      = default;
 
   void start();
 

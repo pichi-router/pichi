@@ -10,6 +10,7 @@
 #include <pichi/adapter/tcp/socks5.hpp>
 #include <pichi/adapter/tcp/transparent.hpp>
 #include <pichi/adapter/tcp/trojan.hpp>
+#include <pichi/adapter/tcp/tunnel.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/stream/concepts.hpp>
 #include <pichi/stream/tls.hpp>
@@ -27,7 +28,7 @@ using Websocket = stream::Websocket<Tls>;
 using Ingress = std::variant<
     DualIngress<Socket>, DualIngress<Tls>, HttpIngress<Socket>, HttpIngress<Tls>,
     Socks5Ingress<Socket>, Socks5Ingress<Tls>, TrojanIngress<Tls>, TrojanIngress<Websocket>,
-    Shadowsocks<Socket>, TransparentIngress>;
+    Shadowsocks<Socket>, TransparentIngress, Tunnel>;
 
 using Egress = std::variant<
     Direct, RejectEgress, HttpEgress<Socket>, HttpEgress<Tls>, Socks5Egress<Socket>,

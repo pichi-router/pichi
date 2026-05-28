@@ -61,6 +61,8 @@ template <stream::AsyncSocket Socket> Ingress create_ingress(vo::Ingress const& 
       };
   case AdapterType::TRANSPARENT:
     return Ingress{std::in_place_type<TransparentIngress>, vo, std::move(s)};
+  case AdapterType::TUNNEL:
+    return Ingress{std::in_place_type<Tunnel>, vo, std::move(s)};
   default:
     fail();
   }
