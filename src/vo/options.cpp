@@ -1,5 +1,4 @@
-#include <pichi/common/config.hpp>
-// Include config.hpp first
+#include "pichi/common/config.hpp"
 #include <numeric>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/literals.hpp>
@@ -9,7 +8,6 @@
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 
-using namespace std;
 namespace json = rapidjson;
 
 using Allocator = json::Document::AllocatorType;
@@ -21,7 +19,7 @@ template <> ShadowsocksOption parse(json::Value const& v)
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   assertTrue(v.HasMember(option::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
   assertTrue(v.HasMember(option::METHOD), PichiError::BAD_JSON, msg::MISSING_METHOD_FIELD);
-  return {parse<string>(v[option::PASSWORD]), parse<CryptoMethod>(v[option::METHOD])};
+  return {parse<std::string>(v[option::PASSWORD]), parse<CryptoMethod>(v[option::METHOD])};
 }
 
 json::Value toJson(ShadowsocksOption const& opt, Allocator& alloc)
@@ -40,18 +38,26 @@ bool operator==(ShadowsocksOption const& lhs, ShadowsocksOption const& rhs)
 template <> TunnelOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
-  assertTrue(v.HasMember(option::DESTINATIONS), PichiError::BAD_JSON,
-             msg::MISSING_DESTINATIONS_FIELD);
+  assertTrue(
+      v.HasMember(option::DESTINATIONS),
+      PichiError::BAD_JSON,
+      msg::MISSING_DESTINATIONS_FIELD
+  );
   assertTrue(v[option::DESTINATIONS].IsArray(), PichiError::BAD_JSON, msg::ARY_TYPE_ERROR);
   assertFalse(v[option::DESTINATIONS].Empty(), PichiError::BAD_JSON, msg::ARY_SIZE_ERROR);
   assertTrue(v.HasMember(option::BALANCE), PichiError::BAD_JSON, msg::MISSING_BALANCE_FIELD);
-  return {accumulate(v[option::DESTINATIONS].Begin(), v[option::DESTINATIONS].End(),
-                     vector<Endpoint>{},
-                     [](auto&& sum, auto&& item) {
-                       sum.push_back(parse<Endpoint>(item));
-                       return move(sum);
-                     }),
-          parse<BalanceType>(v[option::BALANCE])};
+  return {
+      accumulate(
+          v[option::DESTINATIONS].Begin(),
+          v[option::DESTINATIONS].End(),
+          std::vector<Endpoint>{},
+          [](auto&& sum, auto&& item) {
+            sum.push_back(parse<Endpoint>(item));
+            return std::move(sum);
+          }
+      ),
+      parse<BalanceType>(v[option::BALANCE])
+  };
 }
 
 json::Value toJson(TunnelOption const& opt, Allocator& alloc)
@@ -74,7 +80,7 @@ template <> RejectOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   assertTrue(v.HasMember(option::MODE), PichiError::BAD_JSON, msg::MISSING_MODE_FIELD);
-  auto ret = RejectOption{};
+  auto ret  = RejectOption{};
   ret.mode_ = parse<DelayMode>(v[option::MODE]);
   if (ret.mode_ == DelayMode::FIXED) {
     ret.delay_ = v.HasMember(option::DELAY) ? parse<uint16_t>(v[option::DELAY]) : 0_u16;
@@ -124,7 +130,7 @@ template <> TlsIngressOption parse(json::Value const& v)
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   assertTrue(v.HasMember(tls::CERT_FILE), PichiError::BAD_JSON, msg::MISSING_CERT_FILE_FIELD);
   assertTrue(v.HasMember(tls::KEY_FILE), PichiError::BAD_JSON, msg::MISSING_KEY_FILE_FIELD);
-  return {parse<string>(v[tls::CERT_FILE]), parse<string>(v[tls::KEY_FILE])};
+  return {parse<std::string>(v[tls::CERT_FILE]), parse<std::string>(v[tls::KEY_FILE])};
 }
 
 json::Value toJson(TlsIngressOption const& opt, Allocator& alloc)
@@ -143,12 +149,12 @@ bool operator==(TlsIngressOption const& lhs, TlsIngressOption const& rhs)
 template <> TlsEgressOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
-  auto ret = TlsEgressOption{};
+  auto ret      = TlsEgressOption{};
   ret.insecure_ = v.HasMember(tls::INSECURE) ? parse<bool>(v[tls::INSECURE]) : false;
-  if (v.HasMember(tls::SNI)) ret.sni_ = parse<string>(v[tls::SNI]);
+  if (v.HasMember(tls::SNI)) ret.sni_ = parse<std::string>(v[tls::SNI]);
   if (!ret.insecure_) {
-    if (v.HasMember(tls::CA_FILE)) ret.caFile_ = parse<string>(v[tls::CA_FILE]);
-    if (v.HasMember(tls::SERVER_NAME)) ret.serverName_ = parse<string>(v[tls::SERVER_NAME]);
+    if (v.HasMember(tls::CA_FILE)) ret.caFile_ = parse<std::string>(v[tls::CA_FILE]);
+    if (v.HasMember(tls::SERVER_NAME)) ret.serverName_ = parse<std::string>(v[tls::SERVER_NAME]);
   }
   return ret;
 }
@@ -177,9 +183,9 @@ template <> WebsocketOption parse(json::Value const& v)
 {
   assertTrue(v.IsObject(), PichiError::BAD_JSON, msg::OBJ_TYPE_ERROR);
   assertTrue(v.HasMember(websocket::PATH), PichiError::BAD_JSON, msg::MISSING_PATH_FIELD);
-  auto ret = WebsocketOption{};
-  ret.path_ = parse<string>(v[websocket::PATH]);
-  if (v.HasMember(websocket::HOST)) ret.host_ = parse<string>(v[websocket::HOST]);
+  auto ret  = WebsocketOption{};
+  ret.path_ = parse<std::string>(v[websocket::PATH]);
+  if (v.HasMember(websocket::HOST)) ret.host_ = parse<std::string>(v[websocket::HOST]);
   return ret;
 }
 

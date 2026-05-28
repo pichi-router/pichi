@@ -67,12 +67,6 @@ endif()
 # Generating config.hpp
 message(STATUS "Generating config.hpp")
 
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-  # https://reviews.llvm.org/D119670?id=408276
-  include(CheckCXXCompilerFlag)
-  check_cxx_compiler_flag("-Wno-unqualified-std-cast-call" DISABLE_CLANG_UNQUALIFIED_STD_CAST_CALL)
-endif()
-
 if(BUILD_SERVER)
   include(CheckIncludeFiles)
   include(CheckFunctionExists)

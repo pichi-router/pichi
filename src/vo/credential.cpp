@@ -54,7 +54,7 @@ template <> UpIngressCredential parse(json::Value const& v)
         parse<std::string>(item[credential::PASSWORD])
     );
     assertTrue(inserted, PichiError::SEMANTIC_ERROR, msg::DUPLICATED_ITEMS);
-    return move(sum);
+    return std::move(sum);
   })};
 }
 
@@ -97,7 +97,7 @@ template <> TrojanIngressCredential parse(json::Value const& v)
     assertTrue(item.HasMember(credential::PASSWORD), PichiError::BAD_JSON, msg::MISSING_PW_FIELD);
     auto [_, inserted] = sum.insert(parse<std::string>(item[credential::PASSWORD]));
     assertTrue(inserted, PichiError::SEMANTIC_ERROR, msg::DUPLICATED_ITEMS);
-    return move(sum);
+    return std::move(sum);
   })};
 }
 
