@@ -38,6 +38,7 @@
 #endif  // _WIN32
 
 using namespace pichi;
+using namespace std::literals;
 namespace asio  = boost::asio;
 namespace beast = boost::beast;
 namespace http  = boost::beast::http;
@@ -168,7 +169,7 @@ private:
 
     for (auto&& e : co_await get(sock, std::format("/{}", EGRESSES)) |
                         views::transform([](auto&& member) { return member.name.GetString(); }) |
-                        views::filter([](auto&& e) { return e != "direct"; })) {
+                        views::filter([](auto&& e) { return e != "direct"sv; })) {
       co_await del(sock, std::format("/{}/{}", EGRESSES, e));
     }
 

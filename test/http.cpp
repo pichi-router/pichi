@@ -39,10 +39,14 @@ static auto const HTTPS_TARGET = std::format("{}:{}", HTTPS_ENDPOINT.host_, HTTP
 static auto const CONTENT  = "content"s;
 static auto const USERNAME = "pichi"s;
 static auto const PASSWORD = "pichi"s;
-static auto const IVO_AUTH =
-    vo::Ingress{.credential_ = vo::UpIngressCredential{.credential_ = {{USERNAME, PASSWORD}}}};
-static auto const EVO_AUTH =
-    vo::Egress{.credential_ = vo::UpEgressCredential{.credential_ = {USERNAME, PASSWORD}}};
+static auto const IVO_AUTH = vo::Ingress{
+    .type_       = AdapterType::HTTP,
+    .credential_ = vo::UpIngressCredential{.credential_ = {{USERNAME, PASSWORD}}}
+};
+static auto const EVO_AUTH = vo::Egress{
+    .type_       = AdapterType::HTTP,
+    .credential_ = vo::UpEgressCredential{.credential_ = {USERNAME, PASSWORD}}
+};
 
 static auto const BASIC_FIELD      = "BASIC"sv;
 static auto const CLOSE_FIELD      = "CLOSE"sv;

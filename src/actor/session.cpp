@@ -39,7 +39,10 @@ Awaitable<adapter::tcp::Egress>
         << std::format("{} | Duplicated salt from {}\n", std::chrono::system_clock::now(), iname_);
     router_     = nullptr;
     auto egress = adapter::tcp::create_egress(
-        {.type_ = AdapterType::REJECT, .opt_ = vo::RejectOption{.mode_ = DelayMode::RANDOM}},
+        {
+            .type_ = AdapterType::REJECT,
+            .opt_  = vo::RejectOption{.mode_ = DelayMode::RANDOM, .delay_ = {}}
+    },
         ex_
     );
     co_await std::visit([](auto&& egress) { return egress.connect({}); }, egress);

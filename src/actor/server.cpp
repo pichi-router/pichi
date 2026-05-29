@@ -104,8 +104,8 @@ bool match(boost::string_view s, std::regex const& re, std::cmatch& mr)
   return std::regex_match(std::cbegin(s), std::cend(s), mr, re);
 }
 
-Server::Server(IOExecutor ex)
-: ex_{std::move(ex)},
+Server::Server(IOExecutor const& ex)
+: ex_{ex},
   egresses_{
     {DEFAULT_EGRESS_NAME, vo::Egress{.type_ = AdapterType::DIRECT}}
   }, rules_{},

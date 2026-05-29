@@ -1,8 +1,10 @@
 #define BOOST_TEST_MODULE pichi ss test
 
+#include "pichi/common/config.hpp"
 #include <algorithm>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
+#include <botan/exceptn.h>
 #include <botan/hex.h>
 #include <pichi/actor/detached.hpp>
 #include <pichi/adapter/tcp/shadowsocks.hpp>

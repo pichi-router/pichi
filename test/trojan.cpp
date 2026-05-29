@@ -43,12 +43,14 @@ static auto const CORRECT_DATA = std::array{
 };
 
 static auto const IVO = vo::Ingress{
+    .type_       = AdapterType::HTTP,
     .credential_ = vo::TrojanIngressCredential{.credential_ = {PASSWORD}},
     .opt_        = vo::TrojanOption{.remote_ = FALIED_EP}
 };
 
-static auto const EVO =
-    vo::Egress{.credential_ = vo::TrojanEgressCredential{.credential_ = PASSWORD}};
+static auto const EVO = vo::Egress{
+    .type_ = AdapterType::HTTP, .credential_ = vo::TrojanEgressCredential{.credential_ = PASSWORD}
+};
 
 BOOST_AUTO_TEST_SUITE(TROJAN)
 
@@ -127,7 +129,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_Char_For_The_First_CR)
 {
   run_case([](auto&& ex) -> Awaitable<void> {
     auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return '\r' != b; }) |
-              views::transform([](auto c) {
+              views::transform([](uint8_t c) {
                 auto data        = CORRECT_DATA;
                 data[PWD_LENGTH] = c;
                 return data;
@@ -158,7 +160,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_Char_For_The_Second_CR)
 {
   run_case([](auto&& ex) -> Awaitable<void> {
     auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return '\r' != b; }) |
-              views::transform([](auto c) {
+              views::transform([](uint8_t c) {
                 auto data                  = CORRECT_DATA;
                 data[rngs::size(data) - 2] = c;
                 return data;
@@ -189,7 +191,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_Char_For_The_First_LF)
 {
   run_case([](auto&& ex) -> Awaitable<void> {
     auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return '\n' != b; }) |
-              views::transform([](auto c) {
+              views::transform([](uint8_t c) {
                 auto data            = CORRECT_DATA;
                 data[PWD_LENGTH + 1] = c;
                 return data;
@@ -220,7 +222,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_Char_For_The_Second_LF)
 {
   run_case([](auto&& ex) -> Awaitable<void> {
     auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return '\n' != b; }) |
-              views::transform([](auto c) {
+              views::transform([](uint8_t c) {
                 auto data                  = CORRECT_DATA;
                 data[rngs::size(data) - 1] = c;
                 return data;
@@ -251,7 +253,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Invalid_CMD)
 {
   run_case([](auto&& ex) -> Awaitable<void> {
     auto ds = views::iota(0, 0x100) | views::filter([](auto b) { return 1 != b; }) |
-              views::transform([](auto c) {
+              views::transform([](uint8_t c) {
                 auto data            = CORRECT_DATA;
                 data[PWD_LENGTH + 2] = c;
                 return data;

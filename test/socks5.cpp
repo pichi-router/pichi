@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE pichi socks5 test
 
+#include "pichi/common/config.hpp"
 #include "utils.hpp"
 #include <array>
 #include <functional>
@@ -24,10 +25,14 @@ using Egress  = adapter::tcp::Socks5Egress<TestSocket>;
 
 static auto const USERNAME = "pichi"s;
 static auto const PASSWORD = "pichi"s;
-static auto const IVO_AUTH =
-    vo::Ingress{.credential_ = vo::UpIngressCredential{.credential_ = {{USERNAME, PASSWORD}}}};
-static auto const EVO_AUTH =
-    vo::Egress{.credential_ = vo::UpEgressCredential{.credential_ = {USERNAME, PASSWORD}}};
+static auto const IVO_AUTH = vo::Ingress{
+    .type_       = AdapterType::SOCKS5,
+    .credential_ = vo::UpIngressCredential{.credential_ = {{USERNAME, PASSWORD}}}
+};
+static auto const EVO_AUTH = vo::Egress{
+    .type_       = AdapterType::SOCKS5,
+    .credential_ = vo::UpEgressCredential{.credential_ = {USERNAME, PASSWORD}}
+};
 
 static auto const ENDPOINT = makeEndpoint("::1", 443);
 
@@ -188,9 +193,9 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Invalid_Version)
                     0x02_u8,  // Username/Password
                     b,        // Auth VER
                 };
-                ret.push_back(rngs::size(USERNAME));
+                ret.push_back(static_cast<uint8_t>(rngs::size(USERNAME)));
                 ret.insert(rngs::end(ret), rngs::begin(USERNAME), rngs::end(USERNAME));
-                ret.push_back(rngs::size(PASSWORD));
+                ret.push_back(static_cast<uint8_t>(rngs::size(PASSWORD)));
                 ret.insert(rngs::end(ret), rngs::begin(PASSWORD), rngs::end(PASSWORD));
                 return ret;
               });
@@ -221,7 +226,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Empty_Username)
         0x01_u8,  // Auth VER
         0x00_u8,  // Empty username
     };
-    buf.push_back(rngs::size(PASSWORD));
+    buf.push_back(static_cast<uint8_t>(rngs::size(PASSWORD)));
     buf.insert(rngs::end(buf), rngs::begin(PASSWORD), rngs::end(PASSWORD));
 
     auto client  = TestSocket{ex};
@@ -248,9 +253,9 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Empty_Password)
         0x02_u8,  // Username/Password
         0x01_u8,  // Auth VER
     };
-    buf.push_back(rngs::size(USERNAME));
+    buf.push_back(static_cast<uint8_t>(rngs::size(USERNAME)));
     buf.insert(rngs::end(buf), rngs::begin(USERNAME), rngs::end(USERNAME));
-    buf.push_back(0);  // Empty password
+    buf.push_back(0x00_u8);  // Empty password
 
     auto client  = TestSocket{ex};
     auto ingress = Ingress{IVO_AUTH, client.peer()};
@@ -278,7 +283,7 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Nonexisting_User)
         0x01_u8,  // Username length
         0x50_u8,  // Username
     };
-    buf.push_back(rngs::size(PASSWORD));
+    buf.push_back(static_cast<uint8_t>(rngs::size(PASSWORD)));
     buf.insert(rngs::end(buf), rngs::begin(PASSWORD), rngs::end(PASSWORD));
 
     auto client  = TestSocket{ex};
@@ -305,10 +310,10 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_Authenticate_With_Incorrect_Password)
         0x02_u8,  // Username/Pasword
         0x01_u8,  // Auth VER
     };
-    buf.push_back(rngs::size(USERNAME));
+    buf.push_back(static_cast<uint8_t>(rngs::size(USERNAME)));
     buf.insert(rngs::end(buf), rngs::begin(USERNAME), rngs::end(USERNAME));
-    buf.push_back(1);     // Password length
-    buf.push_back(0x50);  // Password
+    buf.push_back(0x01_u8);  // Password length
+    buf.push_back(0x50_u8);  // Password
 
     auto client  = TestSocket{ex};
     auto ingress = Ingress{IVO_AUTH, client.peer()};
@@ -441,9 +446,9 @@ BOOST_AUTO_TEST_CASE(Ingress_read_remote_With_Correct_Credential)
         0x02_u8,  // Username/Password
         0x01_u8,  // Auth VER
     };
-    buf.push_back(rngs::size(USERNAME));
+    buf.push_back(static_cast<uint8_t>(rngs::size(USERNAME)));
     buf.insert(rngs::end(buf), rngs::begin(USERNAME), rngs::end(USERNAME));
-    buf.push_back(rngs::size(PASSWORD));
+    buf.push_back(static_cast<uint8_t>(rngs::size(PASSWORD)));
     buf.insert(rngs::end(buf), rngs::begin(PASSWORD), rngs::end(PASSWORD));
 
     auto client  = TestSocket{ex};

@@ -26,7 +26,7 @@ public:
   using Request  = boost::beast::http::request<HttpBody>;
   using Response = boost::beast::http::response<HttpBody>;
 
-  Server(IOExecutor);
+  explicit Server(IOExecutor const&);
 
   Awaitable<void> serve(boost::asio::ip::tcp::endpoint);
 
