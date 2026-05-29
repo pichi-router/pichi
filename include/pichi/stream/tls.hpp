@@ -4,7 +4,6 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <pichi/common/asserts.hpp>
-#include <pichi/crypto/fingerprint.hpp>
 #include <pichi/vo/egress.hpp>
 #include <pichi/vo/ingress.hpp>
 
@@ -12,6 +11,9 @@ namespace pichi::stream {
 
 extern boost::asio::ssl::context tls_context(vo::TlsIngressOption const&);
 extern boost::asio::ssl::context tls_context(vo::TlsEgressOption const&, std::string const&);
+
+extern void setup_fingerprint(::SSL*);
+
 /*
  *  1. Tls is about to implement both of AsyncReadStream and
  * AsyncWriteStream concepts, which is required by the HTTP functions provided
@@ -41,7 +43,7 @@ public:
   {
     if (sni.has_value())
       assertTrue(SSL_set_tlsext_host_name(stream_.native_handle(), sni->c_str()) == 1);
-    crypto::setupTlsFingerprint(stream_.native_handle());
+    setup_fingerprint(stream_.native_handle());
   }
 
   executor_type get_executor() { return stream_.get_executor(); }
