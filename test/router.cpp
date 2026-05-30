@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE pichi router test
 
+#include "pichi/common/config.hpp"
 #include "utils.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -23,13 +24,14 @@ using ResolveResults = asio::ip::basic_resolver_results<asio::ip::tcp>;
 
 namespace pichi::unit_test {
 
-static auto const RESOLV_ERROR  = make_error_code(PichiError::MISC);
-static auto const SPEC_EGRESS   = "spec"s;
-static auto const DEFT_EGRESS   = "deft"s;
-static auto const SPEC_RULE     = "spec_rule"s;
-static auto const DEFT_RULE     = "*"s;
-static auto const STUB_ENDPOINT = Endpoint{.type_ = EndpointType::DOMAIN_NAME};
-static auto const EGRESSES      = std::unordered_map<std::string, vo::Egress>{
+static auto const RESOLV_ERROR = make_error_code(PichiError::MISC);
+static auto const SPEC_EGRESS  = "spec"s;
+static auto const DEFT_EGRESS  = "deft"s;
+static auto const SPEC_RULE    = "spec_rule"s;
+static auto const DEFT_RULE    = "*"s;
+static auto const STUB_ENDPOINT =
+    Endpoint{.type_ = EndpointType::DOMAIN_NAME, .host_ = "", .port_ = 0};
+static auto const EGRESSES = std::unordered_map<std::string, vo::Egress>{
     {SPEC_EGRESS, {}},
     {DEFT_EGRESS, {}},
 };

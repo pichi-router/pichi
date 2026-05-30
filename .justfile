@@ -165,11 +165,12 @@ _build *args:
   @conan create -b missing -l "{{lockfile}}" --lockfile-partial \
     -o "boost/*:asio_no_deprecated=True" \
     -o "boost/*:bzip2=False" \
-    -o "boost/*:filesystem_no_deprecated=True" \
     -o "boost/*:system_no_deprecated=True" \
+    -o "boost/*:without_atomic=True" \
     -o "boost/*:without_charconv=True" \
     -o "boost/*:without_chrono=True" \
     -o "boost/*:without_cobalt=True" \
+    -o "boost/*:without_context=True" \
     -o "boost/*:without_contract=True" \
     -o "boost/*:without_coroutine=True" \
     -o "boost/*:without_date_time=True" \
@@ -187,7 +188,6 @@ _build *args:
     -o "boost/*:without_process=True" \
     -o "boost/*:without_python=True" \
     -o "boost/*:without_random=True" \
-    -o "boost/*:without_regex=True" \
     -o "boost/*:without_stacktrace=True" \
     -o "boost/*:without_serialization=True" \
     -o "boost/*:without_thread=True" \

@@ -44,7 +44,7 @@ function(patch_target target)
 endfunction()
 
 # To find boost
-list(APPEND BOOST_COMPONENTS context)
+list(APPEND BOOST_COMPONENTS)
 
 if(BUILD_SERVER)
   list(APPEND BOOST_COMPONENTS program_options)
@@ -127,7 +127,7 @@ set_target_properties(Boost::boost PROPERTIES INTERFACE_COMPILE_DEFINITIONS "${B
 
 # Setup COMMON_LIBRARIES for later usage
 list(APPEND COMMON_LIBRARIES
-  Boost::boost Boost::context botan::botan
+  Boost::boost botan::botan
   maxminddb::maxminddb rapidjson
   Threads::Threads ${CMAKE_DL_LIBS} ${SSL_LIB}::SSL)
 
