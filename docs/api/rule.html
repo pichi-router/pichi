@@ -1,0 +1,24 @@
+---
+title: Rule
+nav_order: 3
+parent: API Specification
+permalink: /api-specification/rule
+---
+
+<style>
+  .main-content { max-width: none !important; }
+</style>
+
+{% assign parent_page = site.pages | where: "title", page.parent | first %}
+
+<nav class="api-doc-nav">
+  <a href="{{ '/' | relative_url }}">Home</a>
+  {% if parent_page %}
+    &nbsp;/&nbsp;<a href="{{ parent_page.url | relative_url }}">{{ page.parent }}</a>
+  {% endif %}
+  &nbsp;/&nbsp;{{ page.title }}
+</nav>
+
+<link rel="stylesheet" href="https://unpkg.com/@stoplight/elements/styles.min.css">
+<elements-api apiDescriptionUrl="/assets/api/rule.yaml" router="hash"></elements-api>
+<script src="https://unpkg.com/@stoplight/elements/web-components.min.js"></script>

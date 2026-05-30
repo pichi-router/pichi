@@ -1,0 +1,110 @@
+openapi: 3.0.0
+info:
+  version: "1.6"
+  title: Ingress API
+  description: "⬅️ Click <b>ENDPOINTS</b> for detailed information."
+paths:
+  /ingresses:
+    get:
+      description: "Get all available ingresses"
+      responses:
+        "200":
+          description: "All available ingresses"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: "#/components/schemas/Ingress"
+        "500":
+          description: "Pichi server data structure error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+  /ingresses/{name}:
+    put:
+      description: "Create or modify an ingress"
+      parameters:
+        - name: name
+          description: "Ingress name"
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Ingress"
+      responses:
+        "204":
+          description: "Operation succeeded"
+        "400":
+          description: "Request body is invalid"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "422":
+          description: "JSON semantic error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "423":
+          description: "Address in use"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "500":
+          description: "Pichi server error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+    delete:
+      description: "Delete a specified ingress"
+      parameters:
+        - name: name
+          description: "Ingress name"
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: "operation succeeded"
+        "500":
+          description: "Pichi server error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+components:
+  schemas:
+    Bind:
+      description: "Bind option of ingress"
+      type: object
+      properties:
+        bind:
+          description: "Binding endpoints"
+          type: array
+          items:
+            $ref: "./schemas/endpoint.yaml#/Endpoint"
+          minItems: 1
+      required:
+        - bind
+    Ingress:
+      description: "Ingress object"
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/Bind"
+        - oneOf:
+            - $ref: "./schemas/dual.yaml#/DualIngress"
+            - $ref: "./schemas/ss.yaml#/ShadowsocksAdapter"
+            - $ref: "./schemas/transparent.yaml#/TransparentIngress"
+            - $ref: "./schemas/trojan.yaml#/TrojanIngress"
+            - $ref: "./schemas/tunnel.yaml#/TunnelIngress"

@@ -1,0 +1,11 @@
+TransparentIngress:
+  title: Transparent
+  description: "Transparent ingress object"
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - transparent
+  required:
+    - type

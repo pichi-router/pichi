@@ -1,0 +1,6 @@
+ErrorMessage:
+  type: object
+  properties:
+    message:
+      type: string
+      example: "Error message in detail"

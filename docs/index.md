@@ -8,8 +8,8 @@ permalink: /
 *Pichi* is a flexible rule-based proxy.
 {: .fs-6 .fw-300 }
 
-[Get started](/getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[Download](https://github.com/pichi-router/pichi/releases){: .btn .fs-5 .mb-4 .mb-md-0 }
+[Get Started](getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[API Docs](api-specification){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 # Supported protocols
 
@@ -17,8 +17,7 @@ permalink: /
 
 | Protocol | Descritpion |
 |:---|:---|
-| **HTTP Proxy** | defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt) |
-| **HTTP Tunnel** | defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt) |
+| **HTTP** | defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt) and [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt) |
 | **SOCKS5** | defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt) |
 | **DUAL** | HTTP & SOCKS5 |
 | **Shadowsocks** | defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html) |
@@ -32,8 +31,7 @@ permalink: /
 |:---|:---|
 | **Direct** | connecting to destination directly |
 | **Reject** | rejecting request immediately or after a fixed/random delay |
-| **HTTP Proxy** | defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt) |
-| **HTTP Tunnel** | defined by [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt) |
+| **HTTP** | defined by [RFC 2068](https://www.ietf.org/rfc/rfc2068.txt) and [RFC 2616](https://www.ietf.org/rfc/rfc2817.txt) |
 | **SOCKS5** | defined by [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt) |
 | **Shadowsocks** | defined by [shadowsocks.org](https://shadowsocks.org/en/spec/Protocol.html) |
 | **Trojan** | defined by [trojan-gfw](https://trojan-gfw.github.io/trojan/protocol) and its websocket extension defined by [trojan-go](https://github.com/p4gefau1t/trojan-go) |
@@ -60,4 +58,4 @@ permalink: /
 
 If you enjoy using Pichi, consider buying me a coffee.
 
-<img src="/assets/images/tip.png" alt="Please donate BTC" width="300"/>
+<img src="assets/images/tip.png" alt="Please donate BTC" width="300"/>

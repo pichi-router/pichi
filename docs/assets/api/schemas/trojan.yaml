@@ -1,0 +1,58 @@
+TrojanCredential:
+  description: "Credential object for Trojan adapter"
+  type: object
+  properties:
+    password:
+      type: string
+  required:
+    - password
+TrojanIngress:
+  title: Trojan
+  description: "Trojan ingress object"
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - trojan
+    option:
+      description: "The extra options for Trojan ingress"
+      type: object
+      properties:
+        remote:
+          $ref: "./endpoint.yaml#/Endpoint"
+      required:
+        - remote
+    credentials:
+      type: array
+      items:
+        $ref: "#/TrojanCredential"
+      minItems: 1
+    tls:
+      $ref: "./addons.yaml#/TlsForIngress"
+    websocket:
+      $ref: "./addons.yaml#/WebsocketOption"
+  required:
+    - type
+    - option
+    - credentials
+    - tls
+TrojanEgress:
+  title: Trojan
+  description: "Trojan egress object"
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - trojan
+    credential:
+      $ref: "#/TrojanCredential"
+    tls:
+      $ref: "./addons.yaml#/TlsForEgress"
+    websocket:
+      $ref: "./addons.yaml#/WebsocketOption"
+  required:
+    - type
+    - credential
+    - tls

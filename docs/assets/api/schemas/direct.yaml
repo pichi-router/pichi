@@ -1,0 +1,11 @@
+DirectEgress:
+  title: Direct
+  description: "Direct egress object"
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - direct
+  required:
+    - type

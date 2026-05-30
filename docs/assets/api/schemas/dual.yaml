@@ -1,0 +1,46 @@
+DualCredential:
+  description: "Credential object for Http/Socks5 adapter"
+  type: object
+  properties:
+    username:
+      type: string
+    password:
+      type: string
+  required:
+    - username
+    - password
+DualIngress:
+  title: Dual/HTTP/Socks5
+  description: "Dual/HTTP/Socks5 ingress object"
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - dual
+        - http
+        - socks5
+    credentials:
+      type: array
+      items:
+        $ref: "#/DualCredential"
+    tls:
+      $ref: "./addons.yaml#/TlsForIngress"
+  required:
+    - type
+HttpSocks5Egress:
+  title: HTTP/Socks5
+  description: "HTTP/Socks5 egress object"
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - http
+        - socks5
+    credential:
+      $ref: "#/DualCredential"
+    tls:
+      $ref: "./addons.yaml#/TlsForEgress"
+  required:
+    - type

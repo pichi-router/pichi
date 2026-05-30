@@ -1,0 +1,51 @@
+WebsocketOption:
+  description: "Websocket options for Trojan adapter"
+  type: object
+  properties:
+    path:
+      description: "Websocket URI path"
+      type: string
+      example: "/path"
+    host:
+      description: "HOST field in HTTP header"
+      type: string
+      example: "example.com"
+  required:
+    - path
+TlsForIngress:
+  description: "TLS options for ingress"
+  type: object
+  properties:
+    cert_file:
+      description: "The file path of certificate"
+      type: string
+      example: "/etc/letsencrypt/live/example.com/fullchain.pem"
+    key_file:
+      description: "The file path of private key"
+      type: string
+      example: "/etc/letsencrypt/live/example.com/privkey.pem"
+  required:
+    - cert_file
+    - key_file
+TlsForEgress:
+  description: "TLS options for egress"
+  type: object
+  properties:
+    insecure:
+      description: "Wether to verify the TLS certificate"
+      type: boolean
+      default: false
+    ca_file:
+      description: "The file path of CA certificate"
+      type: string
+      example: "/etc/cert/rootCA.pem"
+    server_name:
+      description: "The server name used to verify the certificate"
+      type: string
+      example: "example.com"
+    sni:
+      description: "SNI extension field of TLS"
+      type: string
+      example: "example.com"
+  required:
+    - insecure

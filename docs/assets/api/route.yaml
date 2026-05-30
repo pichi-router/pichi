@@ -1,0 +1,70 @@
+openapi: 3.0.0
+info:
+  version: "1.6"
+  title: Route API
+  description: "⬅️ Click <b>ENDPOINTS</b> for detailed information."
+paths:
+  /route:
+    get:
+      description: "Show Pichi routes"
+      responses:
+        "200":
+          description: "Routes"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Route"
+        "500":
+          description: "Pichi server data structure error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+    put:
+      description: "Change rule order or default egress"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Route"
+      responses:
+        "204":
+          description: "Operation succeeded"
+        "400":
+          description: "Request body is invalid"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "422":
+          description: "JSON semantic error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "500":
+          description: "Pichi server error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+components:
+  schemas:
+    Route:
+      type: object
+      properties:
+        default:
+          description: "Default egress name"
+          type: string
+          example: "default_egress"
+        rules:
+          description: "Active rules in order"
+          type: array
+          items:
+            title: MatchItem
+            type: array
+            minItems: 2
+            items:
+              type: string
+            example: ["rule_0", "rule_1", "egress_0"]
