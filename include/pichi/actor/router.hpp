@@ -1,10 +1,10 @@
 #ifndef PICHI_ACTOR_ROUTER_HPP
 #define PICHI_ACTOR_ROUTER_HPP
 
+#include <boost/asio/ip/basic_resolver_results.hpp>
 #include <boost/asio/ip/network_v4.hpp>
 #include <boost/asio/ip/network_v6.hpp>
 #include <optional>
-#include <pichi/common/adapter.hpp>
 #include <pichi/common/coro.hpp>
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/mmdb.hpp>
@@ -19,7 +19,16 @@
 #include <unordered_set>
 #include <vector>
 
+namespace boost::asio::ip {
+
+class tcp;
+template <typename InternetProtocol> class basic_resolver_results;
+
+}  // namespace boost::asio::ip
+
 namespace pichi::actor {
+
+using ResolveResults = boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp>;
 
 namespace detail {
 

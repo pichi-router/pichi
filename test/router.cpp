@@ -17,6 +17,8 @@ namespace asio = boost::asio;
 namespace ip   = asio::ip;
 namespace rngs = std::ranges;
 
+using ResolveResults = asio::ip::basic_resolver_results<asio::ip::tcp>;
+
 namespace pichi::unit_test {
 
 static auto const SPEC_EGRESS = "spec"s;

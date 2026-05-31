@@ -40,7 +40,8 @@ namespace json  = rapidjson;
 namespace rngs  = std::ranges;
 namespace views = rngs::views;
 
-using Socket = asio::ip::tcp::socket;
+using ResolveResults = asio::ip::basic_resolver_results<asio::ip::tcp>;
+using Socket         = asio::ip::tcp::socket;
 
 static decltype(auto) INGRESSES = "ingresses";
 static decltype(auto) EGRESSES  = "egresses";
