@@ -1,15 +1,16 @@
 #include "pichi/common/config.hpp"
 #include <algorithm>
+#include <boost/asio/execution/context.hpp>
+#include <boost/asio/execution_context.hpp>
 #include <boost/asio/redirect_error.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/write.hpp>
-#include <format>
-#include <iostream>
 #include <limits>
 #include <pichi/actor/detached.hpp>
 #include <pichi/actor/server.hpp>
 #include <pichi/common/error.hpp>
+#include <pichi/service/clients.hpp>
 #include <pichi/vo/error.hpp>
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
@@ -121,37 +122,34 @@ Awaitable<void> Server::serve(ip::tcp::endpoint endpoint)
 {
   auto ex = strand_.get_inner_executor();
   auto ac = ip::tcp::acceptor{ex, endpoint};
+
+  auto& svc = asio::use_service<service::TcpClients>(asio::query(ex, asio::execution::context));
+  svc.initialize(ex);
+
   while (ac.is_open())
     asio::co_spawn(ex, do_session(co_await ac.async_accept(asio::use_awaitable)), detached);
 }
 
 Awaitable<void> Server::do_session(ip::tcp::socket s)
 {
-  try {
-    auto alive = true;
-    while (alive && s.is_open()) {
-      auto buf    = beast::flat_buffer{};
-      auto parser = http::request_parser<HttpBody>{};
-      parser.body_limit(std::numeric_limits<uint64_t>::max());
-      co_await http::async_read(s, buf, parser, asio::use_awaitable);
-      alive = parser.keep_alive();
+  auto& svc =
+      asio::use_service<service::TcpClients>(asio::query(strand_, asio::execution::context));
+  assertFalse(co_await svc.contains(s.remote_endpoint()));
 
-      auto [ec, rep] = co_await redirect(handle(parser.release()));
+  auto alive = true;
+  while (alive && s.is_open()) {
+    auto buf    = beast::flat_buffer{};
+    auto parser = http::request_parser<HttpBody>{};
+    parser.body_limit(std::numeric_limits<uint64_t>::max());
+    co_await http::async_read(s, buf, parser, asio::use_awaitable);
+    alive = parser.keep_alive();
 
-      if (ec) rep.emplace(gen_resp(ec));
-      rep->set(http::field::connection, alive ? "keep-alive"sv : "close"sv);
-      rep->prepare_payload();
-      co_await http::async_write(s, *rep, asio::use_awaitable);
-    }
-  }
-  catch (sys::system_error const& e) {
-    auto ec = e.code();
-    if (ec != asio::error::eof && ec != asio::error::operation_aborted &&
-        ec != http::error::end_of_stream)
-      std::cout << std::format("API IO Error: {}\n", e.what());
-  }
-  catch (std::exception const& e) {
-    std::clog << std::format("ERROR: {}\n", e.what());
+    auto [ec, rep] = co_await redirect(handle(parser.release()));
+
+    if (ec) rep.emplace(gen_resp(ec));
+    rep->set(http::field::connection, alive ? "keep-alive"sv : "close"sv);
+    rep->prepare_payload();
+    co_await http::async_write(s, *rep, asio::use_awaitable);
   }
 }
 
