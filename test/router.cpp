@@ -1,375 +1,347 @@
 #define BOOST_TEST_MODULE pichi router test
 
 #include "utils.hpp"
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/test/unit_test.hpp>
-#include <pichi/api/router.hpp>
-#include <pichi/common/endpoint.hpp>
-#include <pichi/common/literals.hpp>
+#include <pichi/actor/router.hpp>
+#include <pichi/common/asserts.hpp>
+#include <pichi/common/error.hpp>
+#include <pichi/service/mmdb.hpp>
 #include <pichi/vo/keys.hpp>
+#include <pichi/vo/route.hpp>
+#include <pichi/vo/rule.hpp>
+#include <ranges>
+#include <string_view>
 
-using namespace std;
+using namespace std::literals;
 namespace asio = boost::asio;
-namespace ip = asio::ip;
-using ResolvedResults = ip::basic_resolver_results<ip::tcp>;
+namespace ip   = asio::ip;
+namespace rngs = std::ranges;
+namespace sys  = boost::system;
+
+using ResolveResults = asio::ip::basic_resolver_results<asio::ip::tcp>;
 
 namespace pichi::unit_test {
 
-using namespace api;
-using vo::Route;
+static auto const RESOLV_ERROR  = make_error_code(PichiError::MISC);
+static auto const SPEC_EGRESS   = "spec"s;
+static auto const DEFT_EGRESS   = "deft"s;
+static auto const SPEC_RULE     = "spec_rule"s;
+static auto const DEFT_RULE     = "*"s;
+static auto const STUB_ENDPOINT = Endpoint{.type_ = EndpointType::DOMAIN_NAME};
+static auto const EGRESSES      = std::unordered_map<std::string, vo::Egress>{
+    {SPEC_EGRESS, {}},
+    {DEFT_EGRESS, {}},
+};
+static auto const RULES = std::unordered_map<std::string, vo::Rule>{
+    {SPEC_RULE, {}}
+};
+static auto const ROUTE = vo::Route{
+    .default_ = DEFT_EGRESS,
+    .rules_   = {std::make_pair(std::vector<std::string>{SPEC_RULE}, SPEC_EGRESS)},
+};
 
-static decltype(auto) fn = "geo.mmdb";
-
-static ResolvedResults createRR(string_view str = ""sv)
+static Awaitable<ResolveResults> resolve(std::string_view rr)
 {
-  return str.empty()
-             ? ResolvedResults{}
-             : ResolvedResults::create(ip::tcp::endpoint{ip::make_address(str), 443}, ph, ph);
+  // Prohibit DNS resolving if no specified record
+  assertFalse(rngs::empty(rr));
+  co_return ResolveResults::create(ip::tcp::endpoint{ip::make_address(rr), 0}, "", "");
 }
 
-BOOST_AUTO_TEST_SUITE(ROUTER_TEST)
-
-BOOST_AUTO_TEST_CASE(matchDomain_Empty_Domains)
+template <typename Arg>
+requires(
+    std::same_as<Arg, Endpoint> || std::same_as<Arg, std::string> || std::same_as<Arg, AdapterType>
+)
+Awaitable<std::tuple<std::string, std::string, vo::Egress>>
+    route(IOExecutor const& ex, vo::Rule const& rule, Arg const& arg, std::string_view rr)
 {
-  BOOST_CHECK_EXCEPTION(matchDomain("example.com", ""), SystemError,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK_EXCEPTION(matchDomain("", "example.com"), SystemError,
-                        verifyException<PichiError::MISC>);
+  auto& mmdb = asio::use_service<service::Mmdb>(asio::query(ex, asio::execution::context));
+  mmdb.initialize("geo.mmdb"s);
+
+  auto rules       = RULES;
+  rules[SPEC_RULE] = rule;
+  auto router      = actor::Router{ex, EGRESSES, rules, ROUTE};
+
+  if constexpr (std::same_as<Arg, Endpoint>)
+    co_return co_await router.route(arg, ""s, AdapterType::DIRECT, resolve(rr));
+  else if constexpr (std::same_as<Arg, std::string>)
+    co_return co_await router.route(STUB_ENDPOINT, arg, AdapterType::DIRECT, resolve(rr));
+  else
+    co_return co_await router.route(STUB_ENDPOINT, ""s, arg, resolve(rr));
 }
 
-BOOST_AUTO_TEST_CASE(matchDomain_Domains_Start_With_Dot)
+template <typename Arg>
+void run_generic_test(
+    bool matched, vo::Rule const& rule, Arg const& arg, std::string_view rr = ""sv
+)
 {
-  BOOST_CHECK_EXCEPTION(matchDomain(".", "com"), SystemError, verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(matchDomain(".com", "com"), SystemError, verifyException<PichiError::MISC>);
-  BOOST_CHECK_EXCEPTION(matchDomain("example.com", "."), SystemError,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK(matchDomain("example.com", ".com"));
+  run_case([=](auto&& ex) -> Awaitable<void> {
+    auto [r, e, _] = co_await route(ex, rule, arg, rr);
+    if (matched) {
+      BOOST_CHECK_EQUAL(SPEC_RULE, r);
+      BOOST_CHECK_EQUAL(SPEC_EGRESS, e);
+    }
+    else {
+      BOOST_CHECK_EQUAL(DEFT_RULE, r);
+      BOOST_CHECK_EQUAL(DEFT_EGRESS, e);
+    }
+  });
 }
 
-BOOST_AUTO_TEST_CASE(matchDomain_Matched)
+template <typename Arg>
+void run_generic_test(
+    sys::error_code const& expect, vo::Rule const& rule, Arg const& arg, std::string_view rr = ""sv
+)
 {
-  BOOST_CHECK(matchDomain("foo.bar.example.com", "bar.example.com"));
-  BOOST_CHECK(matchDomain("foo.bar.example.com", "example.com"));
-  BOOST_CHECK(matchDomain("foo.bar.example.com", "com"));
+  run_case([=](auto&& ex) -> Awaitable<void> {
+    auto [fact, _] = co_await redirect(route(ex, rule, arg, rr));
+    BOOST_CHECK(expect == fact);
+  });
 }
 
-BOOST_AUTO_TEST_CASE(matchDomain_Same_End)
+static void run_domain_test(bool matched, std::string const& sub, std::string const& domain)
 {
-  BOOST_CHECK(!matchDomain("foobar.example.com", "bar.example.com"));
-  BOOST_CHECK(!matchDomain("foobarexample.com", "example.com"));
-  BOOST_CHECK(!matchDomain("example.com", "m"));
+  run_generic_test(
+      matched,
+      vo::Rule{.domain_ = {domain}},
+      Endpoint{.type_ = EndpointType::DOMAIN_NAME, .host_ = sub, .port_ = 0}
+  );
 }
 
-BOOST_AUTO_TEST_CASE(matchDomain_Containing_Not_Matched)
+template <typename Expect>
+void run_range_test(
+    Expect expect, std::string const& host, std::string const& network, std::string_view rr = ""sv
+)
 {
-  BOOST_CHECK(!matchDomain("example.com", "example"));
-  BOOST_CHECK(!matchDomain("foo.example.com", "example"));
-  BOOST_CHECK(!matchDomain("example.com", "e.c"));
+  run_generic_test(expect, vo::Rule{.range_ = {network}}, makeEndpoint(host, 0), rr);
 }
 
-BOOST_AUTO_TEST_CASE(matchDomain_Same)
+static void run_range_nr_test(
+    bool matched, std::string const& host, std::string const& network, std::string_view rr = ""sv
+)
 {
-  BOOST_CHECK(matchDomain("example.com", "example.com"));
-  BOOST_CHECK(matchDomain("foo.example.com", "foo.example.com"));
+  run_generic_test(matched, vo::Rule{.range_nr_ = {network}}, makeEndpoint(host, 0), rr);
 }
 
-BOOST_AUTO_TEST_CASE(matchDomain_Case_Insensitive_Matching)
+static void run_pattern_test(bool matched, std::string const& name, std::string const& pattern)
 {
-  BOOST_CHECK(matchDomain("EXAMPLE.COM", "com"));
-  BOOST_CHECK(matchDomain("example.com", "COM"));
-  BOOST_CHECK(matchDomain("Example.com", "Com"));
-  BOOST_CHECK(matchDomain("EXAMPLE.COM", "example.com"));
-  BOOST_CHECK(matchDomain("example.com", "EXAMPLE.COM"));
-  BOOST_CHECK(matchDomain("Example.com", "example.Com"));
+  run_generic_test(
+      matched,
+      vo::Rule{.pattern_ = {pattern}},
+      Endpoint{.type_ = EndpointType::DOMAIN_NAME, .host_ = name, .port_ = 0}
+  );
 }
 
-BOOST_AUTO_TEST_CASE(Router_Empty_Rules)
+static void run_ingress_test(bool matched, std::string const& name, std::string const& ingress)
 {
-  auto router = Router{fn};
-  BOOST_CHECK(begin(router) == end(router));
-
-  router.update(ph, {});
-  BOOST_CHECK(begin(router) != end(router));
-
-  router.erase(ph);
-  BOOST_CHECK(begin(router) == end(router));
+  run_generic_test(matched, vo::Rule{.ingress_ = {ingress}}, name);
 }
 
-BOOST_AUTO_TEST_CASE(Router_isUsed)
+static void run_type_test(bool matched, AdapterType t, AdapterType type)
 {
-  auto router = Router{fn};
-  BOOST_CHECK(!router.isUsed(ph));
-
-  router.update(ph, {});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-  BOOST_CHECK(router.isUsed(ph));
-
-  router.setRoute({ph});
-  BOOST_CHECK(router.isUsed(ph));
+  run_generic_test(matched, vo::Rule{.type_ = {type}}, t);
 }
 
-BOOST_AUTO_TEST_CASE(Router_Erase_Not_Existing)
+template <typename Expect>
+void run_country_test(
+    Expect expect, std::string const& host, std::string const& country, std::string_view rr = ""sv
+)
 {
-  auto router = Router{fn};
-  BOOST_CHECK(begin(router) == end(router));
-
-  router.erase(ph);
-  BOOST_CHECK(begin(router) == end(router));
+  run_generic_test(expect, vo::Rule{.country_ = {country}}, makeEndpoint(host, 0), rr);
 }
 
-BOOST_AUTO_TEST_CASE(Router_Erase_Rule_Used_By_Route)
+static void run_country_nr_test(
+    bool matched, std::string const& host, std::string const& country, std::string_view rr = ""sv
+)
 {
-  auto router = Router{fn};
-  router.update(ph, {});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, "")}});
-
-  BOOST_CHECK_EXCEPTION(router.erase(ph), SystemError, verifyException<PichiError::RES_IN_USE>);
-
-  router.setRoute({});
-  router.erase(ph);
-  BOOST_CHECK(begin(router) == end(router));
+  run_generic_test(matched, vo::Rule{.country_nr_ = {country}}, makeEndpoint(host, 0), rr);
 }
 
-BOOST_AUTO_TEST_CASE(Router_Iteration)
+BOOST_AUTO_TEST_SUITE(ROUTER)
+
+BOOST_AUTO_TEST_CASE(Matcher_match_Domains_Empty)
 {
-  static auto const MAX = 10;
-  auto router = Router{fn};
-  BOOST_CHECK(begin(router) == end(router));
-
-  for (auto i = 0; i < MAX; ++i) router.update(to_string(i), {});
-
-  BOOST_CHECK(begin(router) != end(router));
-  BOOST_CHECK(distance(begin(router), end(router)) == MAX);
-
-  for (auto i = 0; i < MAX; ++i) {
-    auto s = to_string(i);
-    // TODO use find_if when VC++ doesn't require Iterator's copy assignment operator
-    auto it = begin(router);
-    while (it != end(router) && it->first != s) ++it;
-    BOOST_CHECK(it != end(router));
-  }
+  run_domain_test(false, "example.com", "");
+  run_domain_test(false, "", "example.com");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Set_Not_Existing_Rule)
+BOOST_AUTO_TEST_CASE(Matcher_match_Domains_Starting_With_Dot)
 {
-  auto verifyDefault = [](auto&& rvo) {
-    BOOST_CHECK(rvo.default_.has_value());
-    BOOST_CHECK(*rvo.default_ == vo::type::DIRECT);
-    BOOST_CHECK(rvo.rules_.empty());
-  };
-
-  auto router = Router{fn};
-  verifyDefault(router.getRoute());
-
-  BOOST_CHECK_EXCEPTION(router.setRoute({{}, {make_pair(vector<string>{ph}, "")}}), SystemError,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
-  verifyDefault(router.getRoute());
+  run_domain_test(false, ".", "com");
+  run_domain_test(true, ".com", "com");
+  run_domain_test(false, "example.com", ".");
+  run_domain_test(true, "example.com", ".com");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Set_Default_Route)
+BOOST_AUTO_TEST_CASE(Matcher_match_Domains_Matched)
 {
-  auto router = Router{fn};
-  auto vo = router.getRoute();
-  BOOST_CHECK(vo.default_.has_value());
-  BOOST_CHECK(*vo.default_ == vo::type::DIRECT);
-  BOOST_CHECK(vo.rules_.empty());
-
-  router.setRoute({ph});
-  vo = router.getRoute();
-  BOOST_CHECK(vo.default_.has_value());
-  BOOST_CHECK(*vo.default_ == ph);
-  BOOST_CHECK(vo.rules_.empty());
+  run_domain_test(true, "foo.bar.example.com", "bar.example.com");
+  run_domain_test(true, "foo.bar.example.com", "example.com");
+  run_domain_test(true, "foo.bar.example.com", "com");
 }
 
-BOOST_AUTO_TEST_CASE(Router_setRoute_With_Rules)
+BOOST_AUTO_TEST_CASE(Matcher_match_Domains_Same_End)
 {
-  static auto const MAX = 10;
-  auto verifyRules = [](auto&& expect, auto&& fact) {
-    BOOST_CHECK(equal(cbegin(expect), cend(expect), cbegin(fact), cend(fact)));
-  };
-
-  auto router = Router{fn};
-
-  for (auto i = 0; i < MAX; ++i) router.update(to_string(i), {});
-
-  auto seq = Route{};
-  for (auto i = 0; i < MAX; ++i)
-    seq.rules_.push_back(make_pair(vector<string>{to_string(i)}, to_string(i)));
-  router.setRoute(seq);
-  verifyRules(seq.rules_, router.getRoute().rules_);
-
-  auto rev = Route{};
-  for (auto i = MAX - 1; i >= 0; --i)
-    seq.rules_.push_back(make_pair(vector<string>{to_string(i)}, to_string(i)));
-  router.setRoute(rev);
-  verifyRules(rev.rules_, router.getRoute().rules_);
+  run_domain_test(false, "foobar.example.com", "bar.example.com");
+  run_domain_test(false, "foobarexample.com", "example.com");
+  run_domain_test(false, "example.com", "m");
 }
 
-BOOST_AUTO_TEST_CASE(Router_setRoute_Without_Default)
+BOOST_AUTO_TEST_CASE(Matcher_match_Domains_Not_Matched)
 {
-  auto route = Route{ph, {make_pair(vector<string>{ph}, ph)}};
-  auto router = Router{fn};
-  router.update(ph, {});
-  router.setRoute(route);
-
-  router.setRoute({});
-  auto emptyRules = router.getRoute();
-  BOOST_CHECK(emptyRules.default_.has_value());
-  BOOST_CHECK_EQUAL(ph, *emptyRules.default_);
-  BOOST_CHECK(emptyRules.rules_.empty());
-
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-  auto withRules = router.getRoute();
-  BOOST_CHECK(withRules.default_.has_value());
-  BOOST_CHECK_EQUAL(ph, *withRules.default_);
-  BOOST_CHECK_EQUAL(1_sz, withRules.rules_.size());
-  BOOST_CHECK_EQUAL(ph, withRules.rules_[0].first.front());
-  BOOST_CHECK_EQUAL(ph, withRules.rules_[0].second);
+  run_domain_test(false, "example.com", "example");
+  run_domain_test(false, "foo.example.com", "example");
+  run_domain_test(false, "example.com", "e.c");
 }
 
-BOOST_AUTO_TEST_CASE(Router_update_Invalid_Range)
+BOOST_AUTO_TEST_CASE(Matcher_match_Domains_Same)
 {
-  auto router = Router{fn};
-  BOOST_CHECK(begin(router) == end(router));
-  BOOST_CHECK_EXCEPTION(router.update(ph, {{"Invalid Range"}}), SystemError,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK(begin(router) == end(router));
+  run_domain_test(true, "example.com", "example.com");
+  run_domain_test(true, "foo.example.com", "foo.example.com");
 }
 
-BOOST_AUTO_TEST_CASE(Router_update_Invalid_Type)
+BOOST_AUTO_TEST_CASE(Matcher_match_Domains_Case_Insensitive)
 {
-  auto router = Router{fn};
-  BOOST_CHECK(begin(router) == end(router));
-  BOOST_CHECK_EXCEPTION(router.update(ph, {{}, {}, {AdapterType::DIRECT}}), SystemError,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK_EXCEPTION(router.update(ph, {{}, {}, {AdapterType::REJECT}}), SystemError,
-                        verifyException<PichiError::SEMANTIC_ERROR>);
-  BOOST_CHECK(begin(router) == end(router));
+  run_domain_test(true, "EXAMPLE.COM", "com");
+  run_domain_test(true, "example.com", "COM");
+  run_domain_test(true, "Example.com", "Com");
+  run_domain_test(true, "EXAMPLE.COM", "example.com");
+  run_domain_test(true, "example.com", "EXAMPLE.COM");
+  run_domain_test(true, "Example.com", "example.Com");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Matching_Range)
+BOOST_AUTO_TEST_CASE(Router_Router_Bad_Input)
 {
-  auto router = Router{fn};
-  router.update(ph, {{"10.0.0.0/8", "fd00::/8"}});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("10.0.0.1")) == ph);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("fd00::1")) == ph);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("127.0.0.1")) == vo::type::DIRECT);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("fe00::1")) == vo::type::DIRECT);
+  auto io = asio::io_context{};
+  auto ex = io.get_executor();
+  BOOST_CHECK_EXCEPTION(
+      actor::Router(ex, {}, RULES, ROUTE),
+      SystemError,
+      verify_exception<PichiError::MISC>
+  );
+  BOOST_CHECK_EXCEPTION(
+      actor::Router(ex, EGRESSES, {}, ROUTE),
+      SystemError,
+      verify_exception<PichiError::MISC>
+  );
+  BOOST_CHECK_THROW(
+      actor::Router(ex, EGRESSES, RULES, {.default_ = "Non-existent egress"}),
+      std::out_of_range
+  );
 }
 
-BOOST_AUTO_TEST_CASE(Router_Matching_Ingress)
+BOOST_AUTO_TEST_CASE(Matcher_match_Ranges)
 {
-  auto router = Router{fn};
-  router.update(ph, {{}, {ph}});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-
-  auto r = createRR("fe00::1");
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, r) == ph);
-  BOOST_CHECK(router.route({}, "NotMatched", AdapterType::DIRECT, r) == vo::type::DIRECT);
+  run_range_test(true, "10.1.1.1", "10.0.0.0/8");
+  run_range_test(true, "fd00::1", "fd00::/8");
+  run_range_test(false, "127.0.0.1", "10.0.0.0/8");
+  run_range_test(false, "fe00::1", "fd00::/8");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Matching_Type)
+BOOST_AUTO_TEST_CASE(Matcher_match_Ranges_With_Resolving)
 {
-  auto router = Router{fn};
-  router.update(ph, {{}, {}, {AdapterType::HTTP}});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-
-  auto r = createRR("fe00::1");
-  BOOST_CHECK(router.route({}, ph, AdapterType::HTTP, r) == ph);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, r) == vo::type::DIRECT);
+  run_range_test(RESOLV_ERROR, "example.com", "10.0.0.0/8");
+  run_range_test(RESOLV_ERROR, "example.com", "fd00::/8");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Matching_Pattern)
+BOOST_AUTO_TEST_CASE(Matcher_match_Ranges_With_Resolved_Results)
 {
-  auto router = Router{fn};
-  router.update(ph, {{}, {}, {}, {"^.*\\.example\\.com$"}});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-
-  auto r = createRR();
-  for (auto type : {EndpointType::DOMAIN_NAME, EndpointType::IPV4, EndpointType::IPV6}) {
-    BOOST_CHECK(
-        router.route({type, "foo.example.com", 0_u16}, ph, AdapterType::DIRECT, createRR()) == ph);
-    BOOST_CHECK(router.route({type, "fooexample.com", 0_u16}, ph, AdapterType::DIRECT,
-                             createRR()) == vo::type::DIRECT);
-  }
+  run_range_test(true, "example.com", "10.0.0.0/8", "10.1.1.1");
+  run_range_test(false, "example.com", "10.0.0.0/8", "127.0.0.1");
+  run_range_test(false, "example.com", "10.0.0.0/8", "fe80::1");
+  run_range_test(true, "example.com", "fd00::/8", "fd00::1");
+  run_range_test(false, "example.com", "fd00::/8", "fe80::1");
+  run_range_test(false, "example.com", "fd00::/8", "127.0.0.1");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Matching_Domain)
+BOOST_AUTO_TEST_CASE(Matcher_match_Ranges_NR)
 {
-  auto router = Router{fn};
-  router.update(ph, {{}, {}, {}, {}, {"example.com"}});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-
-  BOOST_CHECK(router.route({EndpointType::DOMAIN_NAME, "foo.example.com", 0_u16}, ph,
-                           AdapterType::DIRECT, createRR()) == ph);
-  BOOST_CHECK(router.route({EndpointType::DOMAIN_NAME, "fooexample.com", 0_u16}, ph,
-                           AdapterType::DIRECT, createRR()) == vo::type::DIRECT);
+  run_range_nr_test(true, "10.1.1.1", "10.0.0.0/8");
+  run_range_nr_test(true, "fd00::1", "fd00::/8");
+  run_range_nr_test(false, "127.0.0.1", "10.0.0.0/8");
+  run_range_nr_test(false, "fe00::1", "fd00::/8");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Matching_Domain_With_Invalid_Type)
+BOOST_AUTO_TEST_CASE(Matcher_match_Ranges_NR_With_Resolving)
 {
-  auto router = Router{fn};
-  router.update(ph, {{}, {}, {}, {}, {"example.com"}});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-
-  BOOST_CHECK(router.route({EndpointType::IPV4, "foo.example.com", 0_u16}, ph, AdapterType::DIRECT,
-                           createRR()) == vo::type::DIRECT);
-  BOOST_CHECK(router.route({EndpointType::IPV6, "foo.example.com", 0_u16}, ph, AdapterType::DIRECT,
-                           createRR()) == vo::type::DIRECT);
+  run_range_nr_test(false, "example.com", "10.0.0.0/8");
+  run_range_nr_test(false, "example.com", "fd00::/8");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Matching_Country)
+BOOST_AUTO_TEST_CASE(Matcher_match_Ranges_NR_With_Resolved_Results)
 {
-  auto router = Router{fn};
-  router.update(ph, {{}, {}, {}, {}, {}, {"AU"}});
-  router.setRoute({{}, {make_pair(vector<string>{ph}, ph)}});
-
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("1.1.1.1")) == ph);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("::ffff:1.1.1.1")) == ph);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("8.8.8.8")) == vo::type::DIRECT);
-  BOOST_CHECK(router.route({}, ph, AdapterType::DIRECT, createRR("::ffff:8.8.8.8")) ==
-              vo::type::DIRECT);
+  run_range_nr_test(false, "example.com", "10.0.0.0/8", "10.1.1.1");
+  run_range_nr_test(false, "example.com", "fd00::/8", "fd00::1");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Default)
+BOOST_AUTO_TEST_CASE(Matcher_match_Ingresses_Empty)
 {
-  auto router = Router{fn};
-  BOOST_CHECK(!router.needResloving());
+  run_ingress_test(true, "", "");
+  run_ingress_test(false, "", "foo");
+  run_ingress_test(false, "foo", "");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Unnecessary_Rules)
+BOOST_AUTO_TEST_CASE(Matcher_match_Ingresses)
 {
-  auto router = Router{fn};
-  router.update(ph, {{}, {ph}, {AdapterType::SS}, {ph}, {ph}, {}});
-  router.setRoute({ph, {make_pair(vector<string>{ph}, ph)}});
-  BOOST_CHECK(!router.needResloving());
+  run_ingress_test(true, "foo", "foo");
+  run_ingress_test(false, "foo", "bar");
+  run_ingress_test(false, "foo", "foofoo");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Unnecessary_Route)
+BOOST_AUTO_TEST_CASE(Matcher_match_Types)
 {
-  auto router = Router{fn};
-  router.update(vo::rule::RANGE, {{"127.0.0.1/32"}});
-  router.update(vo::rule::COUNTRY, {{}, {}, {}, {}, {}, {ph}});
-  BOOST_CHECK(!router.needResloving());
+  run_type_test(true, AdapterType::HTTP, AdapterType::HTTP);
+  run_type_test(false, AdapterType::HTTP, AdapterType::DIRECT);
 }
 
-BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Necessary_Range)
+BOOST_AUTO_TEST_CASE(Matcher_match_Patterns)
 {
-  auto router = Router{fn};
-  router.update(ph, {{"127.0.0.1/32"}});
-  router.setRoute({ph, {make_pair(vector<string>{ph}, ph)}});
-
-  BOOST_CHECK(router.needResloving());
+  run_pattern_test(true, "foo.example.com", "^.*\\.example\\.com$");
+  run_pattern_test(false, "fooexample.com", "^.*\\.example\\.com$");
 }
 
-BOOST_AUTO_TEST_CASE(Router_Conditionally_Resolving_Necessary_Country)
+BOOST_AUTO_TEST_CASE(Matcher_match_Countries)
 {
-  auto router = Router{fn};
-  router.update(ph, {{}, {}, {}, {}, {}, {ph}});
-  router.setRoute({ph, {make_pair(vector<string>{ph}, ph)}});
-  BOOST_CHECK(router.needResloving());
+  run_country_test(true, "1.1.1.1", "AU");
+  run_country_test(true, "::ffff:1.1.1.1", "AU");
+  run_country_test(false, "8.8.8.8", "AU");
+  run_country_test(false, "::ffff:8.8.8.8", "AU");
+}
+
+BOOST_AUTO_TEST_CASE(Matcher_match_Countries_With_Resolving)
+{
+  run_country_test(RESOLV_ERROR, "example.com", "AU");
+  run_country_test(RESOLV_ERROR, "example.com", "AU");
+}
+
+BOOST_AUTO_TEST_CASE(Matcher_match_Countries_With_Resolved_Results)
+{
+  run_country_test(true, "example.com", "AU", "1.1.1.1");
+  run_country_test(true, "example.com", "AU", "::ffff:1.1.1.1");
+  run_country_test(false, "example.com", "AU", "8.8.8.8");
+  run_country_test(false, "example.com", "AU", "::ffff:8.8.8.8");
+}
+
+BOOST_AUTO_TEST_CASE(Matcher_match_Countries_NR)
+{
+  run_country_nr_test(true, "1.1.1.1", "AU");
+  run_country_nr_test(true, "::ffff:1.1.1.1", "AU");
+  run_country_nr_test(false, "8.8.8.8", "AU");
+  run_country_nr_test(false, "::ffff:8.8.8.8", "AU");
+}
+
+BOOST_AUTO_TEST_CASE(Matcher_match_Countries_NR_With_Resolving)
+{
+  run_country_nr_test(false, "example.com", "AU");
+  run_country_nr_test(false, "example.com", "AU");
+}
+
+BOOST_AUTO_TEST_CASE(Matcher_match_Countries_NR_With_Resolved_Results)
+{
+  run_country_nr_test(false, "example.com", "AU", "1.1.1.1");
+  run_country_nr_test(false, "example.com", "AU", "::ffff:1.1.1.1");
+  run_country_nr_test(false, "example.com", "AU", "8.8.8.8");
+  run_country_nr_test(false, "example.com", "AU", "::ffff:8.8.8.8");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

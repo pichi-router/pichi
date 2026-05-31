@@ -3,90 +3,92 @@
 
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
-#include <pichi/crypto/fingerprint.hpp>
-#include <pichi/stream/traits.hpp>
-#include <type_traits>
+#include <pichi/common/asserts.hpp>
+#include <pichi/vo/egress.hpp>
+#include <pichi/vo/ingress.hpp>
 
 namespace pichi::stream {
 
+extern boost::asio::ssl::context tls_context(vo::TlsIngressOption const&);
+extern boost::asio::ssl::context tls_context(vo::TlsEgressOption const&, std::string const&);
+
+extern void setup_fingerprint(::SSL*);
+
 /*
- *  1. TlsStream is about to implement both of AsyncReadStream and
+ *  1. Tls is about to implement both of AsyncReadStream and
  * AsyncWriteStream concepts, which is required by the HTTP functions provided
  * by Boost.Beast.
  *  2. The main difference bewteen TlsStream and boost::asio::ssl::stream is
  * TlsStream keeps boost::asio::ssl::context in its scope.
  */
 
-template <typename Socket> class TlsStream {
+template <typename Socket> class Tls {
 private:
-  static_assert(std::is_same_v<std::decay_t<Socket>, Socket>);
-
-  using Context = boost::asio::ssl::context;
-  using Stream = boost::asio::ssl::stream<Socket>;
+  using Context   = boost::asio::ssl::context;
+  using Stream    = boost::asio::ssl::stream<Socket>;
   using ErrorCode = boost::system::error_code;
 
 public:
-  using executor_type = typename Stream::executor_type;
+  using executor_type   = typename Stream::executor_type;
   using next_layer_type = typename Stream::next_layer_type;
 
   template <typename... Args>
-  TlsStream(Context&& ctx, Args&&... args)
-    : ctx_{std::move(ctx)}, stream_{Socket{std::forward<Args>(args)...}, ctx_}
+  Tls(Context ctx, Args&&... args)
+    : ctx_{std::move(ctx)}, stream_{std::forward<Args>(args)..., ctx_}
   {
   }
 
   template <typename... Args>
-  TlsStream(std::optional<std::string> const& sni, Args&&... args)
-    : TlsStream{std::forward<Args>(args)...}
+  Tls(std::optional<std::string> const& sni, Args&&... args) : Tls{std::forward<Args>(args)...}
   {
     if (sni.has_value())
       assertTrue(SSL_set_tlsext_host_name(stream_.native_handle(), sni->c_str()) == 1);
-    crypto::setupTlsFingerprint(stream_.native_handle());
+    setup_fingerprint(stream_.native_handle());
   }
 
-  auto get_executor() { return stream_.get_executor(); }
+  executor_type get_executor() { return stream_.get_executor(); }
+
+  next_layer_type&       next_layer() { return stream_.next_layer(); }
+  next_layer_type const& next_layer() const { return stream_.next_layer(); }
 
   bool is_open() const { return stream_.next_layer().is_open(); }
 
-  auto& next_layer() { return stream_.next_layer(); }
-  auto const& next_layer() const { return stream_.next_layer(); }
-
-  template <typename HandshakeHandler> auto async_handshake(HandshakeHandler&& handler)
+  template <typename ShutdownToken> auto async_shutdown(ShutdownToken&& token)
   {
-    return stream_.async_handshake(boost::asio::ssl::stream_base::client,
-                                   std::forward<HandshakeHandler>(handler));
+    return stream_.async_shutdown(std::forward<ShutdownToken>(token));
   }
 
-  template <typename AcceptHandler> auto async_accept(AcceptHandler&& handler)
+  template <typename HandshakeToken> auto async_handshake(HandshakeToken&& token)
   {
-    return stream_.async_handshake(boost::asio::ssl::stream_base::server,
-                                   std::forward<AcceptHandler>(handler));
+    return stream_.async_handshake(
+        boost::asio::ssl::stream_base::client,
+        std::forward<HandshakeToken>(token)
+    );
   }
 
-  template <typename ShutdownHandler> auto async_shutdown(ShutdownHandler&& handler)
+  template <typename AcceptToken> auto async_accept(AcceptToken&& token)
   {
-    return stream_.async_shutdown(std::forward<ShutdownHandler>(handler));
+    return stream_.async_handshake(
+        boost::asio::ssl::stream_base::server,
+        std::forward<AcceptToken>(token)
+    );
   }
 
-  template <typename MutableBufferSequence, typename ReadHandler>
-  auto async_read_some(MutableBufferSequence const& buf, ReadHandler&& handler)
+  template <typename MutableBufferSequence, typename ReadToken>
+  auto async_read_some(MutableBufferSequence const& b, ReadToken&& token)
   {
-    return stream_.async_read_some(buf, std::forward<ReadHandler>(handler));
+    return stream_.async_read_some(b, std::forward<ReadToken>(token));
   }
 
-  template <typename ConstBufferSequence, typename WriteHandler>
-  auto async_write_some(ConstBufferSequence const& buf, WriteHandler&& handler)
+  template <typename ConstBufferSequence, typename WriteToken>
+  auto async_write_some(ConstBufferSequence const& b, WriteToken&& token)
   {
-    static_assert(std::is_invocable_v<std::decay_t<WriteHandler>, ErrorCode const&, size_t>);
-    return stream_.async_write_some(buf, std::forward<WriteHandler>(handler));
+    return stream_.async_write_some(b, std::forward<WriteToken>(token));
   }
 
 private:
   Context ctx_;
-  Stream stream_;
-};
-
-template <typename Socket> struct RawStream<TlsStream<Socket>> : public std::false_type {
+  Stream  stream_;
 };
 
 }  // namespace pichi::stream

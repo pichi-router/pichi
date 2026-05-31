@@ -1,97 +1,149 @@
 #define BOOST_TEST_MODULE pichi balancer test
 
 #include "utils.hpp"
+#include <algorithm>
 #include <array>
-#include <boost/test/unit_test.hpp>
 #include <cmath>
-#include <pichi/api/balancer.hpp>
 #include <pichi/common/literals.hpp>
+#include <pichi/service/balancer.hpp>
+#include <pichi/vo/ingress.hpp>
+#include <ranges>
 #include <unordered_map>
 #include <unordered_set>
-#include <vector>
 
-using namespace std;
+using namespace std::literals;
+namespace rngs  = std::ranges;
+namespace views = rngs::views;
 
 namespace pichi::unit_test {
 
-using namespace api;
+static auto const N = 100_sz;
 
-static auto const BALANCE_TYPES =
-    array{BalanceType::RANDOM, BalanceType::ROUND_ROBIN, BalanceType::LEAST_CONN};
-
-static auto const ENDPOINTS = invoke([]() {
-  auto ret = array<Endpoint, 100_sz>{};
-  for (auto i = 0_u16; i < ret.size(); ++i) {
+static auto const ENDPOINTS = std::invoke([]() {
+  auto ret = std::array<Endpoint, N>{};
+  for (auto i = 0_u16; i < N; ++i) {
     ret[i] = makeEndpoint("localhost", i);
   }
   return ret;
 });
 
-static auto const N = ENDPOINTS.size();
+static auto gen_vo(BalanceType type)
+{
+  return vo::Ingress{
+      .type_ = AdapterType::TUNNEL,
+      .opt_ =
+          vo::TunnelOption{
+                           .destinations_ = {rngs::begin(ENDPOINTS), rngs::end(ENDPOINTS)},
+                           .balance_      = type
+          },
+      .name_ = "pichi"s,
+  };
+}
+
+template <typename TestCase> void run_test_case(TestCase&& test, vo::Ingress const& vo)
+{
+  run_case([&, test = std::forward<TestCase>(test)](auto&& ex) mutable -> Awaitable<void> {
+    co_await service::create_balancer(ex, vo);
+    auto ec = co_await redirect(test(co_await service::get_balancer(ex, vo.name_)));
+    service::remove_balancer(ex, vo.name_);
+    BOOST_CHECK(!ec);
+  });
+}
 
 BOOST_AUTO_TEST_SUITE(BALANCER)
 
 BOOST_AUTO_TEST_CASE(select_Empty)
 {
-  for (auto type : BALANCE_TYPES) {
-    BOOST_CHECK_EXCEPTION((Balancer{type, cbegin(ENDPOINTS), cbegin(ENDPOINTS)}), SystemError,
-                          verifyException<PichiError::MISC>);
-  }
+  run_case([](auto&& ex) -> Awaitable<void> {
+    auto vos = std::array{BalanceType::RANDOM, BalanceType::ROUND_ROBIN, BalanceType::LEAST_CONN} |
+               views::transform([](auto type) {
+                 return vo::Ingress{
+                     .type_ = AdapterType::TUNNEL,
+                     .opt_  = vo::TunnelOption{.destinations_ = {}, .balance_ = type}
+                 };
+               });
+    for (auto&& vo : vos)
+      BOOST_CHECK_EXCEPTION(
+          co_await service::create_balancer(ex, vo),
+          SystemError,
+          verify_exception<PichiError::MISC>
+      );
+  });
 }
 
 BOOST_AUTO_TEST_CASE(RANDOM_select_Probability)
 {
-  auto const K = 1000;
-  auto data = unordered_map<uint16_t, int>{};
-  auto balancer = Balancer{BalanceType::RANDOM, cbegin(ENDPOINTS), cend(ENDPOINTS)};
-  for (auto i = 0_sz; i < N * K; ++i) ++data[balancer.select()->port_];
-
-  BOOST_CHECK_EQUAL(N, data.size());
-  for_each(cbegin(data), cend(data), [K, delta = sqrt(N * K) / 2.0](auto&& item) {
-    BOOST_CHECK_LE(abs(item.second - K), delta);
-  });
+  static auto const K = 1000;
+  run_test_case(
+      [](auto balancer) -> Awaitable<void> {
+        auto data = std::unordered_map<uint16_t, int>{};
+        for (auto i = 0_sz; i < N * K; ++i) {
+          auto endpoint = co_await balancer->select();
+          ++data[endpoint.port_];
+        }
+        BOOST_CHECK_EQUAL(N, data.size());
+        rngs::for_each(data | views::values, [delta = sqrt(N * K) / 2](auto times) {
+          BOOST_CHECK_LE(abs(times - K), delta);
+        });
+      },
+      gen_vo(BalanceType::RANDOM)
+  );
 }
 
 BOOST_AUTO_TEST_CASE(ROUND_ROBIN_select)
 {
-  auto balancer = Balancer{BalanceType::ROUND_ROBIN, cbegin(ENDPOINTS), cend(ENDPOINTS)};
-  for (auto i = 0_u16; i < N; ++i) BOOST_CHECK_EQUAL(balancer.select()->port_, i);
-  for (auto i = 0_u16; i < N; ++i) BOOST_CHECK_EQUAL(balancer.select()->port_, i);
+  run_test_case(
+      [](auto balancer) -> Awaitable<void> {
+        for (auto i = 0_u16; i < N; ++i) {
+          auto endpoint = co_await balancer->select();
+          BOOST_CHECK_EQUAL(i, endpoint.port_);
+        }
+
+        for (auto i = 0_u16; i < N; ++i) {
+          auto endpoint = co_await balancer->select();
+          BOOST_CHECK_EQUAL(i, endpoint.port_);
+        }
+      },
+      gen_vo(BalanceType::ROUND_ROBIN)
+  );
 }
 
 BOOST_AUTO_TEST_CASE(LEAST_CONN_select)
 {
-  auto container = unordered_set<uint16_t>{};
-  auto balancer = Balancer{BalanceType::LEAST_CONN, cbegin(ENDPOINTS), cend(ENDPOINTS)};
-  for (auto i = 0_sz; i < N; ++i) {
-    generate_n(inserter(container, end(container)), N, [&]() { return balancer.select()->port_; });
-    BOOST_CHECK_EQUAL(N, container.size());
-    container.clear();
-  }
-}
+  run_test_case(
+      [](auto balancer) -> Awaitable<void> {
+        auto data = std::unordered_set<uint16_t>{};
 
-BOOST_AUTO_TEST_CASE(LEAST_CONN_release_No_Connection_Iterator)
-{
-  auto balancer = Balancer{BalanceType::LEAST_CONN, cbegin(ENDPOINTS), cend(ENDPOINTS)};
-  auto it = balancer.select();
-  balancer.release(it);
-  advance(it, -it->port_);
-  for (auto i = 0_sz; i < N; ++i)
-    BOOST_CHECK_EXCEPTION(balancer.release(it++), SystemError, verifyException<PichiError::MISC>);
+        for (auto i = 0_u16; i < N; ++i) {
+          for (auto j = 0_u16; j < N; ++j) {
+            auto endpoint = co_await balancer->select();
+            data.emplace(endpoint.port_);
+          }
+          BOOST_CHECK_EQUAL(N, rngs::size(data));
+          data.clear();
+        }
+      },
+      gen_vo(BalanceType::LEAST_CONN)
+  );
 }
 
 BOOST_AUTO_TEST_CASE(LEAST_CONN_release)
 {
-  auto balancer = Balancer{BalanceType::LEAST_CONN, cbegin(ENDPOINTS), cend(ENDPOINTS)};
-  auto iterators = vector<Balancer::Iterator>{};
-  generate_n(back_inserter(iterators), N, [&]() { return balancer.select(); });
+  run_test_case(
+      [](auto balancer) -> Awaitable<void> {
+        for (auto port = 0_u16; port < N; ++port) {
+          auto endpoint = co_await balancer->select();
+          BOOST_CHECK_EQUAL(port, endpoint.port_);
+        }
 
-  for_each(cbegin(iterators), cend(iterators), [&](auto it) {
-    for (auto i = 0_sz; i < N; ++i) {
-      balancer.release(it);
-      BOOST_CHECK(it == balancer.select());
-    }
-  });
+        for (auto port = 0_u16; port < N; ++port) {
+          balancer->release(makeEndpoint("localhost", port));
+          auto endpoint = co_await balancer->select();
+          BOOST_CHECK_EQUAL(port, endpoint.port_);
+        }
+      },
+      gen_vo(BalanceType::LEAST_CONN)
+  );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

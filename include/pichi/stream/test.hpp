@@ -3,11 +3,14 @@
 
 #include <algorithm>
 #include <boost/asio/buffers_iterator.hpp>
+#include <boost/asio/readable_pipe.hpp>
+#include <boost/asio/writable_pipe.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <deque>
 #include <pichi/common/asserts.hpp>
 #include <pichi/common/buffer.hpp>
-#include <pichi/stream/traits.hpp>
+#include <pichi/common/coro.hpp>
+#include <pichi/stream/helpers.hpp>
 
 namespace pichi::stream {
 
@@ -63,7 +66,7 @@ public:
 
 private:
   std::deque<Buffer> rBufs_;
-  Buffer wBuf_;
+  Buffer             wBuf_;
 };
 
 /*
@@ -86,7 +89,7 @@ public:
 
   void close(ErrorCode& ec)
   {
-    ec = {};
+    ec    = {};
     open_ = false;
   }
 
@@ -120,12 +123,61 @@ public:
 
 private:
   TestSocket& socket_;
-  bool open_;
-};
-
-template <> struct AsyncStream<TestStream> : public std::false_type {
+  bool        open_;
 };
 
 }  // namespace pichi::stream
+
+namespace pichi::unit_test {
+
+class TestSocket {
+private:
+  using ErrorCode = boost::system::error_code;
+
+public:
+  using endpoint_type = boost::asio::ip::tcp::endpoint;
+  using executor_type = boost::asio::readable_pipe::executor_type;
+
+  using lowest_layer_type = TestSocket;
+
+  explicit TestSocket(IOExecutor const&);
+
+  executor_type get_executor();
+
+  bool is_open() const;
+  void close();
+
+  lowest_layer_type& lowest_layer() { return *this; }
+
+  template <typename MutableBufferSequence, typename ReadToken>
+  auto async_read_some(MutableBufferSequence const& buf, ReadToken&& token)
+  {
+    return in_.async_read_some(buf, std::forward<ReadToken>(token));
+  }
+
+  template <typename ConstBufferSequence, typename WriteToken>
+  auto async_write_some(ConstBufferSequence const& buf, WriteToken&& token)
+  {
+    return out_.async_write_some(buf, std::forward<WriteToken>(token));
+  }
+
+  template <typename ConnectToken>
+  auto async_connect(boost::asio::ip::tcp::endpoint const&, ConnectToken&& token)
+  {
+    return stream::async_initiate<void(ErrorCode)>(
+        get_executor(),
+        std::forward<ConnectToken>(token),
+        []() -> Awaitable<void> { co_return; }  // Do nothing
+    );
+  }
+
+  TestSocket peer();
+
+private:
+  boost::asio::readable_pipe in_;
+  boost::asio::writable_pipe out_;
+};
+
+}  // namespace pichi::unit_test
 
 #endif  // PICHI_STREAM_TEST_HPP

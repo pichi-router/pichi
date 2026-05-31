@@ -30,8 +30,8 @@ _execute command *recipes:
   @{{ \
     if recipes == "" { \
       just + " _rec-exec " + command + \
-        " pichi boost boringssl brotli libmaxminddb libsodium mbedtls openssl rapidjson" \
-    } else { \
+        " pichi boost boringssl botan brotli libmaxminddb openssl rapidjson" \
+        } else { \
       just + " _rec-exec " + command + " " + recipes \
     } \
   }}
@@ -174,6 +174,7 @@ _build *args:
     -o "boost/*:without_coroutine=True" \
     -o "boost/*:without_date_time=True" \
     -o "boost/*:without_fiber=True" \
+    -o "boost/*:without_filesystem=True" \
     -o "boost/*:without_graph=True" \
     -o "boost/*:without_graph_parallel=True" \
     -o "boost/*:without_iostreams=True" \
@@ -195,9 +196,9 @@ _build *args:
     -o "boost/*:without_url=True" \
     -o "boost/*:without_wave=True" \
     -o "boost/*:zlib=False" \
-    -o "mbedtls/*:with_zlib=False" \
     -o "openssl/*:no_apps=True" \
     -o "openssl/*:no_zlib=True" \
+    -s "botan/*:compiler.cppstd=20" \
     {{args}} \
     {{workspace}}
 
@@ -208,7 +209,6 @@ _build-host build_type shared fingerprint transparent=default_transparent versio
           "-o" "boringssl/*:shared=" + shared \
           "-o" "brotli/*:shared=" + shared \
           "-o" "libmaxminddb/*:shared=" + shared \
-          "-o" "mbedtls/*:shared=" + (if os() == "windows" { "False" } else { shared }) \
           "-o" "openssl/*:shared=" + shared \
           "-o" "rapidjson/*:shared=" + shared \
           "-o" "pichi/*:shared=" + shared \
@@ -253,7 +253,6 @@ _build-cross build_type fingerprint version *extra_args: \
           "-o" "pichi/*:build_test=False" \
           "-o" "boost/*:without_atomic=True" \
           "-o" "boost/*:without_exception=True" \
-          "-o" "boost/*:without_filesystem=True" \
           "-o" "boost/*:without_program_options=True" \
           "-o" "boost/*:without_system=True" \
           "-o" "boost/*:without_test=True" \

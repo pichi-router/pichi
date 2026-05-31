@@ -1,0 +1,109 @@
+#ifndef PICHI_ADAPTER_TCP_TROJAN_HPP
+#define PICHI_ADAPTER_TCP_TROJAN_HPP
+
+#include <boost/beast/core/flat_static_buffer.hpp>
+#include <boost/system/error_code.hpp>
+#include <pichi/common/buffer.hpp>
+#include <pichi/stream/concepts.hpp>
+#include <pichi/stream/tls.hpp>
+#include <pichi/stream/websocket.hpp>
+#include <pichi/vo/egress.hpp>
+#include <pichi/vo/ingress.hpp>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+
+namespace pichi::adapter::tcp {
+
+namespace trojan {
+
+class IngressCredentials {
+private:
+  struct StringHash {
+    using hash_type      = std::hash<std::string_view>;
+    using is_transparent = void;
+
+    size_t operator()(char const*) const;
+    size_t operator()(std::string_view) const;
+    size_t operator()(std::string const&) const;
+  };
+
+  using Passwords = std::unordered_set<std::string, StringHash, std::equal_to<>>;
+
+public:
+  explicit IngressCredentials(vo::Ingress const&);
+
+  bool authenticate(std::string_view) const;
+
+private:
+  Passwords passwords_;
+};
+
+class Cache {
+private:
+  using Buffer = boost::beast::flat_static_buffer<512>;
+
+public:
+  Cache();
+
+  size_t size() const;
+
+  template <stream::AsyncLayer Layer> Awaitable<void> read_from(Layer&, size_t = 1);
+
+  std::string_view take(size_t);
+
+  size_t take(MutableBuffer);
+
+  void clear();
+  void rollback();
+
+private:
+  Buffer        buf_   = {};
+  size_t        taken_ = 0;
+  MutableBuffer available_;
+};
+
+}  // namespace trojan
+
+template <stream::AsyncLayer NextLayer> class TrojanIngress {
+private:
+  using Credential = trojan::IngressCredentials;
+  using Cache      = trojan::Cache;
+
+public:
+  explicit TrojanIngress(vo::Ingress const&, NextLayer);
+
+  Awaitable<size_t> recv(MutableBuffer);
+  Awaitable<void>   send(ConstBuffer);
+  Awaitable<void>   close();
+
+  Awaitable<Endpoint> read_remote();
+  Awaitable<void>     confirm();
+  Awaitable<void>     disconnect(boost::system::error_code const&);
+
+private:
+  NextLayer  underlying_;
+  Credential cred_;
+  Cache      cache_ = {};
+  Endpoint   remote_;
+};
+
+template <stream::AsyncLayer NextLayer> class TrojanEgress {
+public:
+  explicit TrojanEgress(vo::Egress const&, NextLayer);
+
+  Awaitable<size_t> recv(MutableBuffer);
+  Awaitable<void>   send(ConstBuffer);
+  Awaitable<void>   close();
+
+  Awaitable<void> connect(Endpoint const&);
+
+private:
+  std::string cred_;
+  Endpoint    peer_;
+  NextLayer   underlying_;
+};
+
+}  // namespace pichi::adapter::tcp
+
+#endif  // PICHI_ADAPTER_TCP_TROJAN_HPP

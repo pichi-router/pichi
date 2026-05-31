@@ -77,13 +77,6 @@ endif()
 # Generating config.hpp
 message(STATUS "Generating config.hpp")
 
-if(Sodium_VERSION_STRING VERSION_GREATER_EQUAL "1.0.17")
-  # From libsodium 1.0.17, the declarations of crypto_stream_xxx functions contain
-  # '__attribute__ ((nonnull))', which might let GCC cause '-Wignored-attributes' warning
-  # if using std::is_same to detect function signature equation.
-  set(DISABLE_GCC_IGNORED_ATTRIBUTES ON)
-endif()
-
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
   # https://reviews.llvm.org/D119670?id=408276
   include(CheckCXXCompilerFlag)

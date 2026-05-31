@@ -9,12 +9,15 @@
 namespace pichi::vo {
 
 struct Rule {
-  std::vector<std::string> range_ = {};
+  std::vector<std::string> range_   = {};
   std::vector<std::string> ingress_ = {};
-  std::vector<AdapterType> type_ = {};
+  std::vector<AdapterType> type_    = {};
   std::vector<std::string> pattern_ = {};
-  std::vector<std::string> domain_ = {};
+  std::vector<std::string> domain_  = {};
   std::vector<std::string> country_ = {};
+
+  std::vector<std::string> range_nr_   = {};
+  std::vector<std::string> country_nr_ = {};
 };
 
 extern rapidjson::Value toJson(Rule const&, rapidjson::Document::AllocatorType&);

@@ -5,7 +5,12 @@
 #include <limits>
 #include <stddef.h>
 #include <stdint.h>
-#include <type_traits>
+
+#ifdef _WIN32
+#ifdef max
+#undef max
+#endif  // max
+#endif  // _WIN332
 
 #ifdef _WIN32
 #ifdef max

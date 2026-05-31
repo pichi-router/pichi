@@ -32,14 +32,10 @@
 #endif  // __GNUC__ >= 10
 
 #if __GNUC__ >= 14
+#pragma GCC diagnostic ignored "-Wmismatched-new-delete"
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wuninitialized"
-#endif // __GNUC__ >= 14
-
-#cmakedefine DISABLE_GCC_IGNORED_ATTRIBUTES
-#ifdef DISABLE_GCC_IGNORED_ATTRIBUTES
-#pragma GCC diagnostic ignored "-Wignored-attributes"
-#endif  // DISABLE_GCC_IGNORED_ATTRIBUTES
+#endif  // __GNUC__ >= 14
 
 #endif  // __GNUC__
 
@@ -73,5 +69,17 @@
 #endif  // CMAKE_INSTALL_PREFIX
 
 #cmakedefine BUILD_TEST
+
+namespace pichi::unit_test {
+
+class TestSocket;
+
+};  // namespace pichi::unit_test
+
+namespace boost::beast {
+
+extern void beast_close_socket(pichi::unit_test::TestSocket&);
+
+}  // namespace boost::beast
 
 #endif  // PICHI_CONFIG_H

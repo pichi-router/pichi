@@ -28,10 +28,11 @@ static string toString(vo::Route const& rvo)
   for_each(cbegin(rvo.rules_), cend(rvo.rules_), [&rules](auto&& rule) {
     auto vo = Value{};
     vo.SetArray();
-    for_each(cbegin(rule.first), cend(rule.first),
-             [&vo](auto&& item) { vo.PushBack(toJson(item, alloc), alloc); });
+    for_each(cbegin(rule.first), cend(rule.first), [&vo](auto&& item) {
+      vo.PushBack(toJson(item, alloc), alloc);
+    });
     vo.PushBack(toJson(rule.second, alloc), alloc);
-    rules.PushBack(move(vo), alloc);
+    rules.PushBack(std::move(vo), alloc);
   });
   v.AddMember(vo::route::RULES, rules, alloc);
 
@@ -42,49 +43,88 @@ BOOST_AUTO_TEST_SUITE(REST_PARSE)
 
 BOOST_AUTO_TEST_CASE(parse_Route_Invalid_Str)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("not a json"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("[\"not a json object\"]"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("not a json"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("[\"not a json object\"]"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Empty_Fields)
 {
   auto const emptyDefault = vo::Route{""};
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>(toString(emptyDefault)), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>(toString(emptyDefault)),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Invalid_Rules_Type)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": 0}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": 0.0}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": \"not an array\"}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": {}}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": 0}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": 0.0}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": \"not an array\"}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": {}}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Invalid_Rules_Items_Type)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": [0]}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": [0.0]}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": [\"not an array\"]}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": [{}]}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": [0]}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": [0.0]}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": [\"not an array\"]}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": [{}]}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route_Rules_Not_Pair)
 {
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": [[]]}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
-  BOOST_CHECK_EXCEPTION(parse<vo::Route>("{\"rules\": [[\"a\"]]}"), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": [[]]}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
+  BOOST_CHECK_EXCEPTION(
+      parse<vo::Route>("{\"rules\": [[\"a\"]]}"),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
 BOOST_AUTO_TEST_CASE(parse_Route)
@@ -115,16 +155,16 @@ BOOST_AUTO_TEST_CASE(parse_Route)
 BOOST_AUTO_TEST_CASE(toJson_Route_Empty)
 {
   auto rvo = vo::Route{};
-  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), SystemError, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), SystemError, verify_exception<PichiError::MISC>);
 
   rvo.default_ = "";
-  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), SystemError, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(rvo, alloc), SystemError, verify_exception<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
 {
   auto expect = Value{};
-  auto array = Value{};
+  auto array  = Value{};
 
   expect.SetObject();
   array.SetArray();
@@ -138,15 +178,18 @@ BOOST_AUTO_TEST_CASE(toJson_Route_Without_Rules)
 BOOST_AUTO_TEST_CASE(toJson_Route_With_Rules)
 {
   auto expect = Value{};
-  auto rules = Value{};
-  auto rule = Value{};
+  auto rules  = Value{};
+  auto rule   = Value{};
 
   expect.SetObject();
   rules.SetArray();
   rule.SetArray();
   expect.AddMember(vo::route::DEFAULT, ph, alloc);
-  expect.AddMember(vo::route::RULES,
-                   rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc), alloc);
+  expect.AddMember(
+      vo::route::RULES,
+      rules.PushBack(rule.PushBack(ph, alloc).PushBack(ph, alloc), alloc),
+      alloc
+  );
 
   auto rvo = vo::Route{ph, {make_pair(vector<string>{ph}, ph)}};
   BOOST_CHECK(expect == toJson(rvo, alloc));

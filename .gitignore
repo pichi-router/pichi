@@ -13,8 +13,12 @@
 *.a
 
 # Temporary files for editors
+\#*
 .#*
 .*.swp
+
+# Core dumps
+core
 
 # Editors
 .cache/
@@ -23,6 +27,7 @@
 .clangd
 .vscode/
 build/
+out/
 
 # CMake
 CMakePresets.json

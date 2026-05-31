@@ -28,83 +28,71 @@ using namespace pichi::vo;
 
 enum class Present { MANDATORY, OPTIONAL, UNUSED };
 
-template <AdapterType type> struct AdapterTrait {
-};
+template <AdapterType type> struct AdapterTrait {};
 
 template <> struct AdapterTrait<AdapterType::DIRECT> {
-  static const auto type_ = AdapterType::DIRECT;
-  static const auto server_ = Present::UNUSED;
+  static const auto type_       = AdapterType::DIRECT;
+  static const auto server_     = Present::UNUSED;
   static const auto credential_ = Present::UNUSED;
-  static const auto option_ = Present::UNUSED;
-  static const auto tls_ = Present::UNUSED;
-  static const auto websocket_ = Present::UNUSED;
+  static const auto option_     = Present::UNUSED;
+  static const auto tls_        = Present::UNUSED;
+  static const auto websocket_  = Present::UNUSED;
 };
 
 template <> struct AdapterTrait<AdapterType::HTTP> {
-  static const auto type_ = AdapterType::HTTP;
-  static const auto server_ = Present::MANDATORY;
+  static const auto type_       = AdapterType::HTTP;
+  static const auto server_     = Present::MANDATORY;
   static const auto credential_ = Present::OPTIONAL;
-  static const auto option_ = Present::UNUSED;
-  static const auto tls_ = Present::OPTIONAL;
-  static const auto websocket_ = Present::UNUSED;
-  using Credential = UpEgressCredential;
+  static const auto option_     = Present::UNUSED;
+  static const auto tls_        = Present::OPTIONAL;
+  static const auto websocket_  = Present::UNUSED;
+  using Credential              = UpEgressCredential;
 };
 
 template <> struct AdapterTrait<AdapterType::SOCKS5> {
-  static const auto type_ = AdapterType::SOCKS5;
-  static const auto server_ = Present::MANDATORY;
+  static const auto type_       = AdapterType::SOCKS5;
+  static const auto server_     = Present::MANDATORY;
   static const auto credential_ = Present::OPTIONAL;
-  static const auto option_ = Present::UNUSED;
-  static const auto tls_ = Present::OPTIONAL;
-  static const auto websocket_ = Present::UNUSED;
-  using Credential = UpEgressCredential;
+  static const auto option_     = Present::UNUSED;
+  static const auto tls_        = Present::OPTIONAL;
+  static const auto websocket_  = Present::UNUSED;
+  using Credential              = UpEgressCredential;
 };
 
 template <> struct AdapterTrait<AdapterType::REJECT> {
-  static const auto type_ = AdapterType::REJECT;
-  static const auto server_ = Present::UNUSED;
+  static const auto type_       = AdapterType::REJECT;
+  static const auto server_     = Present::UNUSED;
   static const auto credential_ = Present::UNUSED;
-  static const auto option_ = Present::MANDATORY;
-  static const auto tls_ = Present::UNUSED;
-  static const auto websocket_ = Present::UNUSED;
-  using Option = RejectOption;
+  static const auto option_     = Present::MANDATORY;
+  static const auto tls_        = Present::UNUSED;
+  static const auto websocket_  = Present::UNUSED;
+  using Option                  = RejectOption;
 };
 
 template <> struct AdapterTrait<AdapterType::SS> {
-  static const auto type_ = AdapterType::SS;
-  static const auto server_ = Present::MANDATORY;
+  static const auto type_       = AdapterType::SS;
+  static const auto server_     = Present::MANDATORY;
   static const auto credential_ = Present::UNUSED;
-  static const auto option_ = Present::MANDATORY;
-  static const auto tls_ = Present::UNUSED;
-  static const auto websocket_ = Present::UNUSED;
-  using Option = ShadowsocksOption;
+  static const auto option_     = Present::MANDATORY;
+  static const auto tls_        = Present::UNUSED;
+  static const auto websocket_  = Present::UNUSED;
+  using Option                  = ShadowsocksOption;
 };
 
 template <> struct AdapterTrait<AdapterType::TROJAN> {
-  static const auto type_ = AdapterType::TROJAN;
-  static const auto server_ = Present::MANDATORY;
+  static const auto type_       = AdapterType::TROJAN;
+  static const auto server_     = Present::MANDATORY;
   static const auto credential_ = Present::MANDATORY;
-  static const auto option_ = Present::UNUSED;
-  static const auto tls_ = Present::MANDATORY;
-  static const auto websocket_ = Present::OPTIONAL;
-  using Credential = TrojanEgressCredential;
+  static const auto option_     = Present::UNUSED;
+  static const auto tls_        = Present::MANDATORY;
+  static const auto websocket_  = Present::OPTIONAL;
+  using Credential              = TrojanEgressCredential;
 };
 
-template <> struct AdapterTrait<AdapterType::VMESS> {
-  static const auto type_ = AdapterType::VMESS;
-  static const auto server_ = Present::MANDATORY;
-  static const auto credential_ = Present::MANDATORY;
-  static const auto option_ = Present::UNUSED;
-  static const auto tls_ = Present::OPTIONAL;
-  static const auto websocket_ = Present::OPTIONAL;
-  using Credential = VMessEgressCredential;
-};
-
-using AllAdapterTraits =
-    mpl::set<AdapterTrait<AdapterType::DIRECT>, AdapterTrait<AdapterType::HTTP>,
-             AdapterTrait<AdapterType::SOCKS5>, AdapterTrait<AdapterType::REJECT>,
-             AdapterTrait<AdapterType::SS>, AdapterTrait<AdapterType::TROJAN>,
-             AdapterTrait<AdapterType::VMESS>>;
+using AllAdapterTraits = mpl::set<
+    AdapterTrait<AdapterType::DIRECT>, AdapterTrait<AdapterType::HTTP>,
+    AdapterTrait<AdapterType::SOCKS5>, AdapterTrait<AdapterType::REJECT>,
+    AdapterTrait<AdapterType::SS>, AdapterTrait<AdapterType::TROJAN>>;
 
 template <AdapterType type> Value defaultEgressJson()
 {
@@ -115,8 +103,8 @@ template <AdapterType type> Value defaultEgressJson()
   if constexpr (Trait::server_ == Present::MANDATORY)
     egress.AddMember(egress::SERVER, toJson(DEFAULT_ENDPOINT, alloc), alloc);
   if constexpr (Trait::credential_ == Present::MANDATORY)
-    egress.AddMember(egress::CREDENTIAL, defaultCredentialJson<typename Trait::Credential>(),
-                     alloc);
+    egress
+        .AddMember(egress::CREDENTIAL, defaultCredentialJson<typename Trait::Credential>(), alloc);
   if constexpr (Trait::option_ == Present::MANDATORY)
     egress.AddMember(egress::OPTION, defaultOptionJson<typename Trait::Option>(), alloc);
   if constexpr (Trait::tls_ == Present::MANDATORY)
@@ -128,8 +116,8 @@ template <AdapterType type> Value defaultEgressJson()
 
 template <AdapterType type> Egress defaultEgress()
 {
-  using Trait = AdapterTrait<type>;
-  auto egress = Egress{};
+  using Trait  = AdapterTrait<type>;
+  auto egress  = Egress{};
   egress.type_ = type;
   if constexpr (Trait::server_ == Present::MANDATORY) egress.server_ = DEFAULT_ENDPOINT;
   if constexpr (Trait::credential_ == Present::MANDATORY)
@@ -146,7 +134,7 @@ template <AdapterType type, typename Key> void verifyMandatoryField(Key&& key)
 {
   auto json = defaultEgressJson<type>();
   json.RemoveMember(key);
-  BOOST_CHECK_EXCEPTION(parse<Egress>(json), SystemError, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Egress>(json), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
@@ -157,8 +145,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Default_Ones, Trait, AllAdapterTraits)
 BOOST_AUTO_TEST_CASE(parse_Invalid_Json_Type)
 {
   for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kArrayType}) {
-    BOOST_CHECK_EXCEPTION(parse<Egress>(Value{t}), SystemError,
-                          verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(
+        parse<Egress>(Value{t}),
+        SystemError,
+        verify_exception<PichiError::BAD_JSON>
+    );
   }
 }
 
@@ -166,14 +157,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Type_Is_Mandatory, Trait, AllAdapterTraits)
 {
   auto noType = defaultEgressJson<Trait::type_>();
   noType.RemoveMember(egress::TYPE);
-  BOOST_CHECK_EXCEPTION(parse<Egress>(noType), SystemError, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<Egress>(noType), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Invalid_Types, Trait, AllAdapterTraits)
 {
-  auto invalid = defaultEgressJson<Trait::type_>();
+  auto invalid          = defaultEgressJson<Trait::type_>();
   invalid[egress::TYPE] = toJson(AdapterType::TUNNEL, alloc);
-  BOOST_CHECK_EXCEPTION(parse<Egress>(invalid), SystemError, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(
+      parse<Egress>(invalid),
+      SystemError,
+      verify_exception<PichiError::BAD_JSON>
+  );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
@@ -192,30 +187,45 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Mandatory_Fields, Trait, AllAdapterTraits)
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Optional_Fields, Trait, AllAdapterTraits)
 {
   if constexpr (Trait::credential_ == Present::OPTIONAL) {
-    using Credential = typename Trait::Credential;
-    auto egress = defaultEgress<Trait::type_>();
+    using Credential   = typename Trait::Credential;
+    auto egress        = defaultEgress<Trait::type_>();
     egress.credential_ = defaultCredential<Credential>();
-    BOOST_CHECK(parse<Egress>(defaultEgressJson<Trait::type_>().AddMember(
-                    egress::CREDENTIAL, defaultCredentialJson<Credential>(), alloc)) == egress);
+    BOOST_CHECK(
+        parse<Egress>(defaultEgressJson<Trait::type_>().AddMember(
+            egress::CREDENTIAL,
+            defaultCredentialJson<Credential>(),
+            alloc
+        )) == egress
+    );
   }
   if constexpr (Trait::option_ == Present::OPTIONAL) {
     using Option = typename Trait::Option;
-    auto egress = defaultEgress<Trait::type_>();
-    egress.opt_ = defaultOption<Option>();
-    BOOST_CHECK(parse<Egress>(defaultEgressJson<Trait::type_>().AddMember(
-                    egress::OPTION, defaultOptionJson<Option>(), alloc)) == egress);
+    auto egress  = defaultEgress<Trait::type_>();
+    egress.opt_  = defaultOption<Option>();
+    BOOST_CHECK(
+        parse<Egress>(defaultEgressJson<Trait::type_>()
+                          .AddMember(egress::OPTION, defaultOptionJson<Option>(), alloc)) == egress
+    );
   }
   if constexpr (Trait::tls_ == Present::OPTIONAL) {
     auto egress = defaultEgress<Trait::type_>();
     egress.tls_ = defaultOption<TlsEgressOption>();
-    BOOST_CHECK(parse<Egress>(defaultEgressJson<Trait::type_>().AddMember(
-                    egress::TLS, defaultOptionJson<TlsEgressOption>(), alloc)) == egress);
+    BOOST_CHECK(
+        parse<Egress>(defaultEgressJson<Trait::type_>()
+                          .AddMember(egress::TLS, defaultOptionJson<TlsEgressOption>(), alloc)) ==
+        egress
+    );
   }
   if constexpr (Trait::websocket_ == Present::OPTIONAL) {
-    auto egress = defaultEgress<Trait::type_>();
+    auto egress       = defaultEgress<Trait::type_>();
     egress.websocket_ = defaultOption<WebsocketOption>();
-    BOOST_CHECK(parse<Egress>(defaultEgressJson<Trait::type_>().AddMember(
-                    egress::WEBSOCKET, defaultOptionJson<WebsocketOption>(), alloc)) == egress);
+    BOOST_CHECK(
+        parse<Egress>(defaultEgressJson<Trait::type_>().AddMember(
+            egress::WEBSOCKET,
+            defaultOptionJson<WebsocketOption>(),
+            alloc
+        )) == egress
+    );
   }
 }
 
@@ -242,9 +252,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Default_Ones, Trait, AllAdapterTraits)
 
 BOOST_AUTO_TEST_CASE(toJson_Invalid_Adapter_Type)
 {
-  auto egress = Egress{};
+  auto egress  = Egress{};
   egress.type_ = AdapterType::TUNNEL;
-  BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verify_exception<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Mandatory_Fields, Trait, AllAdapterTraits)
@@ -252,34 +262,34 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Mandatory_Fields, Trait, AllAdapterTraits)
   if constexpr (Trait::server_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.server_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verify_exception<PichiError::MISC>);
   }
   if constexpr (Trait::credential_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.credential_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verify_exception<PichiError::MISC>);
   }
   if constexpr (Trait::option_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.opt_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verify_exception<PichiError::MISC>);
   }
   if constexpr (Trait::tls_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.tls_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verify_exception<PichiError::MISC>);
   }
   if constexpr (Trait::websocket_ == Present::MANDATORY) {
     auto egress = defaultEgress<Trait::type_>();
     egress.websocket_.reset();
-    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verifyException<PichiError::MISC>);
+    BOOST_CHECK_EXCEPTION(toJson(egress, alloc), SystemError, verify_exception<PichiError::MISC>);
   }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Optional_Fields, Trait, AllAdapterTraits)
 {
   auto egress = defaultEgress<Trait::type_>();
-  auto json = defaultEgressJson<Trait::type_>();
+  auto json   = defaultEgressJson<Trait::type_>();
 
   if constexpr (Trait::credential_ == Present::OPTIONAL) {
     egress.credential_ = defaultCredential<typename Trait::Credential>();

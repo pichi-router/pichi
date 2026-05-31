@@ -21,7 +21,7 @@ using namespace pichi::vo;
 template <typename Option, typename Key> Value generateJsonWithout(Key&& key)
 {
   auto json = defaultOptionJson<Option>();
-  json.RemoveMember(forward<Key>(key));
+  json.RemoveMember(std::forward<Key>(key));
   return json;
 }
 
@@ -38,61 +38,50 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(toJson_Option_Normal, Option, AllOptions)
 BOOST_AUTO_TEST_CASE_TEMPLATE(parse_Option_Invalid_Type, Option, AllOptions)
 {
   for (auto t : {kNumberType, kNullType, kStringType, kTrueType, kFalseType, kArrayType}) {
-    BOOST_CHECK_EXCEPTION(parse<Option>(Value{t}), SystemError,
-                          verifyException<PichiError::BAD_JSON>);
+    BOOST_CHECK_EXCEPTION(parse<Option>(Value{t}), SystemError, verify_exception<PichiError::BAD_JSON>);
   }
 }
 
 BOOST_AUTO_TEST_CASE(parse_ShadowsocksOption_Mandatory_Fields)
 {
-  BOOST_CHECK_EXCEPTION(
-      parse<ShadowsocksOption>(generateJsonWithout<ShadowsocksOption>(option::METHOD)), SystemError,
-      verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<ShadowsocksOption>(generateJsonWithout<ShadowsocksOption>(option::METHOD)), SystemError, verify_exception<PichiError::BAD_JSON>);
 
-  BOOST_CHECK_EXCEPTION(
-      parse<ShadowsocksOption>(generateJsonWithout<ShadowsocksOption>(option::PASSWORD)),
-      SystemError, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<ShadowsocksOption>(generateJsonWithout<ShadowsocksOption>(option::PASSWORD)), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TunnelOption_Mandatory_Fields)
 {
-  BOOST_CHECK_EXCEPTION(
-      parse<TunnelOption>(generateJsonWithout<TunnelOption>(option::DESTINATIONS)), SystemError,
-      verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(generateJsonWithout<TunnelOption>(option::DESTINATIONS)), SystemError, verify_exception<PichiError::BAD_JSON>);
 
-  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(generateJsonWithout<TunnelOption>(option::BALANCE)),
-                        SystemError, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(generateJsonWithout<TunnelOption>(option::BALANCE)), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TunnelOption_Invalid_Type_Of_Destinations)
 {
   auto invalid = defaultOptionJson<TunnelOption>();
   invalid[option::DESTINATIONS].SetObject();
-  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(invalid), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(invalid), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TunnelOption_Empty_Destinations)
 {
   auto empty = defaultOptionJson<TunnelOption>();
   empty[option::DESTINATIONS].Clear();
-  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(empty), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<TunnelOption>(empty), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_TunnelOption_Empty_Destinations)
 {
   auto emptyDest = defaultOption<TunnelOption>();
   emptyDest.destinations_.clear();
-  BOOST_CHECK_EXCEPTION(toJson(emptyDest, alloc), SystemError, verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(emptyDest, alloc), SystemError, verify_exception<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_RejectOption_Delay_Out_Of_Range)
 {
-  auto out = defaultOptionJson<RejectOption>();
+  auto out           = defaultOptionJson<RejectOption>();
   out[option::DELAY] = 301_u16;
-  BOOST_CHECK_EXCEPTION(parse<RejectOption>(out), SystemError,
-                        verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<RejectOption>(out), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_RejectOption_Default_Fields)
@@ -117,39 +106,32 @@ BOOST_AUTO_TEST_CASE(parse_RejectOption_Ignoring_Delay)
 
 BOOST_AUTO_TEST_CASE(toJson_RejectOption_Ignoring_Delay_When_Random)
 {
-  auto ignore = toJson(RejectOption{DelayMode::RANDOM, {0_u16}}, alloc);
-  BOOST_CHECK(ignore.HasMember(option::MODE));
-  BOOST_CHECK(parse<DelayMode>(ignore[option::MODE]) == DelayMode::RANDOM);
-  BOOST_CHECK(!ignore.HasMember(option::DELAY));
+  auto ignore_ = toJson(RejectOption{DelayMode::RANDOM, {0_u16}}, alloc);
+  BOOST_CHECK(ignore_.HasMember(option::MODE));
+  BOOST_CHECK(parse<DelayMode>(ignore_[option::MODE]) == DelayMode::RANDOM);
+  BOOST_CHECK(!ignore_.HasMember(option::DELAY));
 }
 
 BOOST_AUTO_TEST_CASE(toJson_RejectOption_Mandatory_Delay_When_Fixed)
 {
-  BOOST_CHECK_EXCEPTION(toJson(RejectOption{DelayMode::FIXED, {}}, alloc), SystemError,
-                        verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(RejectOption{DelayMode::FIXED, {}}, alloc), SystemError, verify_exception<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(toJson_RejectOption_Delay_Out_Of_Range)
 {
-  BOOST_CHECK_EXCEPTION(toJson(RejectOption{DelayMode::FIXED, 301_u16}, alloc), SystemError,
-                        verifyException<PichiError::MISC>);
+  BOOST_CHECK_EXCEPTION(toJson(RejectOption{DelayMode::FIXED, 301_u16}, alloc), SystemError, verify_exception<PichiError::MISC>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TrojanOption_Mandatory_Fields)
 {
-  BOOST_CHECK_EXCEPTION(parse<TrojanOption>(generateJsonWithout<TrojanOption>(option::REMOTE)),
-                        SystemError, verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<TrojanOption>(generateJsonWithout<TrojanOption>(option::REMOTE)), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TlsIngressOption_Mandatory_Fields)
 {
-  BOOST_CHECK_EXCEPTION(
-      parse<TlsIngressOption>(generateJsonWithout<TlsIngressOption>(tls::CERT_FILE)), SystemError,
-      verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<TlsIngressOption>(generateJsonWithout<TlsIngressOption>(tls::CERT_FILE)), SystemError, verify_exception<PichiError::BAD_JSON>);
 
-  BOOST_CHECK_EXCEPTION(
-      parse<TlsIngressOption>(generateJsonWithout<TlsIngressOption>(tls::KEY_FILE)), SystemError,
-      verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<TlsIngressOption>(generateJsonWithout<TlsIngressOption>(tls::KEY_FILE)), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TlsEgressOption_Default_Values)
@@ -163,14 +145,14 @@ BOOST_AUTO_TEST_CASE(parse_TlsEgressOption_Default_Values)
 
 BOOST_AUTO_TEST_CASE(parse_TlsEgressOption_Ignoring_Fields_When_Insecure)
 {
-  auto json = defaultOptionJson<TlsEgressOption>();
+  auto json           = defaultOptionJson<TlsEgressOption>();
   json[tls::INSECURE] = true;
-  auto ignore = parse<TlsEgressOption>(json);
-  BOOST_CHECK(ignore.insecure_);
-  BOOST_CHECK(!ignore.serverName_.has_value());
-  BOOST_CHECK(!ignore.caFile_.has_value());
-  BOOST_CHECK(ignore.sni_.has_value());
-  BOOST_CHECK_EQUAL(*ignore.sni_, ph);
+  auto ignore_        = parse<TlsEgressOption>(json);
+  BOOST_CHECK(ignore_.insecure_);
+  BOOST_CHECK(!ignore_.serverName_.has_value());
+  BOOST_CHECK(!ignore_.caFile_.has_value());
+  BOOST_CHECK(ignore_.sni_.has_value());
+  BOOST_CHECK_EQUAL(*ignore_.sni_, ph);
 }
 
 BOOST_AUTO_TEST_CASE(parse_TlsEgressOption_Optional_Fields)
@@ -201,9 +183,7 @@ BOOST_AUTO_TEST_CASE(toJson_TlsEgressOption_Optional_Fields)
 
 BOOST_AUTO_TEST_CASE(parse_WebsocketOption_Mandatory_Fields)
 {
-  BOOST_CHECK_EXCEPTION(
-      parse<WebsocketOption>(generateJsonWithout<WebsocketOption>(websocket::PATH)), SystemError,
-      verifyException<PichiError::BAD_JSON>);
+  BOOST_CHECK_EXCEPTION(parse<WebsocketOption>(generateJsonWithout<WebsocketOption>(websocket::PATH)), SystemError, verify_exception<PichiError::BAD_JSON>);
 }
 
 BOOST_AUTO_TEST_CASE(parse_WebsocketOption_Optional_Fields)

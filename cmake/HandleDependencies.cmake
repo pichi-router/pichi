@@ -1,14 +1,12 @@
 macro(_find_all_dependencies search_mode)
   find_package(Boost 1.77.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS} REQUIRED ${search_mode})
-  find_package(MbedTLS REQUIRED ${search_mode})
+  find_package(Botan 3.5.0 REQUIRED ${search_mode})
   find_package(MaxmindDB 1.3.0 REQUIRED ${search_mode})
   find_package(Threads REQUIRED)
 
   if(ENABLE_CONAN)
-    find_package(libsodium 1.0.12 REQUIRED)
     find_package(RapidJSON 1.1.0 REQUIRED)
   else()
-    find_package(libsodium 1.0.12 REQUIRED ${search_mode})
     find_package(RapidJSON 1.1.0 REQUIRED ${search_mode})
   endif()
 
@@ -25,15 +23,7 @@ endmacro()
 function(patch_target target)
   # These dependencies lack sufficient RPATH information within the Conan directory hierarchy.
 
-  if(target STREQUAL "MbedTLS::mbedcrypto")
-    set(dep CONAN_LIB::mbedtls_MbedTLS_mbedcrypto_mbedcrypto)
-  elseif(target STREQUAL "MbedTLS::mbedtls")
-    set(dep CONAN_LIB::mbedtls_MbedTLS_mbedtls_mbedtls)
-  elseif(target STREQUAL "MbedTLS::mbedx509")
-    set(dep CONAN_LIB::mbedtls_MbedTLS_mbedx509_mbedx509)
-  elseif(target STREQUAL "Boost::filesystem")
-    set(dep CONAN_LIB::boost_Boost_filesystem_boost_filesystem)
-  elseif(target STREQUAL "OpenSSL::SSL")
+  if(target STREQUAL "OpenSSL::SSL")
     set(dep CONAN_LIB::openssl_OpenSSL_SSL_ssl)
   elseif(target STREQUAL "BoringSSL::SSL")
     set(dep CONAN_LIB::boringssl_BoringSSL_SSL_ssl)
@@ -57,7 +47,7 @@ endfunction()
 list(APPEND BOOST_COMPONENTS context)
 
 if(BUILD_SERVER)
-  list(APPEND BOOST_COMPONENTS filesystem program_options)
+  list(APPEND BOOST_COMPONENTS program_options)
 endif()
 
 if(BUILD_TEST)
@@ -113,27 +103,6 @@ if(BUILD_TEST)
   endif()
 endif()
 
-if(MSVC)
-  # According to libsodium's manual https://libsodium.gitbook.io/doc/usage,
-  # SODIUM_STATIC=1 & SODIUM_EXPORT are mandatory when MSVC & static linking.
-  message(STATUS "Detecting Sodium libraries type")
-
-  if(NOT DEFINED _SODIUM_SHARED)
-    try_compile(_SODIUM_SHARED
-      ${CMAKE_BINARY_DIR}/cmake ${CMAKE_SOURCE_DIR}/cmake/test/sodium-type.c
-      LINK_LIBRARIES libsodium::libsodium
-    )
-  endif()
-
-  if(_SODIUM_SHARED)
-    message(STATUS "Detecting Sodium libraries type - SHARED")
-  else()
-    set_target_properties(libsodium::libsodium PROPERTIES
-      INTERFACE_COMPILE_DEFINITIONS "SODIUM_STATIC=1;SODIUM_EXPORT")
-    message(STATUS "Detecting Sodium libraries type - STATIC")
-  endif()
-endif()
-
 # Patch OpenSSL::Crypto target when building on windows & dynamic linking
 if(WIN32 AND NOT BUILD_SHARED_LIBS)
   get_target_property(deps ${SSL_LIB}::Crypto INTERFACE_LINK_LIBRARIES)
@@ -158,8 +127,8 @@ set_target_properties(Boost::boost PROPERTIES INTERFACE_COMPILE_DEFINITIONS "${B
 
 # Setup COMMON_LIBRARIES for later usage
 list(APPEND COMMON_LIBRARIES
-  Boost::boost Boost::context
-  MbedTLS::mbedtls libsodium::libsodium maxminddb::maxminddb rapidjson
+  Boost::boost Boost::context botan::botan
+  maxminddb::maxminddb rapidjson
   Threads::Threads ${CMAKE_DL_LIBS} ${SSL_LIB}::SSL)
 
 if(TLS_FINGERPRINT)
@@ -167,11 +136,5 @@ if(TLS_FINGERPRINT)
 endif()
 
 if(ENABLE_LINK_PATH AND NOT APPLE)
-  patch_target(MbedTLS::mbedcrypto)
-  patch_target(MbedTLS::mbedtls)
-  patch_target(MbedTLS::mbedx509)
   patch_target(${SSL_LIB}::SSL)
-  if(BUILD_SERVER)
-    patch_target(Boost::filesystem)
-  endif()
 endif()
