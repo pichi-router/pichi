@@ -181,16 +181,15 @@ Router::Router(
 Awaitable<std::tuple<std::string, std::string, vo::Egress>>
     Router::route(Endpoint const& peer, std::string const& iname, AdapterType itype) const
 {
+  auto r = ip::tcp::resolver{ex_};
   co_return co_await route(
       peer,
       iname,
       itype,
       std::invoke(
-          [](auto&& ex, auto&& peer) {
-            auto r = ip::tcp::resolver{ex};
+          [&](auto&& peer) {
             return r.async_resolve(peer.host_, std::to_string(peer.port_), asio::use_awaitable);
           },
-          ex_,
           peer
       )
   );
