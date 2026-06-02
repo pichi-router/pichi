@@ -34,8 +34,7 @@ namespace detail {
 
 class Matcher {
 private:
-  bool match_range(Endpoint const&, ResolveResults const&) const;
-  bool match_range(Endpoint const&) const;
+  bool match_range(ResolveResults const&) const;
 
   bool match_pattern(std::string const&) const;
 
@@ -64,6 +63,8 @@ private:
   std::string ename_;
   vo::Egress  egress_;
 
+  bool resolve_;
+
   std::vector<boost::asio::ip::network_v4> ranges4_ = {};
   std::vector<boost::asio::ip::network_v6> ranges6_ = {};
 
@@ -88,11 +89,15 @@ private:
   using Matchers = std::vector<detail::Matcher>;
 
 public:
-  Router(IOExecutor, ValueMap<vo::Egress> const&, ValueMap<vo::Rule> const&, vo::Route const&);
+  Router(
+      IOExecutor const&, ValueMap<vo::Egress> const&, ValueMap<vo::Rule> const&, vo::Route const&
+  );
 
-  Awaitable<std::tuple<std::string, std::string, vo::Egress>> route(
-      Endpoint const&, std::string_view, AdapterType, std::optional<ResolveResults> = std::nullopt
-  ) const;
+  Awaitable<std::tuple<std::string, std::string, vo::Egress>>
+      route(Endpoint const&, std::string const&, AdapterType) const;
+
+  Awaitable<std::tuple<std::string, std::string, vo::Egress>>
+      route(Endpoint const&, std::string const&, AdapterType, Awaitable<ResolveResults>) const;
 
 private:
   IOExecutor ex_;

@@ -1,6 +1,8 @@
 #include "pichi/common/config.hpp"
 #include <algorithm>
+#include <boost/asio/execution/context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/system/detail/error_code.hpp>
 #include <cctype>
 #include <cstdint>
 #include <maxminddb.h>
@@ -41,7 +43,7 @@ template <rngs::range Range> auto to_lower_str(Range&& orig)
   return std::string{rngs::cbegin(v), rngs::cend(v)};
 }
 
-bool Matcher::match_range(Endpoint const&, ResolveResults const& rs) const
+bool Matcher::match_range(ResolveResults const& rs) const
 {
   static auto match = [](auto const& ranges, auto const& addr) {
     return rngs::any_of(ranges, [&](auto net) {
@@ -78,9 +80,13 @@ bool Matcher::match_domain(Endpoint const& peer) const
 Matcher::Matcher(
     std::string_view rname, vo::Rule const& rule, std::string_view ename, vo::Egress const& egress
 )
-  : rname_{rname}, ename_{ename}, egress_{egress}
+  : rname_{rname},
+    ename_{ename},
+    egress_{egress},
+    resolve_{!rngs::empty(rule.country_) || !rngs::empty(rule.range_)}
 {
-  rngs::for_each(rule.range_, [this](auto&& range) {
+  // FIXME Utilize std::views::concat if being able to apply C++26
+  auto append = [this](auto&& range) {
     auto ec = sys::error_code{};
     auto n4 = ip::make_network_v4(range, ec);
     if (ec) {
@@ -90,7 +96,10 @@ Matcher::Matcher(
     }
     else
       ranges4_.push_back(n4);
-  });
+  };
+
+  rngs::for_each(rule.range_, append);
+  rngs::for_each(rule.range_nr_, append);
 
   insert_range(inames_, rule.ingress_);
   insert_range(types_, rule.type_);
@@ -105,12 +114,10 @@ Matcher::Matcher(
                          }) | views::transform([](auto&& s) { return to_lower_str(s); }));
 
   insert_range(countries_, rule.country_);
+  insert_range(countries_, rule.country_nr_);
 }
 
-bool Matcher::need_resolving() const
-{
-  return !ranges4_.empty() || !ranges6_.empty() || !countries_.empty();
-}
+bool Matcher::need_resolving() const { return resolve_; }
 
 std::string const& Matcher::rname() const { return rname_; }
 
@@ -123,13 +130,17 @@ bool Matcher::match(
     std::optional<ResolveResults> const& rs, service::Mmdb& mmdb
 ) const
 {
-  return (rs.has_value() && match_range(peer, *rs)) || inames_.contains(iname) ||
-         types_.contains(type) || match_pattern(peer.host_) || match_domain(peer) ||
-         (rs.has_value() && rngs::any_of(*rs, [&, this](auto&& r) {
-            return rngs::any_of(countries_, [&](auto&& country) {
-              return mmdb.match(r.endpoint().data(), country);
-            });
-          }));
+  return (rs.has_value() && !rs->empty() &&
+          (match_range(*rs) || rngs::any_of(
+                                   *rs,
+                                   [&, this](auto&& r) {
+                                     return rngs::any_of(countries_, [&](auto&& country) {
+                                       return mmdb.match(r.endpoint().data(), country);
+                                     });
+                                   }
+                               ))) ||
+         inames_.contains(iname) || types_.contains(type) || match_pattern(peer.host_) ||
+         match_domain(peer);
 }
 
 static auto parse_route(
@@ -158,36 +169,60 @@ static auto parse_route(
 }  // namespace detail
 
 Router::Router(
-    IOExecutor ex, ValueMap<vo::Egress> const& egresses, ValueMap<vo::Rule> const& rules,
+    IOExecutor const& ex, ValueMap<vo::Egress> const& egresses, ValueMap<vo::Rule> const& rules,
     vo::Route const& route
 )
-  : ex_{std::move(ex)},
+  : ex_{ex},
     matchers_{detail::parse_route(route, egresses, rules)},
     default_{std::make_tuple("*"s, *route.default_, egresses.at(*route.default_))}
 {
 }
 
+Awaitable<std::tuple<std::string, std::string, vo::Egress>>
+    Router::route(Endpoint const& peer, std::string const& iname, AdapterType itype) const
+{
+  co_return co_await route(
+      peer,
+      iname,
+      itype,
+      std::invoke(
+          [](auto&& ex, auto&& peer) {
+            auto r = ip::tcp::resolver{ex};
+            return r.async_resolve(peer.host_, std::to_string(peer.port_), asio::use_awaitable);
+          },
+          ex_,
+          peer
+      )
+  );
+}
+
 Awaitable<std::tuple<std::string, std::string, vo::Egress>> Router::route(
-    Endpoint const& peer, std::string_view name, AdapterType itype, std::optional<ResolveResults> rs
+    Endpoint const& peer, std::string const& iname, AdapterType itype,
+    Awaitable<ResolveResults> resolve
 ) const
 {
-  auto  iname = std::to_string(name);
-  auto& mmdb  = asio::use_service<service::Mmdb>(ex_.context());
+  auto& mmdb = asio::use_service<service::Mmdb>(asio::query(ex_, asio::execution::context));
+
+  auto ec = sys::error_code{};
+  auto rs = std::optional<ResolveResults>{};
+  if (peer.type_ != EndpointType::DOMAIN_NAME)
+    // FIXME ResolveResults::create is NOT a public and well-documented API
+    rs.emplace(
+        ResolveResults::create(ip::tcp::endpoint{ip::make_address(peer.host_), peer.port_}, "", "")
+    );
+
   for (auto&& matcher : matchers_) {
     if (!rs.has_value() && matcher.need_resolving()) {
-      auto [_, o] = co_await redirect(
-          ip::tcp::resolver{ex_}
-              .async_resolve(peer.host_, std::to_string(peer.port_), asio::use_awaitable)
-      );
-      if (o.has_value())
-        std::swap(rs, o);
-      else
-        rs = ResolveResults{};
-    }
+      rs = co_await redirect(std::move(resolve), ec);
 
-    if (matcher.match(peer, iname, itype, rs, mmdb)) {
-      co_return std::make_tuple(matcher.rname(), matcher.ename(), matcher.egress());
+      // For test purpose
+      if (ec == PichiError::MISC) asio::detail::throw_error(ec);
+
+      // Skip further resolving
+      if (!rs.has_value()) rs = ResolveResults{};
     }
+    if (matcher.match(peer, iname, itype, rs, mmdb))
+      co_return std::make_tuple(matcher.rname(), matcher.ename(), matcher.egress());
   }
   co_return default_;
 }
