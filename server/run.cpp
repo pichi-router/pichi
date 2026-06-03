@@ -184,9 +184,9 @@ private:
 public:
   HttpClient(IOExecutor const& ex, std::string const& fn) : ex_{ex}, fn_{fn} {}
 
-  Awaitable<void> run(std::string_view bind, uint16_t port, std::string_view fn)
+  Awaitable<void> run(std::string_view bind, uint16_t port)
   {
-    if (rngs::empty(fn)) co_return;
+    if (rngs::empty(fn_)) co_return;
 
     auto rr = co_await asio::ip::tcp::resolver{ex_}
                   .async_resolve(bind, std::to_string(port), asio::use_awaitable);
@@ -220,7 +220,7 @@ void run(std::string const& bind, uint16_t port, std::string const& fn, std::str
   if (!mmdb.empty()) asio::use_service<Mmdb>(io).initialize(mmdb);
 
   asio::co_spawn(io, server.serve({asio::ip::make_address(bind), port}), actor::detached);
-  asio::co_spawn(io, client.run(bind, port, fn), [&](auto eptr) noexcept {
+  asio::co_spawn(io, client.run(bind, port), [&](auto eptr) noexcept {
     if (eptr) {
       try {
         std::rethrow_exception(eptr);
@@ -228,8 +228,8 @@ void run(std::string const& bind, uint16_t port, std::string const& fn, std::str
       catch (std::exception const& e) {
         std::clog << std::format("ERROR: {}\n", e.what());
       }
+      io.stop();
     }
-    io.stop();
   });
 
   io.run();

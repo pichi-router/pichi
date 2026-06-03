@@ -127,18 +127,27 @@ Awaitable<void> Server::serve(ip::tcp::endpoint endpoint)
 Awaitable<void> Server::do_session(ip::tcp::socket s)
 {
   try {
-    auto buf    = beast::flat_buffer{};
-    auto parser = http::request_parser<HttpBody>{};
-    parser.body_limit(std::numeric_limits<uint64_t>::max());
-    co_await http::async_read(s, buf, parser, asio::use_awaitable);
+    auto alive = true;
+    while (alive && s.is_open()) {
+      auto buf    = beast::flat_buffer{};
+      auto parser = http::request_parser<HttpBody>{};
+      parser.body_limit(std::numeric_limits<uint64_t>::max());
+      co_await http::async_read(s, buf, parser, asio::use_awaitable);
+      alive = parser.keep_alive();
 
-    auto [ec, rep] = co_await redirect(handle(parser.release()));
+      auto [ec, rep] = co_await redirect(handle(parser.release()));
 
-    if (ec) rep.emplace(gen_resp(ec));
-    co_await http::async_write(s, *rep, asio::use_awaitable);
+      if (ec) rep.emplace(gen_resp(ec));
+      rep->set(http::field::connection, alive ? "keep-alive"sv : "close"sv);
+      rep->prepare_payload();
+      co_await http::async_write(s, *rep, asio::use_awaitable);
+    }
   }
   catch (sys::system_error const& e) {
-    std::cout << std::format("API IO Error: {}\n", e.what());
+    auto ec = e.code();
+    if (ec != asio::error::eof && ec != asio::error::operation_aborted &&
+        ec != http::error::end_of_stream)
+      std::cout << std::format("API IO Error: {}\n", e.what());
   }
   catch (std::exception const& e) {
     std::clog << std::format("ERROR: {}\n", e.what());
