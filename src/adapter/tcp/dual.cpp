@@ -22,18 +22,21 @@ DualIngress<NextLayer>::DualIngress(vo::Ingress const& vo, NextLayer underlying)
 template <stream::AsyncLayer NextLayer>
 Awaitable<size_t> DualIngress<NextLayer>::recv(MutableBuffer buf)
 {
+  assertTrue(delegate_.has_value());
   co_return co_await std::visit([=](auto&& ingress) { return ingress.recv(buf); }, *delegate_);
 }
 
 template <stream::AsyncLayer NextLayer>
 Awaitable<void> DualIngress<NextLayer>::send(ConstBuffer buf)
 {
-  co_return co_await std::visit([=](auto&& ingress) { return ingress.send(buf); }, *delegate_);
+  assertTrue(delegate_.has_value());
+  co_await std::visit([=](auto&& ingress) { return ingress.send(buf); }, *delegate_);
 }
 
 template <stream::AsyncLayer NextLayer> Awaitable<void> DualIngress<NextLayer>::close()
 {
-  co_return co_await std::visit([](auto&& ingress) { return ingress.close(); }, *delegate_);
+  assertTrue(delegate_.has_value());
+  co_await std::visit([](auto&& ingress) { return ingress.close(); }, *delegate_);
 }
 
 template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> DualIngress<NextLayer>::read_remote()
@@ -55,13 +58,16 @@ template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> DualIngress<NextLaye
 
 template <stream::AsyncLayer NextLayer> Awaitable<void> DualIngress<NextLayer>::confirm()
 {
-  co_return co_await std::visit([](auto&& ingress) { return ingress.confirm(); }, *delegate_);
+  assertTrue(delegate_.has_value());
+  co_await std::visit([](auto&& ingress) { return ingress.confirm(); }, *delegate_);
 }
 
 template <stream::AsyncLayer NextLayer>
 Awaitable<void> DualIngress<NextLayer>::disconnect(sys::error_code const& ec)
 {
-  co_return co_await std::visit([&](auto&& ingress) { return ingress.disconnect(ec); }, *delegate_);
+  if (delegate_.has_value())
+    co_await std::visit([&](auto&& ingress) { return ingress.disconnect(ec); }, *delegate_);
+  co_return;
 }
 
 template class DualIngress<Socket>;
