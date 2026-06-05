@@ -160,7 +160,7 @@ private:
     auto rules = co_await get(sock, std::format("/{}", RULES));
     for (auto&& r :
          rules.GetObj() | views::transform([](auto&& member) { return member.name.GetString(); })) {
-      co_await del(sock, std::format("{}/{}", RULES, r));
+      co_await del(sock, std::format("/{}/{}", RULES, r));
     }
 
     auto egresses = co_await get(sock, std::format("/{}", EGRESSES));
@@ -173,7 +173,7 @@ private:
     auto ingresses = co_await get(sock, std::format("/{}", INGRESSES));
     for (auto&& i : ingresses.GetObj() |
                         views::transform([](auto&& member) { return member.name.GetString(); })) {
-      co_await del(sock, std::format("{}/{}", INGRESSES, i));
+      co_await del(sock, std::format("/{}/{}", INGRESSES, i));
     }
 
     std::clog << "Configuration reset.\n";
