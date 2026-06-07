@@ -175,7 +175,6 @@ Awaitable<std::tuple<std::string, std::string, vo::Egress>> Router::route(
   auto& mmdb  = asio::use_service<service::Mmdb>(ex_.context());
   for (auto&& matcher : matchers_) {
     if (!rs.has_value() && matcher.need_resolving()) {
-      if (peer.type_ == EndpointType::DOMAIN_NAME) fail(PichiError::MISC);
       auto [_, o] = co_await redirect(
           ip::tcp::resolver{ex_}
               .async_resolve(peer.host_, std::to_string(peer.port_), asio::use_awaitable)
