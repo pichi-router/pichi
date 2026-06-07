@@ -8,9 +8,9 @@ permalink: /overview
 
 Pichi is designed with the following core principles:
 
-1. **Protocol Support**: Handles common [proxy protocols](/#supported-protocols) like HTTP(S), Socks5(s), etc.
-1. **Flexible Routing**: Features a dynamic routing engine controlled entirely via [RESTful APIs](api-specification).
-1. **Developer-Oriented**: Dispenses with a built-in GUI in favor of seamless [integration](integration) into 3rd-party interfaces.
+1. **Protocol Support**: Handles common [proxy protocols](./#supported-protocols) like HTTP(S), Socks5(s), etc.
+1. **Flexible Routing**: Features a dynamic routing engine controlled entirely via [RESTful APIs](./api-specification).
+1. **Developer-Oriented**: Dispenses with a built-in GUI in favor of seamless [integration](./integration) into 3rd-party interfaces.
 1. **Personal Scale**: Prioritizes features and usability for personal environments over absolute, enterprise-grade performance optimization.
 1. **Cross-Platform**: Runs natively acrosss Windows, POSIX-compliant systems, Android and iOS.
 

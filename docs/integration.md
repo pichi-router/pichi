@@ -61,7 +61,7 @@ public:
 } // namespace pichi::actor
 ```
 
-`Server::serve` accepts a local endpoint and then starts listening on it to accept [RESTful APIs](/api-specification) requests.
+`Server::serve` accepts a local endpoint and then starts listening on it to accept [RESTful APIs](./api-specification) requests.
 It returns a [boost::asio::awaitable](https://www.boost.org/doc/libs/latest/doc/html/boost_asio/reference/awaitable.html) class template,
 which is usually passed to [boost::asio::co_spawn](https://www.boost.org/doc/libs/latest/doc/html/boost_asio/reference/co_spawn.html) function template directly.
 

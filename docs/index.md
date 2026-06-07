@@ -8,8 +8,8 @@ permalink: /
 **Pichi** is a flexible rule-based proxy.
 {: .fs-6 .fw-300 }
 
-[Get Started](getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[API Docs](api-specification){: .btn .fs-5 .mb-4 .mb-md-0 }
+[Get Started](./getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[API Docs](./api-specification){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 # Build Status
 

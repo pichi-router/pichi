@@ -43,4 +43,4 @@ The pre-built image enables `TLS_FINGERPRINT` and `TRANSPARENT_IPTABLES` feature
 
 ## Others
 
-Please refer to [Build](/getting-started/build) page to build from scratch.
+Please refer to [Build](./build) page to build from scratch.

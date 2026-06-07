@@ -28,7 +28,7 @@ Allow options:
 {: .note }
 > The `--port` option is mandatory.
 
-The `--config` option specifies the initial configuration file complying with [Configuration](/getting-started/configuration).
+The `--config` option specifies the initial configuration file complying with [Configuration](./configuration).
 If omitted, Pichi defaults to the following configuration:
 
 ```js

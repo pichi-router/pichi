@@ -13,7 +13,7 @@ Before breaking down the detailed API specification, it is helpful to establish 
 
 | Resource | Path | Description |
 |:---|:---|:---|
-| [Ingress](ingress) | /ingresses/{name} | An ingress defines an incoming network adapter, specifying its protocol type, listening address/port, and protocol-specific configurations. |
-| [Egress](egress) | /egresses/{name} | An egress defines an outgoing network adapter, specifying its protocol type, address/port of next hop, and protocol-specific configurations. |
-| [Rule](rule) | /rules/{name} | A rule consists of a set of conditions, such as IP ranges, domain regular expressions, or destination countries. An incoming connection matches the rule if it satisfies **ANY** of these conditions. |
-| [Route](route) | /route | Route defines a priority-ordered sequence of `[rule0, rule1, ..., egress]` tuples, along with a `default` egress used if none of the rules match. |
+| [Ingress](https://pichi-router.github.io/pichi/api-specification/ingress) | /ingresses/{name} | An ingress defines an incoming network adapter, specifying its protocol type, listening address/port, and protocol-specific configurations. |
+| [Egress](https://pichi-router.github.io/pichi/api-specification/egress) | /egresses/{name} | An egress defines an outgoing network adapter, specifying its protocol type, address/port of next hop, and protocol-specific configurations. |
+| [Rule](https://pichi-router.github.io/pichi/api-specification/rule) | /rules/{name} | A rule consists of a set of conditions, such as IP ranges, domain regular expressions, or destination countries. An incoming connection matches the rule if it satisfies **ANY** of these conditions. |
+| [Route](https://pichi-router.github.io/pichi/api-specification/route) | /route | Route defines a priority-ordered sequence of `[rule0, rule1, ..., egress]` tuples, along with a `default` egress used if none of the rules match. |

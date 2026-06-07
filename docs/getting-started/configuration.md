@@ -27,7 +27,7 @@ Pichi accepts a **JSON** configuration file structured as follows:
 }
 ```
 
-Please refer to [API Specification](/api-specification) for detailed section description.
+Please refer to [API Specification](../api-specification) for detailed section description.
 
 # Examples
 
