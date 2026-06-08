@@ -1,5 +1,6 @@
 #include "pichi/common/config.hpp"
 #include <algorithm>
+#include <array>
 #include <boost/asio/ip/tcp.hpp>
 #include <format>
 #include <pichi/adapter/tcp/adapter.hpp>
@@ -21,8 +22,7 @@ namespace socks5 {
 
 static ConstBuffer err_to_buf(sys::error_code const& ec)
 {
-#ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-  static auto const NETWORK_UNREACHABLE = array{
+  static auto const NETWORK_UNREACHABLE = std::array{
       0x05_u8,
       0x03_u8,
       0x00_u8,
@@ -34,7 +34,7 @@ static ConstBuffer err_to_buf(sys::error_code const& ec)
       0x00_u8,
       0x00_u8
   };
-  static auto const HOST_UNREACHABLE = array{
+  static auto const HOST_UNREACHABLE = std::array{
       0x05_u8,
       0x04_u8,
       0x00_u8,
@@ -46,7 +46,7 @@ static ConstBuffer err_to_buf(sys::error_code const& ec)
       0x00_u8,
       0x00_u8
   };
-  static auto const CONNECTION_REFUSED = array{
+  static auto const CONNECTION_REFUSED = std::array{
       0x05_u8,
       0x05_u8,
       0x00_u8,
@@ -58,7 +58,7 @@ static ConstBuffer err_to_buf(sys::error_code const& ec)
       0x00_u8,
       0x00_u8
   };
-  static auto const ADDRESS_TYPE_NOT_SUPPORTED = array{
+  static auto const ADDRESS_TYPE_NOT_SUPPORTED = std::array{
       0x05_u8,
       0x08_u8,
       0x00_u8,
@@ -70,22 +70,8 @@ static ConstBuffer err_to_buf(sys::error_code const& ec)
       0x00_u8,
       0x00_u8
   };
-  static auto const AUTH_FAILURE = array{0x01_u8, 0xff_u8};
-  // static auto const AUTH_SUCCESS   = array{0x01_u8, 0x00_u8};
-  static auto const METHOD_FAILURE = array{0x05_u8, 0xff_u8};
-#else   // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-  static uint8_t const NETWORK_UNREACHABLE[] =
-      {0x05_u8, 0x03_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
-  static uint8_t const HOST_UNREACHABLE[] =
-      {0x05_u8, 0x04_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
-  static uint8_t const CONNECTION_REFUSED[] =
-      {0x05_u8, 0x05_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
-  static uint8_t const ADDRESS_TYPE_NOT_SUPPORTED[] =
-      {0x05_u8, 0x08_u8, 0x00_u8, 0x01_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8};
-  static uint8_t const AUTH_FAILURE[] = {0x01_u8, 0xff_u8};
-  // static uint8_t const AUTH_SUCCESS[]   = {0x01_u8, 0x00_u8};
-  static uint8_t const METHOD_FAILURE[] = {0x05_u8, 0xff_u8};
-#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+  static auto const AUTH_FAILURE   = std::array{0x01_u8, 0xff_u8};
+  static auto const METHOD_FAILURE = std::array{0x05_u8, 0xff_u8};
 
   if (ec == asio::error::address_family_not_supported) return ADDRESS_TYPE_NOT_SUPPORTED;
   if (ec == asio::error::connection_refused) return CONNECTION_REFUSED;
@@ -185,11 +171,7 @@ template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Ingress<NextLayer>
    * | 1  |   1    |
    * +----+--------+
    */
-#ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-  static auto const AUTH_SUCCESS = array{0x01_u8, 0x00_u8};
-#else   // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-  static uint8_t const AUTH_SUCCESS[] = {0x01_u8, 0x00_u8};
-#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
+  static auto const AUTH_SUCCESS = std::array{0x01_u8, 0x00_u8};
   co_await stream::write(underlying_, AUTH_SUCCESS);
 }
 
@@ -255,8 +237,7 @@ template <stream::AsyncLayer NextLayer> Awaitable<Endpoint> Socks5Ingress<NextLa
 
 template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Ingress<NextLayer>::confirm()
 {
-#ifdef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-  static auto const CONFIRM = array{
+  static auto const CONFIRM = std::array{
       0x05_u8,
       0x00_u8,
       0x00_u8,
@@ -268,9 +249,6 @@ template <stream::AsyncLayer NextLayer> Awaitable<void> Socks5Ingress<NextLayer>
       0x00_u8,
       0x00_u8
   };
-#else   // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-  static uint8_t const CONFIRM[] = {0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
   co_await stream::write(underlying_, CONFIRM);
 }
 

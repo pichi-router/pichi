@@ -12,10 +12,11 @@
 #include <pichi/common/endpoint.hpp>
 #include <pichi/common/literals.hpp>
 
-using namespace std;
+using namespace std::literals;
 namespace asio  = boost::asio;
 namespace beast = boost::beast;
 namespace mpl   = boost::mpl;
+namespace rngs  = std::ranges;
 
 namespace pichi::unit_test {
 
@@ -29,7 +30,7 @@ template <> uint8_t const EndpointHelper<EndpointType::DOMAIN_NAME>::CHAR = 3;
 template <> size_t const  EndpointHelper<EndpointType::DOMAIN_NAME>::SIZE = 7;
 template <>
 Endpoint const EndpointHelper<EndpointType::DOMAIN_NAME>::ENDPOINT = {
-    EndpointType::DOMAIN_NAME, string(CHAR, CHAR), 771_u16
+    EndpointType::DOMAIN_NAME, std::string(CHAR, CHAR), 771_u16
 };
 
 template <> uint8_t const EndpointHelper<EndpointType::IPV4>::CHAR = 1;
@@ -56,15 +57,16 @@ class StubSocket {
 public:
   explicit StubSocket() {}
 
-  void write(initializer_list<uint8_t> buf)
+  void write(std::initializer_list<uint8_t> buf)
   {
-    copy_n(cbegin(buf), buf.size(), asio::buffers_begin(buffer_.prepare(buf.size())));
+
+    rngs::copy(buf, asio::buffers_begin(buffer_.prepare(buf.size())));
     buffer_.commit(buf.size());
   }
 
   void write(uint8_t c)
   {
-    copy_n(&c, 1, asio::buffers_begin(buffer_.prepare(1)));
+    std::copy_n(&c, 1, asio::buffers_begin(buffer_.prepare(1)));
     buffer_.commit(1);
   }
 
@@ -87,7 +89,7 @@ BOOST_AUTO_TEST_SUITE(ENDPOINT)
 
 BOOST_AUTO_TEST_CASE(serialize_Empty_Host)
 {
-  auto buf = array<uint8_t, 64>{};
+  auto buf = std::array<uint8_t, 64>{};
   BOOST_CHECK_EXCEPTION(
       serializeEndpoint({EndpointType::DOMAIN_NAME, ""s, 1_u16}, buf),
       SystemError,
@@ -107,7 +109,7 @@ BOOST_AUTO_TEST_CASE(serialize_Empty_Host)
 
 BOOST_AUTO_TEST_CASE(serialize_Empty_Port)
 {
-  auto buf = array<uint8_t, 64>{};
+  auto buf = std::array<uint8_t, 64>{};
   for (auto host : {"localhost"sv, "127.0.0.1"sv, "::1"sv}) {
     BOOST_CHECK_EXCEPTION(
         serializeEndpoint(makeEndpoint(host, ""sv), buf),
@@ -119,7 +121,7 @@ BOOST_AUTO_TEST_CASE(serialize_Empty_Port)
 
 BOOST_AUTO_TEST_CASE(serialize_Invalid_IP_Address)
 {
-  auto buf = array<uint8_t, 64>{};
+  auto buf = std::array<uint8_t, 64>{};
 
   for (auto type : {EndpointType::IPV4, EndpointType::IPV6}) {
     BOOST_CHECK_EXCEPTION(
@@ -132,9 +134,9 @@ BOOST_AUTO_TEST_CASE(serialize_Invalid_IP_Address)
 
 BOOST_AUTO_TEST_CASE(serialize_Domain_Name_Too_Long)
 {
-  auto buf = array<uint8_t, 1024>{};
+  auto buf = std::array<uint8_t, 1024>{};
   BOOST_CHECK_EXCEPTION(
-      serializeEndpoint({EndpointType::DOMAIN_NAME, string(0x100, 'a'), 1_u16}, buf),
+      serializeEndpoint({EndpointType::DOMAIN_NAME, std::string(0x100, 'a'), 1_u16}, buf),
       SystemError,
       verify_exception<PichiError::MISC>
   );
@@ -144,10 +146,10 @@ BOOST_AUTO_TEST_CASE(serialize_Domain_Lack_Of_Buffer)
 {
   auto host = "localhost"sv;
 
-  auto enough = array<uint8_t, 13>{};
+  auto enough = std::array<uint8_t, 13>{};
   BOOST_CHECK_EQUAL(enough.size(), serializeEndpoint(makeEndpoint(host, 1), enough));
 
-  auto lack = array<uint8_t, 12>{};
+  auto lack = std::array<uint8_t, 12>{};
   BOOST_CHECK_EXCEPTION(
       serializeEndpoint(makeEndpoint(host, 1), lack),
       SystemError,
@@ -159,25 +161,23 @@ BOOST_AUTO_TEST_CASE(serialize_Domain)
 {
   auto host   = "localhost"sv;
   auto port   = 443_u16;
-  auto expect = array
-#ifndef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-      <uint8_t, 13>
-#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-      {0x03_u8,
-       0x09_u8,
-       0x6c_u8,
-       0x6f_u8,
-       0x63_u8,
-       0x61_u8,
-       0x6c_u8,
-       0x68_u8,
-       0x6f_u8,
-       0x73_u8,
-       0x74_u8,
-       0x01_u8,
-       0xbb_u8};
+  auto expect = std::array{
+      0x03_u8,
+      0x09_u8,
+      0x6c_u8,
+      0x6f_u8,
+      0x63_u8,
+      0x61_u8,
+      0x6c_u8,
+      0x68_u8,
+      0x6f_u8,
+      0x73_u8,
+      0x74_u8,
+      0x01_u8,
+      0xbb_u8
+  };
 
-  auto fact = array<uint8_t, 13>{};
+  auto fact = std::array<uint8_t, 13>{};
   auto len  = serializeEndpoint(makeEndpoint(host, port), fact);
 
   BOOST_CHECK_EQUAL(expect.size(), len);
@@ -188,10 +188,10 @@ BOOST_AUTO_TEST_CASE(serialize_IPv4_Lack_Of_Buffer)
 {
   auto address = "127.0.0.1"sv;
 
-  auto enough = array<uint8_t, 7>{};
+  auto enough = std::array<uint8_t, 7>{};
   BOOST_CHECK_EQUAL(enough.size(), serializeEndpoint(makeEndpoint(address, 1), enough));
 
-  auto lack = array<uint8_t, 6>{};
+  auto lack = std::array<uint8_t, 6>{};
   BOOST_CHECK_EXCEPTION(
       serializeEndpoint(makeEndpoint(address, 1), lack),
       SystemError,
@@ -203,13 +203,9 @@ BOOST_AUTO_TEST_CASE(serialize_IPv4)
 {
   auto address = "127.0.0.1"sv;
   auto port    = 443_u16;
-  auto expect  = array
-#ifndef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-      <uint8_t, 7>
-#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-      {0x01, 0x7f, 0x00, 0x00, 0x01, 0x01, 0xbb};
+  auto expect  = std::array{0x01, 0x7f, 0x00, 0x00, 0x01, 0x01, 0xbb};
 
-  auto fact = array<uint8_t, 7>{};
+  auto fact = std::array<uint8_t, 7>{};
   BOOST_CHECK_EQUAL(expect.size(), serializeEndpoint(makeEndpoint(address, port), fact));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
@@ -218,10 +214,10 @@ BOOST_AUTO_TEST_CASE(serialize_IPv6_Lack_Of_Buffer)
 {
   auto address = "::1"sv;
 
-  auto enough = array<uint8_t, 19>{};
+  auto enough = std::array<uint8_t, 19>{};
   BOOST_CHECK_EQUAL(enough.size(), serializeEndpoint(makeEndpoint(address, 1), enough));
 
-  auto lack = array<uint8_t, 18>{};
+  auto lack = std::array<uint8_t, 18>{};
   BOOST_CHECK_EXCEPTION(
       serializeEndpoint(makeEndpoint(address, 1), lack),
       SystemError,
@@ -233,31 +229,29 @@ BOOST_AUTO_TEST_CASE(serialize_IPv6)
 {
   auto address = "::1"sv;
   auto port    = 443_u16;
-  auto expect  = array
-#ifndef HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-      <uint8_t, 19>
-#endif  // HAS_CLASS_TEMPLATE_ARGUMENT_DEDUCTION
-      {0x04,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x00,
-       0x01,
-       0x01,
-       0xbb};
+  auto expect  = std::array{
+      0x04,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x01,
+      0xbb
+  };
 
-  auto fact = array<uint8_t, 19>{};
+  auto fact = std::array<uint8_t, 19>{};
   BOOST_CHECK_EQUAL(expect.size(), serializeEndpoint(makeEndpoint(address, port), fact));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expect), cend(expect), cbegin(fact), cend(fact));
 }
@@ -346,10 +340,10 @@ BOOST_AUTO_TEST_CASE(parse_IPv6)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(hton_0, Int, IntTypes)
 {
-  auto expt = array<uint8_t, sizeof(Int)>{};
-  auto fact = array<uint8_t, sizeof(Int)>{};
+  auto expt = std::array<uint8_t, sizeof(Int)>{};
+  auto fact = std::array<uint8_t, sizeof(Int)>{};
 
-  fill_n(begin(expt), sizeof(Int), 0_u8);
+  std::fill_n(begin(expt), sizeof(Int), 0_u8);
   auto zero = Int{0};
   hton(zero, fact);
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expt), cend(expt), cbegin(fact), cend(fact));
@@ -357,10 +351,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(hton_0, Int, IntTypes)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(hton_1, Int, IntTypes)
 {
-  auto expt = array<uint8_t, sizeof(Int)>{};
-  auto fact = array<uint8_t, sizeof(Int)>{};
+  auto expt = std::array<uint8_t, sizeof(Int)>{};
+  auto fact = std::array<uint8_t, sizeof(Int)>{};
 
-  fill_n(begin(expt), sizeof(Int), 0xff_u8);
+  std::fill_n(begin(expt), sizeof(Int), 0xff_u8);
   auto ff = static_cast<Int>(~0);
   hton(ff, fact);
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expt), cend(expt), cbegin(fact), cend(fact));
@@ -368,8 +362,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(hton_1, Int, IntTypes)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(hton_Seq, Int, IntTypes)
 {
-  auto expt = array<uint8_t, sizeof(Int)>{};
-  auto fact = array<uint8_t, sizeof(Int)>{};
+  auto expt = std::array<uint8_t, sizeof(Int)>{};
+  auto fact = std::array<uint8_t, sizeof(Int)>{};
 
   auto seq = Int{0};
   for (uint8_t i = 0; i < sizeof(Int); ++i) {
@@ -382,24 +376,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(hton_Seq, Int, IntTypes)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(ntoh_0, Int, IntTypes)
 {
-  auto buf = array<uint8_t, sizeof(Int)>{};
+  auto buf = std::array<uint8_t, sizeof(Int)>{};
 
-  fill_n(begin(buf), sizeof(buf), 0_u8);
+  rngs::fill(buf, 0_u8);
   BOOST_CHECK_EQUAL(static_cast<Int>(0), ntoh<Int>(buf));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(ntoh_1, Int, IntTypes)
 {
-  auto buf = array<uint8_t, sizeof(Int)>{};
+  auto buf = std::array<uint8_t, sizeof(Int)>{};
 
-  fill_n(begin(buf), sizeof(buf), 0xff_u8);
+  rngs::fill(buf, 0xff_u8);
   BOOST_CHECK_EQUAL(static_cast<Int>(~0), ntoh<Int>(buf));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(ntoh_Seq, Int, IntTypes)
 {
   auto expt = Int{0};
-  auto buf  = array<uint8_t, sizeof(Int)>{};
+  auto buf  = std::array<uint8_t, sizeof(Int)>{};
   for (uint8_t i = 0; i < sizeof(Int); ++i) {
     auto p                 = reinterpret_cast<uint8_t*>(&expt);
     p[sizeof(Int) - i - 1] = buf[i] = i;
@@ -409,7 +403,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ntoh_Seq, Int, IntTypes)
 
 BOOST_AUTO_TEST_CASE(serializeEndpoint_Empty_Endpoint)
 {
-  auto buf = array<uint8_t, 1024>{};
+  auto buf = std::array<uint8_t, 1024>{};
   for (auto type : {EndpointType::DOMAIN_NAME, EndpointType::IPV4, EndpointType::IPV6}) {
     BOOST_CHECK_EXCEPTION(
         serializeEndpoint({type, "", 0_u16}, buf),
@@ -421,7 +415,7 @@ BOOST_AUTO_TEST_CASE(serializeEndpoint_Empty_Endpoint)
 
 BOOST_AUTO_TEST_CASE(serializeEndpoint_Invalid_IP_Address)
 {
-  auto buf = array<uint8_t, 1024>{};
+  auto buf = std::array<uint8_t, 1024>{};
   BOOST_CHECK_EXCEPTION(
       serializeEndpoint({EndpointType::IPV4, "::1", 80_u16}, buf),
       SystemError,
@@ -446,9 +440,9 @@ BOOST_AUTO_TEST_CASE(serializeEndpoint_Invalid_IP_Address)
 
 BOOST_AUTO_TEST_CASE(serializeEndpoint_Invalid_Domain_Length)
 {
-  auto buf = array<uint8_t, 1024>{};
+  auto buf = std::array<uint8_t, 1024>{};
   BOOST_CHECK_EXCEPTION(
-      serializeEndpoint({EndpointType::DOMAIN_NAME, string(0x100, 'a'), 80_u16}, buf),
+      serializeEndpoint({EndpointType::DOMAIN_NAME, std::string(0x100, 'a'), 80_u16}, buf),
       SystemError,
       verify_exception<PichiError::MISC>
   );
@@ -456,7 +450,7 @@ BOOST_AUTO_TEST_CASE(serializeEndpoint_Invalid_Domain_Length)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(serializeEndpoint_Less_Buffer, Helper, Helpers)
 {
-  auto buf = array<uint8_t, 1024>{};
+  auto buf = std::array<uint8_t, 1024>{};
   serializeEndpoint(Helper::ENDPOINT, {buf, Helper::SIZE});
   serializeEndpoint(Helper::ENDPOINT, {buf, Helper::SIZE + 1});
   BOOST_CHECK_EXCEPTION(
@@ -473,11 +467,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(serializeEndpoint_Less_Buffer, Helper, Helpers)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(serializeEndpoint_Normal, Helper, Helpers)
 {
-  auto expt = array<uint8_t, Helper::SIZE>{};
-  fill_n(begin(expt), sizeof(expt), Helper::CHAR);
+  auto expt = std::array<uint8_t, Helper::SIZE>{};
+  rngs::fill(expt, Helper::CHAR);
 
-  auto fact = array<uint8_t, Helper::SIZE>{};
-  fill_n(begin(fact), sizeof(fact), 0_u8);
+  auto fact = std::array<uint8_t, Helper::SIZE>{};
+  rngs::fill(fact, 0_u8);
   BOOST_CHECK_EQUAL(sizeof(expt), serializeEndpoint(Helper::ENDPOINT, fact));
   BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(expt), cend(expt), cbegin(fact), cend(fact));
 }
@@ -487,7 +481,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parseEndpoint_Normal, Helper, Helpers)
   auto read = [size = size_t{0}](MutableBuffer buf) mutable {
     size += buf.size();
     BOOST_CHECK_LE(size, Helper::SIZE);
-    fill_n(begin(buf), buf.size(), Helper::CHAR);
+    rngs::fill(buf, Helper::CHAR);
   };
   BOOST_CHECK(Helper::ENDPOINT == parseEndpoint(read));
 }
