@@ -1,7 +1,0 @@
-{
-  "type": "reject",
-  "reject": {
-    "mode": "fixed",
-    "delay": 300
-  }
-}
