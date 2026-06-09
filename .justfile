@@ -324,4 +324,4 @@ _prepare version artifact:
   $rev = ($json.PSObject.Properties | Select-Object -First 1).Name
   $pkg = ($json.$rev.packages.PSObject.Properties | Select-Object -First 1).Name
   $exe = Join-Path $(conan cache path "${recipe}:${pkg}") "bin\pichi.exe"
-  Copy-Item -Force $exe "{{artifact}}"
+  Copy-Item -Force $exe "{{artifact}}.exe"

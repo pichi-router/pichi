@@ -1,0 +1,32 @@
+RejectOption:
+  description: "The extra options for Reject egress"
+  type: object
+  properties:
+    mode:
+      description: "Reject mode"
+      type: string
+      enum:
+        - fixed
+        - random
+    delay:
+      description: "Dealy seconds to reject the connection"
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 300
+      default: 0
+  required:
+    - mode
+RejectEgress:
+  title: Reject
+  description: "Reject egress object"
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - reject
+    option:
+      $ref: "#/RejectOption"
+  required:
+    - type

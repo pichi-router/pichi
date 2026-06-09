@@ -1,0 +1,36 @@
+ShadowsocksMethod:
+  description: "Shadowsocks method"
+  type: string
+  enum:
+    - aes-128-gcm
+    - aes-192-gcm
+    - aes-256-gcm
+    - chacha20-ietf-poly1305
+    - xchacha20-ietf-poly1305
+ShadowsocksOption:
+  description: "The extra options for Shadowsocks Adapter"
+  type: object
+  properties:
+    password:
+      description: "Shadowsocks password"
+      type: string
+      example: "ss password"
+    method:
+      $ref: "#/ShadowsocksMethod"
+  required:
+    - password
+    - method
+ShadowsocksAdapter:
+  title: Shadowsocks
+  description: "Shadowsocks ingress/egress object"
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - ss
+    option:
+      $ref: "#/ShadowsocksOption"
+  required:
+    - type
+    - option

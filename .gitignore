@@ -35,3 +35,8 @@ CMakeUserPresets.json
 
 # Extensions
 .devcontainer/
+
+# Jekyll
+docs/Gemfile
+docs/Gemfile.lock
+docs/_site/

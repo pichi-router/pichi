@@ -1,0 +1,29 @@
+title: "Pichi"
+description: "Pichi is a flexible rule-based proxy."
+
+remote_theme: just-the-docs/just-the-docs
+
+search_enabled: true
+heading_anchors: true
+
+aux_links:
+  "Pichi on GitHub": "https://github.com/pichi-router/pichi"
+
+callouts:
+  highlight:
+    color: yellow
+  important:
+    title: Important
+    color: blue
+  new:
+    title: New
+    color: green
+  note:
+    title: Note
+    color: purple
+  warning:
+    title: Warning
+    color: red
+
+mermaid:
+  version: "11.15.0"

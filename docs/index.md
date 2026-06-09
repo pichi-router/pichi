@@ -1,8 +1,15 @@
-# Pichi ![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)
+---
+title: Home
+nav_order: 1
+description: "A flexible rule-based proxy."
+permalink: /
+---
 
 **Pichi** is a flexible rule-based proxy.
+{: .fs-6 .fw-300 }
 
-[Documentation](https://pichi-router.github.io/pichi/)
+[Get Started](./getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[API Docs](./api-specification){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 # Build Status
 
@@ -25,9 +32,13 @@
 | **Trojan** | ✅ | ✅ | defined by [trojan-gfw](https://trojan-gfw.github.io/trojan/protocol) and its websocket extension defined by [trojan-go](https://github.com/p4gefau1t/trojan-go) |
 | **Tunnel** | ✅ | ❌ | TCP tunnel to multiple destinations to be chosen by pre-defined load balance |
 
+
+{: .important }
+HTTP egress always attempts an [HTTP CONNECT](https://www.ietf.org/rfc/rfc2817.txt) handshake first.
+If the handshake fails, an [HTTP Proxy](https://www.ietf.org/rfc/rfc2068.txt).
+
 # Donation
 
 If you enjoy using Pichi, consider buying me a coffee.
 
-<img src="docs/assets/images/tip.png" alt="Please donate BTC" width="300"/>
-
+<img src="assets/images/tip.png" alt="Please donate BTC" width="300"/>

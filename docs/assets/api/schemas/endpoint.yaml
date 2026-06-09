@@ -1,0 +1,18 @@
+Endpoint:
+  description: "The endpoint object"
+  type: object
+  properties:
+    host:
+      description: "Host name or IP(v4/v6) address"
+      type: string
+      example: "example.com"
+    port:
+      description: "TCP port"
+      type: integer
+      format: int32
+      minimum: 1
+      maximum: 65535
+      example: 8388
+  required:
+    - host
+    - port

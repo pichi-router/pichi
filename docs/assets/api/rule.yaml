@@ -1,0 +1,145 @@
+openapi: 3.0.0
+info:
+  version: "1.6"
+  title: Rule API
+  description: "⬅️ Click <b>ENDPOINTS</b> for detailed information."
+paths:
+  /rules:
+    get:
+      description: "Get all available rules"
+      responses:
+        "200":
+          description: "All available rules"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: "#/components/schemas/Rule"
+        "500":
+          description: "Pichi server data structure error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+  /rules/{name}:
+    put:
+      description: "Create or modify a rule"
+      parameters:
+        - name: name
+          description: "rule name"
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Rule"
+      responses:
+        "204":
+          description: "Operation succeeded"
+        "400":
+          description: "Request body is invalid"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "422":
+          description: "JSON semantic error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "500":
+          description: "Pichi server error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+    delete:
+      description: "Delete a specified rule"
+      parameters:
+        - name: name
+          description: "Rule name"
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: "operation succeeded"
+        "403":
+          description: "Rule is used by route"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "500":
+          description: "Pichi server error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+components:
+  schemas:
+    IngressType:
+      type: string
+      enum:
+        - dual
+        - http
+        - socks5
+        - ss
+        - tunnel
+        - trojan
+        - transparent
+    RangeType:
+      type: array
+      items:
+        type: string
+        example: "fc00::/7"
+    CountryType:
+      type: array
+      items:
+        type: string
+        example: "US"
+    Rule:
+      type: object
+      properties:
+        range:
+          description: "IP range array"
+          $ref: "#/components/schemas/RangeType"
+        range_nr:
+          description: "IP range array, skipping DNS resolving"
+          $ref: "#/components/schemas/RangeType"
+        ingress_name:
+          description: "ingress name array"
+          type: array
+          items:
+            type: string
+            example: "my_socks5_server"
+        ingress_type:
+          description: "ingress type array"
+          type: array
+          items:
+            $ref: "#/components/schemas/IngressType"
+        pattern:
+          description: "Remote server address pattern"
+          type: array
+          items:
+            type: string
+            example: '^.*\.example.com$'
+        domain:
+          description: "Remote server domain name"
+          type: array
+          items:
+            type: string
+            example: "example.com"
+        country:
+          description: "Destination country"
+          $ref: "#/components/schemas/CountryType"
+        country_nr:
+          description: "Destination country, skipping DNS resolving"
+          $ref: "#/components/schemas/CountryType"

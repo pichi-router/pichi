@@ -36,7 +36,7 @@ int main(int argc, char const* argv[])
   auto pid_fn = std::string{};
   auto log_fn = std::string{};
   auto desc   = po::options_description{"Allow options"};
-  desc.add_options()("help,h", "produce help message")("listen,l", po::value<std::string>(&listen)->default_value("::1"), "API server address")("port,p", po::value<uint16_t>(&port), "API server port")("geo,g", po::value<std::string>(&geo), "GEO file")("json", po::value<std::string>(&json), "Initial configration(JSON format)")("version,v", "show version")
+  desc.add_options()("help,h", "produce help message")("listen,l", po::value<std::string>(&listen)->default_value("::1"), "API server address")("port,p", po::value<uint16_t>(&port), "API server port")("geo,g", po::value<std::string>(&geo), "GEO file")("config,c", po::value<std::string>(&json), "Initial configration(JSON format)")("version,v", "show version")
 
 #if defined(HAS_FORK) && defined(HAS_SETSID)
   ("daemon,d", "daemonize")("pid", po::value<std::string>(&pid_fn)->default_value("/var/run/pichi.pid"), "pid file")

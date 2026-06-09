@@ -1,0 +1,109 @@
+openapi: 3.0.0
+info:
+  version: "1.6"
+  title: Egress API
+  description: "⬅️ Click <b>ENDPOINTS</b> for detailed information."
+paths:
+  /egresses:
+    get:
+      description: "Get all available egresses"
+      responses:
+        "200":
+          description: "All available egresses"
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: "#/components/schemas/Egress"
+        "500":
+          description: "Pichi server data structure error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+  /egresses/{name}:
+    put:
+      description: "Create or modify an egress"
+      parameters:
+        - name: name
+          description: "egress name"
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Egress"
+      responses:
+        "204":
+          description: "Operation succeeded"
+        "400":
+          description: "Request body is invalid"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "422":
+          description: "JSON semantic error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "500":
+          description: "Pichi server error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+    delete:
+      description: "Delete a specified egress"
+      parameters:
+        - name: name
+          description: "Egress name"
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: "operation succeeded"
+        "403":
+          description: "Egress is used by route"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+        "500":
+          description: "Pichi server error"
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/error.yaml#/ErrorMessage"
+components:
+  schemas:
+    Server:
+      description: "Server option of egress"
+      type: object
+      properties:
+        server:
+          $ref: "./schemas/endpoint.yaml#/Endpoint"
+      required:
+        - server
+    ProxyEgress:
+      description: "Proxy egress object"
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/Server"
+        - oneOf:
+            - $ref: "./schemas/dual.yaml#/HttpSocks5Egress"
+            - $ref: "./schemas/ss.yaml#/ShadowsocksAdapter"
+            - $ref: "./schemas/trojan.yaml#/TrojanEgress"
+    Egress:
+      oneOf:
+        - $ref: "./schemas/direct.yaml#/DirectEgress"
+        - $ref: "./schemas/reject.yaml#/RejectEgress"
+        - $ref: "#/components/schemas/ProxyEgress"
