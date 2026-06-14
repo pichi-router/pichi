@@ -9,27 +9,65 @@ on:
       os:
         required: false
         type: string
+      artifact:
+        required: false
+        type: string
+      tag:
+        required: false
+        type: string
 
 jobs:
   build:
     runs-on: ${{ inputs.image }}
     steps:
       - name: Install Conan
+        if: inputs.os != 'freebsd'
         uses: conan-io/setup-conan@v1
       - name: Install Just
+        if: inputs.os != 'freebsd'
         uses: extractions/setup-just@v3
       - name: Install Go
+        if: inputs.os != 'freebsd'
         uses: actions/setup-go@v5
         with:
-          go-version: '>=1.17.0'
+          go-version: ">=1.17.0"
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Build for Android
-        if:   inputs.os == 'android'
-        run:  just -f .justfile build-android
-      - name: Build for iOS
-        if:   inputs.os == 'ios'
-        run:  just -f .justfile build-ios
-      - name: Build for host
-        if:   inputs.os != 'android' && inputs.os != 'ios'
-        run:  just -f .justfile build
+      - name: Build (Android)
+        if: inputs.os == 'android'
+        run: just -f .justfile build-android
+      - name: Build (iOS)
+        if: inputs.os == 'ios'
+        run: just -f .justfile build-ios
+      - name: Build (FreeBSD)
+        if: inputs.os == 'freebsd'
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "15.0"
+          usesh: true
+          prepare: |
+            pkg install -y cmake conan git go jq just python3
+          run: |
+            if [ -n "${{ inputs.artifact }}" ]; then
+              just -f .justfile build ${{ inputs.tag }}
+              just -f .justfile _prepare ${{ inputs.tag }} ${{ inputs.artifact }}
+            else
+              just -f .justfile build
+            fi
+      - name: Build
+        if: inputs.os != 'android' && inputs.os != 'ios' && inputs.os != 'freebsd'
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.artifact }}" ]; then
+            just -f .justfile build ${{ inputs.tag }}
+            just -f .justfile _prepare ${{ inputs.tag }} ${{ inputs.artifact }}
+          else
+            just -f .justfile build
+          fi
+      - name: Upload to release
+        if: ${{ inputs.artifact != '' }}
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ${{ inputs.artifact }}

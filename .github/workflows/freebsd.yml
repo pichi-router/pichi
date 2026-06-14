@@ -1,0 +1,14 @@
+name: FreeBSD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  linux:
+    uses: ./.github/workflows/conan.yml
+    with:
+      image: ubuntu-24.04
+      os: freebsd

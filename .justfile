@@ -300,3 +300,28 @@ build-ios version="latest" sdk="iphoneos" build_type="Release": \
 [macos]
 dev-ios build_type="Debug" sdk="iphoneos" version="latest": \
   (_conan-ios "install" sdk version build_type)
+
+[unix]
+_prepare version artifact:
+  #!/bin/sh
+  set -eu
+
+  recipe="pichi/{{version}}"
+  pkg=`conan list -f json "${recipe}:*" | \
+    jq -r "first(.\"Local Cache\".\"${recipe}\".revisions[]) | .packages | keys[0]" 2>/dev/null | \
+    grep -v '^null$'`
+
+  cp -f "$(conan cache path ${recipe}:${pkg})/bin/pichi" "{{artifact}}"
+  strip "{{artifact}}"
+
+[windows]
+_prepare version artifact:
+  #!powershell.exe
+
+  $recipe = "pichi/{{version}}"
+  $json = conan list -f json "${recipe}:*" 2>$null | ConvertFrom-Json
+  $json = $json."Local Cache".$recipe.revisions | Select-Object -First 1
+  $rev = ($json.PSObject.Properties | Select-Object -First 1).Name
+  $pkg = ($json.$rev.packages.PSObject.Properties | Select-Object -First 1).Name
+  $exe = Join-Path $(conan cache path "${recipe}:${pkg}") "bin\pichi.exe"
+  Copy-Item -Force $exe "{{artifact}}"
