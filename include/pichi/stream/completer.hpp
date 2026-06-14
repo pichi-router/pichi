@@ -2,8 +2,10 @@
 #define PICHI_STREAM_COMPLETER_HPP
 
 #include <boost/asio/associated_executor.hpp>
+#include <botan/exceptn.h>
 #include <concepts>
 #include <exception>
+#include <pichi/common/error.hpp>
 
 namespace pichi::stream {
 
@@ -31,6 +33,9 @@ public:
     }
     catch (boost::system::system_error const& e) {
       std::invoke(h_, e.code(), std::forward<Args>(args)...);
+    }
+    catch (Botan::Invalid_Authentication_Tag const&) {
+      std::invoke(h_, make_error_code(PichiError::CRYPTO_ERROR), std::forward<Args>(args)...);
     }
     catch (...) {
       // TODO log this unexpected exception
