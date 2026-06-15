@@ -73,7 +73,7 @@ Allow options:
   -l [ --listen ] arg (=::1) API server address
   -p [ --port ] arg          API server port
   -g [ --geo ] arg           GEO file
-  --json arg                 Initial configration(JSON format)
+  -c [ --config ] arg        Initail configration(JSON format)
   -d [ --daemon ]            daemonize
   -u [ --user ] arg          run as user
   --group arg                run as group
@@ -121,9 +121,7 @@ $ # Resolve and download dependencies, then generate CMake toolchain file
 $ conan install [Conan options] -s 'pichi/*:build_type=Debug' .
 $
 $ # Configure
-$ cmake -DCMAKE_TOOLCHAIN_FILE=build/Debug/generators/conan_toolchain.cmake \
->   -DCMAKE_BUILD_TYPE=Debug \
->   [CMake options] -B build/Debug -S .
+$ cmake --preset conan-default
 $
 $ # Build
 $ cmake --build build/Debug
