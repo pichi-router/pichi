@@ -37,7 +37,7 @@ int main(int argc, char const* argv[])
   auto pid_fn = string{};
   auto log_fn = string{};
   auto desc   = po::options_description{"Allow options"};
-  desc.add_options()("help,h", "produce help message")("listen,l", po::value<string>(&listen)->default_value("::1"), "API server address")("port,p", po::value<uint16_t>(&port), "API server port")("geo,g", po::value<string>(&geo), "GEO file")("json", po::value<string>(&json), "Initial configration(JSON format)")
+  desc.add_options()("help,h", "produce help message")("listen,l", po::value<string>(&listen)->default_value("::1"), "API server address")("port,p", po::value<uint16_t>(&port), "API server port")("geo,g", po::value<string>(&geo), "GEO file")("json", po::value<string>(&json), "Initial configration(JSON format)")("version,v", "show version")
 #if defined(HAS_FORK) && defined(HAS_SETSID)
   ("daemon,d", "daemonize")("pid", po::value<string>(&pid_fn)->default_value("/var/run/pichi.pid"), "pid file")
     ("log", po::value<string>(&log_fn)->default_value("/var/log/pichi.log"), "log file")
@@ -55,7 +55,17 @@ int main(int argc, char const* argv[])
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
-    if (vm.count("help") || !vm.count("port")) {
+    if (vm.count("help")) {
+      cout << desc << endl;
+      return 1;
+    }
+
+    if (vm.count("version")) {
+      cout << std::format("Pichi version {}\n", PICHI_VERSION);
+      return 0;
+    }
+
+    if (!vm.count("port")) {
       cout << desc << endl;
       return 1;
     }

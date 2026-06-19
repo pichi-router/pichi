@@ -53,6 +53,11 @@
 
 #endif  // _MSC_VER
 
+#cmakedefine PICHI_VERSION "@PICHI_VERSION@"
+#ifndef PICHI_VERSION
+#define PICHI_VERSION "latest"
+#endif
+
 #cmakedefine BUILD_TEST
 
 namespace pichi::unit_test {
