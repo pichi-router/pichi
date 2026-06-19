@@ -73,8 +73,8 @@ template <> struct AdapterTrait<AdapterType::TROJAN> {
   using Option                         = vo::TrojanOption;
 };
 
-template <> struct AdapterTrait<AdapterType::TRANSPARENT> {
-  static const AdapterType type_       = AdapterType::TRANSPARENT;
+template <> struct AdapterTrait<AdapterType::TRANSP> {
+  static const AdapterType type_       = AdapterType::TRANSP;
   static const Present     credential_ = Present::UNUSED;
   static const Present     option_     = Present::UNUSED;
   static const Present     tls_        = Present::UNUSED;
@@ -93,7 +93,7 @@ template <> struct AdapterTrait<AdapterType::DUAL> {
 using AllAdapterTraits = mpl::set<
     AdapterTrait<AdapterType::HTTP>, AdapterTrait<AdapterType::SOCKS5>,
     AdapterTrait<AdapterType::TUNNEL>, AdapterTrait<AdapterType::SS>,
-    AdapterTrait<AdapterType::TROJAN>, AdapterTrait<AdapterType::TRANSPARENT>,
+    AdapterTrait<AdapterType::TROJAN>, AdapterTrait<AdapterType::TRANSP>,
     AdapterTrait<AdapterType::DUAL>>;
 
 template <AdapterType type> json::Value default_json()

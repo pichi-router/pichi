@@ -1,6 +1,7 @@
 #include "pichi/common/config.hpp"
 #include <boost/program_options.hpp>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <pichi/common/asserts.hpp>
@@ -22,9 +23,6 @@ namespace sys = boost::system;
 
 using pichi::assertSuccess;
 
-static auto const PID_FILE = (fs::path{PICHI_PREFIX} / "var" / "run" / "pichi.pid");
-static auto const LOG_FILE = (fs::path{PICHI_PREFIX} / "var" / "log" / "pichi.log");
-
 extern void run(std::string const&, uint16_t, std::string const&, std::string const&);
 
 int main(int argc, char const* argv[])
@@ -35,10 +33,14 @@ int main(int argc, char const* argv[])
   auto geo    = std::string{};
   auto user   = std::string{};
   auto group  = std::string{};
+  auto pid_fn = std::string{};
+  auto log_fn = std::string{};
   auto desc   = po::options_description{"Allow options"};
-  desc.add_options()("help,h", "produce help message")("listen,l", po::value<std::string>(&listen)->default_value("::1"), "API server address")("port,p", po::value<uint16_t>(&port), "API server port")("geo,g", po::value<std::string>(&geo), "GEO file")("json", po::value<std::string>(&json), "Initial configration(JSON format)")
+  desc.add_options()("help,h", "produce help message")("listen,l", po::value<std::string>(&listen)->default_value("::1"), "API server address")("port,p", po::value<uint16_t>(&port), "API server port")("geo,g", po::value<std::string>(&geo), "GEO file")("json", po::value<std::string>(&json), "Initial configration(JSON format)")("version,v", "show version")
+
 #if defined(HAS_FORK) && defined(HAS_SETSID)
-      ("daemon,d", "daemonize")
+  ("daemon,d", "daemonize")("pid", po::value<std::string>(&pid_fn)->default_value("/var/run/pichi.pid"), "pid file")
+    ("log", po::value<std::string>(&log_fn)->default_value("/var/log/pichi.log"), "log file")
 #endif  // HAS_SETUID && HAS_GETPWNAM
 #if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
           ("user,u", po::value<std::string>(&user), "run as user")
@@ -53,7 +55,17 @@ int main(int argc, char const* argv[])
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
-    if (vm.count("help") || !vm.count("port")) {
+    if (vm.count("help")) {
+      std::cout << desc << std::endl;
+      return 1;
+    }
+
+    if (vm.count("version")) {
+      std::cout << std::format("Pichi version {}\n", PICHI_VERSION);
+      return 0;
+    }
+
+    if (!vm.count("port")) {
       std::cout << desc << std::endl;
       return 1;
     }
@@ -62,13 +74,15 @@ int main(int argc, char const* argv[])
 
 #if defined(HAS_FORK) && defined(HAS_SETSID)
     if (vm.count("daemon")) {
-      assertSuccess(chdir(fs::path{PICHI_PREFIX}.root_directory().c_str()));
-      auto pid = fork();
+      assertSuccess(chdir("/"));
+      auto pid_file = fs::path{pid_fn};
+      auto log_file = fs::path{log_fn};
+      auto pid      = fork();
       assertSuccess(pid);
       if (pid > 0) {
         auto ec = sys::error_code{};
-        fs::create_directories(PID_FILE.parent_path(), ec);
-        if (!ec) std::ofstream{PID_FILE.string()} << pid << std::endl;
+        fs::create_directories(pid_file.parent_path(), ec);
+        if (!ec) std::ofstream{pid_file.string()} << pid << std::endl;
         exit(0);
       }
       setsid();
@@ -78,10 +92,10 @@ int main(int argc, char const* argv[])
       close(STDERR_FILENO);
 #endif  // HAS_CLOSE
       auto ec = sys::error_code{};
-      fs::create_directories(LOG_FILE.parent_path(), ec);
+      fs::create_directories(log_file.parent_path(), ec);
       if (!ec) {
-        assertSuccess(freopen(LOG_FILE.c_str(), "a", stdout));
-        assertSuccess(freopen(LOG_FILE.c_str(), "a", stderr));
+        assertSuccess(freopen(log_file.c_str(), "a", stdout));
+        assertSuccess(freopen(log_file.c_str(), "a", stderr));
       }
     }
 #endif  // HAS_FORK && HAS_SETSID

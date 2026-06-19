@@ -111,23 +111,23 @@ public:
     helper.address2buf(src.address(), pnl.saddr.addr8);
     helper.address2buf(dst.address(), pnl.daddr.addr8);
 
-#ifdef PRIVATE
+#ifdef __APPLE__
     pnl.sxport.port = htons(src.port());
     pnl.dxport.port = htons(dst.port());
-#else   // PRIVATE
+#else   // __APPLE__
     pnl.sport = htons(src.port());
     pnl.dport = htons(dst.port());
-#endif  // PRIVATE
+#endif  // __APPLE__
 
     assertTrue(ioctl(pf_, DIOCNATLOOK, &pnl) != -1, "Unable to read PF status table");
 
     return makeEndpoint(
         helper.buf2address(pnl.rdaddr.addr8).to_string(),
-#ifdef PRIVATE
+#ifdef __APPLE__
         ntohs(pnl.rdxport.port)
-#else   // PRIVATE
+#else   // __APPLE__
         ntohs(pnl.rdport)
-#endif  // PRIVATE
+#endif  // __APPLE__
     );
   }
 

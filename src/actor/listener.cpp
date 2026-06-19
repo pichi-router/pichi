@@ -1,3 +1,4 @@
+#include "pichi/common/config.hpp"
 #include <algorithm>
 #include <boost/asio/detail/throw_error.hpp>
 #include <pichi/actor/detached.hpp>

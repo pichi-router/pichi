@@ -7,21 +7,14 @@
 #include <pichi/vo/parse.hpp>
 #include <pichi/vo/to_json.hpp>
 
-#ifdef _MSC_VER
-#ifdef TRANSPARENT
-#undef TRANSPARENT
-#endif  // TRANSPARENT
-#endif  // _MSC_VER
-
-namespace json  = rapidjson;
-using Allocator = json::Document::AllocatorType;
+namespace json = rapidjson;
 
 namespace pichi::vo {
 
-json::Value toJson(Egress const& egress, Allocator& alloc)
+json::Value toJson(Egress const& egress, json::Document::AllocatorType& alloc)
 {
   assertFalse(egress.type_ == AdapterType::TUNNEL);
-  assertFalse(egress.type_ == AdapterType::TRANSPARENT);
+  assertFalse(egress.type_ == AdapterType::TRANSP);
 
   auto ret = json::Value{json::kObjectType};
   ret.AddMember(egress::TYPE, toJson(egress.type_, alloc), alloc);

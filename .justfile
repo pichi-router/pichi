@@ -1,13 +1,5 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
-default_transparent := if os() == "linux" {
-  "iptables"
-} else if os() =~ "^(freebsd|macos)$" {
-  "pf"
-} else {
-  "none"
-}
-
 workspace := justfile_directory()
 lockfile := join(workspace, ".conan/latest.lock")
 recipes_dir := join(workspace, ".conan/recipes")
@@ -96,6 +88,7 @@ _export-recipe recipe:
 
 export: \
   (_export-recipe "boringssl") \
+  (_export-recipe "botan") \
   (_export-recipe "libmaxminddb")
 
 detect-host:
@@ -161,8 +154,8 @@ detect-android ndk_ver:
   tools.android:ndk_path=$ndk_root
   "@ | Out-File -FilePath ~/.conan2/profiles/android
 
-_build *args:
-  @conan create -b missing -l "{{lockfile}}" --lockfile-partial \
+_conan cmd *args:
+  @conan "{{cmd}}" -b missing -l "{{lockfile}}" --lockfile-partial \
     -o "boost/*:asio_no_deprecated=True" \
     -o "boost/*:bzip2=False" \
     -o "boost/*:system_no_deprecated=True" \
@@ -202,52 +195,41 @@ _build *args:
     {{args}} \
     {{workspace}}
 
-_build-host build_type shared fingerprint transparent=default_transparent version="latest": \
-  (_build "--version" version \
-          "-s" "build_type=" + build_type \
-          "-o" "boost/*:shared=" + shared \
-          "-o" "boringssl/*:shared=" + shared \
-          "-o" "brotli/*:shared=" + shared \
-          "-o" "libmaxminddb/*:shared=" + shared \
-          "-o" "openssl/*:shared=" + shared \
-          "-o" "rapidjson/*:shared=" + shared \
-          "-o" "pichi/*:shared=" + shared \
-          "-o" "pichi/*:tls_fingerprint=" + fingerprint \
-          "-o" "pichi/*:transparent=" + transparent \
-          if os() != "windows" { \
-            "" \
-          } else if shared == "True" { \
-            "-s compiler.runtime=dynamic" \
+_conan-host cmd build_type version shared: detect-host export \
+  (_conan cmd "--version" version \
+          "-s" "pichi/*:build_type=" + build_type \
+          "-o" "shared=" + shared \
+          if os() == "linux" { \
+            "-o pichi/*:tls_fingerprint=True -o pichi/*:transparent=iptables" \
+          } else if os() =~ "^(freebsd|macos)$" { \
+            "-o pichi/*:tls_fingerprint=True -o pichi/*:transparent=pf" \
+            } else if os() == "windows" { \
+            if shared == "True" { \
+              "-s compiler.runtime=dynamic" \
+            } else { \
+              "-s compiler.runtime=static" \
+            } \
           } else { \
-            "-s compiler.runtime=static" \
+            "" \
           })
 
-build build_type="Release" \
-            shared="False" \
-            fingerprint="True" \
-            transparent=default_transparent \
-            version="latest": \
-  detect-host \
-  export \
-  (_build-host build_type shared fingerprint transparent version)
+build version="latest" build_type="Release" shared="False": \
+  (_conan-host "create" build_type version shared)
 
-build-all: \
-  detect-host \
-  export \
-  (_build-host "Debug" "False" "True") \
-  (_build-host "Debug" "True" "True") \
-  (_build-host "Release" "False" "True") \
-  (_build-host "Release" "True" "True") \
-  (_build-host "Debug" "False" "False") \
-  (_build-host "Debug" "True" "False") \
-  (_build-host "Release" "False" "False") \
-  (_build-host "Release" "True" "False")
+[unix]
+dev build_type="Debug" shared="False" version="latest": \
+  (_conan-host "install" build_type version shared)
 
-_build-cross build_type fingerprint version *extra_args: \
-  (_build "--version" version \
-          "-s" "build_type=" + build_type \
+[windows]
+dev build_type="RelWithDebInfo" version="latest" shared="False": \
+  (_conan-host "install" build_type version shared)
+
+_conan-cross cmd build_type version *extra_args: \
+  (_conan cmd \
+          "--version" version \
+          "-s" "pichi/*:build_type=" + build_type \
           "-o" "*:shared=False" \
-          "-o" "pichi/*:tls_fingerprint=" + fingerprint \
+          "-o" "pichi/*:tls_fingerprint=False" \
           "-o" "pichi/*:transparent=none" \
           "-o" "pichi/*:build_server=False" \
           "-o" "pichi/*:build_test=False" \
@@ -258,25 +240,18 @@ _build-cross build_type fingerprint version *extra_args: \
           "-o" "boost/*:without_test=True" \
           extra_args)
 
-build-android build_type="Release" arch="armv8" ndk_ver="r28b" version="latest": \
+build-android version="latest" ndk_ver="r29" arch="armv8" build_type="Release": \
   export \
   (detect-android ndk_ver) \
-  (_build-cross build_type "True" version "-s" "arch=" + arch "-pr" "android")
+  (_conan-cross "create" build_type version "-s" "arch=" + arch "-pr" "android")
 
-build-android-all: \
+dev-android build_type="Debug" ndk_ver="r29" arch="armv8" version="latest": \
   export \
-  (detect-android "r28b") \
-  (_build-cross "Debug" "True" "latest" "-s" "arch=armv8" "-pr" "android") \
-  (_build-cross "Debug" "True" "latest" "-s" "arch=armv7" "-pr" "android") \
-  (_build-cross "Release" "True" "latest" "-s" "arch=armv8" "-pr" "android") \
-  (_build-cross "Release" "True" "latest" "-s" "arch=armv7" "-pr" "android") \
-  (_build-cross "Debug" "False" "latest" "-s" "arch=armv8" "-pr" "android") \
-  (_build-cross "Debug" "False" "latest" "-s" "arch=armv7" "-pr" "android") \
-  (_build-cross "Release" "False" "latest" "-s" "arch=armv8" "-pr" "android") \
-  (_build-cross "Release" "False" "latest" "-s" "arch=armv7" "-pr" "android")
+  (detect-android ndk_ver) \
+  (_conan-cross "install" build_type version "-s" "arch=" + arch "-pr" "android")
 
 [macos]
-build-ios build_type="Release" sdk="iphoneos": export detect-host
+_conan-ios cmd sdk version build_type: export detect-host
   #!/bin/sh
   set -eu
 
@@ -315,28 +290,13 @@ build-ios build_type="Release" sdk="iphoneos": export detect-host
   ver=`xcrun --sdk "{{sdk}}" --show-sdk-version`
   [ -n "${ver}" ]
 
-  {{just}} _build-cross "{{build_type}}" True latest \
+  {{just}} _conan-cross "{{cmd}}" "{{build_type}}" "{{version}}" \
     -s "os=${os}" -s "arch=${arch}" -s "os.sdk={{sdk}}" -s "os.version=${ver}"
 
 [macos]
-build-ios-all: export detect-host
-  #!/bin/sh
-  set -eu
+build-ios version="latest" sdk="iphoneos" build_type="Release": \
+  (_conan-ios "create" sdk version build_type)
 
-  for sdk in {"appletvos","iphoneos","watchos"}; do
-    ver=`xcrun --sdk "${sdk}" --show-sdk-version`
-    [ -n "${ver}" ]
-
-    case "${sdk}" in
-      "appletvos") os="tvOS";;
-      "iphoneos") os="iOS";;
-      "watchos") os="watchOS";;
-    esac
-
-    for build_type in {"Debug","Release"}; do
-      for fingerprint in {"True","False"}; do
-        {{just}} _build-cross "${build_type}" "${fingerprint}" latest \
-          -s "os=${os}" -s "arch=armv8" -s "os.sdk=${sdk}" -s "os.version=${ver}"
-      done
-    done
-  done
+[macos]
+dev-ios build_type="Debug" sdk="iphoneos" version="latest": \
+  (_conan-ios "install" sdk version build_type)

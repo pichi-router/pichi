@@ -52,7 +52,7 @@ class PichiConan(ConanFile):
     tc = CMakeToolchain(self)
     tc.cache_variables["ENABLE_CONAN"] = True
     tc.cache_variables["INSTALL_DEVEL"] = True
-    tc.cache_variables["VERSION"] = self.version
+    tc.cache_variables["PICHI_VERSION"] = self.version
     tc.cache_variables["BUILD_SERVER"] = self.options.build_server
     tc.cache_variables["BUILD_TEST"] = self.options.build_test
     tc.cache_variables["TRANSPARENT_PF"] = self.options.transparent == "pf"

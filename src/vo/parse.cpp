@@ -4,14 +4,7 @@
 #include <pichi/vo/parse.hpp>
 #include <string>
 
-#ifdef _MSC_VER
-#ifdef TRANSPARENT
-#undef TRANSPARENT
-#endif  // TRANSPARENT
-#endif  // _MSC_VER
-
-namespace json  = rapidjson;
-using Allocator = json::Document::AllocatorType;
+namespace json = rapidjson;
 
 namespace pichi::vo {
 
@@ -49,7 +42,7 @@ template <> AdapterType parse(json::Value const& v)
   if (str == type::SS) return AdapterType::SS;
   if (str == type::TUNNEL) return AdapterType::TUNNEL;
   if (str == type::TROJAN) return AdapterType::TROJAN;
-  if (str == type::TRANSPARENT) return AdapterType::TRANSPARENT;
+  if (str == type::TRANSP) return AdapterType::TRANSP;
   if (str == type::DUAL) return AdapterType::DUAL;
   fail(PichiError::BAD_JSON, msg::AT_INVALID);
 }

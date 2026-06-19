@@ -1,44 +1,24 @@
 #ifndef PICHI_VO_KEYS_HPP
 #define PICHI_VO_KEYS_HPP
 
-#ifdef _MSC_VER
-#ifdef TRANSPARENT
-#undef TRANSPARENT
-#endif  // TRANSPARENT
-#endif  // _MSC_VER
-
 namespace pichi::vo {
 
 namespace type {
 
-inline decltype(auto) DIRECT      = "direct";
-inline decltype(auto) REJECT      = "reject";
-inline decltype(auto) SOCKS5      = "socks5";
-inline decltype(auto) HTTP        = "http";
-inline decltype(auto) SS          = "ss";
-inline decltype(auto) TUNNEL      = "tunnel";
-inline decltype(auto) TROJAN      = "trojan";
-inline decltype(auto) TRANSPARENT = "transparent";
-inline decltype(auto) DUAL        = "dual";
+inline decltype(auto) DIRECT = "direct";
+inline decltype(auto) REJECT = "reject";
+inline decltype(auto) SOCKS5 = "socks5";
+inline decltype(auto) HTTP   = "http";
+inline decltype(auto) SS     = "ss";
+inline decltype(auto) TUNNEL = "tunnel";
+inline decltype(auto) TROJAN = "trojan";
+inline decltype(auto) TRANSP = "transparent";
+inline decltype(auto) DUAL   = "dual";
 
 }  // namespace type
 
 namespace method {
 
-inline decltype(auto) RC4_MD5                 = "rc4-md5";
-inline decltype(auto) BF_CFB                  = "bf-cfb";
-inline decltype(auto) AES_128_CTR             = "aes-128-ctr";
-inline decltype(auto) AES_192_CTR             = "aes-192-ctr";
-inline decltype(auto) AES_256_CTR             = "aes-256-ctr";
-inline decltype(auto) AES_128_CFB             = "aes-128-cfb";
-inline decltype(auto) AES_192_CFB             = "aes-192-cfb";
-inline decltype(auto) AES_256_CFB             = "aes-256-cfb";
-inline decltype(auto) CAMELLIA_128_CFB        = "camellia-128-cfb";
-inline decltype(auto) CAMELLIA_192_CFB        = "camellia-192-cfb";
-inline decltype(auto) CAMELLIA_256_CFB        = "camellia-256-cfb";
-inline decltype(auto) CHACHA20                = "chacha20";
-inline decltype(auto) SALSA20                 = "salsa20";
-inline decltype(auto) CHACHA20_IETF           = "chacha20-ietf";
 inline decltype(auto) AES_128_GCM             = "aes-128-gcm";
 inline decltype(auto) AES_192_GCM             = "aes-192-gcm";
 inline decltype(auto) AES_256_GCM             = "aes-256-gcm";
