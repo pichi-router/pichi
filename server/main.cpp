@@ -4,7 +4,6 @@
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <pichi/common/asserts.hpp>
 #include <stdio.h>
 #ifdef HAS_UNISTD_H
@@ -25,9 +24,6 @@ namespace sys = boost::system;
 
 using pichi::assertSuccess;
 
-static auto const PID_FILE = (fs::path{PICHI_PREFIX} / "var" / "run" / "pichi.pid");
-static auto const LOG_FILE = (fs::path{PICHI_PREFIX} / "var" / "log" / "pichi.log");
-
 extern void run(string const&, uint16_t, string const&, string const&);
 
 int main(int argc, char const* argv[])
@@ -38,13 +34,16 @@ int main(int argc, char const* argv[])
   auto geo    = string{};
   auto user   = string{};
   auto group  = string{};
+  auto pid_fn = string{};
+  auto log_fn = string{};
   auto desc   = po::options_description{"Allow options"};
   desc.add_options()("help,h", "produce help message")("listen,l", po::value<string>(&listen)->default_value("::1"), "API server address")("port,p", po::value<uint16_t>(&port), "API server port")("geo,g", po::value<string>(&geo), "GEO file")("json", po::value<string>(&json), "Initial configration(JSON format)")
 #if defined(HAS_FORK) && defined(HAS_SETSID)
-      ("daemon,d", "daemonize")
+  ("daemon,d", "daemonize")("pid", po::value<string>(&pid_fn)->default_value("/var/run/pichi.pid"), "pid file")
+    ("log", po::value<string>(&log_fn)->default_value("/var/log/pichi.log"), "log file")
 #endif  // HAS_SETUID && HAS_GETPWNAM
 #if defined(HAS_SETUID) && defined(HAS_GETPWNAM)
-          ("user,u", po::value<string>(&user), "run as user")
+  ("user,u", po::value<string>(&user), "run as user")
 #endif  // HAS_SETUID && HAS_GETPWNAM
 #if defined(HAS_SETGID) && defined(HAS_GETGRNAM)
               ("group", po::value<string>(&group), "run as group")
@@ -65,13 +64,15 @@ int main(int argc, char const* argv[])
 
 #if defined(HAS_FORK) && defined(HAS_SETSID)
     if (vm.count("daemon")) {
-      assertSuccess(chdir(fs::path{PICHI_PREFIX}.root_directory().c_str()));
-      auto pid = fork();
+      assertSuccess(chdir("/"));
+      auto pid_file = fs::path{pid_fn};
+      auto log_file = fs::path{log_fn};
+      auto pid      = fork();
       assertSuccess(pid);
       if (pid > 0) {
         auto ec = sys::error_code{};
-        fs::create_directories(PID_FILE.parent_path(), ec);
-        if (!ec) ofstream{PID_FILE.string()} << pid << endl;
+        fs::create_directories(pid_file.parent_path(), ec);
+        if (!ec) ofstream{pid_file.string()} << pid << endl;
         exit(0);
       }
       setsid();
@@ -81,10 +82,10 @@ int main(int argc, char const* argv[])
       close(STDERR_FILENO);
 #endif  // HAS_CLOSE
       auto ec = sys::error_code{};
-      fs::create_directories(LOG_FILE.parent_path(), ec);
+      fs::create_directories(log_file.parent_path(), ec);
       if (!ec) {
-        assertSuccess(freopen(LOG_FILE.c_str(), "a", stdout));
-        assertSuccess(freopen(LOG_FILE.c_str(), "a", stderr));
+        assertSuccess(freopen(log_file.c_str(), "a", stdout));
+        assertSuccess(freopen(log_file.c_str(), "a", stderr));
       }
     }
 #endif  // HAS_FORK && HAS_SETSID
