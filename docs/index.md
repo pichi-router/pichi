@@ -13,10 +13,10 @@ permalink: /
 
 # Build Status
 
-| OS | Ubuntu 24.04 | macOS 26 | Windows Server 2025 | Android | iOS |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Toolchain** | GCC 13.3.0 | Xcode 26.4.1 | Visual Studio 2022 | Android NDK r29 | Xcode 26.4.1 |
-| **Status** | [![Linux](https://github.com/pichi-router/pichi/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/linux.yml) | [![macOS](https://github.com/pichi-router/pichi/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/macos.yml) | [![Windows](https://github.com/pichi-router/pichi/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/windows.yml) | [![Android](https://github.com/pichi-router/pichi/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/android.yml) | [![iOS](https://github.com/pichi-router/pichi/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/ios.yml) |
+| OS | Ubuntu 24.04 | macOS 26 | FreeBSD 15.0 | Windows Server 2025 | Android | iOS |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Toolchain** | GCC 13.3.0 | Xcode 26.4.1 | Clang 19.1.7 | Visual Studio 2022 | Android NDK r29 | Xcode 26.4.1 |
+| **Status** | [![Linux](https://github.com/pichi-router/pichi/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/linux.yml) | [![macOS](https://github.com/pichi-router/pichi/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/macos.yml) | [![FreeBSD](https://github.com/pichi-router/pichi/actions/workflows/freebsd.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/freebsd.yml) | [![Windows](https://github.com/pichi-router/pichi/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/windows.yml) | [![Android](https://github.com/pichi-router/pichi/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/android.yml) | [![iOS](https://github.com/pichi-router/pichi/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/pichi-router/pichi/actions/workflows/ios.yml) |
 
 # Supported protocols
 

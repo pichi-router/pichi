@@ -56,7 +56,7 @@ Pichi customized several recipes because of following reasons:
 Therefore, it's necessary to export them to local cache before building Pichi.
 
 ```bash
-$ conan export --version 41 .conan/recipes/boringssl
+$ conan export --version 42 .conan/recipes/boringssl
 $ conan export --version 3.12.0 .conan/recipes/botan
 $ conan export --version 1.12.2 .conan/recipes/libmaxminddb
 ```
@@ -69,14 +69,17 @@ $ conan export --version 1.12.2 .conan/recipes/libmaxminddb
 $ conan create [Conan options] .
 $ ~/.conan2/p/b/pichi0e609cdeeeb38/p/bin/pichi
 Allow options:
-  -h [ --help ]              produce help message
-  -l [ --listen ] arg (=::1) API server address
-  -p [ --port ] arg          API server port
-  -g [ --geo ] arg           GEO file
-  -c [ --config ] arg        Initail configration(JSON format)
-  -d [ --daemon ]            daemonize
-  -u [ --user ] arg          run as user
-  --group arg                run as group
+  -h [ --help ]                   produce help message
+  -l [ --listen ] arg (=::1)      API server address
+  -p [ --port ] arg               API server port
+  -g [ --geo ] arg                GEO file
+  --json arg                      Initial configration(JSON format)
+  -v [ --version ]                show version
+  -d [ --daemon ]                 daemonize
+  --pid arg (=/var/run/pichi.pid) pid file
+  --log arg (=/var/log/pichi.log) log file
+  -u [ --user ] arg               run as user
+  --group arg                     run as group
 ```
 
 ### Cross compilation for Android
@@ -137,19 +140,24 @@ streamlining both daily local development and the [GitHub Actions](https://githu
 ```bash
 $ just help
 Available recipes:
-    build build_type="Release" shared="False" fingerprint="True" transparent=default_transparent version="latest"
-    build-all
-    build-android build_type="Release" arch="armv8" ndk_ver="r29" version="latest"
-    build-android-all
-    build-ios build_type="Release" sdk="iphoneos"
-    build-ios-all
+    build version="latest" build_type="Release" shared="False"
+    build-android version="latest" ndk_ver="r29" arch="armv8" build_type="Release"
+    build-ios version="latest" sdk="iphoneos" build_type="Release"
     clean *recipes
     detect-android ndk_ver
     detect-host
+    dev build_type="Debug" shared="False" version="latest"
+    dev-android build_type="Debug" ndk_ver="r29" arch="armv8" version="latest"
+    dev-ios build_type="Debug" sdk="iphoneos" version="latest"
     export
     help
     remove *recipes
 $
 $ # Build from scratch
 $ just build
+$
+$ # Establish the development environment from scratch
+$ just dev
+$ cmake --preset conan-debug
+$ cmake --build build/Debug
 ```

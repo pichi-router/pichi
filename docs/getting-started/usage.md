@@ -12,14 +12,17 @@ permalink: /getting-started/usage
 ```bash
 $ pichi -h
 Allow options:
-  -h [ --help ]              produce help message
-  -l [ --listen ] arg (=::1) API server address
-  -p [ --port ] arg          API server port
-  -g [ --geo ] arg           GEO file
-  -c [ --config ] arg        Initail configration(JSON format)
-  -d [ --daemon ]            daemonize
-  -u [ --user ] arg          run as user
-  --group arg                run as group
+  -h [ --help ]                   produce help message
+  -l [ --listen ] arg (=::1)      API server address
+  -p [ --port ] arg               API server port
+  -g [ --geo ] arg                GEO file
+  --json arg                      Initial configration(JSON format)
+  -v [ --version ]                show version
+  -d [ --daemon ]                 daemonize
+  --pid arg (=/var/run/pichi.pid) pid file
+  --log arg (=/var/log/pichi.log) log file
+  -u [ --user ] arg               run as user
+  --group arg                     run as group
 ```
 
 {: .note }
