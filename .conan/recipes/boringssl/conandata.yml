@@ -46,4 +46,6 @@ sources:
   "40":
     url: https://boringssl.googlesource.com/boringssl/+archive/5ee9407bc28dd9086507f02851886a185088f3a0.tar.gz
   "41":
-    url: https://boringssl.googlesource.com/boringssl/+archive/02be8eb153797af965eac8c0bf403840172cfc1d.tar.gz
+    url: https://boringssl.googlesource.com/boringssl/+archive/f325f95fb31731de66a1fe63eb88b4543d6b7e24.tar.gz
+  "42":
+    url: https://boringssl.googlesource.com/boringssl/+archive/5124f7e67b3cb0bc296c790e4d831459782dc8fc.tar.gz

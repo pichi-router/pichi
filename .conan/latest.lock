@@ -2,12 +2,12 @@
   "version": "0.5",
   "requires": [
     "boost/1.91.0",
-    "boringssl/41",
+    "boringssl/42",
     "botan/3.12.0",
     "brotli/1.2.0",
     "libmaxminddb/1.12.2",
     "rapidjson/cci.20250205",
-    "openssl/3.6.2"
+    "openssl/4.0.1"
   ],
   "python_requires": []
 }
